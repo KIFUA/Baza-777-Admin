@@ -1,0 +1,8 @@
+{
+  "name": "Baza 777 Admin",
+  "description": "Внутрішній адмін-додаток для управління базою даних членів організації (Firestore)",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

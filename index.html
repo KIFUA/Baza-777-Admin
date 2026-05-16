@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baza 777 | CRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-card: #1a1a1a;
+            --bg-input: #262626;
+            --border: #333333;
+            --accent: #3b82f6;
+        }
+        body {
+            background-color: var(--bg-main);
+            color: #e5e5e5;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .compact-input {
+            padding: 5px 8px !important;
+            font-size: 0.85rem !important;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: white;
+            width: 100%;
+            outline: none;
+        }
+        .compact-input:focus {
+            border-color: var(--accent);
+        }
+        .label-text {
+            font-size: 0.75rem;
+            color: #a3a3a3;
+            margin-bottom: 2px;
+            display: block;
+        }
+        .search-results {
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 50;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+        .search-item:hover {
+            background-color: var(--bg-input);
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-main);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: #10b981;
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+    <!-- Header & Stats -->
+    <div class="max-w-4xl mx-auto mb-4 flex justify-between items-end border-b border-gray-800 pb-2">
+        <div>
+            <h1 class="text-xl font-bold text-blue-500 uppercase tracking-wider">Baza 777 Admin</h1>
+            <p id="stats-info" class="text-xs text-gray-500">Завантаження бази...</p>
+        </div>
+        <button id="btn-create-mode" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded transition-all">
+            Увімкнути режим створення
+        </button>
+    </div>
+
+    <!-- Search Section -->
+    <div class="max-w-4xl mx-auto mb-6 relative">
+        <input type="text" id="search-input" placeholder="Пошук за ПІБ (живий пошук)..." class="w-full bg-[#1a1a1a] border border-[#333] p-2 rounded text-sm outline-none focus:border-blue-500 transition-all">
+        <div id="search-dropdown" class="search-results absolute w-full mt-1 rounded hidden shadow-2xl">
+            <!-- Results injected here -->
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="member-form-container" class="max-w-4xl mx-auto hidden animate-in fade-in duration-300">
+        
+        <div id="pib-display" class="text-2xl font-black text-white mb-4 uppercase leading-tight"></div>
+
+        <form id="member-form" class="space-y-4">
+            <input type="hidden" id="current-doc-id">
+            
+            <!-- Основна інформація -->
+            <div class="bg-[#1a1a1a] p-4 rounded-lg border border-[#333]">
+                <h3 class="text-blue-400 text-xs font-bold uppercase mb-3 border-b border-[#333] pb-1">Основні дані</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="label-text">ПІБ</label>
+                        <input type="text" name="pib" id="field-pib" class="compact-input" required>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="label-text">Стать</label>
+                            <select name="stat" class="compact-input" required>
+                                <option value="">-- Виберіть --</option>
+                                <option value="брат">брат</option>
+                                <option value="сестра">сестра</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label-text">Дата народження</label>
+                            <input type="date" name="d_nar" class="compact-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-2 mt-3">
+                    <div>
+                        <label class="label-text">Телефон</label>
+                        <input type="text" name="tel" class="compact-input">
+                    </div>
+                    <div>
+                        <label class="label-text">Сімейний стан</label>
+                        <select name="family_status" class="compact-input">
+                            <option value="">-- Виберіть --</option>
+                            <option value="в шлюбі з">в шлюбі з</option>
+                            <option value="неодружений">неодружений</option>
+                            <option value="неодружена">неодружена</option>
+                            <option value="вдівець">вдівець</option>
+                            <option value="вдова">вдова</option>
+                            <option value="розлучений">розлучений</option>
+                            <option value="розлучена">розлучена</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label-text">ПІБ чоловіка/дружини</label>
+                        <input type="text" name="spouse_name" class="compact-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Адреса та статус -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-[#1a1a1a] p-4 rounded-lg border border-[#333]">
+                    <h3 class="text-blue-400 text-xs font-bold uppercase mb-3 border-b border-[#333] pb-1">Адреса та освіта</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="label-text">Місто</label><input type="text" name="city" class="compact-input"></div>
+                        <div><label class="label-text">Вулиця</label><input type="text" name="street" class="compact-input"></div>
+                        <div><label class="label-text">Будинок</label><input type="text" name="house" class="compact-input"></div>
+                        <div><label class="label-text">Кв.</label><input type="text" name="flat" class="compact-input"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                            <label class="label-text">Освіта</label>
+                            <select name="education" class="compact-input">
+                                <option value="">-- Виберіть --</option>
+                                <option value="вища">вища</option>
+                                <option value="середня спеціальна">середня спеціальна</option>
+                                <option value="середня">середня</option>
+                                <option value="незакінчена вища">незакінчена вища</option>
+                                <option value="базова середня">базова середня</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="label-text">Соціал. статус</label>
+                            <select name="social_status" class="compact-input">
+                                <option value="">-- Виберіть --</option>
+                                <option value="працює">працює</option>
+                                <option value="пенсіонер">пенсіонер</option>
+                                <option value="інвалід">інвалід</option>
+                                <option value="багатодітні">багатодітні</option>
+                                <option value="сирота">сирота</option>
+                                <option value="одинока мати">одинока мати</option>
+                                <option value="тимчасово не працює">тимчасово не працює</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-[#1a1a1a] p-4 rounded-lg border border-[#333]">
+                    <h3 class="text-blue-400 text-xs font-bold uppercase mb-3 border-b border-[#333] pb-1">Професія та здоров'я</h3>
+                    <div><label class="label-text">Професія</label><input type="text" name="profession" class="compact-input"></div>
+                    <div class="mt-2 text-red-400">
+                        <label class="label-text text-red-400">Замітки по здоров'ю / Хвороби</label>
+                        <textarea name="illness" rows="2" class="compact-input resize-none bg-[#2a2a2a]"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Церковні поля -->
+            <div class="bg-[#1a1a1a] p-4 rounded-lg border border-[#333]">
+                <h3 class="text-blue-400 text-xs font-bold uppercase mb-3 border-b border-[#333] pb-1">Церковна інформація</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div><label class="label-text">Номер дільниці</label><input type="text" name="rayon" class="compact-input"></div>
+                    <div><label class="label-text">Пресвітер/Опіка</label><input type="text" name="opika" class="compact-input"></div>
+                    <div><label class="label-text">Група</label><input type="text" name="klas_group" class="compact-input"></div>
+                    <div><label class="label-text">Сан/Служіння</label><input type="text" name="san" class="compact-input"></div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                    <div><label class="label-text">Дата покаяння</label><input type="text" name="d_pokayannya" class="compact-input"></div>
+                    <div><label class="label-text">Дата хрещення</label><input type="text" name="d_vstupu" class="compact-input"></div>
+                    <div><label class="label-text">Прийняття</label><input type="text" name="d_priynyattya" class="compact-input"></div>
+                    <div><label class="label-text">Останній контакт</label><input type="text" name="d_kontaktu" class="compact-input"></div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                    <div><label class="label-text">Звідки прибув</label><input type="text" name="zvidky" class="compact-input"></div>
+                    <div><label class="label-text">Активність (дії)</label><input type="text" name="dii" class="compact-input"></div>
+                    <div>
+                        <label class="label-text">Відвідуваність</label>
+                        <select name="vidviduvanist" class="compact-input">
+                            <option value="">-- Оберіть --</option>
+                            <option value="постійно">постійно</option>
+                            <option value="періодично">періодично</option>
+                            <option value="рідко">рідко</option>
+                            <option value="ніколи">ніколи</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label-text">Статус/Присутність</label>
+                        <select name="prysutnist" class="compact-input">
+                            <option value="">-- Оберіть --</option>
+                            <option value="за кордоном">за кордоном</option>
+                            <option value="ЗСУ">ЗСУ</option>
+                            <option value="не ходить">не ходить</option>
+                            <option value="немічний">немічний</option>
+                            <option value="хворий">хворий</option>
+                            <option value="проблемний">проблемний</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3 flex items-center space-x-2">
+                    <input type="checkbox" name="hr_sv_duhom" id="field-hr-sv-duhom" class="w-4 h-4 rounded border-gray-700 bg-gray-800 focus:ring-blue-500">
+                    <label for="field-hr-sv-duhom" class="text-sm">Хрещення Духом Святим</label>
+                </div>
+                <div class="mt-2">
+                    <label class="label-text">Характеристика</label>
+                    <textarea name="harakt_ka" rows="2" class="compact-input resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Вибуття (окремий блок) -->
+            <div class="bg-[#1a1a1a] p-4 rounded-lg border border-red-900/30">
+                <h3 class="text-red-400 text-xs font-bold uppercase mb-3 border-b border-red-900/30 pb-1">Вибуття</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div><label class="label-text">Причина вибуття</label><input type="text" name="exit_reason" class="compact-input"></div>
+                    <div><label class="label-text">Дата вибуття</label><input type="text" name="exit_date" class="compact-input"></div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end pt-4 pb-10">
+                <button type="submit" id="btn-save" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-8 rounded shadow-lg transition-all">
+                    ЗБЕРЕГТИ ДАНІ
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Notification -->
+    <div id="toast" class="toast">Дані успішно оновлено</div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, addDoc } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCXS4eosvwO674SLQW_T5pPLpFwQHrOeJc",
+            authDomain: "baza-777.firebaseapp.com",
+            databaseURL: "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "baza-777",
+            storageBucket: "baza-777.firebasestorage.app",
+            messagingSenderId: "842089900940",
+            appId: "1:842089900940:web:f9f3e355795fe0280844a9",
+            measurementId: "G-5WD0HKPW7C"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const membersRef = collection(db, "members");
+
+        let membersCache = [];
+        let editMode = true; // true = update, false = create
+
+        // UI Elements
+        const statsInfo = document.getElementById('stats-info');
+        const searchInput = document.getElementById('search-input');
+        const searchDropdown = document.getElementById('search-dropdown');
+        const memberFormContainer = document.getElementById('member-form-container');
+        const pibDisplay = document.getElementById('pib-display');
+        const memberForm = document.getElementById('member-form');
+        const docIdInput = document.getElementById('current-doc-id');
+        const btnCreateMode = document.getElementById('btn-create-mode');
+        const btnSave = document.getElementById('btn-save');
+        const toast = document.getElementById('toast');
+
+        // Load all data
+        async function loadDatabase() {
+            try {
+                const querySnapshot = await getDocs(membersRef);
+                membersCache = [];
+                querySnapshot.forEach((doc) => {
+                    membersCache.push({ id: doc.id, ...doc.data() });
+                });
+                statsInfo.textContent = `У базі: ${membersCache.length} осіб`;
+                console.log("Database cached:", membersCache.length);
+            } catch (error) {
+                console.error("Error loading database:", error);
+                statsInfo.textContent = "Помилка завантаження!";
+            }
+        }
+
+        // Live Search
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                searchDropdown.classList.add('hidden');
+                return;
+            }
+
+            const results = membersCache
+                .filter(m => m.pib && m.pib.toLowerCase().includes(query))
+                .slice(0, 15);
+
+            if (results.length > 0) {
+                searchDropdown.innerHTML = results.map(m => `
+                    <div class="search-item p-2 cursor-pointer border-b border-[#262626] text-sm" data-id="${m.id}">
+                        <div class="font-bold text-white uppercase">${m.pib}</div>
+                        <div class="text-[10px] text-gray-400">${m.tel || 'Немає тел.'} | ${m.stat || '-'}</div>
+                    </div>
+                `).join('');
+                searchDropdown.classList.remove('hidden');
+            } else {
+                searchDropdown.innerHTML = `<div class="p-4 text-xs text-gray-500 italic text-center">Нікого не знайдено</div>`;
+                searchDropdown.classList.remove('hidden');
+            }
+        });
+
+        // Select item from search
+        searchDropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.search-item');
+            if (item) {
+                const id = item.dataset.id;
+                const member = membersCache.find(m => m.id === id);
+                if (member) fillForm(member);
+                searchDropdown.classList.add('hidden');
+                searchInput.value = '';
+            }
+        });
+
+        // Date Conversion Tool
+        function formatToInputDate(val) {
+            if (!val) return "";
+            // If already YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+            // If DD.MM.RRRR
+            if (/^\d{2}\.\d{2}\.\d{4}$/.test(val)) {
+                const [d, m, y] = val.split('.');
+                return `${y}-${m}-${d}`;
+            }
+            return "";
+        }
+
+        // Fill Form
+        function fillForm(data) {
+            editMode = true;
+            memberForm.reset();
+            docIdInput.value = data.id || '';
+            pibDisplay.textContent = data.pib || '---';
+            btnCreateMode.textContent = "Увімкнути режим створення";
+            btnSave.textContent = "ОНОВИТИ ДАНІ";
+            
+            memberFormContainer.classList.remove('hidden');
+            memberFormContainer.scrollIntoView({ behavior: 'smooth' });
+
+            // Fill fields by name
+            const formData = new FormData(memberForm);
+            for (let key of formData.keys()) {
+                const element = memberForm.querySelector(`[name="${key}"]`);
+                if (element) {
+                    let value = data[key] || '';
+                    if (key === 'd_nar') value = formatToInputDate(value);
+                    
+                    if (element.type === 'checkbox') {
+                        element.checked = !!data[key];
+                    } else {
+                        element.value = value;
+                    }
+                }
+            }
+        }
+
+        // Switch to Create mode
+        btnCreateMode.addEventListener('click', () => {
+            editMode = false;
+            memberForm.reset();
+            docIdInput.value = '';
+            pibDisplay.textContent = "НОВА КАРТКА";
+            btnSave.textContent = "СТВОРИТИ НОВУ ОСОБУ";
+            btnCreateMode.textContent = "Режим створення: АКТИВНО";
+            memberFormContainer.classList.remove('hidden');
+            document.getElementById('field-pib').focus();
+        });
+
+        // Save Form
+        memberForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            btnSave.disabled = true;
+            btnSave.textContent = "ЗБЕРЕЖЕННЯ...";
+
+            const formData = new FormData(memberForm);
+            const data = {};
+            formData.forEach((value, key) => {
+                data[key] = value;
+            });
+
+            // Handle checkbox separately
+            data.hr_sv_duhom = document.getElementById('field-hr-sv-duhom').checked;
+
+            try {
+                if (editMode) {
+                    const docId = docIdInput.value;
+                    await updateDoc(doc(db, "members", docId), data);
+                    showToast("Дані успішно оновлено");
+                } else {
+                    const newDoc = await addDoc(membersRef, data);
+                    data.id = newDoc.id;
+                    showToast("Особу успішно створено");
+                    editMode = true;
+                }
+                
+                // Update local cache
+                await loadDatabase();
+                
+                // Sync UI
+                pibDisplay.textContent = data.pib;
+                btnSave.disabled = false;
+                btnSave.textContent = editMode ? "ОНОВИТИ ДАНІ" : "СТВОРИТИ";
+            } catch (error) {
+                console.error("Save error:", error);
+                alert("Помилка при збереженні: " + error.message);
+                btnSave.disabled = false;
+            }
+        });
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                searchDropdown.classList.add('hidden');
+            }
+        });
+
+        // Init
+        loadDatabase();
+    </script>
+</body>
+</html>

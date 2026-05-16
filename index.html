@@ -78,7 +78,10 @@
     <div class="max-w-4xl mx-auto mb-4 flex justify-between items-end border-b border-gray-800 pb-2">
         <div>
             <h1 class="text-xl font-bold text-blue-500 uppercase tracking-wider">Baza 777 Admin</h1>
-            <p id="stats-info" class="text-xs text-gray-500">Завантаження бази...</p>
+            <div class="flex items-center space-x-2">
+                <p id="stats-info" class="text-xs text-gray-500">Завантаження бази...</p>
+                <button id="btn-sync" class="text-[10px] text-gray-400 hover:text-white underline cursor-pointer">Синхронізувати</button>
+            </div>
         </div>
         <button id="btn-create-mode" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded transition-all">
             Увімкнути режим створення
@@ -96,7 +99,10 @@
     <!-- Main Content -->
     <div id="member-form-container" class="max-w-4xl mx-auto hidden animate-in fade-in duration-300">
         
-        <div id="pib-display" class="text-2xl font-black text-white mb-4 uppercase leading-tight"></div>
+        <div id="header-wrapper" class="mb-4 flex items-baseline gap-2">
+            <h2 id="pib-display" class="text-2xl font-black text-white uppercase leading-tight"></h2>
+            <span id="id-display" class="text-[10px] text-gray-500 font-mono lowercase"></span>
+        </div>
 
         <form id="member-form" class="space-y-4">
             <input type="hidden" id="current-doc-id">
@@ -133,20 +139,28 @@
                     </div>
                     <div>
                         <label class="label-text">Сімейний стан</label>
-                        <select name="family_status" class="compact-input">
-                            <option value="">-- Виберіть --</option>
-                            <option value="в шлюбі з">в шлюбі з</option>
-                            <option value="неодружений">неодружений</option>
-                            <option value="неодружена">неодружена</option>
-                            <option value="вдівець">вдівець</option>
-                            <option value="вдова">вдова</option>
-                            <option value="розлучений">розлучений</option>
-                            <option value="розлучена">розлучена</option>
-                        </select>
+                        <div class="flex gap-1">
+                            <select name="family_status" class="compact-input">
+                                <option value="">-- Виберіть --</option>
+                                <option value="в шлюбі з">в шлюбі з</option>
+                                <option value="неодружений">неодружений</option>
+                                <option value="неодружена">неодружена</option>
+                                <option value="вдівець">вдівець</option>
+                                <option value="вдова">вдова</option>
+                                <option value="розлучений">розлучений</option>
+                                <option value="розлучена">розлучена</option>
+                            </select>
+                            <div class="flex items-center gap-1 bg-[#262626] rounded px-2">
+                                <span class="text-[9px] text-gray-500 uppercase">з</span>
+                                <input type="text" name="marriage_from" class="w-12 bg-transparent text-xs text-white outline-none" placeholder="рррр">
+                                <span class="text-[9px] text-gray-500 uppercase">до</span>
+                                <input type="text" name="marriage_to" class="w-12 bg-transparent text-xs text-white outline-none" placeholder="рррр">
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <label class="label-text">ПІБ чоловіка/дружини</label>
-                        <input type="text" name="spouse_name" class="compact-input">
+                        <input type="text" name="spouse_pib" class="compact-input">
                     </div>
                 </div>
             </div>
@@ -203,10 +217,21 @@
             <div class="bg-[#1a1a1a] p-4 rounded-lg border border-[#333]">
                 <h3 class="text-blue-400 text-xs font-bold uppercase mb-3 border-b border-[#333] pb-1">Церковна інформація</h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div><label class="label-text">Номер дільниці</label><input type="text" name="rayon" class="compact-input"></div>
+                    <div><label class="label-text">РАЙОН</label><input type="text" name="rayon2" class="compact-input"></div>
                     <div><label class="label-text">Пресвітер/Опіка</label><input type="text" name="opika" class="compact-input"></div>
                     <div><label class="label-text">Група</label><input type="text" name="klas_group" class="compact-input"></div>
-                    <div><label class="label-text">Сан/Служіння</label><input type="text" name="san" class="compact-input"></div>
+                    <div>
+                        <label class="label-text">Сан/Служіння</label>
+                        <select name="san" class="compact-input">
+                            <option value="">-- Виберіть --</option>
+                            <option value="Пресвітер">Пресвітер</option>
+                            <option value="Диякон">Диякон</option>
+                            <option value="Проповідник">Проповідник</option>
+                            <option value="Регент">Регент</option>
+                            <option value="Хорист">Хорист</option>
+                            <option value="Немає сан/служіння">Немає сан/служіння</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
                     <div><label class="label-text">Дата покаяння</label><input type="text" name="d_pokayannya" class="compact-input"></div>
@@ -307,39 +332,84 @@
         const btnSave = document.getElementById('btn-save');
         const toast = document.getElementById('toast');
 
+        const btnSync = document.getElementById('btn-sync');
+
+        btnSync.addEventListener('click', loadDatabase);
+
+        // Error handling for Firestore (Hardened for JSON safety)
+        function handleFirestoreError(error, operationType, path) {
+            const errInfo = {
+                error: (error && error.message) ? String(error.message) : String(error || "Unknown"),
+                operationType: String(operationType),
+                path: String(path || ""),
+                timestamp: new Date().toISOString(),
+                authInfo: {
+                    userId: "current-user" 
+                }
+            };
+            
+            let errString;
+            try {
+                errString = JSON.stringify(errInfo);
+            } catch (e) {
+                // Fallback if errInfo itself is somehow circular (unlikely here but safe)
+                errString = `{"error":"${errInfo.error.replace(/"/g, '\\"')}", "operationType":"${operationType}"}`;
+            }
+            
+            console.error('Firestore Error:', errString);
+            throw new Error(errString);
+        }
+
         // Load all data
         async function loadDatabase() {
+            const path = "members";
             try {
+                statsInfo.textContent = "Синхронізація з хмарою...";
                 const querySnapshot = await getDocs(membersRef);
                 membersCache = [];
-                querySnapshot.forEach((doc) => {
-                    membersCache.push({ id: doc.id, ...doc.data() });
+                querySnapshot.forEach((snap) => {
+                    const data = snap.data();
+                    const item = { id: snap.id };
+                    
+                    // Safe property copy to avoid any potential circular refs from SDK objects
+                    for (const key in data) {
+                        const val = data[key];
+                        // If it's a Firestore Timestamp, we keep it as is (it's safe for internal use)
+                        // otherwise we ensure it's a POJO value
+                        item[key] = val;
+                    }
+                    membersCache.push(item);
                 });
                 statsInfo.textContent = `У базі: ${membersCache.length} осіб`;
-                console.log("Database cached:", membersCache.length);
+                console.log("Database synced:", membersCache.length);
             } catch (error) {
-                console.error("Error loading database:", error);
-                statsInfo.textContent = "Помилка завантаження!";
+                handleFirestoreError(error, 'list', path);
+                statsInfo.textContent = "Помилка зв'язку з базою!";
             }
         }
 
-        // Live Search
+        // Live Search with Robust Filtering
         searchInput.addEventListener('input', (e) => {
             const query = e.target.value.toLowerCase().trim();
-            if (!query) {
+            if (!query || query.length < 2) {
                 searchDropdown.classList.add('hidden');
                 return;
             }
 
             const results = membersCache
-                .filter(m => m.pib && m.pib.toLowerCase().includes(query))
+                .filter(m => {
+                    const pib = String(m.pib || '').toLowerCase();
+                    return pib.includes(query);
+                })
                 .slice(0, 15);
 
             if (results.length > 0) {
                 searchDropdown.innerHTML = results.map(m => `
-                    <div class="search-item p-2 cursor-pointer border-b border-[#262626] text-sm" data-id="${m.id}">
-                        <div class="font-bold text-white uppercase">${m.pib}</div>
-                        <div class="text-[10px] text-gray-400">${m.tel || 'Немає тел.'} | ${m.stat || '-'}</div>
+                    <div class="search-item p-3 cursor-pointer border-b border-[#262626] transition-colors" data-id="${m.id}">
+                        <div class="font-bold text-white uppercase text-sm">${m.pib}</div>
+                        <div class="text-[10px] text-gray-500 mt-0.5">
+                            ${m.tel || 'Телефон відсутній'} • ${m.stat || 'Стать не вказана'} • ${m.city || ''}
+                        </div>
                     </div>
                 `).join('');
                 searchDropdown.classList.remove('hidden');
@@ -349,57 +419,159 @@
             }
         });
 
-        // Select item from search
+        // USE CLICK WITH PREVENT DEFAULT FOR RELIABLE SELECTION
+        searchDropdown.addEventListener('mousedown', (e) => {
+            // Prevent search input from losing focus immediately
+            e.preventDefault();
+        });
+
         searchDropdown.addEventListener('click', (e) => {
             const item = e.target.closest('.search-item');
             if (item) {
                 const id = item.dataset.id;
-                const member = membersCache.find(m => m.id === id);
-                if (member) fillForm(member);
-                searchDropdown.classList.add('hidden');
-                searchInput.value = '';
+                console.log("Selected ID:", id);
+                const member = membersCache.find(m => String(m.id) === String(id));
+                if (member) {
+                    fillForm(member);
+                    searchDropdown.classList.add('hidden');
+                    searchInput.value = '';
+                }
             }
         });
 
-        // Date Conversion Tool
+        // Date Conversion Tool (enhanced for Firestore and multiple formats)
         function formatToInputDate(val) {
             if (!val) return "";
+            
+            // Handle Firestore Timestamp
+            if (typeof val === 'object' && val.seconds !== undefined) {
+                const d = new Date(val.seconds * 1000);
+                return d.toISOString().split('T')[0];
+            }
+            
+            let str = String(val).trim();
+            // Remove trailing dots (e.g., 08.07.1960. or 08.07.1960..)
+            str = str.replace(/\.+$/, '');
+
             // If already YYYY-MM-DD
-            if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
             // If DD.MM.RRRR
-            if (/^\d{2}\.\d{2}\.\d{4}$/.test(val)) {
-                const [d, m, y] = val.split('.');
-                return `${y}-${m}-${d}`;
+            if (/^\d{2}\.\d{2}\.\d{4}$/.test(str)) {
+                const [d, m, y] = str.split('.');
+                return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+            }
+            // If just Year YYYY
+            if (/^\d{4}$/.test(str)) {
+                return `${str}-01-01`;
             }
             return "";
         }
 
+        // Helper to handle any value (Timestamps to Strings)
+        function handleNormalValue(val) {
+            if (val === undefined || val === null) return "";
+            if (typeof val === 'object' && val.seconds !== undefined) {
+                const d = new Date(val.seconds * 1000);
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const year = d.getFullYear();
+                return `${day}.${month}.${year}`;
+            }
+            return String(val).replace(/\.+$/, ''); // Also clean trailing dots here
+        }
+
         // Fill Form
         function fillForm(data) {
-            editMode = true;
-            memberForm.reset();
-            docIdInput.value = data.id || '';
-            pibDisplay.textContent = data.pib || '---';
-            btnCreateMode.textContent = "Увімкнути режим створення";
-            btnSave.textContent = "ОНОВИТИ ДАНІ";
-            
-            memberFormContainer.classList.remove('hidden');
-            memberFormContainer.scrollIntoView({ behavior: 'smooth' });
-
-            // Fill fields by name
-            const formData = new FormData(memberForm);
-            for (let key of formData.keys()) {
-                const element = memberForm.querySelector(`[name="${key}"]`);
-                if (element) {
-                    let value = data[key] || '';
-                    if (key === 'd_nar') value = formatToInputDate(value);
-                    
-                    if (element.type === 'checkbox') {
-                        element.checked = !!data[key];
-                    } else {
-                        element.value = value;
-                    }
+            try {
+                editMode = true;
+                memberForm.reset();
+                docIdInput.value = data.id || '';
+                
+                // Set Header (Name + ID)
+                pibDisplay.textContent = String(data.pib || 'КАНДИДАТ БЕЗ ІМЕНІ').toUpperCase();
+                const idDisplay = document.getElementById('id-display');
+                if (idDisplay) {
+                    idDisplay.textContent = `id: ${String(data.id || '').toLowerCase()}`;
                 }
+                
+                btnCreateMode.textContent = "Увімкнути режим створення";
+                btnSave.textContent = "ОНОВИТИ ДАННУ КАРТКУ";
+                
+                // Show Form
+                memberFormContainer.classList.remove('hidden');
+                
+                // Populate fields
+                const inputs = memberForm.querySelectorAll('input, select, textarea');
+                inputs.forEach(el => {
+                    const name = el.getAttribute('name');
+                    if (name) {
+                        // Advanced Mapping Logic
+                        let val = data[name];
+                        
+                        // Fallback mapping for specific fields (sync with Firestore typical keys)
+                        if (val === undefined || val === null || val === "" || val === "???") {
+                            if (name === "tel") val = data["tel1"] || data["tel2"] || data["tel"] || data["telephone"] || data["mob"] || data["mobile"];
+                            else if (name === "family_status") {
+                                val = data["s_simeyniy"] || data["simeynyi_stan"] || data["status_simei"] || data["family_status"] || data["stan"];
+                                if (val === "одр.") val = "в шлюбі з";
+                                else if (val === "неодр.") val = "неодружений";
+                            }
+                            else if (name === "marriage_from") val = data["s_odr_z"] || data["odr_z"] || data["odr_from"] || data["married_since"] || data["marriage_date"] || data["odr_from"];
+                            else if (name === "marriage_to") val = data["s_odr_po"] || data["odr_po"] || data["odr_to"] || data["divorce_date"] || data["odr_to"];
+                            else if (name === "spouse_pib") val = data["s_cho_dru"] || data["cho_dru"] || data["spouse_pib"] || data["partner"] || data["wife_pib"] || data["husband_pib"];
+                            else if (name === "city") val = data["s_misto"] || data["misto"] || data["city"] || data["town"] || data["address_city"];
+                            else if (name === "street") val = data["s_vulicya"] || data["vulicya"] || data["street"] || data["address_street"];
+                            else if (name === "house") val = data["s_bud"] || data["bud"] || data["s_dim"] || data["budynok"] || data["house"] || data["address_house"];
+                            else if (name === "flat") val = data["s_kv"] || data["kvartira"] || data["kv"] || data["flat"] || data["apt"];
+                            else if (name === "education") val = data["s_osvita"] || data["osvita"] || data["education"] || data["edu"];
+                            else if (name === "social_status") val = data["s_socialniy"] || data["soc_stan"] || data["social_status"] || data["soc"];
+                            else if (name === "klas_group") val = data["s_klasgrup"] || data["klas_group"] || data["grupa"] || data["home_group"] || data["group"] || data["dom_grupa"];
+                            else if (name === "opika") val = data["pres"] || data["presviter"] || data["opika"] || data["duhivnyk"] || data["mentor"] || data["presv"];
+                            else if (name === "rayon2") val = data["rayon"] || data["rayon2"] || data["district"] || data["dilnycya"] || data["area"] || data["district_name"];
+                            else if (name === "d_nar") val = data["s_dnar"] || data["dnar"] || data["d_nar"] || data["birthday"] || data["data_nar"] || data["birth_date"];
+                            else if (name === "d_priynyattya") val = data["s_priynyattya"] || data["priynyattya"] || data["priynyatyi"] || data["accept_date"] || data["join_date"];
+                            else if (name === "san") val = data["sluzhinnya"] || data["san"] || data["position"] || data["statut"];
+                            else if (name === "stat") val = data["stat"] || data["gender"] || data["sex"] || data["st"];
+                            else if (name === "d_pokayannya") val = data["s_pokayannya"] || data["pokayannya"] || data["d_pok"] || data["data_pokayannya"] || data["repentance_date"];
+                            else if (name === "d_vstupu") val = data["vodne_hreshchennya"] || data["hreshchennya"] || data["rik_h"] || data["s_vstupu"] || data["rik_v"] || data["baptism_date"];
+                            else if (name === "d_kontaktu") val = data["last_contact"] || data["kontakt"] || data["d_kontaktu"];
+                            else if (name === "zvidky") val = data["zvidky_prybuv"] || data["from"] || data["zvidky"];
+                            else if (name === "dii") val = data["aktyvnist"] || data["actions"] || data["news"] || data["dii"];
+                            else if (name === "vidviduvanist") val = data["vidviduvanist"] || data["attendance"] || data["vidv"];
+                            else if (name === "prysutnist") val = data["prysutnist"] || data["presence"] || data["status_presence"];
+                            else if (name === "profession") val = data["profesiya"] || data["job"] || data["work"] || data["profession"];
+                            else if (name === "illness") val = data["hvoroby"] || data["notes_health"] || data["health"] || data["illness"];
+                            else if (name === "exit_reason") val = data["prychyna_vybuttya"] || data["reason_exit"] || data["exit_reason"];
+                            else if (name === "exit_date") val = data["data_vybuttya"] || data["date_exit"] || data["exit_date"];
+                            else if (name === "harakt_ka") val = data["harakterystyka"] || data["description"] || data["harakt_ka"];
+                        }
+
+                        if (el.type === 'date' || name === 'd_nar') {
+                            el.value = formatToInputDate(val);
+                        } else if (el.type === 'checkbox') {
+                            if (name === 'hr_sv_duhom') {
+                                // If rik_hsd has content, we assume baptism by Holy Spirit is true
+                                const rik = data['rik_hsd'] || data['hr_sv_duhom'];
+                                el.checked = !!(rik && String(rik).trim().length > 0 && String(rik).trim() !== "0");
+                            } else {
+                                el.checked = !!val;
+                            }
+                        } else {
+                            el.value = handleNormalValue(val);
+                        }
+                    }
+                });
+
+                // Scroll to top of form with offset
+                setTimeout(() => {
+                    const yOffset = -20; 
+                    const y = memberFormContainer.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                    window.scrollTo({top: y, behavior: 'smooth'});
+                }, 100);
+
+                console.log("Form populated for:", data.pib);
+            } catch (err) {
+                handleFirestoreError(err, 'get', data.id || 'unknown');
             }
         }
 
@@ -418,6 +590,12 @@
         // Save Form
         memberForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            const pibValue = memberForm.querySelector('[name="pib"]').value.trim();
+            if (!pibValue) {
+                alert("Поле ПІБ є обов'язковим!");
+                return;
+            }
+
             btnSave.disabled = true;
             btnSave.textContent = "ЗБЕРЕЖЕННЯ...";
 
@@ -427,32 +605,32 @@
                 data[key] = value;
             });
 
-            // Handle checkbox separately
+            // Special fields
             data.hr_sv_duhom = document.getElementById('field-hr-sv-duhom').checked;
+            data.updatedAt = new Date().toISOString();
 
             try {
                 if (editMode) {
                     const docId = docIdInput.value;
+                    if (!docId) throw new Error("ID документа відсутній");
                     await updateDoc(doc(db, "members", docId), data);
                     showToast("Дані успішно оновлено");
                 } else {
                     const newDoc = await addDoc(membersRef, data);
-                    data.id = newDoc.id;
                     showToast("Особу успішно створено");
                     editMode = true;
+                    docIdInput.value = newDoc.id;
                 }
                 
-                // Update local cache
+                // Refresh local cache and UI
                 await loadDatabase();
+                pibDisplay.textContent = data.pib.toUpperCase();
                 
-                // Sync UI
-                pibDisplay.textContent = data.pib;
+            } catch (error) {
+                handleFirestoreError(error, 'write', docIdInput.value || 'new');
+            } finally {
                 btnSave.disabled = false;
                 btnSave.textContent = editMode ? "ОНОВИТИ ДАНІ" : "СТВОРИТИ";
-            } catch (error) {
-                console.error("Save error:", error);
-                alert("Помилка при збереженні: " + error.message);
-                btnSave.disabled = false;
             }
         });
 
@@ -471,7 +649,7 @@
             }
         });
 
-        // Init
+        // Init database load
         loadDatabase();
     </script>
 </body>

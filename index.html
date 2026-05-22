@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управління Базою Даних (Realtime Database)</title>
+    <title>Управління Базою Даних</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,18 +20,26 @@
         }
     </script>
     <style>
-        html { overflow-y: auto; scroll-behavior: smooth; }
-        body { background-color: #121212; color: #e0e0e0; overflow-y: auto; }
-        ::-webkit-scrollbar { width: 8px; }
+        body { background-color: #121212; color: #e0e0e0; }
+        ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #1a1a1a; }
-        ::-webkit-scrollbar-thumb { background: #444444; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555555; }
+        ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
         input, select, textarea { padding: 5px 8px !important; font-size: 0.85rem !important; }
     </style>
 </head>
-<body class="p-3 flex justify-center min-h-screen">
+<body class="p-3 flex flex-col items-center min-h-screen">
 
-    <div class="w-full max-w-md flex flex-col gap-3">
+    <div id="authScreen" class="w-full max-w-sm my-auto bg-cardBg border border-borderClr rounded-lg p-5 shadow-2xl hidden">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-blue-400 text-center mb-4">Доступ обмежено</h2>
+        <p class="text-xs text-gray-400 text-center mb-4">Введіть ваш Telegram ID для входу в систему:</p>
+        <div class="flex flex-col gap-3">
+            <input type="password" id="tgIdInput" placeholder="Ваш Telegram ID..." class="w-full bg-inputBg border border-borderClr rounded text-white text-center focus:border-blue-500 outline-none py-2 text-sm">
+            <button id="btnAuth" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition">УВІЙТИ</button>
+        </div>
+        <p id="authError" class="text-[11px] text-red-500 text-center mt-2 hidden">Невірний ID доступу!</p>
+    </div>
+
+    <div id="mainContent" class="w-full max-w-md flex flex-col gap-3 hidden">
         
         <div class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg">
             <label class="block text-xs font-medium text-gray-400 mb-1">Пошук особи (ПІБ)</label>
@@ -57,25 +65,35 @@
             <input type="hidden" id="pibHidden"> 
             <input type="hidden" id="pib_01">
             <input type="hidden" id="pib_main">
-            <input type="hidden" id="stat">
             <input type="hidden" id="pib_edit">
             <input type="hidden" id="family_status">
 
             <div class="space-y-2">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-gray-400">Дата народження</label>
+                        <label class="block text-[11px] text-gray-400">Стать</label>
+                        <select id="stat" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                            <option value="">-- Виберіть --</option>
+                            <option value="брат">брат</option>
+                            <option value="сестра">сестра</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-gray-400">Дата народження (Excel код)</label>
                         <input type="text" id="d_nar" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[11px] text-gray-400">Телефон</label>
                         <input type="text" id="tel" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
+                    <div>
+                         <label class="block text-[11px] text-gray-400">Месенджери та контакти</label>
+                         <input type="text" id="messengers" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                    </div>
                 </div>
-                <div>
-                     <label class="block text-[11px] text-gray-400">Месенджери та контакти</label>
-                     <input type="text" id="messengers" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                </div>
+                
                 <div class="grid grid-cols-[80px_80px_1fr] gap-2">
                     <div>
                         <label class="block text-[11px] text-gray-400">Освіта</label>
@@ -90,51 +108,50 @@
                         <input type="text" id="profession" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs">
                     </div>
                 </div>
-
-                <div class="border-t border-borderClr pt-2 space-y-2">
-                    <h3 class="text-[10px] uppercase font-bold text-pink-400 tracking-wider">СІМ'Я</h3>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-[11px] text-gray-400">Сімейний стан</label>
-                            <select id="spouse_status" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                                <option value="" class="text-gray-500">виберіть з списку</option>
-                                <option value="неодруж.">неодруж.</option>
-                                <option value="одр.">одруж.</option>
-                                <option value="розлуч.">розлуч.</option>
-                                <option value="вдов.">вдов.</option>
-                            </select>
-                        </div>
-                        <div id="partner_id_container" class="hidden">
-                            <input type="hidden" id="spouse_id">
-                            <div class="grid grid-cols-1 gap-2">
-                                 <div>
-                                    <label class="block text-[11px] text-gray-400">ПІБ партнера</label>
-                                    <input type="text" id="partner_name_input" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div id="partner_start_date_container">
-                            <label class="block text-[11px] text-gray-400">Дата шлюбу</label>
-                            <input type="text" id="d_shlyub_from" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                        </div>
-                        <div id="partner_end_date_container" class="hidden">
-                            <label class="block text-[11px] text-gray-400">Дата завершення шлюбу</label>
-                            <input type="text" id="d_shlyub_end" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                        </div>
-                    </div>
-                    <div class="space-y-1">
-                        <div class="flex items-center gap-1 cursor-pointer" onclick="toggleChildren()">
-                            <label class="block text-[11px] text-gray-400">Діти</label>
-                            <span id="childrenArrow" class="text-[10px] text-gray-500">▼</span>
-                        </div>
-                        <textarea id="dity" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden" rows="3"></textarea>
-                    </div>
-                </div>
-
             </div>
 
+            <!-- БЛОК СІМ'Я -->
+            <div class="border-t border-borderClr pt-2 space-y-2">
+                <h3 class="text-[10px] uppercase font-bold text-pink-400 tracking-wider">СІМ'Я</h3>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] text-gray-400">Сімейний стан</label>
+                        <select id="spouse_status" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                            <option value="">виберіть з списку</option>
+                            <option value="неодруж.">неодруж.</option>
+                            <option value="одр.">одруж.</option>
+                            <option value="розлуч.">розлуч.</option>
+                            <option value="вдов.">вдов.</option>
+                        </select>
+                    </div>
+                    <div id="partner_id_container" class="hidden">
+                        <input type="hidden" id="spouse_id">
+                        <div>
+                            <label class="block text-[11px] text-gray-400">ПІБ партнера</label>
+                            <input type="text" id="partner_name_input" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div id="partner_start_date_container">
+                        <label class="block text-[11px] text-gray-400">Дата шлюбу</label>
+                        <input type="text" id="d_shlyub_from" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                    </div>
+                    <div id="partner_end_date_container" class="hidden">
+                        <label class="block text-[11px] text-gray-400">Дата завершення шлюбу</label>
+                        <input type="text" id="d_shlyub_end" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex items-center gap-1 cursor-pointer" onclick="toggleChildren()">
+                        <label class="block text-[11px] text-gray-400">Діти</label>
+                        <span id="childrenArrow" class="text-[10px] text-gray-500">▼</span>
+                    </div>
+                    <textarea id="dity" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden" rows="3"></textarea>
+                </div>
+            </div>
+
+            <!-- БЛОК АДРЕСА - ПІСЛЯ СІМ'Ї -->
             <div class="border-t border-borderClr pt-2 space-y-2">
                 <h3 class="text-[10px] uppercase font-bold text-teal-400 tracking-wider">Адреса проживання</h3>
                 <div class="grid grid-cols-2 gap-2">
@@ -157,7 +174,7 @@
                         <input type="text" id="addr_korpus" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-gray-400">Квартира</label>
+                        <label class="block text-[11px] text-gray-400">Кв.</label>
                         <input type="text" id="addr_flat" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                 </div>
@@ -177,7 +194,7 @@
                 <h3 class="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Структура</h3>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Район / Дільниця</label>
+                        <label class="block text-[11px] text-purple-400">Район / Дільниця №</label>
                         <input type="text" id="rayon" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
@@ -191,7 +208,7 @@
                         <input type="text" id="group_name" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-purple-400">Дата водного хрещення</label>
+                        <label class="block text-[11px] text-purple-400">Дата водного</label>
                         <input type="text" id="d_vodnogo" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
@@ -210,7 +227,7 @@
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                   <div>
+                    <div>
                         <label class="block text-[11px] text-purple-400">Відвідуваність</label>
                         <input type="text" id="vidviduvanist" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
@@ -228,7 +245,6 @@
                       <textarea id="slujinnya" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none" rows="4"></textarea>
                 </div>
             </div>
-
 
             <div class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 grid grid-cols-2 gap-2">
                 <div>
@@ -248,22 +264,49 @@
     <div id="toast" class="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded shadow-lg text-xs font-semibold z-50 opacity-0 transition-opacity duration-300 pointer-events-none">Дані оновлено</div>
 
     <script type="module">
-        const firebaseConfig = {
-            apiKey: "AIzaSyCXS4eosvwO674SLQW_T5pPLpFwQHrOeJc",
-            authDomain: "baza-777.firebaseapp.com",
-            databaseURL: "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "baza-777",
-            storageBucket: "baza-777.firebasestorage.app",
-            messagingSenderId: "842089900940",
-            appId: "1:842089900940:web:f9f3e355795fe0280844a9",
-            measurementId: "G-5WD0HKPW7C"
+        // Твій унікальний Telegram ID
+        const ALLOWED_TG_ID = "969538290"; 
+
+        // ВСТАВ СЮДИ СВІЙ СЕКРЕТНИЙ КЛЮЧ
+        const DB_SECRET = "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+
+        const dbBaseUrl = "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app";
+        const baseUrl = `${dbBaseUrl}/members.json?auth=${DB_SECRET}`;
+
+        const authScreen = document.getElementById('authScreen');
+        const mainContent = document.getElementById('mainContent');
+        const tgIdInput = document.getElementById('tgIdInput');
+        const btnAuth = document.getElementById('btnAuth');
+        const authError = document.getElementById('authError');
+
+        function checkAuth() {
+            const savedId = localStorage.getItem('user_tg_id');
+            if (savedId === ALLOWED_TG_ID) {
+                authScreen.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                loadDatabase();
+            } else {
+                authScreen.classList.remove('hidden');
+                mainContent.classList.add('hidden');
+            }
+        }
+
+        btnAuth.onclick = () => {
+            const enteredId = tgIdInput.value.trim();
+            if (enteredId === ALLOWED_TG_ID) {
+                localStorage.setItem('user_tg_id', enteredId);
+                authError.classList.add('hidden');
+                authScreen.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                loadDatabase();
+            } else {
+                authError.classList.remove('hidden');
+            }
         };
 
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-        import { getDatabase, ref, get, update } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
-
-        const app = initializeApp(firebaseConfig);
-        const rtdb = getDatabase(app);
+        tgIdInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') btnAuth.click();
+        });
 
         let allMembers = [];
         const statusEl = document.getElementById('dbStatus');
@@ -332,28 +375,20 @@
             }
         }
 
-
         async function loadDatabase() {
             try {
                 statusEl.textContent = "Завантаження...";
-                const dbRef = ref(rtdb, 'members');
-                const snapshot = await get(dbRef);
+                const response = await fetch(baseUrl);
                 
-                if (snapshot.exists()) {
+                if (!response.ok) throw new Error("Помилка мережі або невірний Secret");
+                const data = await response.json();
+                
+                if (data) {
                     allMembers = [];
-                    const data = snapshot.val();
-
                     Object.keys(data).forEach((id) => {
                         const nested = data[id];
                         if (nested) {
-                            // Пряме зчитування імені з 01_PIB або з pib
-                            let pibName = nested["01_PIB"] || nested["pib"];
-                            
-                            // Захисна перевірка на випадок відсутності поля
-                            if (!pibName) {
-                                pibName = `Користувач №${id}`;
-                            }
-                            
+                            let pibName = nested["01_PIB"] || nested["pib"] || `Користувач №${id}`;
                             allMembers.push({
                                 id: id,
                                 pib: pibName,
@@ -362,19 +397,14 @@
                         }
                     });
                     statusEl.textContent = `У базі: ${allMembers.length} осіб`;
-                    
-                    // Контрольний лог для перевірки в F12
-                    console.log("Перші 5 записів у масиві пошуку:", allMembers.slice(0, 5));
-                    
                 } else {
                     statusEl.textContent = "База порожня";
                 }
             } catch (error) {
-                console.error("Помилка завантаження з RTDB:", error);
+                console.error("Помилка:", error);
                 statusEl.textContent = "Помилка доступу!";
             }
         }
-        loadDatabase();
 
         function updateSelectColor(selectElement) {
             if (selectElement.value === "") {
@@ -390,9 +420,6 @@
             togglePartnerIdField();
         });
 
-        // Initialize color on page load
-        updateSelectColor(spouseStatusEl);
-
         const searchInput = document.getElementById('searchInput');
         const searchResults = document.getElementById('searchResults');
         const selectedHeaderPIB = document.getElementById('selectedHeaderPIB');
@@ -405,12 +432,7 @@
                 return;
             }
             
-            const matched = allMembers.filter(m => {
-                if (!m.pib) return false;
-                const pibString = String(m.pib).toLowerCase();
-                return pibString.includes(txt);
-            });
-            
+            const matched = allMembers.filter(m => m.pib && String(m.pib).toLowerCase().includes(txt));
             searchResults.innerHTML = '';
             
             if(matched.length === 0) {
@@ -561,17 +583,17 @@
             const editedPib01 = editedPibVal;
             const editedPibMain = editedPibVal;
 
-            updates[`members/${targetId}/01_PIB`] = editedPib01;
-            updates[`members/${targetId}/pib`] = editedPibMain;
+            updates[`01_PIB`] = editedPib01;
+            updates[`pib`] = editedPibMain;
             
-            const computedStat = detectGenderWord(editedPib01 || editedPibMain);
-            document.getElementById('stat').value = computedStat;
-            updates[`members/${targetId}/02_OSOBYSTE/2_stat`] = computedStat;
+            const computedStat = document.getElementById('stat').value || detectGenderWord(editedPib01 || editedPibMain);
+            updates[`02_OSOBYSTE/2_stat`] = computedStat;
 
-            updates[`members/${targetId}/02_OSOBYSTE/1_d_narodjennya`] = document.getElementById('d_nar').value;
-            updates[`members/${targetId}/02_OSOBYSTE/3_d_nar`] = document.getElementById('d_nar').value;
-            updates[`members/${targetId}/02_OSOBYSTE/2_tel`] = document.getElementById('tel').value;
-            updates[`members/${targetId}/02_OSOBYSTE/phone`] = document.getElementById('tel').value;
+            updates[`02_OSOBYSTE/1_d_narodjennya`] = document.getElementById('d_nar').value;
+            updates[`02_OSOBYSTE/3_d_nar`] = document.getElementById('d_nar').value;
+            updates[`02_OSOBYSTE/2_tel`] = document.getElementById('tel').value;
+            updates[`02_OSOBYSTE/phone`] = document.getElementById('tel').value;
+            updates[`02_OSOBYSTE/tel`] = document.getElementById('tel').value;
             
             const spouseStatus = document.getElementById('spouse_status').value;
             const spouseName = document.getElementById('partner_name_input').value.trim();
@@ -581,50 +603,58 @@
             if (spouseStatus === "одр.") {
                 isPovna = (spouseIdVal !== "");
             }
-            document.getElementById('family_status').value = isPovna ? "true" : "false";
-            updates[`members/${targetId}/02_OSOBYSTE/5_povna_simya`] = isPovna;
+            updates[`02_OSOBYSTE/5_povna_simya`] = isPovna;
             
-            updates[`members/${targetId}/02_OSOBYSTE/7_osvita`] = document.getElementById('education').value;
-            updates[`members/${targetId}/02_OSOBYSTE/8_profesiya`] = document.getElementById('profession').value;
-            updates[`members/${targetId}/02_OSOBYSTE/6_socialniy`] = document.getElementById('social_status').value;
-            updates[`members/${targetId}/02_OSOBYSTE/3_messengers`] = document.getElementById('messengers').value;
-            updates[`members/${targetId}/02_OSOBYSTE/9_dity`] = parseDityText(document.getElementById('dity').value);
-            updates[`members/${targetId}/02_OSOBYSTE/13_status`] = document.getElementById('status').value;
+            updates[`02_OSOBYSTE/7_osvita`] = document.getElementById('education').value;
+            updates[`02_OSOBYSTE/8_profesiya`] = document.getElementById('profession').value;
+            updates[`02_OSOBYSTE/6_socialniy`] = document.getElementById('social_status').value;
+            updates[`02_OSOBYSTE/3_messengers`] = document.getElementById('messengers').value;
+            updates[`02_OSOBYSTE/9_dity`] = parseDityText(document.getElementById('dity').value);
+            updates[`02_OSOBYSTE/13_status`] = document.getElementById('status').value;
             
-            updates[`members/${targetId}/04_STRUCTURA/1_rayon`] = document.getElementById('rayon').value;
-            updates[`members/${targetId}/04_STRUCTURA/4_opika`] = document.getElementById('opika').value;
-            updates[`members/${targetId}/04_STRUCTURA/2_grupa`] = document.getElementById('group_name').value;
-            updates[`members/${targetId}/04_STRUCTURA/5_d_vodnogo`] = document.getElementById('d_vodnogo').value;
-            updates[`members/${targetId}/04_STRUCTURA/6_d_vstupu`] = document.getElementById('d_vstupu').value;
-            updates[`members/${targetId}/04_STRUCTURA/3_san`] = document.getElementById('san').value;
-            updates[`members/${targetId}/04_STRUCTURA/7_zvidky_primitka`] = document.getElementById('zvidky').value;
-            updates[`members/${targetId}/04_STRUCTURA/8_vidviduvanist`] = document.getElementById('vidviduvanist').value;
-            updates[`members/${targetId}/04_STRUCTURA/9_prysutnist`] = document.getElementById('prysutnist').value;
+            updates[`04_STRUCTURA/1_rayon`] = document.getElementById('rayon').value;
+            updates[`04_STRUCTURA/4_opika`] = document.getElementById('opika').value;
+            updates[`04_STRUCTURA/2_grupa`] = document.getElementById('group_name').value;
+            updates[`04_STRUCTURA/5_d_vodnogo`] = document.getElementById('d_vodnogo').value;
+            updates[`04_STRUCTURA/6_d_vstupu`] = document.getElementById('d_vstupu').value;
+            updates[`04_STRUCTURA/3_san`] = document.getElementById('san').value;
+            updates[`04_STRUCTURA/7_zvidky_primitka`] = document.getElementById('zvidky').value;
+            updates[`04_STRUCTURA/8_vidviduvanist`] = document.getElementById('vidviduvanist').value;
+            updates[`04_STRUCTURA/9_prysutnist`] = document.getElementById('prysutnist').value;
             try {
-                updates[`members/${targetId}/05_ISTORIJA/1_slujinnya`] = JSON.parse(document.getElementById('slujinnya').value || '[]');
-            } catch(e) { updates[`members/${targetId}/05_ISTORIJA/1_slujinnya`] = []; }
+                updates[`05_ISTORIJA/1_slujinnya`] = JSON.parse(document.getElementById('slujinnya').value || '[]');
+            } catch(e) { updates[`05_ISTORIJA/1_slujinnya`] = []; }
             
-            updates[`members/${targetId}/03_ADRESA/1_misto`] = document.getElementById('addr_city').value;
-            updates[`members/${targetId}/03_ADRESA/1_nas_punkt`] = document.getElementById('addr_city').value;
-            updates[`members/${targetId}/03_ADRESA/2_vulycja`] = document.getElementById('addr_street').value;
-            updates[`members/${targetId}/03_ADRESA/2_vulitsya`] = document.getElementById('addr_street').value;
-            updates[`members/${targetId}/03_ADRESA/3_budynok`] = document.getElementById('addr_house').value;
-            updates[`members/${targetId}/03_ADRESA/3_budinok`] = document.getElementById('addr_house').value;
-            updates[`members/${targetId}/03_ADRESA/4_korpus`] = document.getElementById('addr_korpus').value;
-            updates[`members/${targetId}/03_ADRESA/5_kvartyra`] = document.getElementById('addr_flat').value;
-            updates[`members/${targetId}/03_ADRESA/4_kvartira`] = document.getElementById('addr_flat').value;
+            updates[`03_ADRESA/1_misto`] = document.getElementById('addr_city').value;
+            updates[`03_ADRESA/1_nas_punkt`] = document.getElementById('addr_city').value;
+            updates[`03_ADRESA/2_vulycja`] = document.getElementById('addr_street').value;
+            updates[`03_ADRESA/2_vulitsya`] = document.getElementById('addr_street').value;
+            updates[`03_ADRESA/3_budynok`] = document.getElementById('addr_house').value;
+            updates[`03_ADRESA/3_budinok`] = document.getElementById('addr_house').value;
+            updates[`03_ADRESA/4_korpus`] = document.getElementById('addr_korpus').value;
+            updates[`03_ADRESA/5_kvartyra`] = document.getElementById('addr_flat').value;
+            updates[`03_ADRESA/4_kvartira`] = document.getElementById('addr_flat').value;
  
-            updates[`members/${targetId}/02_OSOBYSTE/4_shlyub_history/0/status`] = document.getElementById('spouse_status').value;
-            updates[`members/${targetId}/02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_begin`] = document.getElementById('d_shlyub_from').value;
-            updates[`members/${targetId}/02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_end`] = document.getElementById('d_shlyub_end').value;
+            updates[`02_OSOBYSTE/4_shlyub_history/0/status`] = document.getElementById('spouse_status').value;
+            updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_begin`] = document.getElementById('d_shlyub_from').value;
+            updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_end`] = document.getElementById('d_shlyub_end').value;
             
-            updates[`members/${targetId}/02_OSOBYSTE/4_shlyub_history/0/podruzhzhya_id`] = partnerMatch ? partnerMatch.id : spouseIdVal;
+            updates[`02_OSOBYSTE/4_shlyub_history/0/podruzhzhya_id`] = partnerMatch ? partnerMatch.id : spouseIdVal;
+            updates[`02_OSOBYSTE/4_shlyub_history/0/podrujya_id`] = partnerMatch ? partnerMatch.id : spouseIdVal;
  
-            updates[`members/${targetId}/06_VYBUTTYA/2_prichina`] = document.getElementById('exit_reason').value;
-            updates[`members/${targetId}/06_VYBUTTYA/1_d_vybuttya`] = document.getElementById('exit_date').value;
+            updates[`06_VYBUTTYA/2_prichina`] = document.getElementById('exit_reason').value;
+            updates[`06_VYBUTTYA/1_d_vybuttya`] = document.getElementById('exit_date').value;
+
+            const singleMemberUrl = `${dbBaseUrl}/members/${targetId}.json?auth=${DB_SECRET}`;
 
             try {
-                await update(ref(rtdb), updates);
+                const res = await fetch(singleMemberUrl, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+
+                if (!res.ok) throw new Error("Помилка збереження через REST");
                 
                 const toast = document.getElementById('toast');
                 toast.style.opacity = '1';
@@ -637,6 +667,7 @@
             }
         };
 
+        checkAuth();
     </script>
 </body>
 </html>

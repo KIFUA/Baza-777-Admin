@@ -42,6 +42,19 @@
     <div id="mainContent" class="w-full max-w-md flex flex-col gap-3 hidden">
         
         <div class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg">
+            <!-- КНОПКИ ШВИДКОГО ФІЛЬТРУ ЧЛЕНСТВА -->
+            <div class="flex gap-1.5 mb-3">
+                <button type="button" id="btnFilterPresent" class="flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-blue-600/35 border-blue-500 text-blue-300 shadow-sm cursor-pointer">
+                    НАЯВНІ
+                </button>
+                <button type="button" id="btnFilterLeft" class="flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer">
+                    ВИБУЛІ
+                </button>
+                <button type="button" id="btnFilterAll" class="py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer">
+                    ВСІ
+                </button>
+            </div>
+
             <label class="block text-xs font-medium text-gray-400 mb-1">Пошук особи (ПІБ)</label>
             <div class="relative">
                 <input type="text" id="searchInput" placeholder="Почніть вводити ПІБ..." class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
@@ -124,11 +137,13 @@
                             <option value="вдов.">вдов.</option>
                         </select>
                     </div>
-                    <div id="partner_id_container" class="hidden">
+                    <div id="partner_id_container" class="hidden relative">
                         <input type="hidden" id="spouse_id">
                         <div>
                             <label class="block text-[11px] text-gray-400">ПІБ партнера</label>
-                            <input type="text" id="partner_name_input" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                            <input type="text" id="partner_name_input" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none" autocomplete="off">
+                            <ul id="partnerSearchResults" class="absolute left-0 right-0 mt-1 bg-inputBg border border-borderClr rounded max-h-48 overflow-y-auto z-50 hidden divide-y divide-borderClr shadow-2xl">
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -194,17 +209,17 @@
                 <h3 class="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Структура</h3>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Район / Дільниця №</label>
+                        <label class="block text-[11px] text-purple-400">Район структури (АЕРОПОРТ, ЦЕНТР, КАСКАД і т.п.)</label>
                         <input type="text" id="rayon" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-purple-400">Опіка / Пресвітер</label>
+                        <label class="block text-[11px] text-purple-400 font-bold text-indigo-400">Опіка / Відповідальний (напр., пресвітер Черняк)</label>
                         <input type="text" id="opika" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Група</label>
+                        <label class="block text-[11px] text-purple-400">Дільниця / Група (напр., Дільниця №1)</label>
                         <input type="text" id="group_name" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
@@ -228,11 +243,11 @@
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Відвідуваність</label>
+                        <label class="block text-[11px] text-purple-400">Характеристика відвідуваності</label>
                         <input type="text" id="vidviduvanist" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-purple-400">Присутність</label>
+                        <label class="block text-[11px] text-purple-400">Характеристика присутності</label>
                         <input type="text" id="prysutnist" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                 </div>
@@ -246,14 +261,20 @@
                 </div>
             </div>
 
-            <div class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-[11px] text-amber-500">Причина вибуття</label>
-                    <input type="text" id="exit_reason" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
+            <div class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] text-amber-500">Причина вибуття</label>
+                        <input type="text" id="exit_reason" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] text-amber-500 font-bold text-amber-400">Дата вибуття</label>
+                        <input type="text" id="exit_date" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
+                    </div>
                 </div>
                 <div>
-                    <label class="block text-[11px] text-amber-500">Дата вибуття</label>
-                    <input type="text" id="exit_date" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
+                    <label class="block text-[11px] text-amber-500">Пояснення вибуття (куди вибув, примітка)</label>
+                    <input type="text" id="exit_explanation" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
                 </div>
             </div>
 
@@ -397,6 +418,7 @@
                         }
                     });
                     statusEl.textContent = `У базі: ${allMembers.length} осіб`;
+                    updateFilterButtonsUI();
                 } else {
                     statusEl.textContent = "База порожня";
                 }
@@ -425,6 +447,69 @@
         const selectedHeaderPIB = document.getElementById('selectedHeaderPIB');
         const memberForm = document.getElementById('memberForm');
 
+        let activeFilter = 'present'; // Default filter to show present/active members
+
+        const btnFilterPresent = document.getElementById('btnFilterPresent');
+        const btnFilterLeft = document.getElementById('btnFilterLeft');
+        const btnFilterAll = document.getElementById('btnFilterAll');
+
+        function updateFilterButtonsUI() {
+            let presentCount = 0;
+            let leftCount = 0;
+            
+            allMembers.forEach(m => {
+                const rec = m.rawData || {};
+                const isLeft = (rec["02_OSOBYSTE"]?.["13_status"] === "вибув") || 
+                               (rec["06_VYBUTTYA"]?.["2_prichina"]) || 
+                               (rec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
+                               (rec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
+                if (isLeft) {
+                    leftCount++;
+                } else {
+                    presentCount++;
+                }
+            });
+
+            btnFilterPresent.textContent = presentCount > 0 ? `НАЯВНІ (${presentCount})` : `НАЯВНІ`;
+            btnFilterLeft.textContent = leftCount > 0 ? `ВИБУЛІ (${leftCount})` : `ВИБУЛІ`;
+            btnFilterAll.textContent = allMembers.length > 0 ? `ВСІ (${allMembers.length})` : `ВСІ`;
+
+            btnFilterPresent.className = activeFilter === 'present' 
+                ? 'flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-blue-600/35 border-blue-500 text-blue-300 shadow-sm cursor-pointer'
+                : 'flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer';
+
+            btnFilterLeft.className = activeFilter === 'left'
+                ? 'flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-amber-600/35 border-amber-500 text-amber-300 shadow-sm cursor-pointer'
+                : 'flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer';
+
+            btnFilterAll.className = activeFilter === 'all'
+                ? 'py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-zinc-700 border-zinc-500 text-white shadow-sm cursor-pointer'
+                : 'py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer';
+        }
+
+        function triggerSearchReFilter() {
+            const event = new Event('input', { bubbles: true, cancelable: true });
+            searchInput.dispatchEvent(event);
+        }
+
+        btnFilterPresent.onclick = () => {
+            activeFilter = 'present';
+            updateFilterButtonsUI();
+            triggerSearchReFilter();
+        };
+
+        btnFilterLeft.onclick = () => {
+            activeFilter = 'left';
+            updateFilterButtonsUI();
+            triggerSearchReFilter();
+        };
+
+        btnFilterAll.onclick = () => {
+            activeFilter = 'all';
+            updateFilterButtonsUI();
+            triggerSearchReFilter();
+        };
+
         searchInput.addEventListener('input', (e) => {
             const txt = e.target.value.trim().toLowerCase();
             if(txt.length < 1) {
@@ -432,7 +517,21 @@
                 return;
             }
             
-            const matched = allMembers.filter(m => m.pib && String(m.pib).toLowerCase().includes(txt));
+            const matched = allMembers.filter(m => {
+                const passSearch = m.pib && String(m.pib).toLowerCase().includes(txt);
+                if (!passSearch) return false;
+
+                const rec = m.rawData || {};
+                const isLeft = (rec["02_OSOBYSTE"]?.["13_status"] === "вибув") || 
+                               (rec["06_VYBUTTYA"]?.["2_prichina"]) || 
+                               (rec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
+                               (rec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
+
+                if (activeFilter === 'present') return !isLeft;
+                if (activeFilter === 'left') return !!isLeft;
+                return true;
+            });
+            
             searchResults.innerHTML = '';
             
             if(matched.length === 0) {
@@ -550,8 +649,52 @@
             document.getElementById('partner_name_input').value = partner ? partner.pib : (sId ? "" : "");
 
             document.getElementById('exit_reason').value = valOrEmpty(vybuttya["2_prichina"]);
-            document.getElementById('exit_date').value = valOrEmpty(vybuttya["1_d_vybuttya"]);
+            document.getElementById('exit_date').value = valOrEmpty(vybuttya["1_d_vybuttya"] || vybuttya["1_d_vybyttya"]);
+            document.getElementById('exit_explanation').value = valOrEmpty(vybuttya["vybuv_prymitka"] || vybuttya["3_primitka"] || vybuttya["primitka"]);
         }
+
+        // ПОШУК ТА ВИБІР ПАРТНЕРА/ПОДРУЖЖЯ
+        const partnerNameInput = document.getElementById('partner_name_input');
+        const partnerSearchResults = document.getElementById('partnerSearchResults');
+        const spouseIdInput = document.getElementById('spouse_id');
+
+        partnerNameInput.oninput = (e) => {
+            const txt = e.target.value.toLowerCase().trim();
+            if (txt.length < 1) {
+                partnerSearchResults.classList.add('hidden');
+                return;
+            }
+
+            const matched = allMembers.filter(m => m.pib && String(m.pib).toLowerCase().includes(txt));
+            partnerSearchResults.innerHTML = '';
+            
+            if (matched.length === 0) {
+                partnerSearchResults.innerHTML = '<li class="p-2 text-xs text-gray-500 text-center">Партнера не знайдено</li>';
+            } else {
+                matched.forEach(m => {
+                    const li = document.createElement('li');
+                    li.className = 'p-2 text-xs hover:bg-zinc-700 cursor-pointer text-gray-200';
+                    li.textContent = `${m.pib} (ID: ${m.id})`;
+                    li.onclick = () => {
+                        partnerNameInput.value = m.pib;
+                        spouseIdInput.value = m.id;
+                        partnerSearchResults.classList.add('hidden');
+                    };
+                    partnerSearchResults.appendChild(li);
+                });
+            }
+            partnerSearchResults.classList.remove('hidden');
+        };
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (e.target !== partnerNameInput) {
+                partnerSearchResults.classList.add('hidden');
+            }
+            if (e.target !== searchInput) {
+                searchResults.classList.add('hidden');
+            }
+        });
 
         document.getElementById('btnNewCard').onclick = () => {
             memberForm.reset();
@@ -644,6 +787,11 @@
  
             updates[`06_VYBUTTYA/2_prichina`] = document.getElementById('exit_reason').value;
             updates[`06_VYBUTTYA/1_d_vybuttya`] = document.getElementById('exit_date').value;
+            updates[`06_VYBUTTYA/1_d_vybyttya`] = document.getElementById('exit_date').value; // robust spelling sync
+            
+            const explanationVal = document.getElementById('exit_explanation').value;
+            updates[`06_VYBUTTYA/3_primitka`] = explanationVal; // Sync to vybuttya primitka for absolute reliability!
+            updates[`06_VYBUTTYA/vybuv_prymitka`] = explanationVal; // Sync to vybuv_prymitka as requested!
 
             const singleMemberUrl = `${dbBaseUrl}/members/${targetId}.json?auth=${DB_SECRET}`;
 

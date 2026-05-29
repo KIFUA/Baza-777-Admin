@@ -61,10 +61,12 @@ export default function StatsDashboard({ stats, members }: StatsDashboardProps) 
   // Render a clean percentage bar
   const renderBar = (label: string, value: number, max: number, colorClass = "bg-blue-600") => {
     const pct = max > 0 ? Math.round((value / max) * 100) : 0;
+    const isNA = !label || label.toLowerCase() === "н/д" || label === "Не визначено" || label.trim() === "";
+    const labelToDisplay = isNA ? "н/д" : label;
     return (
-      <div key={label} className="group flex flex-col space-y-1">
+      <div key={label || "empty"} className="group flex flex-col space-y-1">
         <div className="flex items-center justify-between text-xs font-medium text-slate-700">
-          <span className="truncate">{label}</span>
+          <span className={`truncate ${isNA ? "text-slate-400 font-normal italic" : ""}`}>{labelToDisplay}</span>
           <span className="text-slate-500">{value} ({pct}%)</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
@@ -148,7 +150,7 @@ export default function StatsDashboard({ stats, members }: StatsDashboardProps) 
             {Object.entries(stats.areaStats)
               .sort((a, b) => b[1] - a[1])
               .map(([lbl, val]) => 
-                renderBar(lbl === "" ? "Не визначено" : lbl, val, stats.activeMembers, "bg-emerald-500")
+                renderBar(lbl === "" ? "н/д" : lbl, val, stats.activeMembers, "bg-emerald-500")
               )}
           </div>
         </div>

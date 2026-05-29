@@ -624,6 +624,13 @@ app.post("/api/members/:id", (req, res) => {
       mergedMember.d_vybuttya_excel = 0;
       mergedMember.vybutty_prymitka = "";
     }
+
+    if (mergedMember.s_vybuv_ukr) {
+      const vLower = mergedMember.s_vybuv_ukr.toLowerCase();
+      if (vLower === "пом." || vLower.includes("пом") || vLower.includes("смерт")) {
+        mergedMember.vybutty_prymitka = "";
+      }
+    }
   }
 
   // Re-sync excel epoch numbers if strings changed and they are parsed

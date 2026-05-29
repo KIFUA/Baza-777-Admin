@@ -1,937 +1,1482 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Управління Базою Даних</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#121212',
-                        cardBg: '#1a1a1a',
-                        inputBg: '#262626',
-                        borderClr: '#333333'
-                    }
-                }
-            }
-        }
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              darkBg: "#121212",
+              cardBg: "#1a1a1a",
+              inputBg: "#262626",
+              borderClr: "#333333",
+            },
+          },
+        },
+      };
     </script>
     <style>
-        body { background-color: #121212; color: #e0e0e0; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #1a1a1a; }
-        ::-webkit-scrollbar-thumb { background: #333333; border-radius: 3px; }
-        input, select, textarea { padding: 5px 8px !important; font-size: 0.85rem !important; }
+      body {
+        background-color: #121212;
+        color: #e0e0e0;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1a1a1a;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #333333;
+        border-radius: 3px;
+      }
+      input,
+      select,
+      textarea {
+        padding: 5px 8px !important;
+        font-size: 0.85rem !important;
+      }
     </style>
-</head>
-<body class="p-3 flex flex-col items-center min-h-screen">
-
-    <div id="authScreen" class="w-full max-w-sm my-auto bg-cardBg border border-borderClr rounded-lg p-5 shadow-2xl hidden">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-blue-400 text-center mb-4">Доступ обмежено</h2>
-        <p class="text-xs text-gray-400 text-center mb-4">Введіть ваш Telegram ID для входу в систему:</p>
-        <div class="flex flex-col gap-3">
-            <input type="password" id="tgIdInput" placeholder="Ваш Telegram ID..." class="w-full bg-inputBg border border-borderClr rounded text-white text-center focus:border-blue-500 outline-none py-2 text-sm">
-            <button id="btnAuth" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition">УВІЙТИ</button>
-        </div>
-        <p id="authError" class="text-[11px] text-red-500 text-center mt-2 hidden">Невірний ID доступу!</p>
+  </head>
+  <body class="p-3 flex flex-col items-center min-h-screen">
+    <div
+      id="authScreen"
+      class="w-full max-w-sm my-auto bg-cardBg border border-borderClr rounded-lg p-5 shadow-2xl hidden"
+    >
+      <h2
+        class="text-sm font-bold uppercase tracking-wider text-blue-400 text-center mb-4"
+      >
+        Доступ обмежено
+      </h2>
+      <p class="text-xs text-gray-400 text-center mb-4">
+        Введіть ваш Telegram ID для входу в систему:
+      </p>
+      <div class="flex flex-col gap-3">
+        <input
+          type="password"
+          id="tgIdInput"
+          placeholder="Ваш Telegram ID..."
+          class="w-full bg-inputBg border border-borderClr rounded text-white text-center focus:border-blue-500 outline-none py-2 text-sm"
+        />
+        <button
+          id="btnAuth"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded text-xs transition"
+        >
+          УВІЙТИ
+        </button>
+      </div>
+      <p
+        id="authError"
+        class="text-[11px] text-red-500 text-center mt-2 hidden"
+      >
+        Невірний ID доступу!
+      </p>
     </div>
 
     <div id="mainContent" class="w-full max-w-md flex flex-col gap-3 hidden">
-        
-        <div class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg">
-            <!-- КНОПКИ ШВИДКОГО ФІЛЬТРУ ЧЛЕНСТВА -->
-            <div class="flex gap-1.5 mb-3">
-                <button type="button" id="btnFilterPresent" class="flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-blue-600/35 border-blue-500 text-blue-300 shadow-sm cursor-pointer">
-                    НАЯВНІ
-                </button>
-                <button type="button" id="btnFilterLeft" class="flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer">
-                    ВИБУЛІ
-                </button>
-                <button type="button" id="btnFilterAll" class="py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer">
-                    ВСІ
-                </button>
-            </div>
-
-            <label class="block text-xs font-medium text-gray-400 mb-1">Пошук особи (ПІБ)</label>
-            <div class="relative">
-                <input type="text" id="searchInput" placeholder="Почніть вводити ПІБ..." class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                <ul id="searchResults" class="absolute left-0 right-0 mt-1 bg-inputBg border border-borderClr rounded max-h-48 overflow-y-auto z-50 hidden divide-y divide-borderClr shadow-2xl">
-                    <li class="p-2 text-xs text-gray-500 text-center">Завантаження...</li>
-                </ul>
-            </div>
-            <div class="flex justify-between items-center mt-2 text-[11px] text-gray-500">
-                <span id="dbStatus">Підключення...</span>
-                <button id="btnNewCard" class="text-blue-400 hover:underline">Увімкнути режим створення</button>
-            </div>
+      <div class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg">
+        <!-- КНОПКИ ШВИДКОГО ФІЛЬТРУ ЧЛЕНСТВА -->
+        <div class="flex gap-1.5 mb-3">
+          <button
+            type="button"
+            id="btnFilterPresent"
+            class="flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-blue-600/35 border-blue-500 text-blue-300 shadow-sm cursor-pointer"
+          >
+            НАЯВНІ
+          </button>
+          <button
+            type="button"
+            id="btnFilterLeft"
+            class="flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer"
+          >
+            ВИБУЛІ
+          </button>
+          <button
+            type="button"
+            id="btnFilterAll"
+            class="py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer"
+          >
+            ВСІ
+          </button>
         </div>
 
-        <div class="flex flex-col gap-1 my-1">
-            <div class="text-[10px] text-gray-500 font-mono text-right px-2" id="idDisplay"></div>
-            <div id="selectedHeaderPIB" class="text-xl font-black text-white text-center tracking-wide uppercase min-h-[28px] break-words px-2"></div>
-            <div id="historyBadge" class="hidden text-center mt-1">
-                <button type="button" onclick="scrollToHistorySection()" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-amber-950/80 hover:bg-amber-900/90 text-amber-400 border border-amber-800/60 shadow-inner transition cursor-pointer select-none">
-                    🕰️ ІСТОРІЯ ЗМІН
-                </button>
-            </div>
+        <label class="block text-xs font-medium text-gray-400 mb-1"
+          >Пошук особи (ПІБ)</label
+        >
+        <div class="relative">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Почніть вводити ПІБ..."
+            autocomplete="new-password"
+            onfocus="this.placeholder = ''"
+            onblur="this.placeholder = 'Почніть вводити ПІБ...'"
+            class="w-full bg-inputBg border border-borderClr rounded text-white outline-none focus:border-zinc-500"
+          />
+          <ul
+            id="searchResults"
+            class="absolute left-0 right-0 mt-1 bg-inputBg border border-borderClr rounded max-h-48 overflow-y-auto z-50 hidden divide-y divide-borderClr shadow-2xl"
+          >
+            <li class="p-2 text-xs text-gray-500 text-center">
+              Завантаження...
+            </li>
+          </ul>
         </div>
+        <div
+          class="flex justify-between items-center mt-2 text-[11px] text-gray-500"
+        >
+          <span id="dbStatus">Підключення...</span>
+          <button id="btnNewCard" class="text-blue-400 hover:underline">
+            Увімкнути режим створення
+          </button>
+        </div>
+      </div>
 
-        <form id="memberForm" class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg flex flex-col gap-3 hidden">
-            <input type="hidden" id="docId">
-            <input type="hidden" id="pibHidden"> 
-            <input type="hidden" id="pib_01">
-            <input type="hidden" id="pib_main">
-            <input type="hidden" id="pib_edit">
-            <input type="hidden" id="family_status">
+      <div class="flex flex-col gap-1 my-1">
+        <div
+          class="text-[10px] text-gray-500 font-mono text-right px-2 hidden"
+          id="idDisplay"
+        ></div>
+        <div
+          id="selectedHeaderPIB"
+          class="text-xl font-black text-white text-center tracking-wide uppercase min-h-[28px] break-words px-2 hidden"
+        ></div>
+        <div id="historyBadge" class="hidden text-center mt-1">
+          <button
+            type="button"
+            onclick="scrollToHistorySection()"
+            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-amber-950/80 hover:bg-amber-900/90 text-amber-400 border border-amber-800/60 shadow-inner transition cursor-pointer select-none"
+          >
+            🕰️ ІСТОРІЯ ЗМІН
+          </button>
+        </div>
+      </div>
 
-            <input type="hidden" id="stat">
+      <form
+        id="memberForm"
+        class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg hidden"
+      >
+        <div class="flex flex-col gap-3">
+          <input type="hidden" id="docId" />
+          <input type="hidden" id="pibHidden" />
+          <input type="hidden" id="pib_01" />
+          <input type="hidden" id="pib_main" />
+          <input type="hidden" id="pib_edit" />
+          <input type="hidden" id="family_status" />
 
-            <div class="space-y-2">
-                <div class="flex flex-wrap gap-3">
-                    <div>
-                        <label class="block text-[11px] text-gray-400 select-none">Дата народження</label>
-                        <input type="text" id="d_nar" class="w-[120px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-gray-400 select-none mb-0.5">Телефон</label>
-                        <div class="flex items-center gap-2">
-                            <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
-                                <input type="radio" name="main_phone_select" id="radio_phone_1" checked value="1" class="w-3 h-3 accent-blue-500 cursor-pointer">
-                                <label for="radio_phone_1" class="text-[10px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer" title="Зробити основним">осн.</label>
-                                <input type="text" id="tel" class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5" placeholder="Номер 1">
-                            </div>
-                            <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
-                                <input type="radio" name="main_phone_select" id="radio_phone_2" value="2" class="w-3 h-3 accent-blue-500 cursor-pointer">
-                                <label for="radio_phone_2" class="text-[10px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer" title="Зробити основним">осн.</label>
-                                <input type="text" id="tel_extra" class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5" placeholder="Номер 2">
-                            </div>
-                        </div>
-                    </div>
+          <input type="hidden" id="stat" />
+
+          <div class="space-y-2">
+            <div class="flex flex-wrap gap-3">
+              <div>
+                <label class="block text-[11px] text-gray-400 select-none"
+                  >Дата народження</label
+                >
+                <input
+                  type="text"
+                  id="d_nar"
+                  class="w-[120px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-[11px] text-gray-400 select-none mb-0.5"
+                  >Телефон</label
+                >
+                <div class="flex items-center gap-2">
+                  <div
+                    class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60"
+                  >
+                    <input
+                      type="radio"
+                      name="main_phone_select"
+                      id="radio_phone_1"
+                      checked
+                      value="1"
+                      class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
+                    />
+                    <label
+                      for="radio_phone_1"
+                      class="text-[8px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer"
+                      title="Зробити основним"
+                      >осн.</label
+                    >
+                    <input
+                      type="text"
+                      id="tel"
+                      class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                      placeholder="Номер 1"
+                    />
+                  </div>
+                  <div
+                    class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60"
+                  >
+                    <input
+                      type="radio"
+                      name="main_phone_select"
+                      id="radio_phone_2"
+                      value="2"
+                      class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
+                    />
+                    <label
+                      for="radio_phone_2"
+                      class="text-[8px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer"
+                      title="Зробити основним"
+                      >осн.</label
+                    >
+                    <input
+                      type="text"
+                      id="tel_extra"
+                      class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                      placeholder="Номер 2"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label
+                class="block text-[11px] text-gray-400 cursor-pointer"
+                onclick="
+                  document
+                    .getElementById('messengers_content')
+                    .classList.toggle('hidden')
+                "
+              >
+                Месенджери та контакти +
+              </label>
+              <div id="messengers_content" class="hidden mt-1">
+                <input
+                  type="text"
+                  id="messengers"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+                <div class="flex gap-1.5 mt-1">
+                  <span
+                    class="text-[10px] cursor-pointer"
+                    onclick="
+                      const input = document.getElementById('messengers');
+                      input.value =
+                        'WA: ' +
+                        input.value.replace(/^(WA: |VB: |TG: |SG: )/g, '');
+                    "
+                  >
+                    <svg viewBox="0 0 24 24" class="w-4 h-4 fill-green-500">
+                      <path
+                        d="M12.001 2c5.523 0 10 4.477 10 10 0 5.523-4.477 10-10 10-1.87 0-3.62-.51-5.14-1.4l-4.86 1.4 1.4-4.86c-.89-1.52-1.4-3.26-1.4-5.14 0-5.523 4.477-10 10-10zm.1 1.76c-3.1 0-5.61 2.51-5.61 5.61 0 1.05.29 2.03.78 2.87l-.54 1.95 2.01-.54c.83.47 1.8.76 2.84.76h.01c3.1 0 5.61-2.51 5.61-5.61s-2.51-5.61-5.61-5.61zm2.35 6.77c-.08-.04-1.38-.68-1.59-.76-.21-.08-.36-.12-.51.12s-.58.74-.71.89-.25.17-.5.06c-.25-.11-1.07-.39-2.04-1.25-.75-.66-1.25-1.48-1.4-1.73-.15-.25-.01-.39.11-.53.11-.13.25-.34.38-.51s.17-.29.25-.49c.08-.21.04-.4-.02-.57-.06-.17-.51-1.23-.7-1.68-.18-.44-.36-.4-.5-.41-.13-.01-.27-.01-.41-.01s-.36.05-.55.25c-.19.2-.74.72-.74 1.76s.51 2.03.58 2.18c.07.15 1.45 2.22 3.51 3.12.49.21.87.34 1.17.43.49.16.94.14 1.29.08.39-.06 1.38-.56 1.57-1.1s.19-1.01.13-1.12c-.06-.11-.23-.17-.48-.29z"
+                      />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[10px] cursor-pointer"
+                    onclick="
+                      const input = document.getElementById('messengers');
+                      input.value =
+                        'VB: ' +
+                        input.value.replace(/^(WA: |VB: |TG: |SG: )/g, '');
+                    "
+                  >
+                    <svg viewBox="0 0 24 24" class="w-4 h-4 fill-purple-500">
+                      <path
+                        d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10H2l2.36-2.36C2.26 17.55 1 14.88 1 12 1 6.48 5.48 2 12 2zm3.33 5c-.17 0-1.14.03-1.66 0-.25.04-1.44.25-1.99 1.12-1.05 1.63-.64 2.9.23 4.14 1.59 2.25 4.35 3.32 6.01 2.45.69-.35 1.52-1.44 1.52-2.18 0-.49-.24-.77-.92-1.04-.46-.17-1.1-.38-1.57-.38-.45 0-.74.19-.94.41-.33.36-.6.76-1.17 1.05-.58.29-.98.39-1.42.06-1.84-1.39-1.74-2.81-1.09-3.79.25-.38.74-.83 1.15-0.83.69 0 2.25.17 2.25.17 1.12 0 1.12-.86 1.12-1.2s.06-1.92-1.25-1.92z"
+                      />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[10px] cursor-pointer"
+                    onclick="
+                      const input = document.getElementById('messengers');
+                      input.value =
+                        'TG: ' +
+                        input.value.replace(/^(WA: |VB: |TG: |SG: )/g, '');
+                    "
+                  >
+                    <svg viewBox="0 0 24 24" class="w-4 h-4 fill-sky-500">
+                      <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1.01-.69 1.03-.58.05-1.02-.38-1.58-.75-1.35-.88-2.11-1.43-3.43-2.28-1.52-.98-.98-1.52.22-2.72.61-.6 2.37-2.18 2.42-2.36.01-.03.01-.15-.06-.21-.07-.06-.17-.04-.24-.02-.1.04-1.63 1.04-4.6 3.03-.43.29-.83.43-1.17.42-.38-.01-1.11-.21-1.65-.39-.67-.22-1.19-.34-1.14-.72.02-.13.23-.27.63-.42 5.06-2.21 8.44-3.68 10.16-4.41 4.88-2.03 5.92-2.39 6.58-2.41.15 0 .49.03.7.2.19.16.24.37.26.52.02.13.01.27-.01.42z"
+                      />
+                    </svg>
+                  </span>
+                  <span
+                    class="text-[10px] cursor-pointer"
+                    onclick="
+                      const input = document.getElementById('messengers');
+                      input.value =
+                        'SG: ' +
+                        input.value.replace(/^(WA: |VB: |TG: |SG: )/g, '');
+                    "
+                  >
+                    <svg viewBox="0 0 24 24" class="w-4 h-4 fill-blue-600">
+                      <path
+                        d="M12 2c5.523 0 10 4.477 10 10s-4.477 10-10 10-10-4.477-10-10 4.477-10 10-10zm4.5 13.5v-3.5h-9v3.5l1.5-1 3 2 3-2 1.5 1zm-4.5-9c-1.38 0-2.5 1.12-2.5 2.5s1.12 2.5 2.5 2.5 2.5-1.12 2.5-2.5-1.12-2.5-2.5-2.5z"
+                      />
+                    </svg>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-[80px_80px_1fr] gap-2">
+              <div>
+                <label class="block text-[11px] text-gray-400">Освіта</label>
+                <input
+                  type="text"
+                  id="education"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400">Соц. ст.</label>
+                <input
+                  type="text"
+                  id="social_status"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400">Професія</label>
+                <input
+                  type="text"
+                  id="profession"
+                  class="w-[150px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- БЛОК СІМ'Я -->
+          <div class="border-t border-borderClr pt-2 space-y-2">
+            <h3
+              class="text-[10px] uppercase font-bold text-pink-400 tracking-wider"
+            >
+              СІМ'Я
+            </h3>
+            <div class="flex flex-wrap items-end gap-2">
+              <div>
+                <label class="block text-[11px] text-gray-400"
+                  >Сімейний стан</label
+                >
+                <select
+                  id="spouse_status"
+                  class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                >
+                  <option value="" class="text-gray-500">н/д</option>
+                  <option value="неодруж.">неодруж.</option>
+                  <option value="одр.">одруж.</option>
+                  <option value="розлуч.">розлуч.</option>
+                  <option value="вдов.">вдов.</option>
+                </select>
+              </div>
+              <div
+                id="partner_id_container"
+                class="hidden relative flex-1 min-w-[180px]"
+              >
+                <input type="hidden" id="spouse_id" />
+                <div>
+                  <label class="block text-[11px] text-gray-400"
+                    >ПІБ партнера</label
+                  >
+                  <input
+                    type="text"
+                    id="partner_name_input"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    autocomplete="off"
+                  />
+                  <ul
+                    id="partnerSearchResults"
+                    class="absolute left-0 right-0 mt-1 bg-inputBg border border-borderClr rounded max-h-48 overflow-y-auto z-50 hidden divide-y divide-borderClr shadow-2xl"
+                  ></ul>
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <div id="partner_start_date_container">
+                <label class="block text-[11px] text-gray-400 select-none"
+                  >Дата шлюбу</label
+                >
+                <input
+                  type="text"
+                  id="d_shlyub_from"
+                  class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div id="partner_end_date_container" class="hidden">
+                <label class="block text-[11px] text-gray-400 select-none"
+                  >Дата завершення шлюбу</label
+                >
+                <input
+                  type="text"
+                  id="d_shlyub_end"
+                  class="w-[150px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+            <div class="space-y-1">
+              <div
+                class="flex items-center gap-1 cursor-pointer"
+                onclick="toggleChildren()"
+              >
+                <label class="block text-[11px] text-gray-400">Діти</label>
+                <span id="childrenArrow" class="text-[10px] text-gray-500"
+                  >▼</span
+                >
+              </div>
+              <textarea
+                id="dity"
+                oninput="window.autoResizeDity()"
+                class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden resize-none overflow-y-hidden text-xs py-1.5 px-2 font-sans"
+                rows="1"
+                style="height: auto"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- БЛОК АДРЕСА - ПІСЛЯ СІМ'Ї -->
+          <div class="border-t border-borderClr pt-2 space-y-2">
+            <h3
+              class="text-[10px] uppercase font-bold text-teal-400 tracking-wider"
+            >
+              Адреса проживання
+            </h3>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[11px] text-gray-400"
+                  >Населений пункт</label
+                >
+                <input
+                  type="text"
+                  id="addr_city"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400">Вулиця</label>
+                <input
+                  type="text"
+                  id="addr_street"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <div>
+                <label class="block text-[11px] text-gray-400">Будинок</label>
+                <input
+                  type="text"
+                  id="addr_house"
+                  class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400">Корпус</label>
+                <input
+                  type="text"
+                  id="addr_korpus"
+                  class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] text-gray-400">Кв.</label>
+                <input
+                  type="text"
+                  id="addr_flat"
+                  class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <input type="hidden" id="status" />
+          <input type="hidden" id="zvidky" />
+
+          <div class="border-t border-borderClr pt-2 space-y-2">
+            <h3
+              class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none"
+            >
+              Структура
+            </h3>
+            <div class="flex flex-wrap gap-2">
+              <div>
+                <label
+                  class="block text-[11px] text-purple-400 font-bold select-none"
+                  >В.Хр.</label
+                >
+                <input
+                  type="text"
+                  id="d_vodnogo"
+                  class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label class="block text-[11px] text-purple-400 select-none"
+                  >Дата вступу</label
+                >
+                <input
+                  type="text"
+                  id="d_vstupu"
+                  class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div class="flex-1 min-w-[80px]">
+                <label class="block text-[11px] text-purple-400 select-none"
+                  >Сан</label
+                >
+                <input
+                  type="text"
+                  id="san"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <div>
+                <label
+                  class="block text-[11px] text-purple-400 font-bold select-none"
+                  >Район</label
+                >
+                <input
+                  type="text"
+                  id="rayon"
+                  class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div class="flex-1 min-w-[100px]">
+                <label
+                  class="block text-[11px] text-purple-400 font-bold select-none"
+                  >Опіка</label
+                >
+                <input
+                  type="text"
+                  id="opika"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <input type="hidden" id="group_name" />
+            </div>
+            <div class="relative w-[200px]">
+              <label
+                class="block text-[11px] text-purple-400 font-bold select-none mb-1"
+                >Служіння</label
+              >
+              <button
+                type="button"
+                onclick="toggleMinistryDropdown()"
+                class="w-full bg-inputBg border border-borderClr rounded text-white text-left px-2 py-1.5 text-xs flex justify-between items-center focus:border-blue-500 outline-none select-none"
+              >
+                <span
+                  id="ministrySelectedText"
+                  class="truncate text-gray-500 text-xs"
+                  >н/д</span
+                >
+                <span id="ministryArrow" class="text-[9px] text-gray-500"
+                  >▼</span
+                >
+              </button>
+              <div
+                id="ministryDropdownContainer"
+                class="absolute left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1"
+              >
+                <!-- Checkboxes populated dynamically -->
+              </div>
+              <input type="hidden" id="slujinnya" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label
+                  class="block text-[11px] text-purple-400 font-bold select-none"
+                  >Відвідуваність</label
+                >
+                <input
+                  type="text"
+                  id="vidviduvanist"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-[11px] text-purple-400 font-bold select-none"
+                  >Присутність</label
+                >
+                <input
+                  type="text"
+                  id="prysutnist"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- БЛОК ВИБУТТЯ -->
+          <div
+            id="exit_block"
+            class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 space-y-2 hidden"
+          >
+            <div
+              class="flex justify-between items-center cursor-pointer"
+              onclick="
+                document
+                  .getElementById('exit_fields')
+                  .classList.toggle('hidden')
+              "
+            >
+              <h3
+                class="text-[10px] uppercase font-bold text-amber-500 tracking-wider"
+              >
+                Вибуття
+              </h3>
+              <span class="text-amber-500 text-[10px]">▲/▼</span>
+            </div>
+            <div id="exit_fields" class="space-y-2">
+              <div class="flex flex-wrap gap-2">
+                <div>
+                  <label class="block text-[11px] text-amber-500"
+                    >Причина вибуття</label
+                  >
+                  <input
+                    type="text"
+                    id="exit_reason"
+                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
+                  />
                 </div>
                 <div>
-                     <label class="block text-[11px] text-gray-400">Месенджери та контакти</label>
-                     <input type="text" id="messengers" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
+                  <label
+                    class="block text-[11px] text-amber-500 font-bold text-amber-400"
+                    >Дата вибуття</label
+                  >
+                  <input
+                    type="text"
+                    id="exit_date"
+                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
+                  />
                 </div>
-                
-                <div class="grid grid-cols-[80px_80px_1fr] gap-2">
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Освіта</label>
-                        <input type="text" id="education" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Соц. ст.</label>
-                        <input type="text" id="social_status" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Професія</label>
-                        <input type="text" id="profession" class="w-[150px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs">
-                    </div>
-                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] text-amber-500">Примітка</label>
+                <input
+                  type="text"
+                  id="exit_explanation"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
+                />
+              </div>
             </div>
+          </div>
+          <button
+            type="button"
+            id="add_exit_btn"
+            onclick="
+              document.getElementById('exit_block').classList.remove('hidden');
+              document.getElementById('exit_fields').classList.remove('hidden');
+              this.classList.add('hidden');
+            "
+            class="w-full bg-amber-900/50 text-amber-300 py-1 rounded text-xs"
+          >
+            Вибуття + Додати запис
+          </button>
 
-            <!-- БЛОК СІМ'Я -->
-            <div class="border-t border-borderClr pt-2 space-y-2">
-                <h3 class="text-[10px] uppercase font-bold text-pink-400 tracking-wider">СІМ'Я</h3>
-                <div class="flex flex-wrap items-end gap-2">
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Сімейний стан</label>
-                        <select id="spouse_status" class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                            <option value="" class="text-gray-500">н/д</option>
-                            <option value="неодруж.">неодруж.</option>
-                            <option value="одр.">одруж.</option>
-                            <option value="розлуч.">розлуч.</option>
-                            <option value="вдов.">вдов.</option>
-                        </select>
-                    </div>
-                    <div id="partner_id_container" class="hidden relative flex-1 min-w-[180px]">
-                        <input type="hidden" id="spouse_id">
-                        <div>
-                            <label class="block text-[11px] text-gray-400">ПІБ партнера</label>
-                            <input type="text" id="partner_name_input" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none" autocomplete="off">
-                            <ul id="partnerSearchResults" class="absolute left-0 right-0 mt-1 bg-inputBg border border-borderClr rounded max-h-48 overflow-y-auto z-50 hidden divide-y divide-borderClr shadow-2xl">
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <div id="partner_start_date_container">
-                        <label class="block text-[11px] text-gray-400 select-none">Дата шлюбу</label>
-                        <input type="text" id="d_shlyub_from" class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div id="partner_end_date_container" class="hidden">
-                        <label class="block text-[11px] text-gray-400 select-none">Дата завершення шлюбу</label>
-                        <input type="text" id="d_shlyub_end" class="w-[150px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                </div>
-                <div class="space-y-1">
-                    <div class="flex items-center gap-1 cursor-pointer" onclick="toggleChildren()">
-                        <label class="block text-[11px] text-gray-400">Діти</label>
-                        <span id="childrenArrow" class="text-[10px] text-gray-500">▼</span>
-                    </div>
-                    <textarea id="dity" oninput="window.autoResizeDity()" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden resize-none overflow-y-hidden text-xs py-1.5 px-2 font-sans" rows="1" style="height: auto;"></textarea>
-                </div>
+          <!-- ІСТОРІЯ ЗМІН (Об'єднаний блок) -->
+          <div
+            id="dynamicTimelineSection"
+            class="border-t border-borderClr pt-3 space-y-3 bg-sky-950/15 p-3 rounded border border-sky-900/35"
+          >
+            <div
+              class="flex justify-between items-center cursor-pointer"
+              onclick="
+                document
+                  .getElementById('timelineContent')
+                  .classList.toggle('hidden')
+              "
+            >
+              <h3
+                class="text-[10px] uppercase font-bold text-sky-400 tracking-wider"
+              >
+                ІСТОРІЯ ЗМІН
+              </h3>
+              <span class="text-sky-400 text-[10px]">▲/▼</span>
             </div>
+            <div id="timelineContent" class="hidden space-y-3">
+              <!-- Хронологія динамічних подій -->
+              <div id="dynamicTimelineEventsPart" class="space-y-1.5 hidden">
+                <div
+                  id="dynamicTimelineContainer"
+                  class="space-y-1 text-xs text-gray-300"
+                >
+                  <!-- Події підвантажуються динамічно -->
+                </div>
+              </div>
 
-            <!-- БЛОК АДРЕСА - ПІСЛЯ СІМ'Ї -->
-            <div class="border-t border-borderClr pt-2 space-y-2">
-                <h3 class="text-[10px] uppercase font-bold text-teal-400 tracking-wider">Адреса проживання</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Населений пункт</label>
-                        <input type="text" id="addr_city" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Вулиця</label>
-                        <input type="text" id="addr_street" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
+              <!-- ХРОНОЛОГІЯ ТА ПЕРЕМІЩЕННЯ (Перенесено сюди) -->
+              <div class="border-t border-zinc-800/60 pt-2.5 space-y-2">
+                <div class="flex justify-between items-center">
+                  <h4
+                    class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none"
+                  >
+                    Переміщення та зміни адрес
+                  </h4>
+                  <button
+                    type="button"
+                    onclick="addGroupMovementRow('', '', '', '')"
+                    class="text-purple-400 hover:text-purple-300 font-bold text-xs px-2 py-0.5 hover:bg-purple-950/50 rounded select-none cursor-pointer"
+                    title="Додати запис переміщення"
+                  >
+                    + Додати запис
+                  </button>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Будинок</label>
-                        <input type="text" id="addr_house" class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Корпус</label>
-                        <input type="text" id="addr_korpus" class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Кв.</label>
-                        <input type="text" id="addr_flat" class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
+                <p class="text-[10px] text-zinc-400 italic mb-1 select-none">
+                  Історія переміщень між малими групами чи змін адреси
+                  проживання:
+                </p>
+                <div id="movement_fields_container" class="space-y-1.5">
+                  <!-- Dynamic movement rows populated here -->
                 </div>
+              </div>
             </div>
+          </div>
 
-            <input type="hidden" id="status">
-            <input type="hidden" id="zvidky">
-
-            <div class="border-t border-borderClr pt-2 space-y-2">
-                <h3 class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none">Структура</h3>
-                <div class="flex flex-wrap gap-2">
-                    <div>
-                        <label class="block text-[11px] text-purple-400 font-bold select-none">В.Хр.</label>
-                        <input type="text" id="d_vodnogo" class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-purple-400 select-none">Дата вступу</label>
-                        <input type="text" id="d_vstupu" class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div class="flex-1 min-w-[80px]">
-                        <label class="block text-[11px] text-purple-400 select-none">Сан</label>
-                        <input type="text" id="san" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <div>
-                        <label class="block text-[11px] text-purple-400 font-bold select-none">Район</label>
-                        <input type="text" id="rayon" class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div class="flex-1 min-w-[100px]">
-                        <label class="block text-[11px] text-purple-400 font-bold select-none">Опіка</label>
-                        <input type="text" id="opika" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <input type="hidden" id="group_name">
-                </div>
-                <div class="relative w-[200px]">
-                    <label class="block text-[11px] text-purple-400 font-bold select-none mb-1">Служіння</label>
-                    <button type="button" onclick="toggleMinistryDropdown()" class="w-full bg-inputBg border border-borderClr rounded text-white text-left px-2 py-1.5 text-xs flex justify-between items-center focus:border-blue-500 outline-none select-none">
-                        <span id="ministrySelectedText" class="truncate text-gray-500 text-xs">н/д</span>
-                        <span id="ministryArrow" class="text-[9px] text-gray-500">▼</span>
-                    </button>
-                    <div id="ministryDropdownContainer" class="absolute left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1">
-                        <!-- Checkboxes populated dynamically -->
-                    </div>
-                    <input type="hidden" id="slujinnya">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[11px] text-purple-400 font-bold select-none">Відвідуваність</label>
-                        <input type="text" id="vidviduvanist" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-purple-400 font-bold select-none">Присутність</label>
-                        <input type="text" id="prysutnist" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                </div>
-            </div>
-
-            <div class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 space-y-2">
-                <div class="flex flex-wrap gap-2">
-                    <div>
-                        <label class="block text-[11px] text-amber-500">Причина вибуття</label>
-                        <input type="text" id="exit_reason" class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-amber-500 font-bold text-amber-400">Дата вибуття</label>
-                        <input type="text" id="exit_date" class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-[11px] text-amber-500">Примітка</label>
-                    <input type="text" id="exit_explanation" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
-                </div>
-            </div>
-
-            <!-- ІСТОРІЯ ЗМІН (Об'єднаний блок) -->
-            <div id="dynamicTimelineSection" class="border-t border-borderClr pt-3 space-y-3 bg-sky-950/15 p-3 rounded border border-sky-900/35">
-                <h3 class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">ІСТОРІЯ ЗМІН</h3>
-                
-                <!-- Хронологія динамічних подій -->
-                <div id="dynamicTimelineEventsPart" class="space-y-1.5 hidden">
-                    <div id="dynamicTimelineContainer" class="space-y-1 text-xs text-gray-300">
-                        <!-- Події підвантажуються динамічно -->
-                    </div>
-                </div>
-
-                <!-- ХРОНОЛОГІЯ ТА ПЕРЕМІЩЕННЯ (Перенесено сюди) -->
-                <div class="border-t border-zinc-800/60 pt-2.5 space-y-2">
-                    <div class="flex justify-between items-center">
-                        <h4 class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none">Переміщення та зміни адрес</h4>
-                        <button type="button" onclick="addGroupMovementRow('', '', '', '')" class="text-purple-400 hover:text-purple-300 font-bold text-xs px-2 py-0.5 hover:bg-purple-950/50 rounded select-none cursor-pointer" title="Додати запис переміщення">+ Додати запис</button>
-                    </div>
-                    <p class="text-[10px] text-zinc-400 italic mb-1 select-none">Історія переміщень між малими групами чи змін адреси проживання:</p>
-                    <div id="movement_fields_container" class="space-y-1.5">
-                        <!-- Dynamic movement rows populated here -->
-                    </div>
-                </div>
-            </div>
-            
-            <button type="submit" class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs transition shadow-md">ЗБЕРЕГТИ ЗМІНИ</button>
-        </form>
+          <button
+            type="submit"
+            class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs transition shadow-md"
+          >
+            ЗБЕРЕГТИ ЗМІНИ
+          </button>
+        </div>
+      </form>
     </div>
 
-    <div id="toast" class="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded shadow-lg text-xs font-semibold z-50 opacity-0 transition-opacity duration-300 pointer-events-none">Дані оновлено</div>
+    <div
+      id="toast"
+      class="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-2 rounded shadow-lg text-xs font-semibold z-50 opacity-0 transition-opacity duration-300 pointer-events-none"
+    >
+      Дані оновлено
+    </div>
 
     <script type="module">
-        // Твій унікальний Telegram ID
-        const ALLOWED_TG_ID = "969538290"; 
+      // Твій унікальний Telegram ID
+      const ALLOWED_TG_ID = "969538290";
 
-        // ВСТАВ СЮДИ СВІЙ СЕКРЕТНИЙ КЛЮЧ
-        const DB_SECRET = "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+      // ВСТАВ СЮДИ СВІЙ СЕКРЕТНИЙ КЛЮЧ
+      const DB_SECRET = "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
 
-        const dbBaseUrl = "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app";
-        const baseUrl = `${dbBaseUrl}/members.json?auth=${DB_SECRET}`;
+      const dbBaseUrl =
+        "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app";
+      const baseUrl = `${dbBaseUrl}/members.json?auth=${DB_SECRET}`;
 
-        const authScreen = document.getElementById('authScreen');
-        const mainContent = document.getElementById('mainContent');
-        const tgIdInput = document.getElementById('tgIdInput');
-        const btnAuth = document.getElementById('btnAuth');
-        const authError = document.getElementById('authError');
+      const authScreen = document.getElementById("authScreen");
+      const mainContent = document.getElementById("mainContent");
+      const tgIdInput = document.getElementById("tgIdInput");
+      const btnAuth = document.getElementById("btnAuth");
+      const authError = document.getElementById("authError");
 
-        const ST_MINISTRIES = [
-            "Старший пресвітер (пастор)",
-            "Пресвітер (пастор)",
-            "Диякон",
-            "Хор / Співак",
-            "Вчитель недільної школи",
-            "Сестринське служіння",
-            "Молодіжне служіння",
-            "Опікунське служіння",
-            "Бібліотекар",
-            "Режисер / Драмгурт",
-            "Господарське служіння",
-            "Діловодство / Канцелярія",
-            "Місіонерське служіння",
-            "Музичне служіння / Інструменталіст",
-            "Молитовна група",
-            "Братська рада",
-            "Скарбник / Касир",
-            "Рада церкви",
-            "Координатор служінь",
-            "Християнська освіта",
-            "Милосердя / Відвідування хворих",
-            "Будівельний комітет",
-            "Робота з аудіо-відео",
-            "Група порядку / Упорядник",
-            "Організатор заходів",
-            "Звукооператор / Технік",
-            "Інтернет-служіння",
-            "Група прославлення",
-            "Кухонне служіння",
-            "Таборове служіння",
-            "Проповідник",
-            "Дитяче служіння",
-            "Душпастирське консультування",
-            "Регент хору / Диригент",
-            "Загальне служіння / Інше"
-        ];
+      const ST_MINISTRIES = [
+        "Старший пресвітер (пастор)",
+        "Пресвітер (пастор)",
+        "Диякон",
+        "Хор / Співак",
+        "Вчитель недільної школи",
+        "Сестринське служіння",
+        "Молодіжне служіння",
+        "Опікунське служіння",
+        "Бібліотекар",
+        "Режисер / Драмгурт",
+        "Господарське служіння",
+        "Діловодство / Канцелярія",
+        "Місіонерське служіння",
+        "Музичне служіння / Інструменталіст",
+        "Молитовна група",
+        "Братська рада",
+        "Скарбник / Касир",
+        "Рада церкви",
+        "Координатор служінь",
+        "Християнська освіта",
+        "Милосердя / Відвідування хворих",
+        "Будівельний комітет",
+        "Робота з аудіо-відео",
+        "Група порядку / Упорядник",
+        "Організатор заходів",
+        "Звукооператор / Технік",
+        "Інтернет-служіння",
+        "Група прославлення",
+        "Кухонне служіння",
+        "Таборове служіння",
+        "Проповідник",
+        "Дитяче служіння",
+        "Душпастирське консультування",
+        "Регент хору / Диригент",
+        "Загальне служіння / Інше",
+      ];
 
-        const MINISTRY_MAP = {
-            0: "Загальне служіння / Інше",
-            1: "Старший пресвітер (пастор)",
-            2: "Пресвітер (пастор)",
-            3: "Диякон",
-            4: "Хор / Співак",
-            5: "Вчитель недільної школи",
-            6: "Сестринське служіння",
-            7: "Молодіжне служіння",
-            8: "Опікунське служіння",
-            9: "Бібліотекар",
-            11: "Режисер / Драмгурт",
-            13: "Господарське служіння",
-            14: "Діловодство / Канцелярія",
-            16: "Місіонерське служіння",
-            17: "Музичне служіння / Інструменталіст",
-            18: "Молитовна група",
-            19: "Братська рада",
-            20: "Скарбник / Касир",
-            21: "Рада церкви",
-            22: "Координатор служінь",
-            23: "Християнська освіта",
-            24: "Милосердя / Відвідування хворих",
-            25: "Будівельний комітет",
-            26: "Робота з аудіо-відео",
-            27: "Група порядку / Упорядник",
-            28: "Організатор заходів",
-            29: "Звукооператор / Технік",
-            30: "Інтернет-служіння",
-            31: "Група прославлення",
-            32: "Кухонне служіння",
-            33: "Таборове служіння",
-            34: "Проповідник",
-            35: "Дитяче служіння",
-            36: "Душпастирське консультування",
-            37: "Регент хору / Диригент"
-        };
+      const MINISTRY_MAP = {
+        0: "Загальне служіння / Інше",
+        1: "Старший пресвітер (пастор)",
+        2: "Пресвітер (пастор)",
+        3: "Диякон",
+        4: "Хор / Співак",
+        5: "Вчитель недільної школи",
+        6: "Сестринське служіння",
+        7: "Молодіжне служіння",
+        8: "Опікунське служіння",
+        9: "Бібліотекар",
+        11: "Режисер / Драмгурт",
+        13: "Господарське служіння",
+        14: "Діловодство / Канцелярія",
+        16: "Місіонерське служіння",
+        17: "Музичне служіння / Інструменталіст",
+        18: "Молитовна група",
+        19: "Братська рада",
+        20: "Скарбник / Касир",
+        21: "Рада церкви",
+        22: "Координатор служінь",
+        23: "Християнська освіта",
+        24: "Милосердя / Відвідування хворих",
+        25: "Будівельний комітет",
+        26: "Робота з аудіо-відео",
+        27: "Група порядку / Упорядник",
+        28: "Організатор заходів",
+        29: "Звукооператор / Технік",
+        30: "Інтернет-служіння",
+        31: "Група прославлення",
+        32: "Кухонне служіння",
+        33: "Таборове служіння",
+        34: "Проповідник",
+        35: "Дитяче служіння",
+        36: "Душпастирське консультування",
+        37: "Регент хору / Диригент",
+      };
 
-        window.toggleMinistryDropdown = function() {
-            const dropdown = document.getElementById('ministryDropdownContainer');
-            const arrow = document.getElementById('ministryArrow');
-            if (dropdown.classList.contains('hidden')) {
-                dropdown.classList.remove('hidden');
-                arrow.textContent = '▲';
-            } else {
-                dropdown.classList.add('hidden');
-                arrow.textContent = '▼';
-            }
-        };
-
-        function updateSelectedMinistriesText() {
-            const selected = [];
-            ST_MINISTRIES.forEach((mName, index) => {
-                const chk = document.getElementById(`chk_min_${index}`);
-                if (chk && chk.checked) {
-                    selected.push(mName);
-                }
-            });
-            
-            const btnText = document.getElementById('ministrySelectedText');
-            if (selected.length === 0) {
-                btnText.textContent = 'н/д';
-                btnText.className = 'truncate text-gray-500 text-xs w-full';
-            } else {
-                btnText.textContent = selected.join(', ');
-                btnText.className = 'truncate text-gray-100 font-bold text-xs w-full';
-            }
-            document.getElementById('slujinnya').value = JSON.stringify(selected);
+      window.toggleMinistryDropdown = function () {
+        const dropdown = document.getElementById("ministryDropdownContainer");
+        const arrow = document.getElementById("ministryArrow");
+        if (dropdown.classList.contains("hidden")) {
+          dropdown.classList.remove("hidden");
+          arrow.textContent = "▲";
+        } else {
+          dropdown.classList.add("hidden");
+          arrow.textContent = "▼";
         }
+      };
 
-        function loadSelectedMinistries(member) {
-            ST_MINISTRIES.forEach((mName, index) => {
-                const chk = document.getElementById(`chk_min_${index}`);
-                if (chk) chk.checked = false;
-            });
-
-            let ministriesList = [];
-            const rawHistory = member.rawData["05_ISTORIJA"]?.["1_slujinnya"] || member.rawData["04_STRUCTURA"]?.["slujinnya"] || member.rawData["slujinnya"];
-            
-            if (Array.isArray(rawHistory)) {
-                rawHistory.forEach(item => {
-                    if (typeof item === "string") {
-                        ministriesList.push(item);
-                    } else if (item && typeof item === "object") {
-                        if (item.id_slujinnya !== undefined) {
-                            const name = MINISTRY_MAP[item.id_slujinnya];
-                            if (name) ministriesList.push(name);
-                        } else if (item.podiya) {
-                            ministriesList.push(item.podiya);
-                        }
-                    }
-                });
-            } else if (typeof rawHistory === "string") {
-                try {
-                    const parsed = JSON.parse(rawHistory);
-                    if (Array.isArray(parsed)) {
-                        ministriesList = parsed;
-                    }
-                } catch(e) {}
-            }
-
-            ministriesList.forEach(m => {
-                const index = ST_MINISTRIES.indexOf(m);
-                if (index !== -1) {
-                    const chk = document.getElementById(`chk_min_${index}`);
-                    if (chk) chk.checked = true;
-                } else {
-                    const normalized = String(m).toLowerCase().trim();
-                    const matchedIdx = ST_MINISTRIES.findIndex(item => item.toLowerCase().trim() === normalized);
-                    if (matchedIdx !== -1) {
-                        const chk = document.getElementById(`chk_min_${matchedIdx}`);
-                        if (chk) chk.checked = true;
-                    }
-                }
-            });
-
-            updateSelectedMinistriesText();
-        }
-
-        // Populate checkboxes
-        document.addEventListener('DOMContentLoaded', () => {
-            const dropdown = document.getElementById('ministryDropdownContainer');
-            if (dropdown) {
-                ST_MINISTRIES.forEach((mName, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'flex items-center gap-2 hover:bg-zinc-700/60 p-1 rounded cursor-pointer';
-                    div.onclick = (e) => {
-                        e.stopPropagation();
-                    };
-
-                    const chk = document.createElement('input');
-                    chk.type = 'checkbox';
-                    chk.value = mName;
-                    chk.id = `chk_min_${index}`;
-                    chk.className = 'rounded text-purple-600 bg-zinc-900 border-zinc-700 focus:ring-0 cursor-pointer w-4 h-4';
-                    chk.onchange = () => {
-                        updateSelectedMinistriesText();
-                    };
-
-                    const lbl = document.createElement('label');
-                    lbl.htmlFor = `chk_min_${index}`;
-                    lbl.textContent = mName;
-                    lbl.className = 'text-xs text-gray-200 cursor-pointer select-none w-full font-medium';
-
-                    div.appendChild(chk);
-                    div.appendChild(lbl);
-                    dropdown.appendChild(div);
-                });
-            }
+      function updateSelectedMinistriesText() {
+        const selected = [];
+        ST_MINISTRIES.forEach((mName, index) => {
+          const chk = document.getElementById(`chk_min_${index}`);
+          if (chk && chk.checked) {
+            selected.push(mName);
+          }
         });
 
-
-        function checkAuth() {
-            const savedId = localStorage.getItem('user_tg_id');
-            if (savedId === ALLOWED_TG_ID) {
-                authScreen.classList.add('hidden');
-                mainContent.classList.remove('hidden');
-                loadDatabase();
-            } else {
-                authScreen.classList.remove('hidden');
-                mainContent.classList.add('hidden');
-            }
+        const btnText = document.getElementById("ministrySelectedText");
+        if (selected.length === 0) {
+          btnText.textContent = "н/д";
+          btnText.className = "truncate text-gray-500 text-xs w-full";
+        } else {
+          btnText.textContent = selected.join(", ");
+          btnText.className = "truncate text-gray-100 font-bold text-xs w-full";
         }
+        document.getElementById("slujinnya").value = JSON.stringify(selected);
+      }
 
-        btnAuth.onclick = () => {
-            const enteredId = tgIdInput.value.trim();
-            if (enteredId === ALLOWED_TG_ID) {
-                localStorage.setItem('user_tg_id', enteredId);
-                authError.classList.add('hidden');
-                authScreen.classList.add('hidden');
-                mainContent.classList.remove('hidden');
-                loadDatabase();
-            } else {
-                authError.classList.remove('hidden');
-            }
-        };
-
-        tgIdInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') btnAuth.click();
+      function loadSelectedMinistries(member) {
+        ST_MINISTRIES.forEach((mName, index) => {
+          const chk = document.getElementById(`chk_min_${index}`);
+          if (chk) chk.checked = false;
         });
 
-        let allMembers = [];
-        const statusEl = document.getElementById('dbStatus');
+        let ministriesList = [];
+        const rawHistory =
+          member.rawData["05_ISTORIJA"]?.["1_slujinnya"] ||
+          member.rawData["04_STRUCTURA"]?.["slujinnya"] ||
+          member.rawData["slujinnya"];
 
-        function detectGenderWord(pib) {
-            if (!pib) return "брат";
-            const p = String(pib).trim().toLowerCase();
-            const parts = p.split(/\s+/);
-            
-            for (const part of parts) {
-                if (part.endsWith('івна') || part.endsWith('евна') || part.endsWith('овна') || part.endsWith('ична') || part.endsWith('ічна') || part.endsWith('на')) {
-                    return "сестра";
-                }
+        if (Array.isArray(rawHistory)) {
+          rawHistory.forEach((item) => {
+            if (typeof item === "string") {
+              ministriesList.push(item);
+            } else if (item && typeof item === "object") {
+              if (item.id_slujinnya !== undefined) {
+                const name = MINISTRY_MAP[item.id_slujinnya];
+                if (name) ministriesList.push(name);
+              } else if (item.podiya) {
+                ministriesList.push(item.podiya);
+              }
             }
-            for (const part of parts) {
-                if (part.endsWith('ович') || part.endsWith('евич') || part.endsWith('ич')) {
-                    return "брат";
-                }
+          });
+        } else if (typeof rawHistory === "string") {
+          try {
+            const parsed = JSON.parse(rawHistory);
+            if (Array.isArray(parsed)) {
+              ministriesList = parsed;
             }
-            if (p.endsWith('на') || p.endsWith('ва') || p.endsWith('а') || p.endsWith('я')) {
-                return "сестра";
+          } catch (e) {}
+        }
+
+        ministriesList.forEach((m) => {
+          const index = ST_MINISTRIES.indexOf(m);
+          if (index !== -1) {
+            const chk = document.getElementById(`chk_min_${index}`);
+            if (chk) chk.checked = true;
+          } else {
+            const normalized = String(m).toLowerCase().trim();
+            const matchedIdx = ST_MINISTRIES.findIndex(
+              (item) => item.toLowerCase().trim() === normalized,
+            );
+            if (matchedIdx !== -1) {
+              const chk = document.getElementById(`chk_min_${matchedIdx}`);
+              if (chk) chk.checked = true;
             }
+          }
+        });
+
+        updateSelectedMinistriesText();
+      }
+
+      // Populate checkboxes
+      document.addEventListener("DOMContentLoaded", () => {
+        const dropdown = document.getElementById("ministryDropdownContainer");
+        if (dropdown) {
+          ST_MINISTRIES.forEach((mName, index) => {
+            const div = document.createElement("div");
+            div.className =
+              "flex items-center gap-2 hover:bg-zinc-700/60 p-1 rounded cursor-pointer";
+            div.onclick = (e) => {
+              e.stopPropagation();
+            };
+
+            const chk = document.createElement("input");
+            chk.type = "checkbox";
+            chk.value = mName;
+            chk.id = `chk_min_${index}`;
+            chk.className =
+              "rounded text-purple-600 bg-zinc-900 border-zinc-700 focus:ring-0 cursor-pointer w-4 h-4";
+            chk.onchange = () => {
+              updateSelectedMinistriesText();
+            };
+
+            const lbl = document.createElement("label");
+            lbl.htmlFor = `chk_min_${index}`;
+            lbl.textContent = mName;
+            lbl.className =
+              "text-xs text-gray-200 cursor-pointer select-none w-full font-medium";
+
+            div.appendChild(chk);
+            div.appendChild(lbl);
+            dropdown.appendChild(div);
+          });
+        }
+
+        const inputs = document.querySelectorAll(
+          '#memberForm input[type="text"]:not(#searchInput), #memberForm textarea, #memberForm select',
+        );
+        inputs.forEach((el) => {
+          el.addEventListener("focus", (e) => {
+            const target = e.target;
+            // If element has value 'н/д', clear it completely
+            if (target.value && target.value.trim() === "н/д")
+              target.value = "";
+            target.style.color = "#ffffff";
+          });
+          el.addEventListener("blur", (e) => {
+            const target = e.target;
+            // If element is empty, fill with 'н/д'
+            if (target.value && target.value.trim() === "") {
+              target.value = "н/д";
+              target.style.color = "#71717a";
+            } else {
+              target.style.color = "#ffffff";
+            }
+          });
+        });
+
+        // Street address clean-up on load (handled in loadDatabase, but ensure UI fields)
+      });
+
+      // ... Inside loadDatabase check before displaying ...
+      const addrStreetInput = document.getElementById("addr_street");
+      if (addrStreetInput && addrStreetInput.value) {
+        addrStreetInput.value = addrStreetInput.value.replace(/^вул\.\s+/i, "");
+      }
+
+      // When saving, add 'вул.' if it's a street and not other marker
+      // (Assuming addr_street input logic needs update)
+
+      function checkAuth() {
+        const savedId = localStorage.getItem("user_tg_id");
+        if (savedId === ALLOWED_TG_ID) {
+          authScreen.classList.add("hidden");
+          mainContent.classList.remove("hidden");
+          loadDatabase();
+        } else {
+          authScreen.classList.remove("hidden");
+          mainContent.classList.add("hidden");
+        }
+      }
+
+      btnAuth.onclick = () => {
+        const enteredId = tgIdInput.value.trim();
+        if (enteredId === ALLOWED_TG_ID) {
+          localStorage.setItem("user_tg_id", enteredId);
+          authError.classList.add("hidden");
+          authScreen.classList.add("hidden");
+          mainContent.classList.remove("hidden");
+          loadDatabase();
+        } else {
+          authError.classList.remove("hidden");
+        }
+      };
+
+      tgIdInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") btnAuth.click();
+      });
+
+      let allMembers = [];
+      const statusEl = document.getElementById("dbStatus");
+
+      function detectGenderWord(pib) {
+        if (!pib) return "брат";
+        const p = String(pib).trim().toLowerCase();
+        const parts = p.split(/\s+/);
+
+        for (const part of parts) {
+          if (
+            part.endsWith("івна") ||
+            part.endsWith("евна") ||
+            part.endsWith("овна") ||
+            part.endsWith("ична") ||
+            part.endsWith("ічна") ||
+            part.endsWith("на")
+          ) {
+            return "сестра";
+          }
+        }
+        for (const part of parts) {
+          if (
+            part.endsWith("ович") ||
+            part.endsWith("евич") ||
+            part.endsWith("ич")
+          ) {
             return "брат";
+          }
+        }
+        if (
+          p.endsWith("на") ||
+          p.endsWith("ва") ||
+          p.endsWith("а") ||
+          p.endsWith("я")
+        ) {
+          return "сестра";
+        }
+        return "брат";
+      }
+
+      function togglePartnerIdField() {
+        const status = document.getElementById("spouse_status").value;
+        const container = document.getElementById("partner_id_container");
+        const endDateContainer = document.getElementById(
+          "partner_end_date_container",
+        );
+        const startDateContainer = document.getElementById(
+          "partner_start_date_container",
+        );
+
+        if (container) {
+          if (status === "одр.") {
+            container.classList.remove("hidden");
+          } else {
+            container.classList.add("hidden");
+          }
         }
 
-        function togglePartnerIdField() {
-            const status = document.getElementById('spouse_status').value;
-            const container = document.getElementById('partner_id_container');
-            const endDateContainer = document.getElementById('partner_end_date_container');
-            const startDateContainer = document.getElementById('partner_start_date_container');
-            
-            if (container) {
-                if (status === "одр.") {
-                    container.classList.remove('hidden');
-                } else {
-                    container.classList.add('hidden');
-                }
-            }
-            
-            if (endDateContainer) {
-                if (status === "розлуч." || status === "вдов.") {
-                    endDateContainer.classList.remove('hidden');
-                } else {
-                    endDateContainer.classList.add('hidden');
-                }
-            }
-
-            if (startDateContainer) {
-                if (status === "неодруж." || status === "") {
-                    startDateContainer.classList.add('hidden');
-                } else {
-                    startDateContainer.classList.remove('hidden');
-                }
-            }
+        if (endDateContainer) {
+          if (status === "розлуч." || status === "вдов.") {
+            endDateContainer.classList.remove("hidden");
+          } else {
+            endDateContainer.classList.add("hidden");
+          }
         }
 
-        window.resizeDityWidth = function() {
-            const area = document.getElementById('dity');
-            if (!area) return;
-            const text = area.value || '';
-            const lines = text.split('\n');
-            let maxLen = 0;
-            lines.forEach(l => {
-                const clean = l.replace('\r', '').trim();
-                if (clean.length > maxLen) {
-                    maxLen = clean.length;
-                }
-            });
-            if (maxLen > 0) {
-                area.style.width = Math.max(200, maxLen * 8.5 + 24) + 'px';
-                area.style.maxWidth = '100%';
-            } else {
-                area.style.width = '100%';
-            }
-        };
-
-        window.autoResizeDity = function() {
-            const area = document.getElementById('dity');
-            if (area) {
-                area.style.height = 'auto';
-                area.style.height = area.scrollHeight + 'px';
-                window.resizeDityWidth();
-            }
-        };
-
-        window.toggleChildren = function() {
-            const area = document.getElementById('dity');
-            const arrow = document.getElementById('childrenArrow');
-            if (area.classList.contains('hidden')) {
-                area.classList.remove('hidden');
-                arrow.textContent = '▲';
-                // Delay slightly or call immediately to get correct clientHeight/scrollHeight
-                setTimeout(window.autoResizeDity, 0);
-            } else {
-                area.classList.add('hidden');
-                arrow.textContent = '▼';
-            }
+        if (startDateContainer) {
+          if (status === "неодруж." || status === "") {
+            startDateContainer.classList.add("hidden");
+          } else {
+            startDateContainer.classList.remove("hidden");
+          }
         }
+      }
 
-        async function loadDatabase() {
-            try {
-                statusEl.textContent = "Завантаження...";
-                const response = await fetch(baseUrl);
-                
-                if (!response.ok) throw new Error("Помилка мережі або невірний Secret");
-                const data = await response.json();
-                
-                if (data) {
-                    allMembers = [];
-                    Object.keys(data).forEach((id) => {
-                        const nested = data[id];
-                        if (nested) {
-                            let pibName = nested["01_PIB"] || nested["pib"] || `Користувач №${id}`;
-                            allMembers.push({
-                                id: id,
-                                pib: pibName,
-                                rawData: nested
-                            });
-                        }
-                    });
-                    statusEl.textContent = `У базі: ${allMembers.length} осіб`;
-                    updateFilterButtonsUI();
-                } else {
-                    statusEl.textContent = "База порожня";
-                }
-            } catch (error) {
-                console.error("Помилка:", error);
-                statusEl.textContent = "Помилка доступу!";
-            }
-        }
-
-        function updateSelectColor(selectElement) {
-            if (selectElement.id === 'spouse_status') {
-                selectElement.classList.remove('text-gray-500');
-                selectElement.style.color = '#ffffff';
-                return;
-            }
-            if (selectElement.value === "") {
-                selectElement.classList.add('text-gray-500');
-            } else {
-                selectElement.classList.remove('text-gray-500');
-            }
-        }
-
-        const spouseStatusEl = document.getElementById('spouse_status');
-        spouseStatusEl.addEventListener('change', () => {
-            updateSelectColor(spouseStatusEl);
-            togglePartnerIdField();
+      window.resizeDityWidth = function () {
+        const area = document.getElementById("dity");
+        if (!area) return;
+        const text = area.value || "";
+        const lines = text.split("\n");
+        let maxLen = 0;
+        lines.forEach((l) => {
+          const clean = l.replace("\r", "").trim();
+          if (clean.length > maxLen) {
+            maxLen = clean.length;
+          }
         });
-
-        const searchInput = document.getElementById('searchInput');
-        const searchResults = document.getElementById('searchResults');
-        const selectedHeaderPIB = document.getElementById('selectedHeaderPIB');
-        const memberForm = document.getElementById('memberForm');
-
-        let activeFilter = 'present'; // Default filter to show present/active members
-
-        const btnFilterPresent = document.getElementById('btnFilterPresent');
-        const btnFilterLeft = document.getElementById('btnFilterLeft');
-        const btnFilterAll = document.getElementById('btnFilterAll');
-
-        function isMergedProfile(m, list) {
-            if (!m) return false;
-            const rec = m.rawData || {};
-            if (rec["02_OSOBYSTE"]?.["13_status"] === "об'єднано") return true;
-            
-            const pibSelf = String(m.pib || "").trim().toLowerCase();
-            if (!pibSelf) return false;
-            
-            const selfId = Number(m.id);
-            return list.some(other => {
-                const otherId = Number(other.id);
-                if (otherId <= selfId) return false;
-                
-                const otherPib = String(other.pib || "").trim().toLowerCase();
-                if (otherPib !== pibSelf) return false;
-                
-                const otherRec = other.rawData || {};
-                const otherIsLeft = (otherRec["02_OSOBYSTE"]?.["13_status"] === "вибув") || 
-                                     (otherRec["06_VYBUTTYA"]?.["2_prichina"]) || 
-                                     (otherRec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
-                                     (otherRec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
-                const otherIsMerged = (otherRec["02_OSOBYSTE"]?.["13_status"] === "об'єднано");
-                return !otherIsLeft && !otherIsMerged;
-            });
+        if (maxLen > 0) {
+          area.style.width = Math.max(200, maxLen * 8.5 + 24) + "px";
+          area.style.maxWidth = "100%";
+        } else {
+          area.style.width = "100%";
         }
+      };
 
-        function updateFilterButtonsUI() {
-            let presentCount = 0;
-            let leftCount = 0;
-            
-            allMembers.forEach(m => {
-                const rec = m.rawData || {};
-                const isLeft = (rec["02_OSOBYSTE"]?.["13_status"] === "вибув") || 
-                               (rec["06_VYBUTTYA"]?.["2_prichina"]) || 
-                               (rec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
-                               (rec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
-                const isMerged = isMergedProfile(m, allMembers);
-                if (isLeft) {
-                    leftCount++;
-                } else if (!isMerged) {
-                    presentCount++;
-                }
-            });
-
-            btnFilterPresent.textContent = presentCount > 0 ? `НАЯВНІ (${presentCount})` : `НАЯВНІ`;
-            btnFilterLeft.textContent = leftCount > 0 ? `ВИБУЛІ (${leftCount})` : `ВИБУЛІ`;
-            btnFilterAll.textContent = allMembers.length > 0 ? `ВСІ (${allMembers.length})` : `ВСІ`;
-
-            btnFilterPresent.className = activeFilter === 'present' 
-                ? 'flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-blue-600/35 border-blue-500 text-blue-300 shadow-sm cursor-pointer'
-                : 'flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer';
-
-            btnFilterLeft.className = activeFilter === 'left'
-                ? 'flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-amber-600/35 border-amber-500 text-amber-300 shadow-sm cursor-pointer'
-                : 'flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer';
-
-            btnFilterAll.className = activeFilter === 'all'
-                ? 'py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-zinc-700 border-zinc-500 text-white shadow-sm cursor-pointer'
-                : 'py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer';
+      window.autoResizeDity = function () {
+        const area = document.getElementById("dity");
+        if (area) {
+          area.style.height = "auto";
+          area.style.height = area.scrollHeight + "px";
+          window.resizeDityWidth();
         }
+      };
 
-        function triggerSearchReFilter() {
-            const event = new Event('input', { bubbles: true, cancelable: true });
-            searchInput.dispatchEvent(event);
+      window.toggleChildren = function () {
+        const area = document.getElementById("dity");
+        const arrow = document.getElementById("childrenArrow");
+        if (area.classList.contains("hidden")) {
+          area.classList.remove("hidden");
+          arrow.textContent = "▲";
+          // Delay slightly or call immediately to get correct clientHeight/scrollHeight
+          setTimeout(window.autoResizeDity, 0);
+        } else {
+          area.classList.add("hidden");
+          arrow.textContent = "▼";
         }
+      };
 
-        btnFilterPresent.onclick = () => {
-            activeFilter = 'present';
-            updateFilterButtonsUI();
-            triggerSearchReFilter();
-        };
+      async function loadDatabase() {
+        try {
+          statusEl.textContent = "Завантаження...";
+          const response = await fetch(baseUrl);
 
-        btnFilterLeft.onclick = () => {
-            activeFilter = 'left';
-            updateFilterButtonsUI();
-            triggerSearchReFilter();
-        };
+          if (!response.ok)
+            throw new Error("Помилка мережі або невірний Secret");
+          const data = await response.json();
 
-        btnFilterAll.onclick = () => {
-            activeFilter = 'all';
-            updateFilterButtonsUI();
-            triggerSearchReFilter();
-        };
-
-        searchInput.addEventListener('input', (e) => {
-            const txt = e.target.value.trim().toLowerCase();
-            if(txt.length < 1) {
-                searchResults.classList.add('hidden');
-                return;
-            }
-            
-            const matched = allMembers.filter(m => {
-                const passSearch = m.pib && String(m.pib).toLowerCase().includes(txt);
-                if (!passSearch) return false;
-
-                const rec = m.rawData || {};
-                const isLeft = (rec["02_OSOBYSTE"]?.["13_status"] === "вибув") || 
-                               (rec["06_VYBUTTYA"]?.["2_prichina"]) || 
-                               (rec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
-                               (rec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
-                const isMerged = isMergedProfile(m, allMembers);
-
-                if (activeFilter === 'present') return !isLeft && !isMerged;
-                if (activeFilter === 'left') return !!isLeft && !isMerged;
-                return true;
-            });
-            
-            searchResults.innerHTML = '';
-            
-            if(matched.length === 0) {
-                searchResults.innerHTML = '<li class="p-2 text-xs text-gray-500 text-center">Нічого не знайдено</li>';
-            } else {
-                matched.forEach(m => {
-                    const li = document.createElement('li');
-                    li.className = 'p-2 text-xs hover:bg-zinc-700 cursor-pointer text-gray-200 outline-none focus:bg-zinc-700';
-                    li.setAttribute('tabindex', '0');
-                    li.textContent = `${m.pib} (ID: ${m.id})`;
-                    li.onclick = () => selectMember(m.id);
-                    li.onkeydown = (ev) => {
-                        if (ev.key === 'ArrowDown') {
-                            ev.preventDefault();
-                            const next = li.nextElementSibling;
-                            if (next) next.focus();
-                        } else if (ev.key === 'ArrowUp') {
-                            ev.preventDefault();
-                            const prev = li.previousElementSibling;
-                            if (prev) {
-                                prev.focus();
-                            } else {
-                                searchInput.focus();
-                            }
-                        } else if (ev.key === 'Enter') {
-                            ev.preventDefault();
-                            li.click();
-                        }
-                    };
-                    searchResults.appendChild(li);
+          if (data) {
+            allMembers = [];
+            Object.keys(data).forEach((id) => {
+              const nested = data[id];
+              if (nested) {
+                let pibName =
+                  nested["01_PIB"] || nested["pib"] || `Користувач №${id}`;
+                allMembers.push({
+                  id: id,
+                  pib: pibName,
+                  rawData: nested,
                 });
-            }
-            searchResults.classList.remove('hidden');
+              }
+            });
+            statusEl.textContent = `У базі: ${allMembers.length} осіб`;
+            updateFilterButtonsUI();
+          } else {
+            statusEl.textContent = "База порожня";
+          }
+        } catch (error) {
+          console.error("Помилка:", error);
+          statusEl.textContent = "Помилка доступу!";
+        }
+      }
+
+      function updateSelectColor(selectElement) {
+        if (selectElement.id === "spouse_status") {
+          selectElement.classList.remove("text-gray-500");
+          selectElement.style.color = "#ffffff";
+          return;
+        }
+        if (selectElement.value === "") {
+          selectElement.classList.add("text-gray-500");
+        } else {
+          selectElement.classList.remove("text-gray-500");
+        }
+      }
+
+      const spouseStatusEl = document.getElementById("spouse_status");
+      spouseStatusEl.addEventListener("change", () => {
+        updateSelectColor(spouseStatusEl);
+        togglePartnerIdField();
+      });
+
+      const searchInput = document.getElementById("searchInput");
+      const searchResults = document.getElementById("searchResults");
+      const selectedHeaderPIB = document.getElementById("selectedHeaderPIB");
+      const memberForm = document.getElementById("memberForm");
+
+      let activeFilter = "present"; // Default filter to show present/active members
+
+      const btnFilterPresent = document.getElementById("btnFilterPresent");
+      const btnFilterLeft = document.getElementById("btnFilterLeft");
+      const btnFilterAll = document.getElementById("btnFilterAll");
+
+      function isMergedProfile(m, list) {
+        if (!m) return false;
+        const rec = m.rawData || {};
+        if (rec["02_OSOBYSTE"]?.["13_status"] === "об'єднано") return true;
+
+        const pibSelf = String(m.pib || "")
+          .trim()
+          .toLowerCase();
+        if (!pibSelf) return false;
+
+        const selfId = Number(m.id);
+        return list.some((other) => {
+          const otherId = Number(other.id);
+          if (otherId <= selfId) return false;
+
+          const otherPib = String(other.pib || "")
+            .trim()
+            .toLowerCase();
+          if (otherPib !== pibSelf) return false;
+
+          const otherRec = other.rawData || {};
+          const otherIsLeft =
+            otherRec["02_OSOBYSTE"]?.["13_status"] === "вибув" ||
+            otherRec["06_VYBUTTYA"]?.["2_prichina"] ||
+            otherRec["06_VYBUTTYA"]?.["1_d_vybuttya"] ||
+            otherRec["06_VYBUTTYA"]?.["1_d_vybyttya"];
+          const otherIsMerged =
+            otherRec["02_OSOBYSTE"]?.["13_status"] === "об'єднано";
+          return !otherIsLeft && !otherIsMerged;
+        });
+      }
+
+      function updateFilterButtonsUI() {
+        let presentCount = 0;
+        let leftCount = 0;
+
+        allMembers.forEach((m) => {
+          const rec = m.rawData || {};
+          const isLeft =
+            rec["02_OSOBYSTE"]?.["13_status"] === "вибув" ||
+            rec["06_VYBUTTYA"]?.["2_prichina"] ||
+            rec["06_VYBUTTYA"]?.["1_d_vybuttya"] ||
+            rec["06_VYBUTTYA"]?.["1_d_vybyttya"];
+          const isMerged = isMergedProfile(m, allMembers);
+          if (isLeft) {
+            leftCount++;
+          } else if (!isMerged) {
+            presentCount++;
+          }
         });
 
-        searchInput.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') {
-                const firstOption = searchResults.querySelector('li[tabindex="0"]');
-                if (firstOption && !searchResults.classList.contains('hidden')) {
-                    e.preventDefault();
-                    firstOption.focus();
+        btnFilterPresent.textContent =
+          presentCount > 0 ? `НАЯВНІ (${presentCount})` : `НАЯВНІ`;
+        btnFilterLeft.textContent =
+          leftCount > 0 ? `ВИБУЛІ (${leftCount})` : `ВИБУЛІ`;
+        btnFilterAll.textContent =
+          allMembers.length > 0 ? `ВСІ (${allMembers.length})` : `ВСІ`;
+
+        btnFilterPresent.className =
+          activeFilter === "present"
+            ? "flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-blue-600/35 border-blue-500 text-blue-300 shadow-sm cursor-pointer"
+            : "flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer";
+
+        btnFilterLeft.className =
+          activeFilter === "left"
+            ? "flex-1 py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-amber-600/35 border-amber-500 text-amber-300 shadow-sm cursor-pointer"
+            : "flex-1 py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer";
+
+        btnFilterAll.className =
+          activeFilter === "all"
+            ? "py-1 px-1.5 text-[10px] font-black rounded-md border select-none transition-all duration-150 bg-zinc-700 border-zinc-500 text-white shadow-sm cursor-pointer"
+            : "py-1 px-1.5 text-[10px] font-semibold rounded-md border select-none transition-all duration-150 border-borderClr text-gray-400 bg-inputBg hover:text-white cursor-pointer";
+      }
+
+      function triggerSearchReFilter() {
+        const event = new Event("input", { bubbles: true, cancelable: true });
+        searchInput.dispatchEvent(event);
+      }
+
+      btnFilterPresent.onclick = () => {
+        activeFilter = "present";
+        updateFilterButtonsUI();
+        triggerSearchReFilter();
+      };
+
+      btnFilterLeft.onclick = () => {
+        activeFilter = "left";
+        updateFilterButtonsUI();
+        triggerSearchReFilter();
+      };
+
+      btnFilterAll.onclick = () => {
+        activeFilter = "all";
+        updateFilterButtonsUI();
+        triggerSearchReFilter();
+      };
+
+      searchInput.addEventListener("input", (e) => {
+        const txt = e.target.value.trim().toLowerCase();
+        if (txt.length < 1) {
+          searchResults.classList.add("hidden");
+          return;
+        }
+
+        const matched = allMembers.filter((m) => {
+          const passSearch = m.pib && String(m.pib).toLowerCase().includes(txt);
+          if (!passSearch) return false;
+
+          const rec = m.rawData || {};
+          const isLeft =
+            rec["02_OSOBYSTE"]?.["13_status"] === "вибув" ||
+            rec["06_VYBUTTYA"]?.["2_prichina"] ||
+            rec["06_VYBUTTYA"]?.["1_d_vybuttya"] ||
+            rec["06_VYBUTTYA"]?.["1_d_vybyttya"];
+          const isMerged = isMergedProfile(m, allMembers);
+
+          if (activeFilter === "present") return !isLeft && !isMerged;
+          if (activeFilter === "left") return !!isLeft && !isMerged;
+          return true;
+        });
+
+        searchResults.innerHTML = "";
+
+        if (matched.length === 0) {
+          searchResults.innerHTML =
+            '<li class="p-2 text-xs text-gray-500 text-center">Нічого не знайдено</li>';
+        } else {
+          matched.forEach((m) => {
+            const li = document.createElement("li");
+            li.className =
+              "p-2 text-xs hover:bg-zinc-700 cursor-pointer text-gray-200 outline-none focus:bg-zinc-700";
+            li.setAttribute("tabindex", "0");
+            li.textContent = `${m.pib} (ID: ${m.id})`;
+            li.onclick = () => selectMember(m.id);
+            li.onkeydown = (ev) => {
+              if (ev.key === "ArrowDown") {
+                ev.preventDefault();
+                const next = li.nextElementSibling;
+                if (next) next.focus();
+              } else if (ev.key === "ArrowUp") {
+                ev.preventDefault();
+                const prev = li.previousElementSibling;
+                if (prev) {
+                  prev.focus();
+                } else {
+                  searchInput.focus();
                 }
-            }
-        });
+              } else if (ev.key === "Enter") {
+                ev.preventDefault();
+                li.click();
+              }
+            };
+            searchResults.appendChild(li);
+          });
+        }
+        searchResults.classList.remove("hidden");
+      });
 
-        window.addExtraPhoneField = (val = '') => {
-            const container = document.getElementById('phone_fields_container');
-            if (!container) return;
-            const div = document.createElement('div');
-            div.className = 'flex items-center gap-1.5 extra-phone-row animate-fade-in';
-            div.innerHTML = `
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown") {
+          const firstOption = searchResults.querySelector('li[tabindex="0"]');
+          if (firstOption && !searchResults.classList.contains("hidden")) {
+            e.preventDefault();
+            firstOption.focus();
+          }
+        }
+      });
+
+      window.addExtraPhoneField = (val = "") => {
+        const container = document.getElementById("phone_fields_container");
+        if (!container) return;
+        const div = document.createElement("div");
+        div.className =
+          "flex items-center gap-1.5 extra-phone-row animate-fade-in";
+        div.innerHTML = `
                 <span class="text-[10px] text-gray-500 uppercase font-black select-none invisible">осн.</span>
                 <input type="text" class="w-[120px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none extra-phone-input" value="${val}">
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-300 font-bold text-xs px-1 select-none cursor-pointer" title="Видалити номер">×</button>
             `;
-            container.appendChild(div);
-        };
+        container.appendChild(div);
+      };
 
-        window.clearExtraPhones = () => {
-            const container = document.getElementById('tel_extra');
-            if (container) container.value = '';
-            const rows = document.querySelectorAll('.extra-phone-row');
-            rows.forEach(row => row.remove());
-        };
+      window.clearExtraPhones = () => {
+        const container = document.getElementById("tel_extra");
+        if (container) container.value = "";
+        const rows = document.querySelectorAll(".extra-phone-row");
+        rows.forEach((row) => row.remove());
+      };
 
-        window.formatExcelDateClient = (excelDate) => {
-            if (!excelDate) return "";
-            const num = Number(excelDate);
-            if (isNaN(num) || num <= 0) {
-                return String(excelDate).trim();
-            }
-            try {
-                const utc_days = Math.floor(num - 25569);
-                const utc_value = utc_days * 86400;
-                const d = new Date(utc_value * 1000);
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const dd = String(d.getDate()).padStart(2, '0');
-                return `${dd}.${mm}.${yyyy}`;
-            } catch (e) {
-                return String(excelDate);
-            }
-        };
+      window.formatExcelDateClient = (excelDate) => {
+        if (!excelDate) return "";
+        const num = Number(excelDate);
+        if (isNaN(num) || num <= 0) {
+          return String(excelDate).trim();
+        }
+        try {
+          const utc_days = Math.floor(num - 25569);
+          const utc_value = utc_days * 86400;
+          const d = new Date(utc_value * 1000);
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, "0");
+          const dd = String(d.getDate()).padStart(2, "0");
+          return `${dd}.${mm}.${yyyy}`;
+        } catch (e) {
+          return String(excelDate);
+        }
+      };
 
-        window.transformAddressString = (str) => {
-            if (!str) return '';
-            str = str.trim();
-            const firstDigitIdx = str.search(/\d/);
-            if (firstDigitIdx === -1) return str;
-            
-            let streetPart = str.substring(0, firstDigitIdx).trim();
-            streetPart = streetPart.replace(/,$/, '').trim();
-            
-            const numPart = str.substring(firstDigitIdx).trim();
-            
-            const slashParts = numPart.split('/');
-            if (slashParts.length > 1) {
-                let part1 = slashParts[0].trim();
-                let afterSlash = slashParts.slice(1).join('/').trim();
-                
-                const commaParts = afterSlash.split(',').map(p => p.trim()).filter(Boolean);
-                
-                const cleanVal = (v) => {
-                    return v.replace(/^(б|буд|кор|корп|кв|к|б\.|буд\.|кор\.|корп\.|кв\.|к\.)\s*/i, '').trim();
-                };
+      window.transformAddressString = (str) => {
+        if (!str) return "";
+        str = str.trim();
+        const firstDigitIdx = str.search(/\d/);
+        if (firstDigitIdx === -1) return str;
 
-                let bVal = cleanVal(part1);
-                
-                if (commaParts.length === 1) {
-                    let квVal = cleanVal(commaParts[0]);
-                    return `${streetPart}, б. ${bVal}, кв. ${квVal}`;
-                } else if (commaParts.length >= 2) {
-                    let корVal = cleanVal(commaParts[0]);
-                    let квVal = cleanVal(commaParts[1]);
-                    return `${streetPart}, б. ${bVal}, кор. ${корVal}, кв. ${квVal}`;
-                }
-            }
-            return str;
-        };
+        let streetPart = str.substring(0, firstDigitIdx).trim();
+        streetPart = streetPart.replace(/,$/, "").trim();
 
-        window.addGroupMovementRow = (d_begin = '', d_end = '', group = '', address = '') => {
-            const container = document.getElementById('movement_fields_container');
-            if (!container) return;
-            const transformedAddress = window.transformAddressString(address);
-            const div = document.createElement('div');
-            div.className = 'flex flex-wrap items-center gap-2 bg-neutral-900/50 p-2 rounded border border-zinc-800/60 movement-row animate-fade-in';
-            div.innerHTML = `
+        const numPart = str.substring(firstDigitIdx).trim();
+
+        const slashParts = numPart.split("/");
+        if (slashParts.length > 1) {
+          let part1 = slashParts[0].trim();
+          let afterSlash = slashParts.slice(1).join("/").trim();
+
+          const commaParts = afterSlash
+            .split(",")
+            .map((p) => p.trim())
+            .filter(Boolean);
+
+          const cleanVal = (v) => {
+            return v
+              .replace(
+                /^(б|буд|кор|корп|кв|к|б\.|буд\.|кор\.|корп\.|кв\.|к\.)\s*/i,
+                "",
+              )
+              .trim();
+          };
+
+          let bVal = cleanVal(part1);
+
+          if (commaParts.length === 1) {
+            let квVal = cleanVal(commaParts[0]);
+            return `${streetPart}, б. ${bVal}, кв. ${квVal}`;
+          } else if (commaParts.length >= 2) {
+            let корVal = cleanVal(commaParts[0]);
+            let квVal = cleanVal(commaParts[1]);
+            return `${streetPart}, б. ${bVal}, кор. ${корVal}, кв. ${квVal}`;
+          }
+        }
+        return str;
+      };
+
+      window.addGroupMovementRow = (
+        d_begin = "",
+        d_end = "",
+        group = "",
+        address = "",
+      ) => {
+        const container = document.getElementById("movement_fields_container");
+        if (!container) return;
+        const transformedAddress = window.transformAddressString(address);
+        const div = document.createElement("div");
+        div.className =
+          "flex flex-wrap items-center gap-2 bg-neutral-900/50 p-2 rounded border border-zinc-800/60 movement-row animate-fade-in";
+        div.innerHTML = `
                 <div class="flex flex-wrap gap-2 flex-1">
                     <div>
                         <label class="block text-[9px] text-gray-500 uppercase select-none">Початок</label>
@@ -952,688 +1497,883 @@
                 </div>
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-300 font-bold text-xs p-1 select-none cursor-pointer self-center mt-3" title="Видалити запис">×</button>
             `;
-            container.appendChild(div);
-        };
+        container.appendChild(div);
+      };
 
-        function valOrEmpty(val) {
-            return (val === undefined || val === null) ? '' : String(val);
+      function valOrEmpty(val) {
+        return val === undefined || val === null ? "" : String(val);
+      }
+
+      function valOrNA(val) {
+        if (val === undefined || val === null) return "н/д";
+        const s = String(val).trim();
+        if (
+          s === "" ||
+          s.toLowerCase() === "не визначено" ||
+          s.toLowerCase() === "не визначена" ||
+          s.toLowerCase() === "не визначеного" ||
+          s.toLowerCase() === "не вказано" ||
+          s.toLowerCase() === "н/д" ||
+          s.toLowerCase() === "н/д "
+        ) {
+          return "н/д";
+        }
+        return s;
+      }
+
+      function valToSave(val) {
+        if (!val) return "";
+        const s = String(val).trim();
+        if (s.toLowerCase() === "н/д" || s === "") {
+          return "";
+        }
+        return s;
+      }
+
+      function applyGrayForNA(element) {
+        if (!element) return;
+        if (
+          element.id === "spouse_status" ||
+          element.id === "partner_name_input" ||
+          element.id === "spouse_id" ||
+          element.id === "docId" ||
+          element.id === "pibHidden" ||
+          element.id === "pib_01" ||
+          element.id === "pib_main" ||
+          element.id === "pib_edit"
+        ) {
+          element.style.color = "#ffffff";
+          element.classList.remove("text-gray-500");
+          return;
+        }
+        const val = element.value || "";
+        if (val.trim() === "н/д" || val.trim() === "") {
+          element.style.color = "#71717a"; // zinc-500 gray color
+        } else {
+          element.style.color = "#ffffff"; // white
+        }
+      }
+
+      function setAndStyleField(id, val) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = valOrNA(val);
+        applyGrayForNA(el);
+      }
+
+      function getVal(id) {
+        const el = document.getElementById(id);
+        return el ? valToSave(el.value) : "";
+      }
+
+      function parseDityText(text) {
+        if (!text || text.trim() === "") return [];
+        return text
+          .split("\n")
+          .map((line) => {
+            const parts = line.split("-").map((p) => p.trim());
+            return { name: parts[0] || "", birthday: parts[1] || "" };
+          })
+          .filter((item) => item.name || item.birthday);
+      }
+
+      function formatDityJson(jsonArray) {
+        if (!Array.isArray(jsonArray)) return "";
+        return jsonArray
+          .map((item) => `${item.name || ""} - ${item.birthday || ""}`)
+          .join("\n");
+      }
+
+      function safeStringify(arr) {
+        if (!arr) return "[]";
+        try {
+          return JSON.stringify(arr, null, 2);
+        } catch (e) {
+          return "[]";
+        }
+      }
+
+      function selectMember(id) {
+        const member = allMembers.find((m) => m.id === id);
+        if (!member) return;
+
+        searchResults.classList.add("hidden");
+        searchInput.value = "";
+
+        selectedHeaderPIB.textContent = String(member.pib).toUpperCase();
+        selectedHeaderPIB.classList.remove("hidden");
+        idDisplay.classList.remove("hidden");
+        memberForm.classList.remove("hidden");
+
+        const dbHistory = member.rawData["07_ISTORIYA"];
+        const hasHistory =
+          dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0;
+        const historyBadge = document.getElementById("historyBadge");
+        if (hasHistory) {
+          historyBadge.classList.remove("hidden");
+        } else {
+          historyBadge.classList.add("hidden");
         }
 
-        function valOrNA(val) {
-            if (val === undefined || val === null) return 'н/д';
-            const s = String(val).trim();
-            if (s === '' || s.toLowerCase() === 'не визначено' || s.toLowerCase() === 'не визначена' || s.toLowerCase() === 'не визначеного' || s.toLowerCase() === 'не вказано' || s.toLowerCase() === 'н/д' || s.toLowerCase() === 'н/д ') {
-                return 'н/д';
-            }
-            return s;
+        document.getElementById("docId").value = member.id;
+        document.getElementById("pibHidden").value = member.pib;
+        document.getElementById("idDisplay").textContent = `ID: ${member.id}`;
+        document.getElementById("pib_edit").value = valOrEmpty(
+          member.rawData["01_PIB"] || member.rawData["pib"] || member.pib,
+        );
+
+        document.getElementById("pib_01").value = valOrEmpty(
+          member.rawData["01_PIB"] || member.rawData["pib"],
+        );
+        document.getElementById("pib_main").value = valOrEmpty(
+          member.rawData["pib"] || member.rawData["01_PIB"],
+        );
+
+        const personal = member.rawData["02_OSOBYSTE"] || {};
+        const address = member.rawData["03_ADRESA"] || {};
+        const structura = member.rawData["04_STRUCTURA"] || {};
+        const vybuttya = member.rawData["06_VYBUTTYA"] || {};
+
+        const shlyubArray = personal["4_shlyub_history"];
+        const shlyubHistory =
+          Array.isArray(shlyubArray) && shlyubArray.length > 0
+            ? shlyubArray[0]
+            : {};
+
+        setAndStyleField("stat", personal["2_stat"]);
+        setAndStyleField(
+          "d_nar",
+          personal["1_d_narodjennya"] || personal["3_d_nar"],
+        );
+        // Clear previous extra phone fields
+        window.clearExtraPhones();
+
+        const fullPhoneString = valOrEmpty(
+          personal["2_tel"] || personal["phone"] || personal["tel"],
+        );
+        const phoneParts = fullPhoneString
+          .split(/[;,\/]/)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0);
+
+        let p1 = "";
+        let p2 = "";
+        if (phoneParts.length > 0) {
+          p1 = phoneParts[0];
+        }
+        if (phoneParts.length > 1) {
+          p2 = phoneParts[1];
         }
 
-        function valToSave(val) {
-            if (!val) return '';
-            const s = String(val).trim();
-            if (s.toLowerCase() === 'н/д' || s === '') {
-                return '';
-            }
-            return s;
+        const dbExtra = valOrEmpty(personal["tel_extra"]);
+        if (dbExtra && dbExtra !== p1) {
+          if (!p2) {
+            p2 = dbExtra;
+          }
         }
 
-        function applyGrayForNA(element) {
-            if (!element) return;
-            if (element.id === 'spouse_status' || element.id === 'partner_name_input' || element.id === 'spouse_id' || element.id === 'docId' || element.id === 'pibHidden' || element.id === 'pib_01' || element.id === 'pib_main' || element.id === 'pib_edit') {
-                element.style.color = '#ffffff';
-                element.classList.remove('text-gray-500');
-                return;
-            }
-            const val = element.value || '';
-            if (val.trim() === 'н/д' || val.trim() === '') {
-                element.style.color = '#71717a'; // zinc-500 gray color
-            } else {
-                element.style.color = '#ffffff'; // white
-            }
+        const mainPhonePref = personal["main_phone"] || "1";
+
+        if (mainPhonePref === "2" && p2) {
+          setAndStyleField("tel", p1);
+          setAndStyleField("tel_extra", p2);
+          document.getElementById("radio_phone_2").checked = true;
+        } else {
+          setAndStyleField("tel", p1);
+          setAndStyleField("tel_extra", p2);
+          if (mainPhonePref === "2") {
+            document.getElementById("radio_phone_2").checked = true;
+          } else {
+            document.getElementById("radio_phone_1").checked = true;
+          }
         }
 
-        function setAndStyleField(id, val) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.value = valOrNA(val);
-            applyGrayForNA(el);
+        const povnaSimya = personal["5_povna_simya"];
+        if (povnaSimya === true || povnaSimya === "true") {
+          document.getElementById("family_status").value = "true";
+        } else if (povnaSimya === false || povnaSimya === "false") {
+          document.getElementById("family_status").value = "false";
+        } else {
+          document.getElementById("family_status").value = "";
         }
 
-        function getVal(id) {
-            const el = document.getElementById(id);
-            return el ? valToSave(el.value) : '';
+        setAndStyleField("education", personal["7_osvita"]);
+        setAndStyleField("profession", personal["8_profesiya"]);
+        setAndStyleField("social_status", personal["6_socialniy"]);
+        setAndStyleField("messengers", personal["3_messengers"]);
+        setAndStyleField("dity", formatDityJson(personal["9_dity"]));
+        window.autoResizeDity();
+        setAndStyleField("status", personal["13_status"]);
+
+        setAndStyleField(
+          "addr_city",
+          address["1_misto"] || address["1_nas_punkt"],
+        );
+        setAndStyleField(
+          "addr_street",
+          address["2_vulycja"] || address["2_vulitsya"],
+        );
+        setAndStyleField(
+          "addr_house",
+          address["3_budynok"] || address["3_budinok"],
+        );
+        setAndStyleField("addr_korpus", address["4_korpus"]);
+        setAndStyleField(
+          "addr_flat",
+          address["5_kvartyra"] || address["4_kvartira"],
+        );
+
+        setAndStyleField("rayon", structura["1_rayon"] || personal["rayon"]);
+        setAndStyleField("opika", structura["4_opika"] || personal["opika"]);
+        setAndStyleField("group_name", structura["2_grupa"]);
+        setAndStyleField("d_vodnogo", structura["5_d_vodnogo"]);
+        setAndStyleField("d_vstupu", structura["6_d_vstupu"]);
+        setAndStyleField("san", structura["3_san"]);
+        setAndStyleField("zvidky", structura["7_zvidky_primitka"]);
+        setAndStyleField("vidviduvanist", structura["8_vidviduvanist"]);
+        setAndStyleField("prysutnist", structura["9_prysutnist"]);
+        loadSelectedMinistries(member);
+
+        document.getElementById("spouse_status").value = valOrEmpty(
+          shlyubHistory["status"],
+        );
+        updateSelectColor(document.getElementById("spouse_status"));
+        togglePartnerIdField();
+        setAndStyleField("d_shlyub_from", shlyubHistory["d_shlyubu_begin"]);
+        setAndStyleField("d_shlyub_end", shlyubHistory["d_shlyubu_end"]);
+        const sId = valOrEmpty(
+          shlyubHistory["podruzhzhya_id"] || shlyubHistory["podrujya_id"],
+        );
+        document.getElementById("spouse_id").value = sId;
+
+        const partner = allMembers.find((m) => String(m.id) === String(sId));
+        document.getElementById("partner_name_input").value = partner
+          ? partner.pib
+          : sId
+            ? ""
+            : "";
+
+        setAndStyleField("exit_reason", vybuttya["2_prichina"]);
+        setAndStyleField(
+          "exit_date",
+          vybuttya["1_d_vybuttya"] || vybuttya["1_d_vybyttya"],
+        );
+        setAndStyleField(
+          "exit_explanation",
+          vybuttya["vybuv_prymitka"] ||
+            vybuttya["3_primitka"] ||
+            vybuttya["primitka"],
+        );
+
+        // Clear and load Group/Address movement history
+        const movementContainer = document.getElementById(
+          "movement_fields_container",
+        );
+        if (movementContainer) {
+          movementContainer.innerHTML = "";
+        }
+        const historyList = structura["movement_history"] || [];
+        if (Array.isArray(historyList) && historyList.length > 0) {
+          historyList.forEach((m) => {
+            window.addGroupMovementRow(
+              m.d_begin || "",
+              m.d_end || "",
+              m.group_name || "",
+              m.address || "",
+            );
+          });
+        } else {
+          let initBegin = "";
+          let rawBegin =
+            member.rawData["d_begin"] ||
+            structura["d_begin"] ||
+            member.rawData["04_STRUCTURA"]?.["d_begin"] ||
+            "";
+          if (rawBegin) {
+            initBegin = window.formatExcelDateClient(rawBegin);
+          }
+          const initGroup = structura["2_grupa"] || "";
+          const initAddrStr = [
+            address["2_vulycja"] || address["2_vulitsya"] || "",
+            address["3_budynok"] || address["3_budinok"] || "",
+            address["5_kvartyra"] || address["4_kvartira"] || "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+
+          if (initBegin || initGroup || initAddrStr) {
+            window.addGroupMovementRow(initBegin, "", initGroup, initAddrStr);
+          }
         }
 
-        function parseDityText(text) {
-            if (!text || text.trim() === '') return [];
-            return text.split('\n').map(line => {
-                const parts = line.split('-').map(p => p.trim());
-                return { name: parts[0] || '', birthday: parts[1] || '' };
-            }).filter(item => item.name || item.birthday);
-        }
+        updateDynamicTimeline(member);
+      }
 
-        function formatDityJson(jsonArray) {
-            if (!Array.isArray(jsonArray)) return '';
-            return jsonArray.map(item => `${item.name || ''} - ${item.birthday || ''}`).join('\n');
-        }
+      function updateDynamicTimeline(member) {
+        const timelineContainer = document.getElementById(
+          "dynamicTimelineContainer",
+        );
+        const timelineSection = document.getElementById(
+          "dynamicTimelineSection",
+        );
+        const eventsPart = document.getElementById("dynamicTimelineEventsPart");
 
-        function safeStringify(arr) {
-            if (!arr) return '[]';
-            try {
-                return JSON.stringify(arr, null, 2);
-            } catch(e) {
-                return '[]';
-            }
-        }
+        const dbHistory = member.rawData["07_ISTORIYA"];
+        if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
+          if (eventsPart) eventsPart.classList.remove("hidden");
+          const titleEl = timelineSection.querySelector("h3");
+          if (titleEl) titleEl.textContent = "ІСТОРІЯ ЗМІН";
+          timelineContainer.innerHTML = "";
 
-        function selectMember(id) {
-            const member = allMembers.find(m => m.id === id);
-            if(!member) return;
+          const baptismEvent = dbHistory.find(
+            (h) => h.podiya === "Водне хрещення",
+          );
+          const baptismDate = baptismEvent
+            ? String(baptismEvent.d_podiyi || "").trim()
+            : null;
 
-            searchResults.classList.add('hidden');
-            searchInput.value = '';
-            
-            selectedHeaderPIB.textContent = String(member.pib).toUpperCase();
-            memberForm.classList.remove('hidden');
+          dbHistory.forEach((e) => {
+            const div = document.createElement("div");
+            div.className =
+              "flex items-center gap-2 border-b border-zinc-800/60 py-0.5 md:py-1 last:border-0";
 
-            const dbHistory = member.rawData["07_ISTORIYA"];
-            const hasHistory = dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0;
-            const historyBadge = document.getElementById('historyBadge');
-            if (hasHistory) {
-                historyBadge.classList.remove('hidden');
-            } else {
-                historyBadge.classList.add('hidden');
-            }
+            let icon = "📝";
+            const pLower = String(e.podiya || "").toLowerCase();
+            if (e.podiya === "Водне хрещення") icon = "🌊";
+            else if (e.podiya === "Вил." || pLower.includes("вилучен"))
+              icon = "🚫";
+            else if (e.podiya === "прийн." || pLower.includes("прийнят"))
+              icon = "📓";
+            else if (e.podiya === "відп." || pLower.includes("вибуття"))
+              icon = "🚪";
+            else if (e.podiya === "емігр.") icon = "✈️";
+            else if (
+              e.podiya === "пом." ||
+              pLower.includes("смерть") ||
+              pLower.includes("пом.")
+            )
+              icon = "🕊️";
+            else if (pLower.includes("об'єднано")) icon = "🔗";
 
-            document.getElementById('docId').value = member.id;
-            document.getElementById('pibHidden').value = member.pib;
-            document.getElementById('idDisplay').textContent = `ID: ${member.id}`;
-            document.getElementById('pib_edit').value = valOrEmpty(member.rawData["01_PIB"] || member.rawData["pib"] || member.pib);
+            const isAcceptance =
+              e.podiya === "прийн." || pLower.includes("прийнят");
+            const hasSameDateBaptism =
+              isAcceptance &&
+              baptismDate &&
+              String(e.d_podiyi || "").trim() === baptismDate;
+            const detailsToRender = hasSameDateBaptism
+              ? ""
+              : e.prychyna_detali || "";
 
-            document.getElementById('pib_01').value = valOrEmpty(member.rawData["01_PIB"] || member.rawData["pib"]);
-            document.getElementById('pib_main').value = valOrEmpty(member.rawData["pib"] || member.rawData["01_PIB"]);
-
-            const personal = member.rawData["02_OSOBYSTE"] || {};
-            const address = member.rawData["03_ADRESA"] || {};
-            const structura = member.rawData["04_STRUCTURA"] || {};
-            const vybuttya = member.rawData["06_VYBUTTYA"] || {};
-            
-            const shlyubArray = personal["4_shlyub_history"];
-            const shlyubHistory = (Array.isArray(shlyubArray) && shlyubArray.length > 0) ? shlyubArray[0] : {};
-
-            setAndStyleField('stat', personal["2_stat"]);
-            setAndStyleField('d_nar', personal["1_d_narodjennya"] || personal["3_d_nar"]);
-            // Clear previous extra phone fields
-            window.clearExtraPhones();
-
-            const fullPhoneString = valOrEmpty(personal["2_tel"] || personal["phone"] || personal["tel"]);
-            const phoneParts = fullPhoneString.split(/[;,\/]/).map(p => p.trim()).filter(p => p.length > 0);
-            
-            let p1 = '';
-            let p2 = '';
-            if (phoneParts.length > 0) {
-                p1 = phoneParts[0];
-            }
-            if (phoneParts.length > 1) {
-                p2 = phoneParts[1];
-            }
-            
-            const dbExtra = valOrEmpty(personal["tel_extra"]);
-            if (dbExtra && dbExtra !== p1) {
-                if (!p2) {
-                    p2 = dbExtra;
-                }
+            let displayPodiya = e.podiya || "";
+            if (isAcceptance) {
+              displayPodiya = "прийн.";
             }
 
-            const mainPhonePref = personal["main_phone"] || "1";
-            
-            if (mainPhonePref === "2" && p2) {
-                setAndStyleField('tel', p1);
-                setAndStyleField('tel_extra', p2);
-                document.getElementById('radio_phone_2').checked = true;
-            } else {
-                setAndStyleField('tel', p1);
-                setAndStyleField('tel_extra', p2);
-                if (mainPhonePref === "2") {
-                    document.getElementById('radio_phone_2').checked = true;
-                } else {
-                    document.getElementById('radio_phone_1').checked = true;
-                }
-            }
-            
-            const povnaSimya = personal["5_povna_simya"];
-            if (povnaSimya === true || povnaSimya === "true") {
-                document.getElementById('family_status').value = "true";
-            } else if (povnaSimya === false || povnaSimya === "false") {
-                document.getElementById('family_status').value = "false";
-            } else {
-                document.getElementById('family_status').value = "";
-            }
-
-            setAndStyleField('education', personal["7_osvita"]);
-            setAndStyleField('profession', personal["8_profesiya"]);
-            setAndStyleField('social_status', personal["6_socialniy"]);
-            setAndStyleField('messengers', personal["3_messengers"]);
-            setAndStyleField('dity', formatDityJson(personal["9_dity"]));
-            window.autoResizeDity();
-            setAndStyleField('status', personal["13_status"]);
-
-            setAndStyleField('addr_city', address["1_misto"] || address["1_nas_punkt"]);
-            setAndStyleField('addr_street', address["2_vulycja"] || address["2_vulitsya"]);
-            setAndStyleField('addr_house', address["3_budynok"] || address["3_budinok"]);
-            setAndStyleField('addr_korpus', address["4_korpus"]);
-            setAndStyleField('addr_flat', address["5_kvartyra"] || address["4_kvartira"]);
-
-            setAndStyleField('rayon', structura["1_rayon"] || personal["rayon"]);
-            setAndStyleField('opika', structura["4_opika"] || personal["opika"]);
-            setAndStyleField('group_name', structura["2_grupa"]);
-            setAndStyleField('d_vodnogo', structura["5_d_vodnogo"]);
-            setAndStyleField('d_vstupu', structura["6_d_vstupu"]);
-            setAndStyleField('san', structura["3_san"]);
-            setAndStyleField('zvidky', structura["7_zvidky_primitka"]);
-            setAndStyleField('vidviduvanist', structura["8_vidviduvanist"]);
-            setAndStyleField('prysutnist', structura["9_prysutnist"]);
-            loadSelectedMinistries(member);
-
-            document.getElementById('spouse_status').value = valOrEmpty(shlyubHistory["status"]);
-            updateSelectColor(document.getElementById('spouse_status'));
-            togglePartnerIdField();
-            setAndStyleField('d_shlyub_from', shlyubHistory["d_shlyubu_begin"]);
-            setAndStyleField('d_shlyub_end', shlyubHistory["d_shlyubu_end"]);
-            const sId = valOrEmpty(shlyubHistory["podruzhzhya_id"] || shlyubHistory["podrujya_id"]);
-            document.getElementById('spouse_id').value = sId;
-            
-            const partner = allMembers.find(m => String(m.id) === String(sId));
-            document.getElementById('partner_name_input').value = partner ? partner.pib : (sId ? "" : "");
-
-            setAndStyleField('exit_reason', vybuttya["2_prichina"]);
-            setAndStyleField('exit_date', vybuttya["1_d_vybuttya"] || vybuttya["1_d_vybyttya"]);
-            setAndStyleField('exit_explanation', vybuttya["vybuv_prymitka"] || vybuttya["3_primitka"] || vybuttya["primitka"]);
-
-            // Clear and load Group/Address movement history
-            const movementContainer = document.getElementById('movement_fields_container');
-            if (movementContainer) {
-                movementContainer.innerHTML = '';
-            }
-            const historyList = structura["movement_history"] || [];
-            if (Array.isArray(historyList) && historyList.length > 0) {
-                historyList.forEach(m => {
-                    window.addGroupMovementRow(m.d_begin || '', m.d_end || '', m.group_name || '', m.address || '');
-                });
-            } else {
-                let initBegin = '';
-                let rawBegin = member.rawData["d_begin"] || structura["d_begin"] || member.rawData["04_STRUCTURA"]?.["d_begin"] || '';
-                if (rawBegin) {
-                    initBegin = window.formatExcelDateClient(rawBegin);
-                }
-                const initGroup = structura["2_grupa"] || '';
-                const initAddrStr = [
-                    address["2_vulycja"] || address["2_vulitsya"] || '',
-                    address["3_budynok"] || address["3_budinok"] || '',
-                    address["5_kvartyra"] || address["4_kvartira"] || ''
-                ].filter(Boolean).join(', ');
-
-                if (initBegin || initGroup || initAddrStr) {
-                    window.addGroupMovementRow(initBegin, '', initGroup, initAddrStr);
-                }
-            }
-
-            updateDynamicTimeline(member);
-        }
-
-        function updateDynamicTimeline(member) {
-            const timelineContainer = document.getElementById('dynamicTimelineContainer');
-            const timelineSection = document.getElementById('dynamicTimelineSection');
-            const eventsPart = document.getElementById('dynamicTimelineEventsPart');
-            
-             const dbHistory = member.rawData["07_ISTORIYA"];
-             if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
-                 if (eventsPart) eventsPart.classList.remove('hidden');
-                 const titleEl = timelineSection.querySelector('h3');
-                 if (titleEl) titleEl.textContent = "ІСТОРІЯ ЗМІН";
-                 timelineContainer.innerHTML = '';
-                 
-                 const baptismEvent = dbHistory.find(h => h.podiya === "Водне хрещення");
-                 const baptismDate = baptismEvent ? String(baptismEvent.d_podiyi || "").trim() : null;
-                 
-                 dbHistory.forEach(e => {
-                     const div = document.createElement('div');
-                     div.className = 'flex items-center gap-2 border-b border-zinc-800/60 py-0.5 md:py-1 last:border-0';
-                     
-                     let icon = "📝";
-                     const pLower = String(e.podiya || "").toLowerCase();
-                     if (e.podiya === "Водне хрещення") icon = "🌊";
-                     else if (e.podiya === "Вил." || pLower.includes("вилучен")) icon = "🚫";
-                     else if (e.podiya === "прийн." || pLower.includes("прийнят")) icon = "📓";
-                     else if (e.podiya === "відп." || pLower.includes("вибуття")) icon = "🚪";
-                     else if (e.podiya === "емігр.") icon = "✈️";
-                     else if (e.podiya === "пом." || pLower.includes("смерть") || pLower.includes("пом.")) icon = "🕊️";
-                     else if (pLower.includes("об'єднано")) icon = "🔗";
-
-                     const isAcceptance = e.podiya === "прийн." || pLower.includes("прийнят");
-                     const hasSameDateBaptism = isAcceptance && baptismDate && String(e.d_podiyi || "").trim() === baptismDate;
-                     const detailsToRender = hasSameDateBaptism ? "" : (e.prychyna_detali || "");
-
-                     let displayPodiya = e.podiya || "";
-                     if (isAcceptance) {
-                         displayPodiya = "прийн.";
-                     }
-
-                     div.innerHTML = `
+            div.innerHTML = `
                          <span class="font-mono text-[9px] text-sky-400 bg-sky-950/80 px-1 py-0.5 rounded border border-sky-900/30 whitespace-nowrap">${e.d_podiyi || "—"}</span>
                          <div class="text-[11px] flex flex-wrap items-center gap-1.5">
                              <span class="font-bold text-gray-200">${icon} ${displayPodiya}</span>
-                             ${detailsToRender ? `<span class="text-[10px] text-zinc-400 italic">${detailsToRender}</span>` : ''}
+                             ${detailsToRender ? `<span class="text-[10px] text-zinc-400 italic">${detailsToRender}</span>` : ""}
                          </div>
                      `;
-                     timelineContainer.appendChild(div);
-                 });
-                 return;
-             }
+            timelineContainer.appendChild(div);
+          });
+          return;
+        }
 
-            const structura = member.rawData["04_STRUCTURA"] || {};
-            const vybuttya = member.rawData["06_VYBUTTYA"] || {};
-            const personal = member.rawData["02_OSOBYSTE"] || {};
-            
-            const dVodnogo = String(structura["5_d_vodnogo"] || "").trim();
-            const dVstupu = String(structura["6_d_vstupu"] || "").trim();
-            const zvidky = String(structura["7_zvidky_primitka"] || "").trim();
-            
-            const dVybuttya = String(vybuttya["1_d_vybuttya"] || vybuttya["1_d_vybyttya"] || "").trim();
-            const prichina = String(vybuttya["2_prichina"] || "").trim();
-            const vybuvPrymitka = String(vybuttya["vybuv_prymitka"] || vybuttya["3_primitka"] || vybuttya["primitka"] || "").trim();
-            
-            const events = [];
-            
-            // 1. Water Baptism
-            if (dVodnogo) {
-                events.push({
-                    date: dVodnogo,
-                    title: "🌊 Водне хрещення",
-                    desc: ""
-                });
-            }
-            
-            // 2. Formal Entry
-            if (dVstupu) {
-                let entryTitle = "📎 Прийняття в члени церкви";
-                if (zvidky) {
-                    entryTitle += ` (${zvidky})`;
-                }
-                events.push({
-                    date: dVstupu,
-                    title: entryTitle,
-                    desc: ""
-                });
-            }
-            
-            // 3. Scan fields for excommunication notes
-            const textLower = vybuvPrymitka.toLowerCase();
-            const zvidkyLower = zvidky.toLowerCase();
-            
-            // Check for explicit "вил" pattern
-            const excomMatches = vybuvPrymitka.match(/(вил\.|вилуч\.|вилучена|вилучений)\s*(\d{2}[\.\/]\d{2}[\.\/]\d{2,4})/i);
-            if (excomMatches) {
-                events.push({
-                    date: excomMatches[2],
-                    title: "🚫 Вилучення з членів церкви",
-                    desc: vybuvPrymitka
-                });
-            } else if (textLower.includes("вилуч") || textLower.includes("блуд") || zvidkyLower.includes("вилуч")) {
-                const anyDates = vybuvPrymitka.match(/\d{2}[\.\/]\d{2}[\.\/]\d{2,4}/g) || [];
-                if (anyDates.length > 0) {
-                    anyDates.forEach(d => {
-                        if (d !== dVodnogo && d !== dVstupu && d !== dVybuttya) {
-                            events.push({
-                                date: d,
-                                title: "⚠️ Вилучення (історична позначка)",
-                                desc: vybuvPrymitka
-                            });
-                        }
-                    });
-                } else if (textLower.includes("вилуч. за блуд") || textLower.includes("вил. за блуд")) {
-                    events.push({
-                        date: "історична",
-                        title: "⚠️ Був вилучений за блуд (згідно з приміткою)",
-                        desc: vybuvPrymitka
-                    });
-                }
-            }
-            
-            // 4. Departure
-            if (dVybuttya || prichina || (personal["13_status"] === "вибув")) {
-                let exitTitle = "🚪 Вибуття з церкви";
-                if (prichina) {
-                    exitTitle += ` (причина: ${prichina})`;
-                }
-                events.push({
-                    date: dVybuttya || "н/д",
-                    title: exitTitle,
-                    desc: vybuvPrymitka
-                });
-            }
+        const structura = member.rawData["04_STRUCTURA"] || {};
+        const vybuttya = member.rawData["06_VYBUTTYA"] || {};
+        const personal = member.rawData["02_OSOBYSTE"] || {};
 
-            const parseDateHelper = (str) => {
-                if (!str || str === "н/д" || str === "не вказано" || str === "історична") return new Date(0);
-                const parts = str.split(/[\.\/]/);
-                if (parts.length === 3) {
-                    let day = parseInt(parts[0], 10);
-                    let month = parseInt(parts[1], 10) - 1;
-                    let year = parseInt(parts[2], 10);
-                    if (year < 100) {
-                        year += (year > 50 ? 1900 : 2000);
-                    }
-                    return new Date(year, month, day);
-                }
-                return new Date(0);
-            };
-            
-            events.sort((a, b) => parseDateHelper(a.date) - parseDateHelper(b.date));
-            
-            const uniqEvents = [];
-            const seen = new Set();
-            events.forEach(e => {
-                const key = `${e.date}_${e.title.slice(0, 10)}`;
-                if (!seen.has(key)) {
-                    seen.add(key);
-                    uniqEvents.push(e);
-                }
+        const dVodnogo = String(structura["5_d_vodnogo"] || "").trim();
+        const dVstupu = String(structura["6_d_vstupu"] || "").trim();
+        const zvidky = String(structura["7_zvidky_primitka"] || "").trim();
+
+        const dVybuttya = String(
+          vybuttya["1_d_vybuttya"] || vybuttya["1_d_vybyttya"] || "",
+        ).trim();
+        const prichina = String(vybuttya["2_prichina"] || "").trim();
+        const vybuvPrymitka = String(
+          vybuttya["vybuv_prymitka"] ||
+            vybuttya["3_primitka"] ||
+            vybuttya["primitka"] ||
+            "",
+        ).trim();
+
+        const events = [];
+
+        // 1. Water Baptism
+        if (dVodnogo) {
+          events.push({
+            date: dVodnogo,
+            title: "🌊 Водне хрещення",
+            desc: "",
+          });
+        }
+
+        // 2. Formal Entry
+        if (dVstupu) {
+          let entryTitle = "📎 Прийняття в члени церкви";
+          if (zvidky) {
+            entryTitle += ` (${zvidky})`;
+          }
+          events.push({
+            date: dVstupu,
+            title: entryTitle,
+            desc: "",
+          });
+        }
+
+        // 3. Scan fields for excommunication notes
+        const textLower = vybuvPrymitka.toLowerCase();
+        const zvidkyLower = zvidky.toLowerCase();
+
+        // Check for explicit "вил" pattern
+        const excomMatches = vybuvPrymitka.match(
+          /(вил\.|вилуч\.|вилучена|вилучений)\s*(\d{2}[\.\/]\d{2}[\.\/]\d{2,4})/i,
+        );
+        if (excomMatches) {
+          events.push({
+            date: excomMatches[2],
+            title: "🚫 Вилучення з членів церкви",
+            desc: vybuvPrymitka,
+          });
+        } else if (
+          textLower.includes("вилуч") ||
+          textLower.includes("блуд") ||
+          zvidkyLower.includes("вилуч")
+        ) {
+          const anyDates =
+            vybuvPrymitka.match(/\d{2}[\.\/]\d{2}[\.\/]\d{2,4}/g) || [];
+          if (anyDates.length > 0) {
+            anyDates.forEach((d) => {
+              if (d !== dVodnogo && d !== dVstupu && d !== dVybuttya) {
+                events.push({
+                  date: d,
+                  title: "⚠️ Вилучення (історична позначка)",
+                  desc: vybuvPrymitka,
+                });
+              }
             });
+          } else if (
+            textLower.includes("вилуч. за блуд") ||
+            textLower.includes("вил. за блуд")
+          ) {
+            events.push({
+              date: "історична",
+              title: "⚠️ Був вилучений за блуд (згідно з приміткою)",
+              desc: vybuvPrymitka,
+            });
+          }
+        }
 
-            if (uniqEvents.length > 0) {
-                if (eventsPart) eventsPart.classList.remove('hidden');
-                timelineContainer.innerHTML = '';
-                uniqEvents.forEach(e => {
-                    const div = document.createElement('div');
-                    div.className = 'flex items-start gap-2 border-b border-zinc-800/60 py-1.5 last:border-0';
-                    div.innerHTML = `
+        // 4. Departure
+        if (dVybuttya || prichina || personal["13_status"] === "вибув") {
+          let exitTitle = "🚪 Вибуття з церкви";
+          if (prichina) {
+            exitTitle += ` (причина: ${prichina})`;
+          }
+          events.push({
+            date: dVybuttya || "н/д",
+            title: exitTitle,
+            desc: vybuvPrymitka,
+          });
+        }
+
+        const parseDateHelper = (str) => {
+          if (
+            !str ||
+            str === "н/д" ||
+            str === "не вказано" ||
+            str === "історична"
+          )
+            return new Date(0);
+          const parts = str.split(/[\.\/]/);
+          if (parts.length === 3) {
+            let day = parseInt(parts[0], 10);
+            let month = parseInt(parts[1], 10) - 1;
+            let year = parseInt(parts[2], 10);
+            if (year < 100) {
+              year += year > 50 ? 1900 : 2000;
+            }
+            return new Date(year, month, day);
+          }
+          return new Date(0);
+        };
+
+        events.sort(
+          (a, b) => parseDateHelper(a.date) - parseDateHelper(b.date),
+        );
+
+        const uniqEvents = [];
+        const seen = new Set();
+        events.forEach((e) => {
+          const key = `${e.date}_${e.title.slice(0, 10)}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqEvents.push(e);
+          }
+        });
+
+        if (uniqEvents.length > 0) {
+          if (eventsPart) eventsPart.classList.remove("hidden");
+          timelineContainer.innerHTML = "";
+          uniqEvents.forEach((e) => {
+            const div = document.createElement("div");
+            div.className =
+              "flex items-start gap-2 border-b border-zinc-800/60 py-1.5 last:border-0";
+            div.innerHTML = `
                         <span class="font-mono text-[9px] text-sky-400 bg-sky-950/80 px-1 py-0.5 rounded border border-sky-900/30 whitespace-nowrap self-start mt-0.5">${e.date}</span>
                         <div>
                             <span class="font-bold text-gray-200 block text-[11px]">${e.title}</span>
-                            ${e.desc ? `<p class="text-[10px] text-zinc-400 italic">${e.desc}</p>` : ''}
+                            ${e.desc ? `<p class="text-[10px] text-zinc-400 italic">${e.desc}</p>` : ""}
                         </div>
                     `;
-                    timelineContainer.appendChild(div);
-                });
-            } else {
-                if (eventsPart) eventsPart.classList.add('hidden');
-            }
+            timelineContainer.appendChild(div);
+          });
+        } else {
+          if (eventsPart) eventsPart.classList.add("hidden");
+        }
+      }
+
+      // ПОШУК ТА ВИБІР ПАРТНЕРА/ПОДРУЖЖЯ
+      const partnerNameInput = document.getElementById("partner_name_input");
+      const partnerSearchResults = document.getElementById(
+        "partnerSearchResults",
+      );
+      const spouseIdInput = document.getElementById("spouse_id");
+
+      partnerNameInput.oninput = (e) => {
+        const txt = e.target.value.toLowerCase().trim();
+        if (txt.length < 1) {
+          partnerSearchResults.classList.add("hidden");
+          return;
         }
 
-        // ПОШУК ТА ВИБІР ПАРТНЕРА/ПОДРУЖЖЯ
-        const partnerNameInput = document.getElementById('partner_name_input');
-        const partnerSearchResults = document.getElementById('partnerSearchResults');
-        const spouseIdInput = document.getElementById('spouse_id');
+        const matched = allMembers.filter(
+          (m) => m.pib && String(m.pib).toLowerCase().includes(txt),
+        );
+        partnerSearchResults.innerHTML = "";
 
-        partnerNameInput.oninput = (e) => {
-            const txt = e.target.value.toLowerCase().trim();
-            if (txt.length < 1) {
-                partnerSearchResults.classList.add('hidden');
-                return;
-            }
-
-            const matched = allMembers.filter(m => m.pib && String(m.pib).toLowerCase().includes(txt));
-            partnerSearchResults.innerHTML = '';
-            
-            if (matched.length === 0) {
-                partnerSearchResults.innerHTML = '<li class="p-2 text-xs text-gray-500 text-center">Партнера не знайдено</li>';
-            } else {
-                matched.forEach(m => {
-                    const li = document.createElement('li');
-                    li.className = 'p-2 text-xs hover:bg-zinc-700 cursor-pointer text-gray-200 outline-none focus:bg-zinc-700';
-                    li.setAttribute('tabindex', '0');
-                    li.textContent = `${m.pib} (ID: ${m.id})`;
-                    li.onclick = () => {
-                        partnerNameInput.value = m.pib;
-                        spouseIdInput.value = m.id;
-                        partnerSearchResults.classList.add('hidden');
-                    };
-                    li.onkeydown = (ev) => {
-                        if (ev.key === 'ArrowDown') {
-                            ev.preventDefault();
-                            const next = li.nextElementSibling;
-                            if (next) next.focus();
-                        } else if (ev.key === 'ArrowUp') {
-                            ev.preventDefault();
-                            const prev = li.previousElementSibling;
-                            if (prev) {
-                                prev.focus();
-                            } else {
-                                partnerNameInput.focus();
-                            }
-                        } else if (ev.key === 'Enter') {
-                            ev.preventDefault();
-                            li.click();
-                        }
-                    };
-                    partnerSearchResults.appendChild(li);
-                });
-            }
-            partnerSearchResults.classList.remove('hidden');
-        };
-
-        partnerNameInput.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowDown') {
-                const firstOption = partnerSearchResults.querySelector('li[tabindex="0"]');
-                if (firstOption && !partnerSearchResults.classList.contains('hidden')) {
-                    e.preventDefault();
-                    firstOption.focus();
+        if (matched.length === 0) {
+          partnerSearchResults.innerHTML =
+            '<li class="p-2 text-xs text-gray-500 text-center">Партнера не знайдено</li>';
+        } else {
+          matched.forEach((m) => {
+            const li = document.createElement("li");
+            li.className =
+              "p-2 text-xs hover:bg-zinc-700 cursor-pointer text-gray-200 outline-none focus:bg-zinc-700";
+            li.setAttribute("tabindex", "0");
+            li.textContent = `${m.pib} (ID: ${m.id})`;
+            li.onclick = () => {
+              partnerNameInput.value = m.pib;
+              spouseIdInput.value = m.id;
+              partnerSearchResults.classList.add("hidden");
+            };
+            li.onkeydown = (ev) => {
+              if (ev.key === "ArrowDown") {
+                ev.preventDefault();
+                const next = li.nextElementSibling;
+                if (next) next.focus();
+              } else if (ev.key === "ArrowUp") {
+                ev.preventDefault();
+                const prev = li.previousElementSibling;
+                if (prev) {
+                  prev.focus();
+                } else {
+                  partnerNameInput.focus();
                 }
-            }
-        });
+              } else if (ev.key === "Enter") {
+                ev.preventDefault();
+                li.click();
+              }
+            };
+            partnerSearchResults.appendChild(li);
+          });
+        }
+        partnerSearchResults.classList.remove("hidden");
+      };
 
-        window.scrollToHistorySection = () => {
-            const section = document.getElementById('dynamicTimelineSection');
-            if (section) {
-                section.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        };
-
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (e.target !== partnerNameInput) {
-                partnerSearchResults.classList.add('hidden');
-            }
-            if (e.target !== searchInput) {
-                searchResults.classList.add('hidden');
-            }
-            const minDropdown = document.getElementById('ministryDropdownContainer');
-            const minButton = document.getElementById('ministrySelectedText')?.parentElement;
-            if (minDropdown && !minDropdown.contains(e.target) && e.target !== minButton && !minButton?.contains(e.target)) {
-                minDropdown.classList.add('hidden');
-                const minArrow = document.getElementById('ministryArrow');
-                if (minArrow) minArrow.textContent = '▼';
-            }
-        });
-
-        document.getElementById('btnNewCard').onclick = () => {
-            memberForm.reset();
-            window.clearExtraPhones();
-            const newPib = prompt("Введіть ПІБ для нового запису:");
-            if(!newPib) return;
-            
-            const nextId = allMembers.length > 0 ? Math.max(...allMembers.map(m => parseInt(m.id))) + 1 : 1;
-            
-            document.getElementById('docId').value = nextId;
-            document.getElementById('pibHidden').value = newPib;
-            document.getElementById('pib_01').value = newPib;
-            document.getElementById('pib_main').value = newPib;
-            document.getElementById('stat').value = detectGenderWord(newPib);
-            document.getElementById('idDisplay').textContent = `Новий запис ID: ${nextId}`;
-            document.getElementById('pib_edit').value = newPib;
-            selectedHeaderPIB.textContent = newPib.toUpperCase();
-            memberForm.classList.remove('hidden');
-            updateSelectColor(document.getElementById('spouse_status'));
-            togglePartnerIdField();
-        };
-
-        memberForm.onsubmit = async (e) => {
+      partnerNameInput.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown") {
+          const firstOption =
+            partnerSearchResults.querySelector('li[tabindex="0"]');
+          if (
+            firstOption &&
+            !partnerSearchResults.classList.contains("hidden")
+          ) {
             e.preventDefault();
-            const targetId = document.getElementById('docId').value;
-            if(!targetId) return;
+            firstOption.focus();
+          }
+        }
+      });
 
-            const updates = {};
-            const editedPibVal = document.getElementById('pib_edit').value.trim();
-            const editedPib01 = editedPibVal;
-            const editedPibMain = editedPibVal;
+      window.scrollToHistorySection = () => {
+        const section = document.getElementById("dynamicTimelineSection");
+        if (section) {
+          section.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      };
 
-            updates[`01_PIB`] = editedPib01;
-            updates[`pib`] = editedPibMain;
-            
-            const computedStat = document.getElementById('stat').value || detectGenderWord(editedPib01 || editedPibMain);
-            updates[`02_OSOBYSTE/2_stat`] = computedStat;
+      // Close dropdown when clicking outside
+      document.addEventListener("click", (e) => {
+        if (e.target !== partnerNameInput) {
+          partnerSearchResults.classList.add("hidden");
+        }
+        if (e.target !== searchInput) {
+          searchResults.classList.add("hidden");
+        }
+        const minDropdown = document.getElementById(
+          "ministryDropdownContainer",
+        );
+        const minButton = document.getElementById(
+          "ministrySelectedText",
+        )?.parentElement;
+        if (
+          minDropdown &&
+          !minDropdown.contains(e.target) &&
+          e.target !== minButton &&
+          !minButton?.contains(e.target)
+        ) {
+          minDropdown.classList.add("hidden");
+          const minArrow = document.getElementById("ministryArrow");
+          if (minArrow) minArrow.textContent = "▼";
+        }
+      });
 
-            updates[`02_OSOBYSTE/1_d_narodjennya`] = getVal('d_nar');
-            updates[`02_OSOBYSTE/3_d_nar`] = getVal('d_nar');
-            // Collect telephone numbers from 2-field radio layout
-            const tel1Val = getVal('tel');
-            const tel2Val = getVal('tel_extra');
-            const chosenMainInp = document.querySelector('input[name="main_phone_select"]:checked');
-            const chosenMain = chosenMainInp ? chosenMainInp.value : "1";
-            
-            const allPhones = [];
-            if (chosenMain === "1") {
-                if (tel1Val) allPhones.push(tel1Val);
-                if (tel2Val) allPhones.push(tel2Val);
-            } else {
-                if (tel2Val) allPhones.push(tel2Val);
-                if (tel1Val) allPhones.push(tel1Val);
-            }
-            const joinedPhones = allPhones.filter(p => p.length > 0).join(', ');
+      document.getElementById("btnNewCard").onclick = () => {
+        memberForm.reset();
+        window.clearExtraPhones();
+        const newPib = prompt("Введіть ПІБ для нового запису:");
+        if (!newPib) return;
 
-            updates[`02_OSOBYSTE/2_tel`] = joinedPhones;
-            updates[`02_OSOBYSTE/phone`] = joinedPhones;
-            updates[`02_OSOBYSTE/tel`] = joinedPhones;
-            updates[`02_OSOBYSTE/tel_extra`] = tel2Val;
-            updates[`02_OSOBYSTE/main_phone`] = chosenMain;
-            
-            const spouseStatus = document.getElementById('spouse_status').value;
-            const spouseName = document.getElementById('partner_name_input').value.trim();
-            const partnerMatch = allMembers.find(m => String(m.pib).trim().toLowerCase() === spouseName.toLowerCase());
-            const spouseIdVal = partnerMatch ? partnerMatch.id : document.getElementById('spouse_id').value;
-            let isPovna = false;
-            if (spouseStatus === "одр.") {
-                isPovna = (spouseIdVal !== "");
-            }
-            updates[`02_OSOBYSTE/5_povna_simya`] = isPovna;
-            
-            updates[`02_OSOBYSTE/7_osvita`] = getVal('education');
-            updates[`02_OSOBYSTE/8_profesiya`] = getVal('profession');
-            updates[`02_OSOBYSTE/6_socialniy`] = getVal('social_status');
-            updates[`02_OSOBYSTE/3_messengers`] = getVal('messengers');
-            updates[`02_OSOBYSTE/9_dity`] = parseDityText(document.getElementById('dity').value);
-            updates[`02_OSOBYSTE/13_status`] = getVal('status');
-            
-            updates[`04_STRUCTURA/1_rayon`] = getVal('rayon');
-            updates[`04_STRUCTURA/4_opika`] = getVal('opika');
-            updates[`04_STRUCTURA/2_grupa`] = getVal('group_name');
-            updates[`04_STRUCTURA/5_d_vodnogo`] = getVal('d_vodnogo');
-            updates[`04_STRUCTURA/6_d_vstupu`] = getVal('d_vstupu');
-            updates[`04_STRUCTURA/3_san`] = getVal('san');
-            updates[`04_STRUCTURA/7_zvidky_primitka`] = getVal('zvidky');
-            updates[`04_STRUCTURA/8_vidviduvanist`] = getVal('vidviduvanist');
-            updates[`04_STRUCTURA/9_prysutnist`] = getVal('prysutnist');
-            try {
-                updates[`05_ISTORIJA/1_slujinnya`] = JSON.parse(document.getElementById('slujinnya').value || '[]');
-            } catch(e) { updates[`05_ISTORIJA/1_slujinnya`] = []; }
-            
-            updates[`03_ADRESA/1_misto`] = getVal('addr_city');
-            updates[`03_ADRESA/1_nas_punkt`] = getVal('addr_city');
-            updates[`03_ADRESA/2_vulycja`] = getVal('addr_street');
-            updates[`03_ADRESA/2_vulitsya`] = getVal('addr_street');
-            updates[`03_ADRESA/3_budynok`] = getVal('addr_house');
-            updates[`03_ADRESA/3_budinok`] = getVal('addr_house');
-            updates[`03_ADRESA/4_korpus`] = getVal('addr_korpus');
-            updates[`03_ADRESA/5_kvartyra`] = getVal('addr_flat');
-            updates[`03_ADRESA/4_kvartira`] = getVal('addr_flat');
- 
-            updates[`02_OSOBYSTE/4_shlyub_history/0/status`] = document.getElementById('spouse_status').value;
-            updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_begin`] = getVal('d_shlyub_from');
-            updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_end`] = getVal('d_shlyub_end');
-            
-            updates[`02_OSOBYSTE/4_shlyub_history/0/podruzhzhya_id`] = partnerMatch ? partnerMatch.id : spouseIdVal;
-            updates[`02_OSOBYSTE/4_shlyub_history/0/podrujya_id`] = partnerMatch ? partnerMatch.id : spouseIdVal;
- 
-            const exitReasonVal = getVal('exit_reason');
-            updates[`06_VYBUTTYA/2_prichina`] = exitReasonVal;
-            updates[`06_VYBUTTYA/1_d_vybuttya`] = getVal('exit_date');
-            updates[`06_VYBUTTYA/1_d_vybyttya`] = getVal('exit_date'); // robust spelling sync
-            
-            let explanationVal = getVal('exit_explanation');
-            const isDeathReason = exitReasonVal.trim() === "пом." || exitReasonVal.toLowerCase().includes("смерт") || exitReasonVal.toLowerCase().includes("пом");
-            
-            if (isDeathReason) {
-                explanationVal = "";
-                document.getElementById('exit_explanation').value = "";
-            }
-            updates[`06_VYBUTTYA/3_primitka`] = explanationVal; // Sync to vybuttya primitka for absolute reliability!
-            updates[`06_VYBUTTYA/vybuv_prymitka`] = explanationVal; // Sync to vybuv_prymitka as requested!
+        const nextId =
+          allMembers.length > 0
+            ? Math.max(...allMembers.map((m) => parseInt(m.id))) + 1
+            : 1;
 
-            // Collect Group/Address movement history biography rows
-            const movementRows = document.querySelectorAll('.movement-row');
-            const movementHistory = [];
-            movementRows.forEach(row => {
-                const d_begin = row.querySelector('.movement-begin').value.trim();
-                const d_end = row.querySelector('.movement-end').value.trim();
-                const group_name = row.querySelector('.movement-group').value.trim();
-                const address = row.querySelector('.movement-address').value.trim();
-                if (d_begin || d_end || group_name || address) {
-                    movementHistory.push({ d_begin, d_end, group_name, address });
-                }
-            });
-            updates[`04_STRUCTURA/movement_history`] = movementHistory;
+        document.getElementById("docId").value = nextId;
+        document.getElementById("pibHidden").value = newPib;
+        document.getElementById("pib_01").value = newPib;
+        document.getElementById("pib_main").value = newPib;
+        document.getElementById("stat").value = detectGenderWord(newPib);
+        document.getElementById("idDisplay").textContent =
+          `Новий запис ID: ${nextId}`;
+        document.getElementById("idDisplay").classList.remove("hidden");
+        document.getElementById("pib_edit").value = newPib;
+        selectedHeaderPIB.textContent = newPib.toUpperCase();
+        selectedHeaderPIB.classList.remove("hidden");
+        memberForm.classList.remove("hidden");
+        updateSelectColor(document.getElementById("spouse_status"));
+        togglePartnerIdField();
+      };
 
-            const singleMemberUrl = `${dbBaseUrl}/members/${targetId}.json?auth=${DB_SECRET}`;
+      memberForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const targetId = document.getElementById("docId").value;
+        if (!targetId) return;
 
-            try {
-                const res = await fetch(singleMemberUrl, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updates)
-                });
+        const updates = {};
+        const editedPibVal = document.getElementById("pib_edit").value.trim();
+        const editedPib01 = editedPibVal;
+        const editedPibMain = editedPibVal;
 
-                if (!res.ok) throw new Error("Помилка збереження через REST");
-                
-                const toast = document.getElementById('toast');
-                toast.style.opacity = '1';
-                setTimeout(() => toast.style.opacity = '0', 2000);
-                
-                loadDatabase();
-            } catch (error) {
-                console.error("Помилка збереження:", error);
-                alert("Не вдалося зберегти дані!");
-            }
-        };
+        updates[`01_PIB`] = editedPib01;
+        updates[`pib`] = editedPibMain;
 
-        function initGrayListeners() {
-            document.querySelectorAll('input[type="text"], textarea, select').forEach(el => {
-                if (el.id === 'spouse_id' || el.id === 'docId' || el.id === 'pibHidden' || el.id === 'pib_01' || el.id === 'pib_main' || el.id === 'pib_edit' || el.id === 'spouse_status' || el.id === 'partner_name_input') {
-                    el.style.color = '#ffffff';
-                    el.classList.remove('text-gray-500');
-                    return;
-                }
-                
-                applyGrayForNA(el);
+        const computedStat =
+          document.getElementById("stat").value ||
+          detectGenderWord(editedPib01 || editedPibMain);
+        updates[`02_OSOBYSTE/2_stat`] = computedStat;
 
-                el.addEventListener('input', () => applyGrayForNA(el));
-                el.addEventListener('change', () => applyGrayForNA(el));
-                el.addEventListener('focus', () => {
-                    if (el.value.trim() === 'н/д') {
-                        el.style.color = '#ffffff';
-                    }
-                });
-                el.addEventListener('blur', () => {
-                    if (el.value.trim() === '') {
-                        el.value = 'н/д';
-                    }
-                    applyGrayForNA(el);
-                });
-            });
+        updates[`02_OSOBYSTE/1_d_narodjennya`] = getVal("d_nar");
+        updates[`02_OSOBYSTE/3_d_nar`] = getVal("d_nar");
+        // Collect telephone numbers from 2-field radio layout
+        const tel1Val = getVal("tel");
+        const tel2Val = getVal("tel_extra");
+        const chosenMainInp = document.querySelector(
+          'input[name="main_phone_select"]:checked',
+        );
+        const chosenMain = chosenMainInp ? chosenMainInp.value : "1";
+
+        const allPhones = [];
+        if (chosenMain === "1") {
+          if (tel1Val) allPhones.push(tel1Val);
+          if (tel2Val) allPhones.push(tel2Val);
+        } else {
+          if (tel2Val) allPhones.push(tel2Val);
+          if (tel1Val) allPhones.push(tel1Val);
+        }
+        const joinedPhones = allPhones.filter((p) => p.length > 0).join(", ");
+
+        updates[`02_OSOBYSTE/2_tel`] = joinedPhones;
+        updates[`02_OSOBYSTE/phone`] = joinedPhones;
+        updates[`02_OSOBYSTE/tel`] = joinedPhones;
+        updates[`02_OSOBYSTE/tel_extra`] = tel2Val;
+        updates[`02_OSOBYSTE/main_phone`] = chosenMain;
+
+        const spouseStatus = document.getElementById("spouse_status").value;
+        const spouseName = document
+          .getElementById("partner_name_input")
+          .value.trim();
+        const partnerMatch = allMembers.find(
+          (m) =>
+            String(m.pib).trim().toLowerCase() === spouseName.toLowerCase(),
+        );
+        const spouseIdVal = partnerMatch
+          ? partnerMatch.id
+          : document.getElementById("spouse_id").value;
+        let isPovna = false;
+        if (spouseStatus === "одр.") {
+          isPovna = spouseIdVal !== "";
+        }
+        updates[`02_OSOBYSTE/5_povna_simya`] = isPovna;
+
+        updates[`02_OSOBYSTE/7_osvita`] = getVal("education");
+        updates[`02_OSOBYSTE/8_profesiya`] = getVal("profession");
+        updates[`02_OSOBYSTE/6_socialniy`] = getVal("social_status");
+        updates[`02_OSOBYSTE/3_messengers`] = getVal("messengers");
+        updates[`02_OSOBYSTE/9_dity`] = parseDityText(
+          document.getElementById("dity").value,
+        );
+        updates[`02_OSOBYSTE/13_status`] = getVal("status");
+
+        updates[`04_STRUCTURA/1_rayon`] = getVal("rayon");
+        updates[`04_STRUCTURA/4_opika`] = getVal("opika");
+        updates[`04_STRUCTURA/2_grupa`] = getVal("group_name");
+        updates[`04_STRUCTURA/5_d_vodnogo`] = getVal("d_vodnogo");
+        updates[`04_STRUCTURA/6_d_vstupu`] = getVal("d_vstupu");
+        updates[`04_STRUCTURA/3_san`] = getVal("san");
+        updates[`04_STRUCTURA/7_zvidky_primitka`] = getVal("zvidky");
+        updates[`04_STRUCTURA/8_vidviduvanist`] = getVal("vidviduvanist");
+        updates[`04_STRUCTURA/9_prysutnist`] = getVal("prysutnist");
+        try {
+          updates[`05_ISTORIJA/1_slujinnya`] = JSON.parse(
+            document.getElementById("slujinnya").value || "[]",
+          );
+        } catch (e) {
+          updates[`05_ISTORIJA/1_slujinnya`] = [];
         }
 
-        setTimeout(initGrayListeners, 200);
+        updates[`03_ADRESA/1_misto`] = getVal("addr_city");
+        updates[`03_ADRESA/1_nas_punkt`] = getVal("addr_city");
+        updates[`03_ADRESA/2_vulycja`] = getVal("addr_street");
+        updates[`03_ADRESA/2_vulitsya`] = getVal("addr_street");
+        updates[`03_ADRESA/3_budynok`] = getVal("addr_house");
+        updates[`03_ADRESA/3_budinok`] = getVal("addr_house");
+        updates[`03_ADRESA/4_korpus`] = getVal("addr_korpus");
+        updates[`03_ADRESA/5_kvartyra`] = getVal("addr_flat");
+        updates[`03_ADRESA/4_kvartira`] = getVal("addr_flat");
 
-        checkAuth();
+        updates[`02_OSOBYSTE/4_shlyub_history/0/status`] =
+          document.getElementById("spouse_status").value;
+        updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_begin`] =
+          getVal("d_shlyub_from");
+        updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_end`] =
+          getVal("d_shlyub_end");
+
+        updates[`02_OSOBYSTE/4_shlyub_history/0/podruzhzhya_id`] = partnerMatch
+          ? partnerMatch.id
+          : spouseIdVal;
+        updates[`02_OSOBYSTE/4_shlyub_history/0/podrujya_id`] = partnerMatch
+          ? partnerMatch.id
+          : spouseIdVal;
+
+        const exitReasonVal = getVal("exit_reason");
+        updates[`06_VYBUTTYA/2_prichina`] = exitReasonVal;
+        updates[`06_VYBUTTYA/1_d_vybuttya`] = getVal("exit_date");
+        updates[`06_VYBUTTYA/1_d_vybyttya`] = getVal("exit_date"); // robust spelling sync
+
+        let explanationVal = getVal("exit_explanation");
+        const isDeathReason =
+          exitReasonVal.trim() === "пом." ||
+          exitReasonVal.toLowerCase().includes("смерт") ||
+          exitReasonVal.toLowerCase().includes("пом");
+
+        if (isDeathReason) {
+          explanationVal = "";
+          document.getElementById("exit_explanation").value = "";
+        }
+        updates[`06_VYBUTTYA/3_primitka`] = explanationVal; // Sync to vybuttya primitka for absolute reliability!
+        updates[`06_VYBUTTYA/vybuv_prymitka`] = explanationVal; // Sync to vybuv_prymitka as requested!
+
+        // Collect Group/Address movement history biography rows
+        const movementRows = document.querySelectorAll(".movement-row");
+        const movementHistory = [];
+        movementRows.forEach((row) => {
+          const d_begin = row.querySelector(".movement-begin").value.trim();
+          const d_end = row.querySelector(".movement-end").value.trim();
+          const group_name = row.querySelector(".movement-group").value.trim();
+          const address = row.querySelector(".movement-address").value.trim();
+          if (d_begin || d_end || group_name || address) {
+            movementHistory.push({ d_begin, d_end, group_name, address });
+          }
+        });
+        updates[`04_STRUCTURA/movement_history`] = movementHistory;
+
+        const singleMemberUrl = `${dbBaseUrl}/members/${targetId}.json?auth=${DB_SECRET}`;
+
+        try {
+          const res = await fetch(singleMemberUrl, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updates),
+          });
+
+          if (!res.ok) throw new Error("Помилка збереження через REST");
+
+          const toast = document.getElementById("toast");
+          toast.style.opacity = "1";
+          setTimeout(() => (toast.style.opacity = "0"), 2000);
+
+          loadDatabase();
+        } catch (error) {
+          console.error("Помилка збереження:", error);
+          alert("Не вдалося зберегти дані!");
+        }
+      };
+
+      function initGrayListeners() {
+        document
+          .querySelectorAll('input[type="text"], textarea, select')
+          .forEach((el) => {
+            if (
+              el.id === "spouse_id" ||
+              el.id === "docId" ||
+              el.id === "pibHidden" ||
+              el.id === "pib_01" ||
+              el.id === "pib_main" ||
+              el.id === "pib_edit" ||
+              el.id === "spouse_status" ||
+              el.id === "partner_name_input"
+            ) {
+              el.style.color = "#ffffff";
+              el.classList.remove("text-gray-500");
+              return;
+            }
+
+            applyGrayForNA(el);
+
+            el.addEventListener("input", () => applyGrayForNA(el));
+            el.addEventListener("change", () => applyGrayForNA(el));
+            el.addEventListener("focus", () => {
+              if (el.value.trim() === "н/д") {
+                el.style.color = "#ffffff";
+              }
+            });
+            el.addEventListener("blur", () => {
+              if (el.value.trim() === "") {
+                el.value = "н/д";
+              }
+              applyGrayForNA(el);
+            });
+          });
+      }
+
+      setTimeout(initGrayListeners, 200);
+
+      checkAuth();
     </script>
-</body>
+  </body>
 </html>

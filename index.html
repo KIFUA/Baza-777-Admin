@@ -351,11 +351,13 @@
           <!-- БЛОК СІМ'Я -->
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
-              class="text-[10px] uppercase font-bold text-pink-400 tracking-wider"
+              class="text-[10px] uppercase font-bold text-pink-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
+              onclick="document.getElementById('family_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
             >
-              СІМ'Я
+              СІМ'Я <span class="text-pink-500/50">▼</span>
             </h3>
-            <div class="flex flex-wrap items-end gap-2">
+            <div id="family_content" class="space-y-2 hidden">
+              <div class="flex flex-wrap items-end gap-2">
               <div>
                 <label class="block text-[11px] text-gray-400"
                   >Сімейний стан</label
@@ -433,16 +435,19 @@
                 style="height: auto"
               ></textarea>
             </div>
+            </div>
           </div>
 
           <!-- БЛОК АДРЕСА - ПІСЛЯ СІМ'Ї -->
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
-              class="text-[10px] uppercase font-bold text-teal-400 tracking-wider"
+              class="text-[10px] uppercase font-bold text-teal-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
+              onclick="document.getElementById('address_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
             >
-              Адреса проживання
+              АДРЕСА ПРОЖИВАННЯ <span class="text-teal-500/50">▼</span>
             </h3>
-            <div class="grid grid-cols-2 gap-2">
+            <div id="address_content" class="space-y-2 hidden">
+              <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="block text-[11px] text-gray-400"
                   >Населений пункт</label
@@ -488,6 +493,7 @@
                 />
               </div>
             </div>
+            </div>
           </div>
 
           <input type="hidden" id="status" />
@@ -495,11 +501,13 @@
 
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
-              class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none"
+              class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none cursor-pointer flex items-center gap-1"
+              onclick="document.getElementById('structure_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
             >
-              Структура
+              СТРУКТУРА <span class="text-purple-500/50">▼</span>
             </h3>
-            <div class="flex flex-wrap gap-2">
+            <div id="structure_content" class="space-y-2 hidden">
+              <div class="flex flex-wrap gap-2">
               <div>
                 <label
                   class="block text-[11px] text-purple-400 font-bold select-none"
@@ -607,6 +615,7 @@
                   class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                 />
               </div>
+            </div>
             </div>
           </div>
 
@@ -1511,6 +1520,7 @@
           s === "" ||
           s.toLowerCase() === "не визначено" ||
           s.toLowerCase() === "не визначена" ||
+          s.toLowerCase() === "не визначені" ||
           s.toLowerCase() === "не визначеного" ||
           s.toLowerCase() === "не вказано" ||
           s.toLowerCase() === "н/д" ||

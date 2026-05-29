@@ -1637,7 +1637,7 @@
         const shlyubArray = personal["4_shlyub_history"];
         const shlyubHistory =
           Array.isArray(shlyubArray) && shlyubArray.length > 0
-            ? shlyubArray[0]
+            ? shlyubArray[shlyubArray.length - 1]
             : {};
 
         setAndStyleField("stat", personal["2_stat"]);
@@ -2266,17 +2266,23 @@
         updates[`03_ADRESA/5_kvartyra`] = getVal("addr_flat");
         updates[`03_ADRESA/4_kvartira`] = getVal("addr_flat");
 
-        updates[`02_OSOBYSTE/4_shlyub_history/0/status`] =
+        const currentMember = allMembers.find(m => m.id === targetId);
+        let shlyubIndex = 0;
+        if (currentMember && currentMember.rawData && currentMember.rawData["02_OSOBYSTE"] && Array.isArray(currentMember.rawData["02_OSOBYSTE"]["4_shlyub_history"])) {
+            shlyubIndex = Math.max(0, currentMember.rawData["02_OSOBYSTE"]["4_shlyub_history"].length - 1);
+        }
+
+        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/status`] =
           document.getElementById("spouse_status").value;
-        updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_begin`] =
+        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/d_shlyubu_begin`] =
           getVal("d_shlyub_from");
-        updates[`02_OSOBYSTE/4_shlyub_history/0/d_shlyubu_end`] =
+        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/d_shlyubu_end`] =
           getVal("d_shlyub_end");
 
-        updates[`02_OSOBYSTE/4_shlyub_history/0/podruzhzhya_id`] = partnerMatch
+        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/podruzhzhya_id`] = partnerMatch
           ? partnerMatch.id
           : spouseIdVal;
-        updates[`02_OSOBYSTE/4_shlyub_history/0/podrujya_id`] = partnerMatch
+        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/podrujya_id`] = partnerMatch
           ? partnerMatch.id
           : spouseIdVal;
 

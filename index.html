@@ -669,6 +669,11 @@
         }
 
         function updateSelectColor(selectElement) {
+            if (selectElement.id === 'spouse_status') {
+                selectElement.classList.remove('text-gray-500');
+                selectElement.style.color = '#ffffff';
+                return;
+            }
             if (selectElement.value === "") {
                 selectElement.classList.add('text-gray-500');
             } else {
@@ -884,9 +889,46 @@
             }
         };
 
+        window.transformAddressString = (str) => {
+            if (!str) return '';
+            str = str.trim();
+            const firstDigitIdx = str.search(/\d/);
+            if (firstDigitIdx === -1) return str;
+            
+            let streetPart = str.substring(0, firstDigitIdx).trim();
+            streetPart = streetPart.replace(/,$/, '').trim();
+            
+            const numPart = str.substring(firstDigitIdx).trim();
+            
+            const slashParts = numPart.split('/');
+            if (slashParts.length > 1) {
+                let part1 = slashParts[0].trim();
+                let afterSlash = slashParts.slice(1).join('/').trim();
+                
+                const commaParts = afterSlash.split(',').map(p => p.trim()).filter(Boolean);
+                
+                const cleanVal = (v) => {
+                    return v.replace(/^(б|буд|кор|корп|кв|к|б\.|буд\.|кор\.|корп\.|кв\.|к\.)\s*/i, '').trim();
+                };
+
+                let bVal = cleanVal(part1);
+                
+                if (commaParts.length === 1) {
+                    let квVal = cleanVal(commaParts[0]);
+                    return `${streetPart}, б. ${bVal}, кв. ${квVal}`;
+                } else if (commaParts.length >= 2) {
+                    let корVal = cleanVal(commaParts[0]);
+                    let квVal = cleanVal(commaParts[1]);
+                    return `${streetPart}, б. ${bVal}, кор. ${корVal}, кв. ${квVal}`;
+                }
+            }
+            return str;
+        };
+
         window.addGroupMovementRow = (d_begin = '', d_end = '', group = '', address = '') => {
             const container = document.getElementById('movement_fields_container');
             if (!container) return;
+            const transformedAddress = window.transformAddressString(address);
             const div = document.createElement('div');
             div.className = 'flex flex-wrap items-center gap-2 bg-neutral-900/50 p-2 rounded border border-zinc-800/60 movement-row animate-fade-in';
             div.innerHTML = `
@@ -905,7 +947,7 @@
                     </div>
                     <div class="flex-1 min-w-[150px]">
                         <label class="block text-[9px] text-zinc-400 uppercase select-none">Адреса періоду</label>
-                        <input type="text" class="w-full bg-inputBg border border-zinc-700 rounded text-white text-xs px-1.5 py-0.5 movement-address outline-none focus:border-purple-500" value="${address}" placeholder="Вулиця, буд, кв">
+                        <input type="text" class="w-full bg-inputBg border border-zinc-700 rounded text-white text-xs px-1.5 py-0.5 movement-address outline-none focus:border-purple-500" value="${transformedAddress}" placeholder="Вулиця, буд, кв">
                     </div>
                 </div>
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-300 font-bold text-xs p-1 select-none cursor-pointer self-center mt-3" title="Видалити запис">×</button>
@@ -937,6 +979,11 @@
 
         function applyGrayForNA(element) {
             if (!element) return;
+            if (element.id === 'spouse_status' || element.id === 'partner_name_input' || element.id === 'spouse_id' || element.id === 'docId' || element.id === 'pibHidden' || element.id === 'pib_01' || element.id === 'pib_main' || element.id === 'pib_edit') {
+                element.style.color = '#ffffff';
+                element.classList.remove('text-gray-500');
+                return;
+            }
             const val = element.value || '';
             if (val.trim() === 'н/д' || val.trim() === '') {
                 element.style.color = '#71717a'; // zinc-500 gray color
@@ -1560,7 +1607,11 @@
 
         function initGrayListeners() {
             document.querySelectorAll('input[type="text"], textarea, select').forEach(el => {
-                if (el.id === 'spouse_id' || el.id === 'docId' || el.id === 'pibHidden' || el.id === 'pib_01' || el.id === 'pib_main' || el.id === 'pib_edit') return;
+                if (el.id === 'spouse_id' || el.id === 'docId' || el.id === 'pibHidden' || el.id === 'pib_01' || el.id === 'pib_main' || el.id === 'pib_edit' || el.id === 'spouse_status' || el.id === 'partner_name_input') {
+                    el.style.color = '#ffffff';
+                    el.classList.remove('text-gray-500');
+                    return;
+                }
                 
                 applyGrayForNA(el);
 

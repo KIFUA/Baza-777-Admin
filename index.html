@@ -71,6 +71,7 @@
         <div class="flex flex-col gap-1 my-1">
             <div class="text-[10px] text-gray-500 font-mono text-right px-2" id="idDisplay"></div>
             <div id="selectedHeaderPIB" class="text-xl font-black text-white text-center tracking-wide uppercase min-h-[28px] break-words px-2"></div>
+            <div id="historyBadge" class="hidden text-center mt-1"><span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-950/80 text-amber-400 border border-amber-800/60 shadow-inner">🕰️ МІСТИТЬ ХРОНОЛОГІЮ ІСТОРІЇ (07_ISTORIYA)</span></div>
         </div>
 
         <form id="memberForm" class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg flex flex-col gap-3 hidden">
@@ -81,18 +82,12 @@
             <input type="hidden" id="pib_edit">
             <input type="hidden" id="family_status">
 
+            <input type="hidden" id="stat">
+
             <div class="space-y-2">
                 <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Стать</label>
-                        <select id="stat" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                            <option value="">-- Виберіть --</option>
-                            <option value="брат">брат</option>
-                            <option value="сестра">сестра</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Дата народження (Excel код)</label>
+                    <div class="col-span-2">
+                        <label class="block text-[11px] text-gray-400 select-none">Дата народження (Excel код)</label>
                         <input type="text" id="d_nar" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                 </div>
@@ -195,69 +190,56 @@
                 </div>
             </div>
 
-            <div class="border-t border-borderClr pt-2 space-y-2">
-                <h3 class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Основні відомості</h3>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[11px] text-gray-400">Статус</label>
-                        <input type="text" id="status" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                </div>
-            </div>
+            <input type="hidden" id="status">
+            <input type="hidden" id="group_name">
+            <input type="hidden" id="zvidky">
 
             <div class="border-t border-borderClr pt-2 space-y-2">
-                <h3 class="text-[10px] uppercase font-bold text-purple-400 tracking-wider">Структура</h3>
+                <h3 class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none">Структура</h3>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Район структури (АЕРОПОРТ, ЦЕНТР, КАСКАД і т.п.)</label>
+                        <label class="block text-[11px] text-purple-400 font-bold select-none">Район</label>
                         <input type="text" id="rayon" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-purple-400 font-bold text-indigo-400">Опіка / Відповідальний (напр., пресвітер Черняк)</label>
+                        <label class="block text-[11px] text-purple-400 font-bold select-none">Опіка</label>
                         <input type="text" id="opika" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                 </div>
                 <div class="grid grid-cols-3 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Дільниця / Група (напр., Дільниця №1)</label>
-                        <input type="text" id="group_name" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] text-purple-400">Дата водного</label>
+                        <label class="block text-[11px] text-purple-400 font-bold select-none">В.Хр.</label>
                         <input type="text" id="d_vodnogo" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-purple-400">Дата вступу</label>
+                        <label class="block text-[11px] text-purple-400 select-none">Дата вступу</label>
                         <input type="text" id="d_vstupu" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Сан</label>
+                        <label class="block text-[11px] text-purple-400 select-none">Сан</label>
                         <input type="text" id="san" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
-                    <div>
-                        <label class="block text-[11px] text-purple-400">Звідки прибув (примітка)</label>
-                        <input type="text" id="zvidky" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
-                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[11px] text-purple-400">Характеристика відвідуваності</label>
+                        <label class="block text-[11px] text-purple-400 font-bold select-none">Відвідуваність</label>
                         <input type="text" id="vidviduvanist" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-[11px] text-purple-400">Характеристика присутності</label>
+                        <label class="block text-[11px] text-purple-400 font-bold select-none">Присутність</label>
                         <input type="text" id="prysutnist" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none">
                     </div>
                 </div>
-            </div>
-
-            <div class="border-t border-borderClr pt-2 space-y-2">
-                <h3 class="text-[10px] uppercase font-bold text-orange-400 tracking-wider">Історія служіння</h3>
-                <div>
-                      <label class="block text-[11px] text-orange-400">Служіння</label>
-                      <textarea id="slujinnya" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none" rows="4"></textarea>
+                <div class="relative">
+                    <label class="block text-[11px] text-purple-400 font-bold select-none mb-1">Служіння</label>
+                    <button type="button" onclick="toggleMinistryDropdown()" class="w-full bg-inputBg border border-borderClr rounded text-white text-left px-2 py-1.5 text-xs flex justify-between items-center focus:border-blue-500 outline-none select-none">
+                        <span id="ministrySelectedText" class="truncate text-gray-500 text-xs">-- Виберіть служіння --</span>
+                        <span id="ministryArrow" class="text-[9px] text-gray-500">▼</span>
+                    </button>
+                    <div id="ministryDropdownContainer" class="absolute left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1">
+                        <!-- Checkboxes populated dynamically -->
+                    </div>
+                    <input type="hidden" id="slujinnya">
                 </div>
             </div>
 
@@ -275,6 +257,14 @@
                 <div>
                     <label class="block text-[11px] text-amber-500">Пояснення вибуття (куди вибув, примітка)</label>
                     <input type="text" id="exit_explanation" class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none">
+                </div>
+            </div>
+
+            <!-- ДИНАМІЧНИЙ БЛОК ХРОНОЛОГІЇ СТАТУСІВ -->
+            <div id="dynamicTimelineSection" class="border-t border-borderClr pt-2 space-y-1.5 hidden bg-sky-950/15 p-2 rounded border border-sky-900/35">
+                <h3 class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">Опрацьована хронологія статусів</h3>
+                <div id="dynamicTimelineContainer" class="space-y-1 text-xs text-gray-300">
+                    <!-- Події підвантажуються динамічно -->
                 </div>
             </div>
 
@@ -299,6 +289,196 @@
         const tgIdInput = document.getElementById('tgIdInput');
         const btnAuth = document.getElementById('btnAuth');
         const authError = document.getElementById('authError');
+
+        const ST_MINISTRIES = [
+            "Старший пресвітер (пастор)",
+            "Пресвітер (пастор)",
+            "Диякон",
+            "Хор / Співак",
+            "Вчитель недільної школи",
+            "Сестринське служіння",
+            "Молодіжне служіння",
+            "Опікунське служіння",
+            "Бібліотекар",
+            "Режисер / Драмгурт",
+            "Господарське служіння",
+            "Діловодство / Канцелярія",
+            "Місіонерське служіння",
+            "Музичне служіння / Інструменталіст",
+            "Молитовна група",
+            "Братська рада",
+            "Скарбник / Касир",
+            "Рада церкви",
+            "Координатор служінь",
+            "Християнська освіта",
+            "Милосердя / Відвідування хворих",
+            "Будівельний комітет",
+            "Робота з аудіо-відео",
+            "Група порядку / Упорядник",
+            "Організатор заходів",
+            "Звукооператор / Технік",
+            "Інтернет-служіння",
+            "Група прославлення",
+            "Кухонне служіння",
+            "Таборове служіння",
+            "Проповідник",
+            "Дитяче служіння",
+            "Душпастирське консультування",
+            "Регент хору / Диригент",
+            "Загальне служіння / Інше"
+        ];
+
+        const MINISTRY_MAP = {
+            0: "Загальне служіння / Інше",
+            1: "Старший пресвітер (пастор)",
+            2: "Пресвітер (пастор)",
+            3: "Диякон",
+            4: "Хор / Співак",
+            5: "Вчитель недільної школи",
+            6: "Сестринське служіння",
+            7: "Молодіжне служіння",
+            8: "Опікунське служіння",
+            9: "Бібліотекар",
+            11: "Режисер / Драмгурт",
+            13: "Господарське служіння",
+            14: "Діловодство / Канцелярія",
+            16: "Місіонерське служіння",
+            17: "Музичне служіння / Інструменталіст",
+            18: "Молитовна група",
+            19: "Братська рада",
+            20: "Скарбник / Касир",
+            21: "Рада церкви",
+            22: "Координатор служінь",
+            23: "Християнська освіта",
+            24: "Милосердя / Відвідування хворих",
+            25: "Будівельний комітет",
+            26: "Робота з аудіо-відео",
+            27: "Група порядку / Упорядник",
+            28: "Організатор заходів",
+            29: "Звукооператор / Технік",
+            30: "Інтернет-служіння",
+            31: "Група прославлення",
+            32: "Кухонне служіння",
+            33: "Таборове служіння",
+            34: "Проповідник",
+            35: "Дитяче служіння",
+            36: "Душпастирське консультування",
+            37: "Регент хору / Диригент"
+        };
+
+        window.toggleMinistryDropdown = function() {
+            const dropdown = document.getElementById('ministryDropdownContainer');
+            const arrow = document.getElementById('ministryArrow');
+            if (dropdown.classList.contains('hidden')) {
+                dropdown.classList.remove('hidden');
+                arrow.textContent = '▲';
+            } else {
+                dropdown.classList.add('hidden');
+                arrow.textContent = '▼';
+            }
+        };
+
+        function updateSelectedMinistriesText() {
+            const selected = [];
+            ST_MINISTRIES.forEach((mName, index) => {
+                const chk = document.getElementById(`chk_min_${index}`);
+                if (chk && chk.checked) {
+                    selected.push(mName);
+                }
+            });
+            
+            const btnText = document.getElementById('ministrySelectedText');
+            if (selected.length === 0) {
+                btnText.textContent = '-- Виберіть служіння --';
+                btnText.className = 'truncate text-gray-500 text-xs w-full';
+            } else {
+                btnText.textContent = selected.join(', ');
+                btnText.className = 'truncate text-gray-100 font-bold text-xs w-full';
+            }
+            document.getElementById('slujinnya').value = JSON.stringify(selected);
+        }
+
+        function loadSelectedMinistries(member) {
+            ST_MINISTRIES.forEach((mName, index) => {
+                const chk = document.getElementById(`chk_min_${index}`);
+                if (chk) chk.checked = false;
+            });
+
+            let ministriesList = [];
+            const rawHistory = member.rawData["05_ISTORIJA"]?.["1_slujinnya"] || member.rawData["04_STRUCTURA"]?.["slujinnya"] || member.rawData["slujinnya"];
+            
+            if (Array.isArray(rawHistory)) {
+                rawHistory.forEach(item => {
+                    if (typeof item === "string") {
+                        ministriesList.push(item);
+                    } else if (item && typeof item === "object") {
+                        if (item.id_slujinnya !== undefined) {
+                            const name = MINISTRY_MAP[item.id_slujinnya];
+                            if (name) ministriesList.push(name);
+                        } else if (item.podiya) {
+                            ministriesList.push(item.podiya);
+                        }
+                    }
+                });
+            } else if (typeof rawHistory === "string") {
+                try {
+                    const parsed = JSON.parse(rawHistory);
+                    if (Array.isArray(parsed)) {
+                        ministriesList = parsed;
+                    }
+                } catch(e) {}
+            }
+
+            ministriesList.forEach(m => {
+                const index = ST_MINISTRIES.indexOf(m);
+                if (index !== -1) {
+                    const chk = document.getElementById(`chk_min_${index}`);
+                    if (chk) chk.checked = true;
+                } else {
+                    const normalized = String(m).toLowerCase().trim();
+                    const matchedIdx = ST_MINISTRIES.findIndex(item => item.toLowerCase().trim() === normalized);
+                    if (matchedIdx !== -1) {
+                        const chk = document.getElementById(`chk_min_${matchedIdx}`);
+                        if (chk) chk.checked = true;
+                    }
+                }
+            });
+
+            updateSelectedMinistriesText();
+        }
+
+        // Populate checkboxes
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropdown = document.getElementById('ministryDropdownContainer');
+            if (dropdown) {
+                ST_MINISTRIES.forEach((mName, index) => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-center gap-2 hover:bg-zinc-700/60 p-1 rounded cursor-pointer';
+                    div.onclick = (e) => {
+                        e.stopPropagation();
+                    };
+
+                    const chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.value = mName;
+                    chk.id = `chk_min_${index}`;
+                    chk.className = 'rounded text-purple-600 bg-zinc-900 border-zinc-700 focus:ring-0 cursor-pointer w-4 h-4';
+                    chk.onchange = () => {
+                        updateSelectedMinistriesText();
+                    };
+
+                    const lbl = document.createElement('label');
+                    lbl.htmlFor = `chk_min_${index}`;
+                    lbl.textContent = mName;
+                    lbl.className = 'text-xs text-gray-200 cursor-pointer select-none w-full font-medium';
+
+                    div.appendChild(chk);
+                    div.appendChild(lbl);
+                    dropdown.appendChild(div);
+                });
+            }
+        });
+
 
         function checkAuth() {
             const savedId = localStorage.getItem('user_tg_id');
@@ -453,6 +633,32 @@
         const btnFilterLeft = document.getElementById('btnFilterLeft');
         const btnFilterAll = document.getElementById('btnFilterAll');
 
+        function isMergedProfile(m, list) {
+            if (!m) return false;
+            const rec = m.rawData || {};
+            if (rec["02_OSOBYSTE"]?.["13_status"] === "об'єднано") return true;
+            
+            const pibSelf = String(m.pib || "").trim().toLowerCase();
+            if (!pibSelf) return false;
+            
+            const selfId = Number(m.id);
+            return list.some(other => {
+                const otherId = Number(other.id);
+                if (otherId <= selfId) return false;
+                
+                const otherPib = String(other.pib || "").trim().toLowerCase();
+                if (otherPib !== pibSelf) return false;
+                
+                const otherRec = other.rawData || {};
+                const otherIsLeft = (otherRec["02_OSOBYSTE"]?.["13_status"] === "вибув") || 
+                                     (otherRec["06_VYBUTTYA"]?.["2_prichina"]) || 
+                                     (otherRec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
+                                     (otherRec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
+                const otherIsMerged = (otherRec["02_OSOBYSTE"]?.["13_status"] === "об'єднано");
+                return !otherIsLeft && !otherIsMerged;
+            });
+        }
+
         function updateFilterButtonsUI() {
             let presentCount = 0;
             let leftCount = 0;
@@ -463,9 +669,10 @@
                                (rec["06_VYBUTTYA"]?.["2_prichina"]) || 
                                (rec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
                                (rec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
+                const isMerged = isMergedProfile(m, allMembers);
                 if (isLeft) {
                     leftCount++;
-                } else {
+                } else if (!isMerged) {
                     presentCount++;
                 }
             });
@@ -526,9 +733,10 @@
                                (rec["06_VYBUTTYA"]?.["2_prichina"]) || 
                                (rec["06_VYBUTTYA"]?.["1_d_vybuttya"]) ||
                                (rec["06_VYBUTTYA"]?.["1_d_vybyttya"]);
+                const isMerged = isMergedProfile(m, allMembers);
 
-                if (activeFilter === 'present') return !isLeft;
-                if (activeFilter === 'left') return !!isLeft;
+                if (activeFilter === 'present') return !isLeft && !isMerged;
+                if (activeFilter === 'left') return !!isLeft && !isMerged;
                 return true;
             });
             
@@ -584,6 +792,15 @@
             selectedHeaderPIB.textContent = String(member.pib).toUpperCase();
             memberForm.classList.remove('hidden');
 
+            const dbHistory = member.rawData["07_ISTORIYA"];
+            const hasHistory = dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0;
+            const historyBadge = document.getElementById('historyBadge');
+            if (hasHistory) {
+                historyBadge.classList.remove('hidden');
+            } else {
+                historyBadge.classList.add('hidden');
+            }
+
             document.getElementById('docId').value = member.id;
             document.getElementById('pibHidden').value = member.pib;
             document.getElementById('idDisplay').textContent = `ID: ${member.id}`;
@@ -635,7 +852,7 @@
             document.getElementById('zvidky').value = valOrEmpty(structura["7_zvidky_primitka"]);
             document.getElementById('vidviduvanist').value = valOrEmpty(structura["8_vidviduvanist"]);
             document.getElementById('prysutnist').value = valOrEmpty(structura["9_prysutnist"]);
-            document.getElementById('slujinnya').value = member.rawData["05_ISTORIJA"] ? safeStringify(member.rawData["05_ISTORIJA"]["1_slujinnya"]) : '[]';
+            loadSelectedMinistries(member);
 
             document.getElementById('spouse_status').value = valOrEmpty(shlyubHistory["status"]);
             updateSelectColor(document.getElementById('spouse_status'));
@@ -651,6 +868,181 @@
             document.getElementById('exit_reason').value = valOrEmpty(vybuttya["2_prichina"]);
             document.getElementById('exit_date').value = valOrEmpty(vybuttya["1_d_vybuttya"] || vybuttya["1_d_vybyttya"]);
             document.getElementById('exit_explanation').value = valOrEmpty(vybuttya["vybuv_prymitka"] || vybuttya["3_primitka"] || vybuttya["primitka"]);
+
+            updateDynamicTimeline(member);
+        }
+
+        function updateDynamicTimeline(member) {
+            const timelineContainer = document.getElementById('dynamicTimelineContainer');
+            const timelineSection = document.getElementById('dynamicTimelineSection');
+            
+             const dbHistory = member.rawData["07_ISTORIYA"];
+             if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
+                 timelineSection.classList.remove('hidden');
+                 const titleEl = timelineSection.querySelector('h3');
+                 if (titleEl) titleEl.textContent = "Впорядкована хронологія з бази даних";
+                 timelineContainer.innerHTML = '';
+                 
+                 const baptismEvent = dbHistory.find(h => h.podiya === "Водне хрещення");
+                 const baptismDate = baptismEvent ? String(baptismEvent.d_podiyi || "").trim() : null;
+                 
+                 dbHistory.forEach(e => {
+                     const div = document.createElement('div');
+                     div.className = 'flex items-center gap-2 border-b border-zinc-800/60 py-0.5 md:py-1 last:border-0';
+                     
+                     let icon = "📝";
+                     const pLower = String(e.podiya || "").toLowerCase();
+                     if (e.podiya === "Водне хрещення") icon = "🌊";
+                     else if (e.podiya === "Вил." || pLower.includes("вилучен")) icon = "🚫";
+                     else if (e.podiya === "прийн." || pLower.includes("прийнят")) icon = "🔄";
+                     else if (e.podiya === "відп." || pLower.includes("вибуття")) icon = "🚪";
+                     else if (e.podiya === "емігр.") icon = "✈️";
+                     else if (e.podiya === "пом." || pLower.includes("смерть") || pLower.includes("пом.")) icon = "🕊️";
+                     else if (pLower.includes("об'єднано")) icon = "🔗";
+
+                     const isAcceptance = e.podiya === "прийн." || pLower.includes("прийнят");
+                     const hasSameDateBaptism = isAcceptance && baptismDate && String(e.d_podiyi || "").trim() === baptismDate;
+                     const detailsToRender = hasSameDateBaptism ? "" : (e.prychyna_detali || "");
+
+                     div.innerHTML = `
+                         <span class="font-mono text-[9px] text-sky-400 bg-sky-950/80 px-1 py-0.5 rounded border border-sky-900/30 whitespace-nowrap">${e.d_podiyi || "—"}</span>
+                         <div class="text-[11px] flex flex-wrap items-center gap-1.5">
+                             <span class="font-bold text-gray-200">${icon} ${e.podiya}</span>
+                             ${detailsToRender ? `<span class="text-[10px] text-zinc-400 italic">${detailsToRender}</span>` : ''}
+                         </div>
+                     `;
+                     timelineContainer.appendChild(div);
+                 });
+                 return;
+             }
+
+            const structura = member.rawData["04_STRUCTURA"] || {};
+            const vybuttya = member.rawData["06_VYBUTTYA"] || {};
+            const personal = member.rawData["02_OSOBYSTE"] || {};
+            
+            const dVodnogo = String(structura["5_d_vodnogo"] || "").trim();
+            const dVstupu = String(structura["6_d_vstupu"] || "").trim();
+            const zvidky = String(structura["7_zvidky_primitka"] || "").trim();
+            
+            const dVybuttya = String(vybuttya["1_d_vybuttya"] || vybuttya["1_d_vybyttya"] || "").trim();
+            const prichina = String(vybuttya["2_prichina"] || "").trim();
+            const vybuvPrymitka = String(vybuttya["vybuv_prymitka"] || vybuttya["3_primitka"] || vybuttya["primitka"] || "").trim();
+            
+            const events = [];
+            
+            // 1. Water Baptism
+            if (dVodnogo) {
+                events.push({
+                    date: dVodnogo,
+                    title: "🌊 Водне хрещення",
+                    desc: ""
+                });
+            }
+            
+            // 2. Formal Entry
+            if (dVstupu) {
+                let entryTitle = "📎 Прийняття в члени церкви";
+                if (zvidky) {
+                    entryTitle += ` (${zvidky})`;
+                }
+                events.push({
+                    date: dVstupu,
+                    title: entryTitle,
+                    desc: ""
+                });
+            }
+            
+            // 3. Scan fields for excommunication notes
+            const textLower = vybuvPrymitka.toLowerCase();
+            const zvidkyLower = zvidky.toLowerCase();
+            
+            // Check for explicit "вил" pattern
+            const excomMatches = vybuvPrymitka.match(/(вил\.|вилуч\.|вилучена|вилучений)\s*(\d{2}[\.\/]\d{2}[\.\/]\d{2,4})/i);
+            if (excomMatches) {
+                events.push({
+                    date: excomMatches[2],
+                    title: "🚫 Вилучення з членів церкви",
+                    desc: vybuvPrymitka
+                });
+            } else if (textLower.includes("вилуч") || textLower.includes("блуд") || zvidkyLower.includes("вилуч")) {
+                const anyDates = vybuvPrymitka.match(/\d{2}[\.\/]\d{2}[\.\/]\d{2,4}/g) || [];
+                if (anyDates.length > 0) {
+                    anyDates.forEach(d => {
+                        if (d !== dVodnogo && d !== dVstupu && d !== dVybuttya) {
+                            events.push({
+                                date: d,
+                                title: "⚠️ Вилучення (історична позначка)",
+                                desc: vybuvPrymitka
+                            });
+                        }
+                    });
+                } else if (textLower.includes("вилуч. за блуд") || textLower.includes("вил. за блуд")) {
+                    events.push({
+                        date: "історична",
+                        title: "⚠️ Був вилучений за блуд (згідно з приміткою)",
+                        desc: vybuvPrymitka
+                    });
+                }
+            }
+            
+            // 4. Departure
+            if (dVybuttya || prichina || (personal["13_status"] === "вибув")) {
+                let exitTitle = "🚪 Вибуття з церкви";
+                if (prichina) {
+                    exitTitle += ` (причина: ${prichina})`;
+                }
+                events.push({
+                    date: dVybuttya || "не вказано",
+                    title: exitTitle,
+                    desc: vybuvPrymitka
+                });
+            }
+
+            const parseDateHelper = (str) => {
+                if (!str || str === "не вказано" || str === "історична") return new Date(0);
+                const parts = str.split(/[\.\/]/);
+                if (parts.length === 3) {
+                    let day = parseInt(parts[0], 10);
+                    let month = parseInt(parts[1], 10) - 1;
+                    let year = parseInt(parts[2], 10);
+                    if (year < 100) {
+                        year += (year > 50 ? 1900 : 2000);
+                    }
+                    return new Date(year, month, day);
+                }
+                return new Date(0);
+            };
+            
+            events.sort((a, b) => parseDateHelper(a.date) - parseDateHelper(b.date));
+            
+            const uniqEvents = [];
+            const seen = new Set();
+            events.forEach(e => {
+                const key = `${e.date}_${e.title.slice(0, 10)}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqEvents.push(e);
+                }
+            });
+
+            if (uniqEvents.length > 0) {
+                timelineSection.classList.remove('hidden');
+                timelineContainer.innerHTML = '';
+                uniqEvents.forEach(e => {
+                    const div = document.createElement('div');
+                    div.className = 'flex items-start gap-2 border-b border-zinc-800/60 py-1.5 last:border-0';
+                    div.innerHTML = `
+                        <span class="font-mono text-[9px] text-sky-400 bg-sky-950/80 px-1 py-0.5 rounded border border-sky-900/30 whitespace-nowrap self-start mt-0.5">${e.date}</span>
+                        <div>
+                            <span class="font-bold text-gray-200 block text-[11px]">${e.title}</span>
+                            ${e.desc ? `<p class="text-[10px] text-zinc-400 italic">${e.desc}</p>` : ''}
+                        </div>
+                    `;
+                    timelineContainer.appendChild(div);
+                });
+            } else {
+                timelineSection.classList.add('hidden');
+            }
         }
 
         // ПОШУК ТА ВИБІР ПАРТНЕРА/ПОДРУЖЖЯ
@@ -693,6 +1085,13 @@
             }
             if (e.target !== searchInput) {
                 searchResults.classList.add('hidden');
+            }
+            const minDropdown = document.getElementById('ministryDropdownContainer');
+            const minButton = document.getElementById('ministrySelectedText')?.parentElement;
+            if (minDropdown && !minDropdown.contains(e.target) && e.target !== minButton && !minButton?.contains(e.target)) {
+                minDropdown.classList.add('hidden');
+                const minArrow = document.getElementById('ministryArrow');
+                if (minArrow) minArrow.textContent = '▼';
             }
         });
 

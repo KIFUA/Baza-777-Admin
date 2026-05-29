@@ -347,6 +347,23 @@ app.get("/api/lookups", (req, res) => {
   });
 });
 
+// Helper to determine if a member is a merged/archived duplicate profile
+function isMergedProfileServer(m: any, list: any[]) {
+  const pibSelf = String(m.pib || "").trim().toLowerCase();
+  if (!pibSelf) return false;
+  
+  const selfId = Number(m.id);
+  return list.some(other => {
+    const otherId = Number(other.id);
+    if (otherId <= selfId) return false;
+    
+    const otherPib = String(other.pib || "").trim().toLowerCase();
+    if (otherPib !== pibSelf) return false;
+    
+    return other.id_vybuttya === 0;
+  });
+}
+
 // 3. Get Members (summary list with options to search, filter by tag, caretakers, etc)
 app.get("/api/members", (req, res) => {
   const query = (req.query.q as string || "").toLowerCase();
@@ -392,9 +409,9 @@ app.get("/api/members", (req, res) => {
   // Filter Status
   if (status) {
     if (status === "active") {
-      result = result.filter(m => m.id_vybuttya === 0);
+      result = result.filter(m => m.id_vybuttya === 0 && !isMergedProfileServer(m, members));
     } else if (status === "dismissed") {
-      result = result.filter(m => m.id_vybuttya > 0);
+      result = result.filter(m => m.id_vybuttya > 0 && !isMergedProfileServer(m, members));
     }
   }
 
@@ -403,7 +420,7 @@ app.get("/api/members", (req, res) => {
 
 // 4. Get Core Statistics
 app.get("/api/stats", (req, res) => {
-  const activeOnly = members.filter(m => m.id_vybuttya === 0);
+  const activeOnly = members.filter(m => m.id_vybuttya === 0 && !isMergedProfileServer(m, members));
   
   const stats: DashboardStats = {
     totalMembers: members.length,

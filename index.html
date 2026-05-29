@@ -158,6 +158,7 @@
 
       <form
         id="memberForm"
+        autocomplete="off"
         class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg hidden"
       >
         <div class="flex flex-col gap-3">
@@ -240,14 +241,10 @@
             </div>
             <div>
               <label
-                class="block text-[11px] text-gray-400 cursor-pointer"
-                onclick="
-                  document
-                    .getElementById('messengers_content')
-                    .classList.toggle('hidden')
-                "
+                class="block text-[11px] text-gray-400 cursor-pointer flex items-center gap-1 select-none w-max pb-1"
+                onclick="document.getElementById('messengers_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
               >
-                Месенджери та контакти +
+                Месенджери та контакти <span class="text-gray-500/50 text-[10px]">▼</span>
               </label>
               <div id="messengers_content" class="hidden mt-1">
                 <input
@@ -624,21 +621,12 @@
             id="exit_block"
             class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 space-y-2 hidden"
           >
-            <div
-              class="flex justify-between items-center cursor-pointer"
-              onclick="
-                document
-                  .getElementById('exit_fields')
-                  .classList.toggle('hidden')
-              "
+            <h3
+              class="text-[10px] uppercase font-bold text-amber-500 tracking-wider cursor-pointer flex items-center gap-1 select-none"
+              onclick="document.getElementById('exit_fields').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
             >
-              <h3
-                class="text-[10px] uppercase font-bold text-amber-500 tracking-wider"
-              >
-                Вибуття
-              </h3>
-              <span class="text-amber-500 text-[10px]">▲/▼</span>
-            </div>
+              ВИБУТТЯ <span class="text-amber-500/50">▼</span>
+            </h3>
             <div id="exit_fields" class="space-y-2">
               <div class="flex flex-wrap gap-2">
                 <div>
@@ -691,21 +679,12 @@
             id="dynamicTimelineSection"
             class="border-t border-borderClr pt-3 space-y-3 bg-sky-950/15 p-3 rounded border border-sky-900/35"
           >
-            <div
-              class="flex justify-between items-center cursor-pointer"
-              onclick="
-                document
-                  .getElementById('timelineContent')
-                  .classList.toggle('hidden')
-              "
+            <h3
+              class="text-[10px] uppercase font-bold text-sky-400 tracking-wider cursor-pointer flex items-center gap-1 select-none"
+              onclick="document.getElementById('timelineContent').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
             >
-              <h3
-                class="text-[10px] uppercase font-bold text-sky-400 tracking-wider"
-              >
-                ІСТОРІЯ ЗМІН
-              </h3>
-              <span class="text-sky-400 text-[10px]">▲/▼</span>
-            </div>
+              ІСТОРІЯ ЗМІН <span class="text-sky-500/50">▼</span>
+            </h3>
             <div id="timelineContent" class="hidden space-y-3">
               <!-- Хронологія динамічних подій -->
               <div id="dynamicTimelineEventsPart" class="space-y-1.5 hidden">
@@ -979,23 +958,9 @@
           '#memberForm input[type="text"]:not(#searchInput), #memberForm textarea, #memberForm select',
         );
         inputs.forEach((el) => {
-          el.addEventListener("focus", (e) => {
-            const target = e.target;
-            // If element has value 'н/д', clear it completely
-            if (target.value && target.value.trim() === "н/д")
-              target.value = "";
-            target.style.color = "#ffffff";
-          });
-          el.addEventListener("blur", (e) => {
-            const target = e.target;
-            // If element is empty, fill with 'н/д'
-            if (target.value && target.value.trim() === "") {
-              target.value = "н/д";
-              target.style.color = "#71717a";
-            } else {
-              target.style.color = "#ffffff";
-            }
-          });
+          if (el.tagName === "INPUT") {
+             el.setAttribute("autocomplete", "new-password");
+          }
         });
 
         // Street address clean-up on load (handled in loadDatabase, but ensure UI fields)
@@ -1401,6 +1366,11 @@
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-300 font-bold text-xs px-1 select-none cursor-pointer" title="Видалити номер">×</button>
             `;
         container.appendChild(div);
+
+        div.querySelectorAll('input[type="text"]').forEach(el => {
+            el.setAttribute("autocomplete", "new-password");
+            if (window.bindGrayListener) window.bindGrayListener(el);
+        });
       };
 
       window.clearExtraPhones = () => {
@@ -1507,6 +1477,11 @@
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-300 font-bold text-xs p-1 select-none cursor-pointer self-center mt-3" title="Видалити запис">×</button>
             `;
         container.appendChild(div);
+
+        div.querySelectorAll('input[type="text"]').forEach(el => {
+            el.setAttribute("autocomplete", "new-password");
+            if (window.bindGrayListener) window.bindGrayListener(el);
+        });
       };
 
       function valOrEmpty(val) {
@@ -1638,6 +1613,15 @@
         document.getElementById("pib_main").value = valOrEmpty(
           member.rawData["pib"] || member.rawData["01_PIB"],
         );
+
+        // Make all toggle blocks collapsed
+        ["family_content", "address_content", "structure_content", "messengers_content", "timelineContent", "exit_fields", "dity", "ministryDropdownContainer"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add("hidden");
+        });
+        document.querySelectorAll("h3 span, label span, #childrenArrow, #ministryArrow").forEach(span => {
+            if (span.textContent === "▲") span.textContent = "▼";
+        });
 
         const personal = member.rawData["02_OSOBYSTE"] || {};
         const address = member.rawData["03_ADRESA"] || {};
@@ -1832,7 +1816,7 @@
         if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
           if (eventsPart) eventsPart.classList.remove("hidden");
           const titleEl = timelineSection.querySelector("h3");
-          if (titleEl) titleEl.textContent = "ІСТОРІЯ ЗМІН";
+          if (titleEl) titleEl.innerHTML = 'ІСТОРІЯ ЗМІН <span class="text-sky-500/50">▼</span>';
           timelineContainer.innerHTML = "";
 
           const baptismEvent = dbHistory.find(
@@ -2350,10 +2334,7 @@
         }
       };
 
-      function initGrayListeners() {
-        document
-          .querySelectorAll('input[type="text"], textarea, select')
-          .forEach((el) => {
+      window.bindGrayListener = function(el) {
             if (
               el.id === "spouse_id" ||
               el.id === "docId" ||
@@ -2369,6 +2350,7 @@
               return;
             }
 
+            el.value = valOrNA(el.value);
             applyGrayForNA(el);
 
             el.addEventListener("input", () => applyGrayForNA(el));
@@ -2384,6 +2366,13 @@
               }
               applyGrayForNA(el);
             });
+      };
+
+      function initGrayListeners() {
+        document
+          .querySelectorAll('input[type="text"], textarea, select')
+          .forEach((el) => {
+             window.bindGrayListener(el);
           });
       }
 

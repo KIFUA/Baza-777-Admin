@@ -2357,6 +2357,7 @@
             el.addEventListener("change", () => applyGrayForNA(el));
             el.addEventListener("focus", () => {
               if (el.value.trim() === "н/д") {
+                el.value = "";
                 el.style.color = "#ffffff";
               }
             });

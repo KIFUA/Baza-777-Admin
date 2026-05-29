@@ -183,59 +183,51 @@
                   class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                 />
               </div>
-              <div>
+              <div class="flex flex-col items-center gap-0.5">
                 <label
-                  class="block text-[11px] text-gray-400 select-none mb-0.5"
-                  >Телефон</label
+                  for="radio_phone_1"
+                  class="text-[8px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer"
+                  title="Зробити основним"
+                  >осн.</label
                 >
-                <div class="flex items-center gap-2">
-                  <div class="flex flex-col items-center gap-0.5">
-                    <label
-                      for="radio_phone_1"
-                      class="text-[8px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer"
-                      title="Зробити основним"
-                      >осн.</label
-                    >
-                    <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
-                     <input
-                       type="radio"
-                       name="main_phone_select"
-                       id="radio_phone_1"
-                       checked
-                       value="1"
-                       class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
-                     />
-                     <input
-                       type="text"
-                       id="tel"
-                       class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
-                       placeholder="Номер 1"
-                     />
-                    </div>
-                  </div>
-                  <div class="flex flex-col items-center gap-0.5">
-                    <label
-                      for="radio_phone_2"
-                      class="text-[8px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer"
-                      title="Зробити основним"
-                      >осн.</label
-                    >
-                    <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
-                     <input
-                       type="radio"
-                       name="main_phone_select"
-                       id="radio_phone_2"
-                       value="2"
-                       class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
-                     />
-                     <input
-                       type="text"
-                       id="tel_extra"
-                       class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
-                       placeholder="Номер 2"
-                     />
-                    </div>
-                  </div>
+                <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
+                 <input
+                   type="radio"
+                   name="main_phone_select"
+                   id="radio_phone_1"
+                   checked
+                   value="1"
+                   class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
+                 />
+                 <input
+                   type="text"
+                   id="tel"
+                   class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                   placeholder="Номер 1"
+                 />
+                </div>
+              </div>
+              <div class="flex flex-col items-center gap-0.5">
+                <label
+                  for="radio_phone_2"
+                  class="text-[8px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer"
+                  title="Зробити основним"
+                  >осн.</label
+                >
+                <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
+                 <input
+                   type="radio"
+                   name="main_phone_select"
+                   id="radio_phone_2"
+                   value="2"
+                   class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
+                 />
+                 <input
+                   type="text"
+                   id="tel_extra"
+                   class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                   placeholder="Номер 2"
+                 />
                 </div>
               </div>
             </div>
@@ -370,8 +362,6 @@
                   <option value="вдов.">вдов.</option>
                 </select>
               </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
               <div id="partner_start_date_container">
                 <label class="block text-[11px] text-gray-400 select-none"
                   >Дата шлюбу</label
@@ -441,7 +431,7 @@
               class="text-[10px] uppercase font-bold text-teal-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
               onclick="document.getElementById('address_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
             >
-              АДРЕСА ПРОЖИВАННЯ <span class="text-teal-500/50">▼</span>
+              АДРЕС <span class="text-teal-500/50">▼</span>
             </h3>
             <div id="address_content" class="space-y-2 hidden">
               <div class="grid grid-cols-2 gap-2">
@@ -671,7 +661,7 @@
             "
             class="w-full bg-amber-900/50 text-amber-300 py-1 rounded text-xs"
           >
-            Вибуття + Додати запис
+            Вибуття
           </button>
 
           <!-- ІСТОРІЯ ЗМІН (Об'єднаний блок) -->

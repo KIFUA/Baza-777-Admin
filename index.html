@@ -114,7 +114,10 @@
             placeholder="Почніть вводити ПІБ..."
             autocomplete="off"
             readonly
-            onfocus="this.placeholder = ''; this.removeAttribute('readonly');"
+            onfocus="
+              this.placeholder = '';
+              this.removeAttribute('readonly');
+            "
             onblur="this.placeholder = 'Почніть вводити ПІБ...'"
             class="w-full bg-inputBg border border-borderClr rounded text-white outline-none focus:border-zinc-500"
           />
@@ -142,21 +145,28 @@
           class="text-[10px] text-gray-500 font-mono text-right px-2 hidden"
           id="idDisplay"
         ></div>
-        <div id="historyBadge" class="hidden text-center mt-1">
-          <button
-            type="button"
-            onclick="scrollToHistorySection()"
-            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold bg-amber-950/80 hover:bg-amber-900/90 text-amber-400 border border-amber-800/60 shadow-inner transition cursor-pointer select-none"
-          >
-            🕰️ ІСТОРІЯ ЗМІН
-          </button>
-        </div>
       </div>
 
       <div
         id="selectedHeaderPIB"
-        class="sticky top-0 z-[9999] bg-zinc-850/95 backdrop-blur-md border border-zinc-700/60 text-xl font-black text-white text-center tracking-wide uppercase px-3 py-2.5 rounded-md shadow-md hidden"
-      ></div>
+        class="sticky top-0 z-[9999] bg-zinc-850/95 backdrop-blur-md border border-zinc-700/60 flex flex-col items-center px-3 py-2.5 rounded-md shadow-md hidden"
+      >
+        <span
+          id="pibTextSpan"
+          class="text-xl font-black text-white text-center tracking-wide uppercase w-full"
+        ></span>
+        <div class="w-full flex justify-start mt-0.5">
+          <div id="historyBadge" class="hidden text-left">
+            <button
+              type="button"
+              onclick="scrollToHistorySection()"
+              class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold bg-amber-950/80 hover:bg-amber-900/90 text-amber-400 border border-amber-800/60 shadow-inner transition cursor-pointer select-none"
+            >
+              🕰️ ІСТОРІЯ ЗМІН
+            </button>
+          </div>
+        </div>
+      </div>
 
       <form
         id="memberForm"
@@ -192,21 +202,23 @@
                   title="Зробити основним"
                   >осн.</label
                 >
-                <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
-                 <input
-                   type="radio"
-                   name="main_phone_select"
-                   id="radio_phone_1"
-                   checked
-                   value="1"
-                   class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
-                 />
-                 <input
-                   type="text"
-                   id="tel"
-                   class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
-                   placeholder="Номер 1"
-                 />
+                <div
+                  class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60"
+                >
+                  <input
+                    type="radio"
+                    name="main_phone_select"
+                    id="radio_phone_1"
+                    checked
+                    value="1"
+                    class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    id="tel"
+                    class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                    placeholder="Номер 1"
+                  />
                 </div>
               </div>
               <div class="flex flex-col items-center gap-0.5">
@@ -216,29 +228,38 @@
                   title="Зробити основним"
                   >осн.</label
                 >
-                <div class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60">
-                 <input
-                   type="radio"
-                   name="main_phone_select"
-                   id="radio_phone_2"
-                   value="2"
-                   class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
-                 />
-                 <input
-                   type="text"
-                   id="tel_extra"
-                   class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
-                   placeholder="Номер 2"
-                 />
+                <div
+                  class="flex items-center gap-1.5 bg-neutral-900/40 px-1.5 py-1 rounded border border-zinc-800/60"
+                >
+                  <input
+                    type="radio"
+                    name="main_phone_select"
+                    id="radio_phone_2"
+                    value="2"
+                    class="w-2.5 h-2.5 accent-blue-500 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    id="tel_extra"
+                    class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                    placeholder="Номер 2"
+                  />
                 </div>
               </div>
             </div>
             <div>
               <label
                 class="block text-[11px] text-gray-400 cursor-pointer flex items-center gap-1 select-none w-max pb-1"
-                onclick="document.getElementById('messengers_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
+                onclick="
+                  document
+                    .getElementById('messengers_content')
+                    .classList.toggle('hidden');
+                  const t = this.querySelector('span');
+                  t.textContent = t.textContent === '▼' ? '▲' : '▼';
+                "
               >
-                Месенджери та контакти <span class="text-gray-500/50 text-[10px]">▼</span>
+                Месенджери та контакти
+                <span class="text-gray-500/50 text-[10px]">▼</span>
               </label>
               <div id="messengers_content" class="hidden mt-1">
                 <input
@@ -331,87 +352,93 @@
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
               class="text-[10px] uppercase font-bold text-pink-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
-              onclick="document.getElementById('family_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
+              onclick="
+                document
+                  .getElementById('family_content')
+                  .classList.toggle('hidden');
+                const t = this.querySelector('span');
+                t.textContent = t.textContent === '▼' ? '▲' : '▼';
+              "
             >
               СІМ'Я <span class="text-pink-500/50">▼</span>
             </h3>
             <div id="family_content" class="space-y-2 hidden">
               <div class="flex flex-wrap items-end gap-2">
-              <div>
-                <label class="block text-[11px] text-gray-400"
-                  >Сімейний стан</label
-                >
-                <select
-                  id="spouse_status"
-                  class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                >
-                  <option value="" class="text-gray-500">н/д</option>
-                  <option value="неодруж.">неодруж.</option>
-                  <option value="одр.">одруж.</option>
-                  <option value="розлуч.">розлуч.</option>
-                  <option value="вдов.">вдов.</option>
-                </select>
+                <div>
+                  <label class="block text-[11px] text-gray-400"
+                    >Сімейний стан</label
+                  >
+                  <select
+                    id="spouse_status"
+                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  >
+                    <option value="" class="text-gray-500">н/д</option>
+                    <option value="неодруж.">неодруж.</option>
+                    <option value="одр.">одруж.</option>
+                    <option value="розлуч.">розлуч.</option>
+                    <option value="вдов.">вдов.</option>
+                  </select>
+                </div>
+                <div id="partner_start_date_container">
+                  <label class="block text-[11px] text-gray-400 select-none"
+                    >Дата шлюбу</label
+                  >
+                  <input
+                    type="text"
+                    id="d_shlyub_from"
+                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div id="partner_end_date_container" class="hidden">
+                  <label class="block text-[11px] text-gray-400 select-none"
+                    >Дата завершення шлюбу</label
+                  >
+                  <input
+                    type="text"
+                    id="d_shlyub_end"
+                    class="w-[150px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
               </div>
-              <div id="partner_start_date_container">
-                <label class="block text-[11px] text-gray-400 select-none"
-                  >Дата шлюбу</label
-                >
-                <input
-                  type="text"
-                  id="d_shlyub_from"
-                  class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div id="partner_end_date_container" class="hidden">
-                <label class="block text-[11px] text-gray-400 select-none"
-                  >Дата завершення шлюбу</label
-                >
-                <input
-                  type="text"
-                  id="d_shlyub_end"
-                  class="w-[150px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-            </div>
-            <div
-              id="partner_id_container"
-              class="hidden relative flex-1 min-w-[180px]"
-            >
-              <input type="hidden" id="spouse_id" />
-              <div>
-                <label class="block text-[11px] text-gray-400"
-                  >ПІБ партнера</label
-                >
-                <input
-                  type="text"
-                  id="partner_name_input"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                  autocomplete="off"
-                />
-                <ul
-                  id="partnerSearchResults"
-                  class="absolute left-0 right-0 mt-1 bg-inputBg border border-borderClr rounded max-h-48 overflow-y-auto z-50 hidden divide-y divide-borderClr shadow-2xl"
-                ></ul>
-              </div>
-            </div>
-            <div class="space-y-1">
               <div
-                class="flex items-center gap-1 cursor-pointer"
-                onclick="toggleChildren()"
+                id="partner_id_container"
+                class="hidden relative flex-1 min-w-[180px]"
               >
-                <label class="block text-[11px] text-gray-400">Діти</label>
-                <span id="childrenArrow" class="text-[10px] text-gray-500"
-                  >▼</span
-                >
+                <input type="hidden" id="spouse_id" />
+                <div>
+                  <label class="block text-[11px] text-gray-400"
+                    >ПІБ партнера</label
+                  >
+                  <input
+                    type="text"
+                    id="partner_name_input"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    autocomplete="off"
+                  />
+                  <ul
+                    id="partnerSearchResults"
+                    class="absolute left-0 right-0 mt-1 bg-inputBg border border-borderClr rounded max-h-48 overflow-y-auto z-50 hidden divide-y divide-borderClr shadow-2xl"
+                  ></ul>
+                </div>
               </div>
-              <textarea
-                id="dity"
-                oninput="window.autoResizeDity()"
-                class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden resize-none overflow-y-hidden text-xs py-1.5 px-2 font-sans"
-                rows="1"
-                style="height: auto"
-              ></textarea>
-            </div>
+              <div class="space-y-1">
+                <div
+                  class="flex items-center gap-1 cursor-pointer"
+                  onclick="toggleChildren()"
+                >
+                  <label class="block text-[11px] text-gray-400">Діти</label>
+                  <span id="childrenArrow" class="text-[10px] text-gray-500"
+                    >▼</span
+                  >
+                </div>
+                <textarea
+                  id="dity"
+                  oninput="window.autoResizeDity()"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden resize-none overflow-y-hidden text-xs py-1.5 px-2 font-sans"
+                  rows="1"
+                  style="height: auto"
+                ></textarea>
+              </div>
             </div>
           </div>
 
@@ -419,57 +446,63 @@
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
               class="text-[10px] uppercase font-bold text-teal-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
-              onclick="document.getElementById('address_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
+              onclick="
+                document
+                  .getElementById('address_content')
+                  .classList.toggle('hidden');
+                const t = this.querySelector('span');
+                t.textContent = t.textContent === '▼' ? '▲' : '▼';
+              "
             >
               АДРЕС <span class="text-teal-500/50">▼</span>
             </h3>
             <div id="address_content" class="space-y-2 hidden">
               <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-[11px] text-gray-400"
-                  >Населений пункт</label
-                >
-                <input
-                  type="text"
-                  id="addr_city"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
+                <div>
+                  <label class="block text-[11px] text-gray-400"
+                    >Населений пункт</label
+                  >
+                  <input
+                    type="text"
+                    id="addr_city"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-gray-400">Вулиця</label>
+                  <input
+                    type="text"
+                    id="addr_street"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
               </div>
-              <div>
-                <label class="block text-[11px] text-gray-400">Вулиця</label>
-                <input
-                  type="text"
-                  id="addr_street"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
+              <div class="flex flex-wrap gap-2">
+                <div>
+                  <label class="block text-[11px] text-gray-400">Будинок</label>
+                  <input
+                    type="text"
+                    id="addr_house"
+                    class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-gray-400">Корпус</label>
+                  <input
+                    type="text"
+                    id="addr_korpus"
+                    class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-gray-400">Кв.</label>
+                  <input
+                    type="text"
+                    id="addr_flat"
+                    class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
               </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <div>
-                <label class="block text-[11px] text-gray-400">Будинок</label>
-                <input
-                  type="text"
-                  id="addr_house"
-                  class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label class="block text-[11px] text-gray-400">Корпус</label>
-                <input
-                  type="text"
-                  id="addr_korpus"
-                  class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label class="block text-[11px] text-gray-400">Кв.</label>
-                <input
-                  type="text"
-                  id="addr_flat"
-                  class="w-[60px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-            </div>
             </div>
           </div>
 
@@ -479,131 +512,143 @@
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
               class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none cursor-pointer flex items-center gap-1"
-              onclick="document.getElementById('structure_content').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
+              onclick="
+                document
+                  .getElementById('structure_content')
+                  .classList.toggle('hidden');
+                const t = this.querySelector('span');
+                t.textContent = t.textContent === '▼' ? '▲' : '▼';
+              "
             >
               СТРУКТУРА <span class="text-purple-500/50">▼</span>
             </h3>
             <div id="structure_content" class="space-y-2 hidden">
               <div class="flex flex-wrap gap-2">
-              <div>
+                <div>
+                  <label
+                    class="block text-[11px] text-purple-400 font-bold select-none"
+                    >В.Хр.</label
+                  >
+                  <input
+                    type="text"
+                    id="d_vodnogo"
+                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-purple-400 select-none"
+                    >Дата вступу</label
+                  >
+                  <input
+                    type="text"
+                    id="d_vstupu"
+                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div class="flex-1 min-w-[80px]">
+                  <label class="block text-[11px] text-purple-400 select-none"
+                    >Сан</label
+                  >
+                  <input
+                    type="text"
+                    id="san"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <div>
+                  <label
+                    class="block text-[11px] text-purple-400 font-bold select-none"
+                    >Район</label
+                  >
+                  <input
+                    type="text"
+                    id="rayon"
+                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div class="flex-1 min-w-[100px]">
+                  <label
+                    class="block text-[11px] text-purple-400 font-bold select-none"
+                    >Опіка</label
+                  >
+                  <input
+                    type="text"
+                    id="opika"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <input type="hidden" id="group_name" />
+              </div>
+              <div class="relative w-[200px]">
                 <label
-                  class="block text-[11px] text-purple-400 font-bold select-none"
-                  >В.Хр.</label
+                  class="block text-[11px] text-purple-400 font-bold select-none mb-1"
+                  >Служіння</label
                 >
-                <input
-                  type="text"
-                  id="d_vodnogo"
-                  class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
+                <button
+                  type="button"
+                  onclick="toggleMinistryDropdown()"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white text-left px-2 py-1.5 text-xs flex justify-between items-center focus:border-blue-500 outline-none select-none"
+                >
+                  <span
+                    id="ministrySelectedText"
+                    class="truncate text-gray-500 text-xs"
+                    >н/д</span
+                  >
+                  <span id="ministryArrow" class="text-[9px] text-gray-500"
+                    >▼</span
+                  >
+                </button>
+                <div
+                  id="ministryDropdownContainer"
+                  class="absolute left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1"
+                >
+                  <!-- Checkboxes populated dynamically -->
+                </div>
+                <input type="hidden" id="slujinnya" />
               </div>
-              <div>
-                <label class="block text-[11px] text-purple-400 select-none"
-                  >Дата вступу</label
-                >
-                <input
-                  type="text"
-                  id="d_vstupu"
-                  class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label
+                    class="block text-[11px] text-purple-400 font-bold select-none"
+                    >Відвідуваність</label
+                  >
+                  <input
+                    type="text"
+                    id="vidviduvanist"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="block text-[11px] text-purple-400 font-bold select-none"
+                    >Присутність</label
+                  >
+                  <input
+                    type="text"
+                    id="prysutnist"
+                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
               </div>
-              <div class="flex-1 min-w-[80px]">
-                <label class="block text-[11px] text-purple-400 select-none"
-                  >Сан</label
-                >
-                <input
-                  type="text"
-                  id="san"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <div>
-                <label
-                  class="block text-[11px] text-purple-400 font-bold select-none"
-                  >Район</label
-                >
-                <input
-                  type="text"
-                  id="rayon"
-                  class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div class="flex-1 min-w-[100px]">
-                <label
-                  class="block text-[11px] text-purple-400 font-bold select-none"
-                  >Опіка</label
-                >
-                <input
-                  type="text"
-                  id="opika"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-              <input type="hidden" id="group_name" />
-            </div>
-            <div class="relative w-[200px]">
-              <label
-                class="block text-[11px] text-purple-400 font-bold select-none mb-1"
-                >Служіння</label
-              >
-              <button
-                type="button"
-                onclick="toggleMinistryDropdown()"
-                class="w-full bg-inputBg border border-borderClr rounded text-white text-left px-2 py-1.5 text-xs flex justify-between items-center focus:border-blue-500 outline-none select-none"
-              >
-                <span
-                  id="ministrySelectedText"
-                  class="truncate text-gray-500 text-xs"
-                  >н/д</span
-                >
-                <span id="ministryArrow" class="text-[9px] text-gray-500"
-                  >▼</span
-                >
-              </button>
-              <div
-                id="ministryDropdownContainer"
-                class="absolute left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1"
-              >
-                <!-- Checkboxes populated dynamically -->
-              </div>
-              <input type="hidden" id="slujinnya" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label
-                  class="block text-[11px] text-purple-400 font-bold select-none"
-                  >Відвідуваність</label
-                >
-                <input
-                  type="text"
-                  id="vidviduvanist"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-              <div>
-                <label
-                  class="block text-[11px] text-purple-400 font-bold select-none"
-                  >Присутність</label
-                >
-                <input
-                  type="text"
-                  id="prysutnist"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                />
-              </div>
-            </div>
             </div>
           </div>
 
           <!-- БЛОК ВИБУТТЯ -->
           <div
             id="exit_block"
-            class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 space-y-2 hidden"
+            class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 space-y-2"
           >
             <h3
               class="text-[10px] uppercase font-bold text-amber-500 tracking-wider cursor-pointer flex items-center gap-1 select-none"
-              onclick="document.getElementById('exit_fields').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
+              onclick="
+                document
+                  .getElementById('exit_fields')
+                  .classList.toggle('hidden');
+                const t = this.querySelector('span');
+                t.textContent = t.textContent === '▼' ? '▲' : '▼';
+              "
             >
               ВИБУТТЯ <span class="text-amber-500/50">▼</span>
             </h3>
@@ -641,18 +686,6 @@
               </div>
             </div>
           </div>
-          <button
-            type="button"
-            id="add_exit_btn"
-            onclick="
-              document.getElementById('exit_block').classList.remove('hidden');
-              document.getElementById('exit_fields').classList.remove('hidden');
-              this.classList.add('hidden');
-            "
-            class="w-full bg-amber-900/50 text-amber-300 py-1 rounded text-xs"
-          >
-            Вибуття
-          </button>
 
           <!-- ІСТОРІЯ ЗМІН (Об'єднаний блок) -->
           <div
@@ -661,7 +694,13 @@
           >
             <h3
               class="text-[10px] uppercase font-bold text-sky-400 tracking-wider cursor-pointer flex items-center gap-1 select-none"
-              onclick="document.getElementById('timelineContent').classList.toggle('hidden'); const t = this.querySelector('span'); t.textContent = t.textContent === '▼' ? '▲' : '▼'"
+              onclick="
+                document
+                  .getElementById('timelineContent')
+                  .classList.toggle('hidden');
+                const t = this.querySelector('span');
+                t.textContent = t.textContent === '▼' ? '▲' : '▼';
+              "
             >
               ІСТОРІЯ ЗМІН <span class="text-sky-500/50">▼</span>
             </h3>
@@ -676,13 +715,21 @@
                 </div>
               </div>
 
-              <!-- ХРОНОЛОГІЯ ТА ПЕРЕМІЩЕННЯ (Перенесено сюди) -->
+              <!-- ХРОНОЛОГІЯ ТА ПЕРЕМІЩЕННЯ -->
               <div class="border-t border-zinc-800/60 pt-2.5 space-y-2">
                 <div class="flex justify-between items-center">
                   <h4
-                    class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none"
+                    class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none cursor-pointer flex items-center gap-1"
+                    onclick="
+                      document
+                        .getElementById('movementsContent')
+                        .classList.toggle('hidden');
+                      const t = this.querySelector('span');
+                      t.textContent = t.textContent === '▼' ? '▲' : '▼';
+                    "
                   >
                     Переміщення та зміни адрес
+                    <span class="text-purple-500/50">▼</span>
                   </h4>
                   <button
                     type="button"
@@ -693,12 +740,14 @@
                     + Додати запис
                   </button>
                 </div>
-                <p class="text-[10px] text-zinc-400 italic mb-1 select-none">
-                  Історія переміщень між малими групами чи змін адреси
-                  проживання:
-                </p>
-                <div id="movement_fields_container" class="space-y-1.5">
-                  <!-- Dynamic movement rows populated here -->
+                <div id="movementsContent" class="hidden space-y-2">
+                  <p class="text-[10px] text-zinc-400 italic mb-1 select-none">
+                    Історія переміщень між малими групами чи змін адреси
+                    проживання:
+                  </p>
+                  <div id="movement_fields_container" class="space-y-1.5">
+                    <!-- Dynamic movement rows populated here -->
+                  </div>
                 </div>
               </div>
             </div>
@@ -939,7 +988,7 @@
         );
         inputs.forEach((el) => {
           if (el.tagName === "INPUT") {
-             el.setAttribute("autocomplete", "new-password");
+            el.setAttribute("autocomplete", "new-password");
           }
         });
 
@@ -1347,9 +1396,9 @@
             `;
         container.appendChild(div);
 
-        div.querySelectorAll('input[type="text"]').forEach(el => {
-            el.setAttribute("autocomplete", "new-password");
-            if (window.bindGrayListener) window.bindGrayListener(el);
+        div.querySelectorAll('input[type="text"]').forEach((el) => {
+          el.setAttribute("autocomplete", "new-password");
+          if (window.bindGrayListener) window.bindGrayListener(el);
         });
       };
 
@@ -1458,9 +1507,9 @@
             `;
         container.appendChild(div);
 
-        div.querySelectorAll('input[type="text"]').forEach(el => {
-            el.setAttribute("autocomplete", "new-password");
-            if (window.bindGrayListener) window.bindGrayListener(el);
+        div.querySelectorAll('input[type="text"]').forEach((el) => {
+          el.setAttribute("autocomplete", "new-password");
+          if (window.bindGrayListener) window.bindGrayListener(el);
         });
       };
 
@@ -1565,9 +1614,14 @@
         searchResults.classList.add("hidden");
         searchInput.value = "";
 
-        selectedHeaderPIB.textContent = String(member.pib).toUpperCase();
         selectedHeaderPIB.classList.remove("hidden");
-        selectedHeaderPIB.scrollIntoView({ behavior: "smooth", block: "start" });
+        document.getElementById("pibTextSpan").textContent = String(
+          member.pib,
+        ).toUpperCase();
+        selectedHeaderPIB.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
         idDisplay.classList.remove("hidden");
         memberForm.classList.remove("hidden");
 
@@ -1596,13 +1650,27 @@
         );
 
         // Make all toggle blocks collapsed
-        ["family_content", "address_content", "structure_content", "messengers_content", "timelineContent", "exit_fields", "dity", "ministryDropdownContainer"].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.classList.add("hidden");
+        [
+          "family_content",
+          "address_content",
+          "structure_content",
+          "messengers_content",
+          "timelineContent",
+          "movementsContent",
+          "exit_fields",
+          "dity",
+          "ministryDropdownContainer",
+        ].forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) el.classList.add("hidden");
         });
-        document.querySelectorAll("h3 span, label span, #childrenArrow, #ministryArrow").forEach(span => {
+        document
+          .querySelectorAll(
+            "h3 span, label span, #childrenArrow, #ministryArrow",
+          )
+          .forEach((span) => {
             if (span.textContent === "▲") span.textContent = "▼";
-        });
+          });
 
         const personal = member.rawData["02_OSOBYSTE"] || {};
         const address = member.rawData["03_ADRESA"] || {};
@@ -1797,7 +1865,9 @@
         if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
           if (eventsPart) eventsPart.classList.remove("hidden");
           const titleEl = timelineSection.querySelector("h3");
-          if (titleEl) titleEl.innerHTML = 'ІСТОРІЯ ЗМІН <span class="text-sky-500/50">▼</span>';
+          if (titleEl)
+            titleEl.innerHTML =
+              'ІСТОРІЯ ЗМІН <span class="text-sky-500/50">▼</span>';
           timelineContainer.innerHTML = "";
 
           const baptismEvent = dbHistory.find(
@@ -2137,7 +2207,8 @@
           `Новий запис ID: ${nextId}`;
         document.getElementById("idDisplay").classList.remove("hidden");
         document.getElementById("pib_edit").value = newPib;
-        selectedHeaderPIB.textContent = newPib.toUpperCase();
+        document.getElementById("pibTextSpan").textContent =
+          newPib.toUpperCase();
         selectedHeaderPIB.classList.remove("hidden");
         memberForm.classList.remove("hidden");
         updateSelectColor(document.getElementById("spouse_status"));
@@ -2241,10 +2312,20 @@
         updates[`03_ADRESA/5_kvartyra`] = getVal("addr_flat");
         updates[`03_ADRESA/4_kvartira`] = getVal("addr_flat");
 
-        const currentMember = allMembers.find(m => m.id === targetId);
+        const currentMember = allMembers.find((m) => m.id === targetId);
         let shlyubIndex = 0;
-        if (currentMember && currentMember.rawData && currentMember.rawData["02_OSOBYSTE"] && Array.isArray(currentMember.rawData["02_OSOBYSTE"]["4_shlyub_history"])) {
-            shlyubIndex = Math.max(0, currentMember.rawData["02_OSOBYSTE"]["4_shlyub_history"].length - 1);
+        if (
+          currentMember &&
+          currentMember.rawData &&
+          currentMember.rawData["02_OSOBYSTE"] &&
+          Array.isArray(
+            currentMember.rawData["02_OSOBYSTE"]["4_shlyub_history"],
+          )
+        ) {
+          shlyubIndex = Math.max(
+            0,
+            currentMember.rawData["02_OSOBYSTE"]["4_shlyub_history"].length - 1,
+          );
         }
 
         updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/status`] =
@@ -2254,12 +2335,10 @@
         updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/d_shlyubu_end`] =
           getVal("d_shlyub_end");
 
-        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/podruzhzhya_id`] = partnerMatch
-          ? partnerMatch.id
-          : spouseIdVal;
-        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/podrujya_id`] = partnerMatch
-          ? partnerMatch.id
-          : spouseIdVal;
+        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/podruzhzhya_id`] =
+          partnerMatch ? partnerMatch.id : spouseIdVal;
+        updates[`02_OSOBYSTE/4_shlyub_history/${shlyubIndex}/podrujya_id`] =
+          partnerMatch ? partnerMatch.id : spouseIdVal;
 
         const exitReasonVal = getVal("exit_reason");
         updates[`06_VYBUTTYA/2_prichina`] = exitReasonVal;
@@ -2315,51 +2394,53 @@
         }
       };
 
-      window.bindGrayListener = function(el) {
-            if (el.tagName === "INPUT") {
-              el.setAttribute("autocomplete", "off");
-              el.setAttribute("readonly", "readonly");
-              el.onfocus = function() { this.removeAttribute('readonly'); };
-            }
-            if (
-              el.id === "spouse_id" ||
-              el.id === "docId" ||
-              el.id === "pibHidden" ||
-              el.id === "pib_01" ||
-              el.id === "pib_main" ||
-              el.id === "pib_edit" ||
-              el.id === "spouse_status" ||
-              el.id === "partner_name_input"
-            ) {
-              el.style.color = "#ffffff";
-              el.classList.remove("text-gray-500");
-              return;
-            }
+      window.bindGrayListener = function (el) {
+        if (el.tagName === "INPUT") {
+          el.setAttribute("autocomplete", "off");
+          el.setAttribute("readonly", "readonly");
+          el.onfocus = function () {
+            this.removeAttribute("readonly");
+          };
+        }
+        if (
+          el.id === "spouse_id" ||
+          el.id === "docId" ||
+          el.id === "pibHidden" ||
+          el.id === "pib_01" ||
+          el.id === "pib_main" ||
+          el.id === "pib_edit" ||
+          el.id === "spouse_status" ||
+          el.id === "partner_name_input"
+        ) {
+          el.style.color = "#ffffff";
+          el.classList.remove("text-gray-500");
+          return;
+        }
 
-            el.value = valOrNA(el.value);
-            applyGrayForNA(el);
+        el.value = valOrNA(el.value);
+        applyGrayForNA(el);
 
-            el.addEventListener("input", () => applyGrayForNA(el));
-            el.addEventListener("change", () => applyGrayForNA(el));
-            el.addEventListener("focus", () => {
-              if (el.value.trim() === "н/д") {
-                el.value = "";
-                el.style.color = "#ffffff";
-              }
-            });
-            el.addEventListener("blur", () => {
-              if (el.value.trim() === "") {
-                el.value = "н/д";
-              }
-              applyGrayForNA(el);
-            });
+        el.addEventListener("input", () => applyGrayForNA(el));
+        el.addEventListener("change", () => applyGrayForNA(el));
+        el.addEventListener("focus", () => {
+          if (el.value.trim() === "н/д") {
+            el.value = "";
+            el.style.color = "#ffffff";
+          }
+        });
+        el.addEventListener("blur", () => {
+          if (el.value.trim() === "") {
+            el.value = "н/д";
+          }
+          applyGrayForNA(el);
+        });
       };
 
       function initGrayListeners() {
         document
           .querySelectorAll('input[type="text"], textarea, select')
           .forEach((el) => {
-             window.bindGrayListener(el);
+            window.bindGrayListener(el);
           });
       }
 

@@ -184,7 +184,8 @@
           <input type="hidden" id="stat" />
 
           <div class="space-y-2">
-            <div class="flex flex-wrap gap-3">
+            <!-- Row of Date of Birth and Age -->
+            <div class="flex flex-wrap gap-3 items-end">
               <div>
                 <label class="block text-[11px] text-gray-400 select-none"
                   >Дата народження</label
@@ -192,9 +193,25 @@
                 <input
                   type="text"
                   id="d_nar"
-                  class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none px-1.5 py-0.5"
                 />
               </div>
+              <div id="ageFieldContainer" class="hidden">
+                <label class="block text-[11px] text-gray-400 select-none"
+                  >Вік</label
+                >
+                <input
+                  type="text"
+                  id="ageInput"
+                  readonly
+                  class="w-[45px] bg-inputBg border border-borderClr rounded text-gray-400 focus:outline-none text-center font-bold"
+                  placeholder="н/д"
+                />
+              </div>
+            </div>
+
+            <!-- Row of Phone numbers moved one line below -->
+            <div class="flex flex-wrap gap-3 items-end pt-1">
               <div class="flex flex-col items-center gap-0.5">
                 <label
                   for="radio_phone_1"
@@ -216,7 +233,7 @@
                   <input
                     type="text"
                     id="tel"
-                    class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
                     placeholder="Номер 1"
                   />
                 </div>
@@ -241,7 +258,7 @@
                   <input
                     type="text"
                     id="tel_extra"
-                    class="w-[85px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
                     placeholder="Номер 2"
                   />
                 </div>
@@ -1198,6 +1215,131 @@
         }
       }
 
+      function autoSizeInput(el) {
+        if (!el) return;
+        const id = el.id;
+        const val = el.value || "";
+        let minChars = 8;
+        if (id === "tel" || id === "tel_extra") {
+          minChars = 10;
+        }
+        const chars = val.length > 0 ? val.length : minChars;
+        el.style.width = `${chars + 1}ch`;
+      }
+
+      function calculateAgeByDOB(birthDateStr) {
+        if (
+          !birthDateStr ||
+          birthDateStr === "н/д" ||
+          birthDateStr === "не вказано"
+        )
+          return "";
+        const parts = birthDateStr.trim().split(/[\.\/]/);
+        if (parts.length === 3) {
+          let day = parseInt(parts[0], 10);
+          let month = parseInt(parts[1], 10);
+          let year = parseInt(parts[2], 10);
+          if (isNaN(day) || isNaN(month) || isNaN(year)) return "";
+          if (year < 100) {
+            year += year > 50 ? 1900 : 2000;
+          }
+          const today = new Date();
+          let age = today.getFullYear() - year;
+          const monthDiff = today.getMonth() + 1 - month;
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < day)) {
+            age--;
+          }
+          return age >= 0 ? age : "";
+        }
+        return "";
+      }
+
+      function updateAgeFieldVisibilityAndValue() {
+        const d_nar_val = document.getElementById("d_nar")
+          ? document.getElementById("d_nar").value
+          : "";
+        const statusVal = document.getElementById("status")
+          ? document.getElementById("status").value
+          : "";
+        const exitReasonVal = document.getElementById("exit_reason")
+          ? document.getElementById("exit_reason").value
+          : "";
+        const exitDateVal = document.getElementById("exit_date")
+          ? document.getElementById("exit_date").value
+          : "";
+
+        // Determine if member left (isLeft) - ignore placeholder 'н/д' or 'не вказано' strings
+        const isLeft =
+          statusVal === "вибув" ||
+          (exitReasonVal.trim() !== "" &&
+            exitReasonVal.trim() !== "н/д" &&
+            exitReasonVal.trim() !== "не вказано") ||
+          (exitDateVal.trim() !== "" &&
+            exitDateVal.trim() !== "н/д" &&
+            exitDateVal.trim() !== "не вказано");
+        const isPresent = !isLeft;
+
+        const ageFieldContainer = document.getElementById("ageFieldContainer");
+        const ageInput = document.getElementById("ageInput");
+
+        if (ageFieldContainer && ageInput) {
+          if (isPresent) {
+            ageFieldContainer.classList.remove("hidden");
+            const ageVal = calculateAgeByDOB(d_nar_val);
+            if (ageVal !== "") {
+              ageInput.value = ageVal;
+              ageInput.style.color = "#ffffff";
+            } else {
+              ageInput.value = "н/д";
+              ageInput.style.color = "#71717a";
+            }
+          } else {
+            ageFieldContainer.classList.add("hidden");
+            ageInput.value = "";
+          }
+        }
+      }
+
+      // Live calculation event listeners
+      document.addEventListener("DOMContentLoaded", () => {
+        const DOBInp = document.getElementById("d_nar");
+        const exitReasonInp = document.getElementById("exit_reason");
+        const exitDateInp = document.getElementById("exit_date");
+        const phone1Inp = document.getElementById("tel");
+        const phone2Inp = document.getElementById("tel_extra");
+
+        if (DOBInp) {
+          DOBInp.addEventListener("input", () => {
+            updateAgeFieldVisibilityAndValue();
+            autoSizeInput(DOBInp);
+          });
+          // Ensure it styles/sizes initially if it has a default value
+          autoSizeInput(DOBInp);
+        }
+        if (phone1Inp) {
+          phone1Inp.addEventListener("input", () => {
+            autoSizeInput(phone1Inp);
+          });
+          autoSizeInput(phone1Inp);
+        }
+        if (phone2Inp) {
+          phone2Inp.addEventListener("input", () => {
+            autoSizeInput(phone2Inp);
+          });
+          autoSizeInput(phone2Inp);
+        }
+        if (exitReasonInp)
+          exitReasonInp.addEventListener(
+            "input",
+            updateAgeFieldVisibilityAndValue,
+          );
+        if (exitDateInp)
+          exitDateInp.addEventListener(
+            "input",
+            updateAgeFieldVisibilityAndValue,
+          );
+      });
+
       const spouseStatusEl = document.getElementById("spouse_status");
       spouseStatusEl.addEventListener("change", () => {
         updateSelectColor(spouseStatusEl);
@@ -1573,6 +1715,9 @@
         if (!el) return;
         el.value = valOrNA(val);
         applyGrayForNA(el);
+        if (id === "d_nar" || id === "tel" || id === "tel_extra") {
+          autoSizeInput(el);
+        }
       }
 
       function getVal(id) {
@@ -1850,6 +1995,7 @@
         }
 
         updateDynamicTimeline(member);
+        updateAgeFieldVisibilityAndValue();
       }
 
       function updateDynamicTimeline(member) {
@@ -2080,6 +2226,8 @@
         } else {
           if (eventsPart) eventsPart.classList.add("hidden");
         }
+
+        updateAgeFieldVisibilityAndValue();
       }
 
       // ПОШУК ТА ВИБІР ПАРТНЕРА/ПОДРУЖЖЯ
@@ -2213,6 +2361,7 @@
         memberForm.classList.remove("hidden");
         updateSelectColor(document.getElementById("spouse_status"));
         togglePartnerIdField();
+        updateAgeFieldVisibilityAndValue();
       };
 
       memberForm.onsubmit = async (e) => {

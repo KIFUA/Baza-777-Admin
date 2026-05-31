@@ -238,7 +238,10 @@
                   />
                 </div>
               </div>
-              <div class="flex flex-col items-center gap-0.5">
+              <div
+                id="telExtraContainer"
+                class="flex flex-col items-center gap-0.5"
+              >
                 <label
                   for="radio_phone_2"
                   class="text-[8px] text-gray-500 hover:text-gray-300 font-bold uppercase select-none cursor-pointer"
@@ -261,12 +264,38 @@
                     class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
                     placeholder="Номер 2"
                   />
+                  <button
+                    type="button"
+                    id="btnRemoveExtraPhone"
+                    class="text-gray-500 hover:text-red-400 font-bold text-[10px] leading-none px-0.5 select-none cursor-pointer transition-colors"
+                    title="Прибрати другий номер"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+              <div
+                id="addPhoneButtonContainer"
+                class="flex flex-col items-center gap-0.5"
+              >
+                <span class="text-[8px] text-transparent select-none font-bold"
+                  >дод.</span
+                >
+                <div class="h-[30px] flex items-center justify-center">
+                  <button
+                    type="button"
+                    id="btnAddPhone"
+                    class="flex items-center justify-center w-[10px] h-[10px] bg-blue-600/15 hover:bg-blue-600/35 text-blue-400 border border-blue-500/40 hover:border-blue-500/60 rounded-[2px] transition cursor-pointer text-[9px] font-bold select-none leading-none pb-[1px]"
+                    title="Додати другий номер"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
             </div>
             <div>
               <label
-                class="block text-[11px] text-gray-400 cursor-pointer flex items-center gap-1 select-none w-max pb-1"
+                class="block text-[11px] text-gray-400 cursor-pointer flex items-center gap-1 select-none pb-1"
                 onclick="
                   document
                     .getElementById('messengers_content')
@@ -373,7 +402,7 @@
                 document
                   .getElementById('family_content')
                   .classList.toggle('hidden');
-                const t = this.querySelector('span');
+                const t = this.querySelector('span:last-child');
                 t.textContent = t.textContent === '▼' ? '▲' : '▼';
               "
             >
@@ -404,6 +433,17 @@
                     type="text"
                     id="d_shlyub_from"
                     class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                  />
+                </div>
+                <div id="marriage_years_container" class="hidden">
+                  <label class="block text-[11px] text-gray-400 select-none"
+                    >К-ть років</label
+                  >
+                  <input
+                    type="text"
+                    id="marriage_years"
+                    readonly
+                    class="w-[50px] bg-transparent border-transparent rounded text-white text-center focus:outline-none select-none pointer-events-none"
                   />
                 </div>
                 <div id="partner_end_date_container" class="hidden">
@@ -444,7 +484,7 @@
                   onclick="toggleChildren()"
                 >
                   <label class="block text-[11px] text-gray-400">Діти</label>
-                  <span id="childrenArrow" class="text-[10px] text-gray-500"
+                  <span id="childrenArrow" class="text-[10px] text-gray-500/50"
                     >▼</span
                   >
                 </div>
@@ -467,7 +507,7 @@
                 document
                   .getElementById('address_content')
                   .classList.toggle('hidden');
-                const t = this.querySelector('span');
+                const t = this.querySelector('span:last-child');
                 t.textContent = t.textContent === '▼' ? '▲' : '▼';
               "
             >
@@ -533,7 +573,7 @@
                 document
                   .getElementById('structure_content')
                   .classList.toggle('hidden');
-                const t = this.querySelector('span');
+                const t = this.querySelector('span:last-child');
                 t.textContent = t.textContent === '▼' ? '▲' : '▼';
               "
             >
@@ -653,17 +693,14 @@
           </div>
 
           <!-- БЛОК ВИБУТТЯ -->
-          <div
-            id="exit_block"
-            class="border-t border-borderClr pt-2 bg-amber-950/20 p-2 rounded border border-amber-900/40 space-y-2"
-          >
+          <div id="exit_block" class="border-t border-borderClr pt-2 space-y-2">
             <h3
               class="text-[10px] uppercase font-bold text-amber-500 tracking-wider cursor-pointer flex items-center gap-1 select-none"
               onclick="
                 document
                   .getElementById('exit_fields')
                   .classList.toggle('hidden');
-                const t = this.querySelector('span');
+                const t = this.querySelector('span:last-child');
                 t.textContent = t.textContent === '▼' ? '▲' : '▼';
               "
             >
@@ -707,7 +744,7 @@
           <!-- ІСТОРІЯ ЗМІН (Об'єднаний блок) -->
           <div
             id="dynamicTimelineSection"
-            class="border-t border-borderClr pt-3 space-y-3 bg-sky-950/15 p-3 rounded border border-sky-900/35"
+            class="border-t border-borderClr pt-2 space-y-2"
           >
             <h3
               class="text-[10px] uppercase font-bold text-sky-400 tracking-wider cursor-pointer flex items-center gap-1 select-none"
@@ -715,7 +752,7 @@
                 document
                   .getElementById('timelineContent')
                   .classList.toggle('hidden');
-                const t = this.querySelector('span');
+                const t = this.querySelector('span:last-child');
                 t.textContent = t.textContent === '▼' ? '▲' : '▼';
               "
             >
@@ -741,7 +778,7 @@
                       document
                         .getElementById('movementsContent')
                         .classList.toggle('hidden');
-                      const t = this.querySelector('span');
+                      const t = this.querySelector('span:last-child');
                       t.textContent = t.textContent === '▼' ? '▲' : '▼';
                     "
                   >
@@ -770,12 +807,14 @@
             </div>
           </div>
 
-          <button
-            type="submit"
-            class="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-xs transition shadow-md"
-          >
-            ЗБЕРЕГТИ ЗМІНИ
-          </button>
+          <div class="flex justify-center mt-6 mb-2">
+            <button
+              type="submit"
+              class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded text-xs transition shadow-md whitespace-nowrap"
+            >
+              ЗБЕРЕГТИ ЗМІНИ
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -1300,6 +1339,53 @@
         }
       }
 
+      function updateMarriageYearsVisibilityAndValue() {
+        const fromDateInp = document.getElementById("d_shlyub_from");
+        const fromDateVal = fromDateInp ? fromDateInp.value || "" : "";
+
+        const marriageYearsContainer = document.getElementById(
+          "marriage_years_container",
+        );
+        const marriageYearsInput = document.getElementById("marriage_years");
+
+        if (marriageYearsContainer && marriageYearsInput) {
+          if (
+            fromDateVal &&
+            fromDateVal !== "н/д" &&
+            fromDateVal !== "не вказано"
+          ) {
+            marriageYearsContainer.classList.remove("hidden");
+            const y = calculateAgeByDOB(fromDateVal);
+            if (y !== "") {
+              marriageYearsInput.value = y;
+              marriageYearsInput.style.color = "#ffffff";
+            } else {
+              marriageYearsInput.value = "н/д";
+              marriageYearsInput.style.color = "#71717a";
+            }
+          } else {
+            marriageYearsContainer.classList.add("hidden");
+            marriageYearsInput.value = "";
+          }
+        }
+      }
+
+      function updatePhoneContainerVisibility(hasSecondPhone) {
+        const telExtraContainer = document.getElementById("telExtraContainer");
+        const addPhoneButtonContainer = document.getElementById(
+          "addPhoneButtonContainer",
+        );
+        if (telExtraContainer && addPhoneButtonContainer) {
+          if (hasSecondPhone) {
+            telExtraContainer.classList.remove("hidden");
+            addPhoneButtonContainer.classList.add("hidden");
+          } else {
+            telExtraContainer.classList.add("hidden");
+            addPhoneButtonContainer.classList.remove("hidden");
+          }
+        }
+      }
+
       // Live calculation event listeners
       document.addEventListener("DOMContentLoaded", () => {
         const DOBInp = document.getElementById("d_nar");
@@ -1307,6 +1393,15 @@
         const exitDateInp = document.getElementById("exit_date");
         const phone1Inp = document.getElementById("tel");
         const phone2Inp = document.getElementById("tel_extra");
+        const d_shlyub_from_inp = document.getElementById("d_shlyub_from");
+
+        if (d_shlyub_from_inp) {
+          d_shlyub_from_inp.addEventListener("input", () => {
+            updateMarriageYearsVisibilityAndValue();
+            autoSizeInput(d_shlyub_from_inp);
+          });
+          autoSizeInput(d_shlyub_from_inp);
+        }
 
         if (DOBInp) {
           DOBInp.addEventListener("input", () => {
@@ -1328,6 +1423,41 @@
           });
           autoSizeInput(phone2Inp);
         }
+
+        const btnAddPhone = document.getElementById("btnAddPhone");
+        if (btnAddPhone) {
+          btnAddPhone.addEventListener("click", () => {
+            updatePhoneContainerVisibility(true);
+            if (phone2Inp) {
+              if (
+                phone2Inp.value === "н/д" ||
+                phone2Inp.value === "не вказано"
+              ) {
+                phone2Inp.value = "";
+              }
+              phone2Inp.focus();
+              autoSizeInput(phone2Inp);
+            }
+          });
+        }
+
+        const btnRemoveExtraPhone = document.getElementById(
+          "btnRemoveExtraPhone",
+        );
+        if (btnRemoveExtraPhone) {
+          btnRemoveExtraPhone.addEventListener("click", () => {
+            if (phone2Inp) {
+              phone2Inp.value = "";
+              autoSizeInput(phone2Inp);
+            }
+            const radio1 = document.getElementById("radio_phone_1");
+            if (radio1) {
+              radio1.checked = true;
+            }
+            updatePhoneContainerVisibility(false);
+          });
+        }
+
         if (exitReasonInp)
           exitReasonInp.addEventListener(
             "input",
@@ -1876,6 +2006,14 @@
           }
         }
 
+        const hasSecondPhone =
+          (p2 &&
+            p2.trim() !== "" &&
+            p2.trim() !== "н/д" &&
+            p2.trim() !== "не вказано") ||
+          mainPhonePref === "2";
+        updatePhoneContainerVisibility(hasSecondPhone);
+
         const povnaSimya = personal["5_povna_simya"];
         if (povnaSimya === true || povnaSimya === "true") {
           document.getElementById("family_status").value = "true";
@@ -1996,6 +2134,7 @@
 
         updateDynamicTimeline(member);
         updateAgeFieldVisibilityAndValue();
+        updateMarriageYearsVisibilityAndValue();
       }
 
       function updateDynamicTimeline(member) {
@@ -2228,6 +2367,7 @@
         }
 
         updateAgeFieldVisibilityAndValue();
+        updateMarriageYearsVisibilityAndValue();
       }
 
       // ПОШУК ТА ВИБІР ПАРТНЕРА/ПОДРУЖЖЯ
@@ -2362,6 +2502,8 @@
         updateSelectColor(document.getElementById("spouse_status"));
         togglePartnerIdField();
         updateAgeFieldVisibilityAndValue();
+        updateMarriageYearsVisibilityAndValue();
+        updatePhoneContainerVisibility(false);
       };
 
       memberForm.onsubmit = async (e) => {

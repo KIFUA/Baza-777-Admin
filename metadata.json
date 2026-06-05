@@ -1,0 +1,8 @@
+{
+  "name": "Baza 777 Admin",
+  "description": "Внутрішній кабінет-реєстр для обліку, душпастирської опіки та хроніки громади на базі таблиць Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

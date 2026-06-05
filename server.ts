@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import XLSX from "xlsx";
 import { 
   Member, 
@@ -407,7 +406,10 @@ function saveDatabaseToCache() {
 // --- API REST ROUTES ---
 
 // 0. Transparent Firebase Proxy for legacy app with optimized memory caching
-const FIREBASE_URL = process.env.FIREBASE_URL || "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app";
+let FIREBASE_URL = process.env.FIREBASE_URL || "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app";
+if (FIREBASE_URL.endsWith("/")) {
+  FIREBASE_URL = FIREBASE_URL.slice(0, -1);
+}
 const FIREBASE_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
 
 let cachedMembersJson: any = null;
@@ -429,7 +431,8 @@ app.use('/api/firebase', async (req, res) => {
       return res.json(cachedMembersJson);
     }
 
-    const targetUrl = `${FIREBASE_URL}${req.path}?auth=${FIREBASE_SECRET}`;
+    const reqPath = req.path.startsWith('/') ? req.path : '/' + req.path;
+    const targetUrl = `${FIREBASE_URL}${reqPath}?auth=${FIREBASE_SECRET}`;
     console.log(`[Firebase Proxy] Requesting target: ${req.method} ${req.path}`);
     
     const options: any = {
@@ -1670,7 +1673,6 @@ loadDatabase();
 async function syncDatabaseWithFirebase() {
   console.log("[Firebase Startup Sync] Loading database from Firebase RTDB...");
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
-  const FIREBASE_URL = process.env.FIREBASE_URL || "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app";
   const url = `${FIREBASE_URL}/members.json?auth=${DB_SECRET}`;
 
   try {
@@ -1893,6 +1895,7 @@ async function startServer() {
   await syncDatabaseWithFirebase();
 
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

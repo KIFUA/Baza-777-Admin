@@ -13,7 +13,7 @@ import {
   DashboardStats 
 } from "./src/types";
 
-const app = express();
+export const app = express();
 const PORT = 3000;
 const DB_CACHE_FILE = path.join(process.cwd(), "db_cache.json");
 const tablyciDir = path.join(process.cwd(), "tablyci");

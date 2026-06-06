@@ -79,7 +79,7 @@
 
     <div id="mainContent" class="w-full max-w-md flex flex-col gap-3 hidden">
       <!-- СЕГМЕНТИ АНКЕТИ -->
-      <div class="flex bg-[#1a1a1a] rounded-md p-1 border border-[#333333] gap-1 shadow-md w-full">
+      <div class="flex bg-[#1a1a1a] rounded-md p-1 border border-[#333333] gap-1 shadow-md w-full hidden">
         <button
           type="button"
           id="btnSegBeforeMerge"
@@ -98,7 +98,7 @@
       
       <div class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg">
         <!-- КНОПКИ ШВИДКОГО ФІЛЬТРУ ЧЛЕНСТВА -->
-        <div class="flex gap-1.5 mb-3">
+        <div id="quickFilterContainer" class="flex gap-1.5 mb-3">
           <button
             type="button"
             id="btnFilterPresent"
@@ -875,6 +875,7 @@
       logContainer.style.border = '1px solid #1e293b';
       logContainer.style.boxShadow = '0 10px 15px -3px rgba(0,0,0,0.5)';
       logContainer.id = 'diagConsole';
+      logContainer.style.display = 'none'; // Completely hidden in UI as requested
       document.body.appendChild(logContainer);
 
       function addLog(type, text) {
@@ -1140,10 +1141,55 @@
       // When saving, add 'вул.' if it's a street and not other marker
       // (Assuming addr_street input logic needs update)
 
+      function applyAdminRestrictions() {
+        const isAdmin = (localStorage.getItem("user_tg_id") === ALLOWED_TG_ID);
+        const quickFilterContainer = document.getElementById("quickFilterContainer");
+        const btnNewCard = document.getElementById("btnNewCard");
+        
+        if (quickFilterContainer) {
+          if (isAdmin) {
+            quickFilterContainer.classList.remove("hidden");
+          } else {
+            quickFilterContainer.classList.add("hidden");
+          }
+        }
+        
+        if (btnNewCard) {
+          if (isAdmin) {
+            btnNewCard.classList.remove("hidden");
+          } else {
+            btnNewCard.classList.add("hidden");
+          }
+        }
+      }
+
       function checkAuth() {
         authScreen.classList.add("hidden");
         mainContent.classList.remove("hidden");
         loadDatabase();
+        
+        // Hide filters and creation elements unless authenticated as Administrator
+        applyAdminRestrictions();
+
+        // Bind clicking on the Database Status text as a gateway for the Administrator to enter their ID
+        const dbStatusEl = document.getElementById("dbStatus");
+        if (dbStatusEl) {
+          dbStatusEl.style.cursor = "pointer";
+          dbStatusEl.title = "Вхід в режим адміністратора";
+          dbStatusEl.onclick = () => {
+            const entered = prompt("Введіть ваш Telegram ID для входу в режим адміністратора:");
+            if (entered === ALLOWED_TG_ID) {
+              localStorage.setItem("user_tg_id", ALLOWED_TG_ID);
+              alert("Ви увійшли як Адміністратор.");
+              applyAdminRestrictions();
+              if (typeof updateFilterButtonsUI === "function") {
+                updateFilterButtonsUI();
+              }
+            } else if (entered !== null) {
+              alert("Невірний Telegram ID!");
+            }
+          };
+        }
       }
 
       btnAuth.onclick = () => {
@@ -1154,6 +1200,7 @@
           authScreen.classList.add("hidden");
           mainContent.classList.remove("hidden");
           loadDatabase();
+          applyAdminRestrictions();
         } else {
           authError.classList.remove("hidden");
         }

@@ -42,6 +42,16 @@ export default function App() {
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = () => {
+      setIsAdmin(localStorage.getItem("user_tg_id") === "969538290");
+    };
+    checkAdmin();
+    const interval = setInterval(checkAdmin, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -258,8 +268,8 @@ export default function App() {
               ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
             </div>
             
-            <div className="bg-[#1a3843] border border-[#142d36] rounded-md px-6 py-2 ml-10 flex text-lg font-black tracking-widest text-[#cfdfe2]">
-              ВСІ <span className="ml-8">{members.length}</span>
+            <div className="bg-[#1a3843] border border-[#142d36] rounded-md px-4 py-1.5 ml-10 flex text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center">
+              ВСЬОГО ЧЛЕНІВ ЦЕРКВИ <span className="ml-4 font-black text-sm">{members.length}</span>
             </div>
           </div>
 
@@ -354,26 +364,9 @@ export default function App() {
               /* Questionnaire Legacy Embedded View */
               <div className="flex-1 flex flex-col min-h-0 bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
                 {/* Visual Utility Bar to help transition from iframe to standalone window */}
-                <div className="bg-[#222222] px-4 py-2 flex flex-col sm:flex-row items-center justify-between gap-2 border-b border-[#1a1a1a]">
-                  <div className="flex items-center space-x-2">
-                    <span className="inline-block px-2 py-0.5 bg-emerald-950 text-emerald-400 rounded-md font-bold text-[9px] tracking-wider uppercase">
-                      Єдина База Даних
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-300">
-                      Спільна база даних та сервер — синхронізація 100% миттєва!
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => {
-                        const idParam = selectedMemberId ? `&id=${selectedMemberId}` : '';
-                        window.open(`/index_legacy.html?merge=before${idParam}`, '_blank');
-                      }}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[11px] px-4.5 py-1.5 rounded-md shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center space-x-1.5 cursor-pointer"
-                    >
-                      <span>📋 ВІДКРИТИ В ОКРЕМОМУ ПОВНОМУ ВІКНІ ↗</span>
-                    </button>
-                    {selectedMemberId && (
+                {isAdmin && selectedMemberId && (
+                  <div className="bg-[#222222] px-4 py-2 flex items-center justify-end border-b border-[#1a1a1a]">
+                    <div className="flex items-center space-x-2">
                       <button
                         onClick={async () => {
                           setSelectedMemberId(null);
@@ -384,9 +377,9 @@ export default function App() {
                       >
                         Очистити вибір
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
                 <iframe src={`/index_legacy.html?merge=before${selectedMemberId ? `&id=${selectedMemberId}` : ''}`} className="w-full h-full border-0" title="Legacy Questionnaire"></iframe>
               </div>
             ) : mainMode === 'settings' ? (
@@ -429,13 +422,15 @@ export default function App() {
               </div>
               
               <div className="flex items-center space-x-3 shrink-0">
-                <button
-                  onClick={() => window.open(`/index_legacy.html?merge=before&id=${activeAnketaId}`, '_blank')}
-                  className="bg-[#0e3b2a] hover:bg-[#15563e] border border-emerald-700/60 text-emerald-300 font-bold text-xs py-2 px-3.5 rounded-lg transition-all flex items-center space-x-1.5 cursor-pointer shadow-md"
-                  title="Відкрити анкету цієї особи в новому повному вікні"
-                >
-                  <span>Відкрити в новому вікні ↗</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => window.open(`/index_legacy.html?merge=before&id=${activeAnketaId}`, '_blank')}
+                    className="bg-[#0e3b2a] hover:bg-[#15563e] border border-emerald-700/60 text-emerald-300 font-bold text-xs py-2 px-3.5 rounded-lg transition-all flex items-center space-x-1.5 cursor-pointer shadow-md"
+                    title="Відкрити анкету цієї особи в новому повному вікні"
+                  >
+                    <span>Відкрити в новому вікні ↗</span>
+                  </button>
+                )}
                 
                 <button
                   onClick={async () => {

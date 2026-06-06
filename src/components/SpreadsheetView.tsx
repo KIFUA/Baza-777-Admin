@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Member } from '../types';
 import { 
   Search, Edit2, Check, X, FileText, CheckCircle, AlertTriangle, 
@@ -23,6 +23,17 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
   // Dropdown cell editing state
   const [editingCell, setEditingCell] = useState<{ id: number; field: 'di_admin' | 's_profesiya_ukr' | 'vidviduvanist' | 'prysutnist' } | null>(null);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = () => {
+      setIsAdmin(localStorage.getItem("user_tg_id") === "969538290");
+    };
+    checkAdmin();
+    const interval = setInterval(checkAdmin, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Helper function to calculate years in church
   const getYearsInChurch = (vstDate?: string) => {
@@ -184,37 +195,39 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     <div id="spreadsheet_container" className="flex-1 flex flex-col bg-transparent overflow-hidden min-h-0">
       
       {/* Search & Mode filters rail */}
-      <div className="px-4 py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 shrink-0 shadow-sm">
+      <div className="px-4 py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center sm:justify-start gap-4 shrink-0 shadow-sm">
         
         {/* Status filtering widgets (Наявні / Вибулі / Всі) */}
-        <div className="flex items-center space-x-2">
-          <div className="inline-flex rounded-md bg-[#1a3843] p-1 border border-[#1b3642]">
-            <button
-              id="filter_active_btn"
-              onClick={() => setFilterType('active')}
-              className={`px-4 py-1 rounded text-[10px] font-bold uppercase transition-all ${filterType === 'active' ? "bg-[#387d7a] text-white shadow-sm" : "text-slate-400 hover:text-white"}`}
-            >
-              Наявні (активні)
-            </button>
-            <button
-              id="filter_dismissed_btn"
-              onClick={() => setFilterType('dismissed')}
-              className={`px-4 py-1 rounded text-[10px] font-bold uppercase transition-all ${filterType === 'dismissed' ? "bg-amber-600 text-white shadow-sm" : "text-slate-400 hover:text-white"}`}
-            >
-              Вибулі
-            </button>
-            <button
-              id="filter_all_btn"
-              onClick={() => setFilterType('all')}
-              className={`px-4 py-1 rounded text-[10px] font-bold uppercase transition-all ${filterType === 'all' ? "bg-[#387d7a] text-white shadow-sm" : "text-slate-400 hover:text-white"}`}
-            >
-              Всі в базі
-            </button>
+        {isAdmin && (
+          <div className="flex items-center space-x-2 shrink-0">
+            <div className="inline-flex rounded-md bg-[#1a3843] p-1 border border-[#1b3642] w-[216px] justify-between">
+              <button
+                id="filter_active_btn"
+                onClick={() => setFilterType('active')}
+                className={`px-3 py-0.5 rounded text-[9px] font-normal uppercase transition-all ${filterType === 'active' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+              >
+                Наявні
+              </button>
+              <button
+                id="filter_dismissed_btn"
+                onClick={() => setFilterType('dismissed')}
+                className={`px-3 py-0.5 rounded text-[9px] font-normal uppercase transition-all ${filterType === 'dismissed' ? "bg-amber-600 text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+              >
+                Вибулі
+              </button>
+              <button
+                id="filter_all_btn"
+                onClick={() => setFilterType('all')}
+                className={`px-3 py-0.5 rounded text-[9px] font-normal uppercase transition-all ${filterType === 'all' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+              >
+                Всі
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Local Search query box */}
-        <div className="relative w-full sm:w-80">
+        <div className={`relative w-full sm:w-80 ${!isAdmin ? 'sm:ml-[232px]' : ''} transition-all`}>
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
           <input
             type="text"
@@ -286,7 +299,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                           {m.id_vybuttya > 0 && (
                             <span className="inline-block h-2 w-2 rounded-full bg-amber-500 shrink-0" title="Знято з обліку" />
                           )}
-                          <span className="truncate">{m.pib}</span>
+                          <span className="truncate text-xs font-extrabold">{m.pib}</span>
                         </div>
                         <button
                           onClick={(e) => {
@@ -325,14 +338,14 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                           title="Швидке редагування дати контакту"
                         >
                           <span className="font-bold text-emerald-800 font-mono tracking-tighter text-[9px] mx-auto">
-                            {formatDateToUA(m.d_kontaktiv)}
+                             {formatDateToUA(m.d_kontaktiv)}
                           </span>
                         </div>
                       )}
                     </td>
 
                     {/* Remarks */}
-                    <td className="py-1.5 px-3 border-r border-slate-300 text-slate-600 truncate max-w-sm italic">
+                    <td className="py-1.5 px-3 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 truncate max-w-sm italic font-medium">
                       {m.primitka || '—'}
                     </td>
 

@@ -1705,7 +1705,7 @@ async function syncDirectoriesFromFirebase() {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data: any = await res.json();
-    if (data) {
+    if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin)) {
       if (Array.isArray(data.opika)) directories_opika = data.opika;
       if (Array.isArray(data.slujinnya)) directories_slujinnya = data.slujinnya;
       if (Array.isArray(data.vidviduvanist)) directories_vidviduvanist = data.vidviduvanist;
@@ -1713,7 +1713,8 @@ async function syncDirectoriesFromFirebase() {
       if (Array.isArray(data.di_admin)) directories_di_admin = data.di_admin;
       console.log("[Firebase Directories Sync] Directories loaded from Firebase RTDB.");
     } else {
-      console.warn("[Firebase Directories Sync] No directories found in Firebase RTDB, using defaults.");
+      console.warn("[Firebase Directories Sync] No directories found in Firebase RTDB, pushing local defaults to Firebase RTDB...");
+      await syncDirectoriesToFirebase();
     }
   } catch (err: any) {
     console.error("[Firebase Directories Sync] Failed to load directories from Firebase:", err.message);

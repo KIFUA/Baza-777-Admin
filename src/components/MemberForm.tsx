@@ -204,7 +204,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               value={formData.pib}
               onChange={handleChange}
               placeholder="Прізвище Ім'я По-батькові"
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm ring-blue-50 focus:border-blue-500 focus:outline-none focus:ring-4"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold ring-blue-50 focus:border-blue-500 focus:outline-none focus:ring-4"
               required
             />
           </div>
@@ -216,7 +216,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 name="stat"
                 value={formData.stat}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-sm ring-blue-50 focus:border-blue-500 focus:outline-none focus:ring-4"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold ring-blue-50 focus:border-blue-500 focus:outline-none focus:ring-4"
               >
                 <option value="брат">брат</option>
                 <option value="сестра">сестра</option>
@@ -230,7 +230,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 name="d_narodjennya"
                 value={formData.d_narodjennya || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 p-2 bg-white text-sm ring-blue-50 focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 bg-white text-xs font-semibold ring-blue-50 focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
@@ -243,7 +243,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               value={formData.tel_mob || ''}
               onChange={handleChange}
               placeholder="067 XX XX XXX"
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -256,7 +256,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 value={formData.tel1 || ''}
                 onChange={handleChange}
                 placeholder="Додатковий контакт"
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
               />
             </div>
 
@@ -268,7 +268,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 value={formData.skype || ''}
                 onChange={handleChange}
                 placeholder="skype username"
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               name="id_osvita"
               value={formData.id_osvita}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
             >
               {lookups?.osvita?.map((o: any) => (
                 <option key={o.ID} value={o.ID}>{o.Value}</option>
@@ -293,7 +293,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               name="id_profesiya"
               value={formData.id_profesiya}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
             >
               {lookups?.profesiya?.map((p: any) => (
                 <option key={p.ID} value={p.ID}>{p.Value}</option>
@@ -307,7 +307,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               name="id_simeyniy"
               value={formData.id_simeyniy}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
             >
               {lookups?.simeyniy?.map((s: any) => (
                 <option key={s.ID} value={s.ID}>{s.Value}</option>
@@ -328,7 +328,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 name="d_pokayannya"
                 value={formData.d_pokayannya || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 p-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
               />
             </div>
 
@@ -339,7 +339,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 name="d_vodnogo"
                 value={formData.d_vodnogo || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 p-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
@@ -352,7 +352,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 name="d_vstupu"
                 value={formData.d_vstupu || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 p-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
               />
             </div>
             
@@ -373,19 +373,19 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
 
           <div className="border-t border-slate-50 pt-3 space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-700">Опікун (пресвітер / опіка відповідальний)</label>
+              <label className="text-xs font-semibold text-slate-700">Опікун (призначений служитель громади)</label>
               <select
                 name="presviter"
                 value={formData.presviter || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none bg-white font-medium text-slate-700"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none bg-white text-slate-800"
               >
                 <option value="">-- Оберіть опікуна --</option>
                 {caregiversList.map((c: string) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
-              <p className="text-[10px] text-slate-400">Цей опікун здійснює душпастирську роботу над членом церкви</p>
+              <p className="text-[10px] text-slate-400">Розподіл опікунів, призначених пресвітерами з числа служителів нашої єдиної церковної громади (ст. пастор, пресвітери, диякони, відповідальні за служіння).</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -395,7 +395,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                   name="rayon2_ukr"
                   value={formData.rayon2_ukr || ''}
                   onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
                 >
                   <option value="">Не вказано</option>
                   {STRUCTURAL_AREAS.map(a => (
@@ -412,7 +412,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                   value={formData.n_dilyci || ''}
                   onChange={handleChange}
                   placeholder="напр. Дільниця №1"
-                  className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -425,7 +425,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 value={formData.vidpov_grupy || ''}
                 onChange={handleChange}
                 placeholder="Керівник дільниці"
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
@@ -442,7 +442,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               name="vidviduvanist"
               value={formData.vidviduvanist || ''}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none bg-white"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none bg-white"
             >
               <option value="">-- Оберіть характеристику --</option>
               {vidviduvanistOptions.map((o: string) => (
@@ -457,7 +457,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               name="prysutnist"
               value={formData.prysutnist || ''}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none bg-white"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none bg-white"
             >
               <option value="">-- Оберіть статус перебування --</option>
               {prysutnistOptions.map((o: string) => (
@@ -467,18 +467,19 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Дія адміністратора / Переміщення (di_admin)</label>
+            <label className="text-xs font-semibold text-slate-700">Дія адміністратора (дільничі/дияконські переміщення - di_admin)</label>
             <select
               name="di_admin"
               value={formData.di_admin || ''}
               onChange={handleChange}
-              className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none bg-white"
+              className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none bg-white font-semibold"
             >
               <option value="">-- Оберіть дію адміністратора --</option>
               {diAdminOptions.map((o: string) => (
                 <option key={o} value={o}>{o}</option>
               ))}
             </select>
+            <p className="text-[10px] text-slate-400">Дільничі або дияконські адміністративні одиниці (переведення на каскади та центри). Тільки для адміністративних переміщень членів церкви, які виконує адміністратор.</p>
           </div>
 
           <div className="border-t border-slate-100 pt-3 space-y-4">
@@ -488,7 +489,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 name="id_vybuttya"
                 value={formData.id_vybuttya}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-rose-200 bg-rose-50/20 p-2.5 text-sm font-medium focus:border-rose-500 focus:outline-none"
+                className="w-full rounded-lg border border-rose-200 bg-rose-50/20 p-1.5 text-xs font-semibold focus:border-rose-500 focus:outline-none"
               >
                 <option value="0">Активний член церкви (на обліку)</option>
                 {lookups?.vybuv?.map((v: any) => (
@@ -549,7 +550,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 onChange={handleChange}
                 placeholder="Будь-які інші архівні замітки про цього члена церкви..."
                 rows={3}
-                className="w-full rounded-lg border border-slate-200 p-2.5 text-sm focus:border-blue-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>

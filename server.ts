@@ -756,13 +756,16 @@ app.post("/api/sync-sheets", async (req, res) => {
     
     if (freshDostup.length > 0) access_dostup = freshDostup;
     
+    // Write synchronized directories and access control lists to Firebase Realtime Database
+    await syncDirectoriesToFirebase();
+
     auditLogs.push({
       id: "sync_" + Date.now(),
       timestamp: new Date().toISOString(),
       memberId: 0,
       memberName: "Адмін",
       action: "sync",
-      details: "<b>Синхронізація з Sheets</b>: завантажено актуальні списки опікунів, служінь, параметрів та рівнів доступу."
+      details: "<b>Синхронізація з Sheets</b>: завантажено актуальні списки опікунів, служінь, параметрів та рівнів доступу і перенесено в базу Firebase."
     });
     
     saveDatabaseToCache();
@@ -979,6 +982,7 @@ app.post("/api/directories/save", (req, res) => {
   });
 
   saveDatabaseToCache();
+  syncDirectoriesToFirebase().catch(e => console.error("Firebase manual directories save error:", e));
   res.json({ success: true });
 });
 
@@ -1671,8 +1675,57 @@ app.post("/api/members", (req, res) => {
 // Seed Database State
 loadDatabase();
 
+async function syncDirectoriesToFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/directories.json?auth=${DB_SECRET}`;
+  try {
+    const payload = {
+      opika: directories_opika,
+      slujinnya: directories_slujinnya,
+      vidviduvanist: directories_vidviduvanist,
+      prysutnist: directories_prysutnist,
+      di_admin: directories_di_admin
+    };
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    console.log("[Firebase Directories Sync] Directories successfully saved to Firebase RTDB.");
+  } catch (err: any) {
+    console.error("[Firebase Directories Sync] Failed to save directories to Firebase:", err.message);
+  }
+}
+
+async function syncDirectoriesFromFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/directories.json?auth=${DB_SECRET}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data: any = await res.json();
+    if (data) {
+      if (Array.isArray(data.opika)) directories_opika = data.opika;
+      if (Array.isArray(data.slujinnya)) directories_slujinnya = data.slujinnya;
+      if (Array.isArray(data.vidviduvanist)) directories_vidviduvanist = data.vidviduvanist;
+      if (Array.isArray(data.prysutnist)) directories_prysutnist = data.prysutnist;
+      if (Array.isArray(data.di_admin)) directories_di_admin = data.di_admin;
+      console.log("[Firebase Directories Sync] Directories loaded from Firebase RTDB.");
+    } else {
+      console.warn("[Firebase Directories Sync] No directories found in Firebase RTDB, using defaults.");
+    }
+  } catch (err: any) {
+    console.error("[Firebase Directories Sync] Failed to load directories from Firebase:", err.message);
+  }
+}
+
 async function syncDatabaseWithFirebase() {
   console.log("[Firebase Startup Sync] Loading database from Firebase RTDB...");
+  
+  // Load specialized lookup directories from Firebase RTDB
+  await syncDirectoriesFromFirebase();
+
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
   const url = `${FIREBASE_URL}/members.json?auth=${DB_SECRET}`;
 

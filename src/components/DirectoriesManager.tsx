@@ -486,11 +486,11 @@ export default function DirectoriesManager({
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block px-1">Оберіть довідник:</span>
                 <div className="flex flex-col space-y-1">
                   {[
-                    { id: 'opika', title: 'Опікуни відповідальні (Column A)' },
-                    { id: 'slujinnya', title: 'Християнські служіння (Column C)' },
-                    { id: 'vidviduvanist', title: 'Характеристики відвідування (Column E)' },
-                    { id: 'prysutnist', title: 'Характеристики присутності (Column G)' },
-                    { id: 'di_admin', title: 'Дії адміністратора / переміщення' }
+                    { id: 'opika', title: 'Опікуни (розподіл служителів класу А)' },
+                    { id: 'slujinnya', title: 'Християнські служіння (Служіння)' },
+                    { id: 'vidviduvanist', title: 'Характеристики відвідування' },
+                    { id: 'prysutnist', title: 'Характеристики присутності' },
+                    { id: 'di_admin', title: 'Дії адміністратора (переміщення)' }
                   ].map(x => (
                     <button
                       key={x.id}
@@ -506,6 +506,35 @@ export default function DirectoriesManager({
               {/* Right editable tag grid */}
               <div className="md:col-span-2 space-y-4">
                 
+                {/* Helpful explanatory note matching selected dictionary and church guidelines */}
+                <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3.5 text-[11px] text-slate-700 leading-relaxed font-normal">
+                  {selectedDictKey === 'opika' && (
+                    <span>
+                      👥 <strong>Розподіл опікунів:</strong> Опікуни, які призначені пресвітерами з числа служителів нашої єдиної громади (ієрархія служителів: ст. пастор, пресвітери, диякони, відповідальні за служіння).
+                    </span>
+                  )}
+                  {selectedDictKey === 'di_admin' && (
+                    <span>
+                      ⚙️ <strong>Дії адміністратора (di_admin):</strong> Дільничі або дияконські адміністративні одиниці (переведення на каскади та центри). Це завдання адміністративних переміщень членів церкви, які поки що виконує адміністратор.
+                    </span>
+                  )}
+                  {selectedDictKey === 'slujinnya' && (
+                    <span>
+                      ⛪ <strong>Служіння:</strong> Спеціалізовані християнські служіння та місії, в які залучені діючі члени нашої єдиної церковної громади.
+                    </span>
+                  )}
+                  {selectedDictKey === 'vidviduvanist' && (
+                    <span>
+                      📊 <strong>Характеристики відвідування:</strong> Показники та оцінки регулярності відвідування зібрань та заходів членами громади.
+                    </span>
+                  )}
+                  {selectedDictKey === 'prysutnist' && (
+                    <span>
+                      📌 <strong>Характеристики присутності:</strong> Загальний статус перебування та залученості члена церкви в повсякденне життя громади.
+                    </span>
+                  )}
+                </div>
+
                 {/* Form to add item inline */}
                 <div className="flex space-x-2">
                   <input

@@ -37,8 +37,9 @@
       input,
       select,
       textarea {
-        padding: 5px 8px !important;
-        font-size: 0.85rem !important;
+        padding: 4px 6px !important;
+        font-size: 0.78rem !important; /* Made compact to render all text fully visible inside inputs */
+        line-height: 1.15 !important;
       }
     </style>
   </head>
@@ -211,7 +212,7 @@
                 <input
                   type="text"
                   id="d_nar"
-                  class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none px-1.5 py-0.5"
+                  class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none px-1.5 py-0.5"
                 />
               </div>
               <div id="ageFieldContainer" class="hidden">
@@ -251,7 +252,7 @@
                   <input
                     type="text"
                     id="tel"
-                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
                     placeholder="Номер 1"
                   />
                 </div>
@@ -279,7 +280,7 @@
                   <input
                     type="text"
                     id="tel_extra"
-                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
+                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs px-1.5 py-0.5"
                     placeholder="Номер 2"
                   />
                   <button
@@ -406,7 +407,7 @@
                 <input
                   type="text"
                   id="profession"
-                  class="w-[150px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
+                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
                 />
               </div>
             </div>
@@ -450,7 +451,7 @@
                   <input
                     type="text"
                     id="d_shlyub_from"
-                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="w-[125px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div id="marriage_years_container" class="hidden">
@@ -607,7 +608,7 @@
                   <input
                     type="text"
                     id="d_vodnogo"
-                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div>
@@ -617,7 +618,7 @@
                   <input
                     type="text"
                     id="d_vstupu"
-                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div class="flex-1 min-w-[80px]">
@@ -744,7 +745,7 @@
                   <input
                     type="text"
                     id="exit_date"
-                    class="w-[110px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
+                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
                   />
                 </div>
               </div>

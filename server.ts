@@ -433,6 +433,7 @@ app.use('/api/firebase', async (req, res) => {
 
     const reqPath = req.path.startsWith('/') ? req.path : '/' + req.path;
     const targetUrl = `${FIREBASE_URL}${reqPath}?auth=${FIREBASE_SECRET}`;
+    console.log(`[Firebase Proxy] Requesting URL: ${targetUrl}`);
     console.log(`[Firebase Proxy] Requesting target: ${req.method} ${req.path}`);
     
     const options: any = {

@@ -22,7 +22,34 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   const [savingId, setSavingId] = useState<number | null>(null);
 
   // Dropdown cell editing state
-  const [editingCell, setEditingCell] = useState<{ id: number; field: 'di_admin' | 's_profesiya_ukr' | 'vidviduvanist' | 'prysutnist' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: number; field: 'di_admin' | 's_slujinnya_spysok' | 'vidviduvanist' | 'prysutnist' | 'presviter' } | null>(null);
+
+  const caregivers = useMemo(() => {
+    return (lookups?.directories?.opika as string[]) || [
+      "Бевзюк В.", "Бурчак Ю.", "Галюк Б.", "Дмитраш М.", "Євстратов О.", 
+      "Ільницький О.", "Луцак М.", "Марунчак В.", "Мельничук В.", "Несен Ю.", 
+      "Прохніцький Б.", "Решетило Р.", "Самелюк О.", "Скіцко І.", "Скриник М.", 
+      "Стасінчук В.", "Стафіїв М.", "Стефурак Д.", "Факас О.", "Черняк Вал.", 
+      "Черняк Вікт.", "Шпарман Ю.", "Черняк Вас."
+    ];
+  }, [lookups]);
+
+  const fallbackMinistries = useMemo(() => [
+    "Загальне служіння / Інше", "Старший пресвітер (пастор)", "Пресвітер (пастор)",
+    "Диякон", "Хор / Співак", "Вчитель недільної школи", "Сестринське служіння",
+    "Молодіжне служіння", "Опікунське служіння", "Бібліотекар", "Режисер / Драмгурт",
+    "Господарське служіння", "Діловодство / Канцелярія", "Місіонерське служіння",
+    "Музичне служіння / Інструменталіст", "Молитовна група", "Братська рада",
+    "Скарбник / Касир", "Рада церкви", "Координатор служінь", "Християнська освіта",
+    "Милосердя / Відвідування хворих", "Будівельний комітет", "Робота з аудіо-відео",
+    "Група порядку / Упорядник", "Організатор заходів", "Звукооператор / Технік",
+    "Інтернет-служіння", "Група прославлення", "Кухонне служіння", "Таборове служіння",
+    "Проповідник", "Дитяче служіння", "Душпастирське консультування", "Регент хору / Диригент"
+  ], []);
+
+  const ministryOptions = useMemo(() => {
+    return (lookups?.directories?.slujinnya as string[]) || fallbackMinistries;
+  }, [lookups, fallbackMinistries]);
 
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -83,10 +110,41 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     return [...list].sort((a, b) => (a.pib || '').localeCompare(b.pib || '', 'uk-UA'));
   }, [members, filterType, searchQuery]);
 
+  // Calculate dynamic ПІБ column width based on the longest record
+  const pibColumnWidth = useMemo(() => {
+    if (!filteredMembers || filteredMembers.length === 0) return 208;
+    
+    try {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.font = "bold 12px Inter, system-ui, -apple-system, sans-serif";
+        let maxWidth = 0;
+        filteredMembers.forEach(m => {
+          const name = m.pib || "";
+          const w = ctx.measureText(name).width;
+          if (w > maxWidth) {
+            maxWidth = w;
+          }
+        });
+        // Dots, button scale spacing and padding buffer
+        const finalWidth = maxWidth + 101;
+        return Math.max(208, Math.ceil(finalWidth));
+      }
+    } catch (e) {}
+
+    let maxCharLen = 0;
+    filteredMembers.forEach(m => {
+      const len = (m.pib || "").length;
+      if (len > maxCharLen) maxCharLen = len;
+    });
+    return Math.max(208, maxCharLen * 7.5 + 105);
+  }, [filteredMembers]);
+
   // Dropdown inline cell renderer (Request 5 & 6)
   const renderDropdownCell = (
     m: Member, 
-    field: 'di_admin' | 's_profesiya_ukr' | 'vidviduvanist' | 'prysutnist',
+    field: 'di_admin' | 's_slujinnya_spysok' | 'vidviduvanist' | 'prysutnist' | 'presviter',
     options: string[],
     fallbackText = '—',
     colorClasses = 'text-slate-600'
@@ -254,12 +312,17 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           <thead className="sticky top-0 z-[100] shadow-[0_1px_2px_rgba(0,0,0,0.1)] outline outline-1 outline-[#8fba94]">
             <tr className="bg-[#b2cfb6] text-[#0d341d]">
               <th className="py-2 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky left-0 z-[120] w-10 min-w-[40px]">№</th>
-              <th className="py-2 px-3 border border-[#8fba94] text-left font-bold w-52 min-w-[208px] bg-[#b2cfb6] sticky left-10 z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate">ПІБ</th>
+              <th 
+                style={{ width: `${pibColumnWidth}px`, minWidth: `${pibColumnWidth}px`, maxWidth: `${pibColumnWidth}px` }}
+                className="py-2 px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] sticky left-10 z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
+              >
+                ПІБ
+              </th>
               <th className="py-1 px-1 border border-[#8fba94] text-center text-[10px] font-bold text-[#1e4620] bg-[#c3dfc7] w-[86px] min-w-[86px] max-w-[86px] leading-tight">Дати контактів з пресв.</th>
               <th className="py-2 px-3 border border-[#8fba94] text-left font-bold w-48 min-w-[192px] truncate bg-[#b2cfb6]">ПРИМІТКИ і ПОЯСНЕННЯ</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6]">Дії</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Опіка</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6]">Служіння</th>
+              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6]">Опіка</th>
+              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-48 min-w-[192px] max-w-[192px] bg-[#b2cfb6]">Служіння</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Відвідування</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Присутність</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6]">Вік</th>
@@ -293,7 +356,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     </td>
 
                     {/* Sticky ПІБ cell */}
-                    <td className="py-1.5 px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky left-10 z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] max-w-xs truncate">
+                    <td 
+                      style={{ width: `${pibColumnWidth}px`, minWidth: `${pibColumnWidth}px`, maxWidth: `${pibColumnWidth}px` }}
+                      className="py-1.5 px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky left-10 z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
+                    >
                       <div className="flex items-center justify-between space-x-1">
                         <div className="flex items-center space-x-1 truncate">
                           {m.id_vybuttya > 0 && (
@@ -353,12 +419,98 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     {renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-amber-800 bg-amber-50/50 rounded px-1')}
 
                     {/* Shepherd (Oversight/Opika) */}
-                    <td className="py-1.5 px-2 border-r border-slate-300 text-center font-bold text-slate-800">
-                      {m.presviter || '—'}
-                    </td>
+                    {renderDropdownCell(m, 'presviter', caregivers, '—', 'text-slate-700 bg-emerald-50/40 rounded px-1')}
 
-                    {/* "Служіння" Inline Dropdown (Request 6) */}
-                    {renderDropdownCell(m, 's_profesiya_ukr', lookups?.directories?.slujinnya || [], 'немає', 'text-emerald-800 bg-emerald-50/55 rounded px-1')}
+                    {/* "Служіння" Column (Ministry) with multiple choice popup */}
+                    <td 
+                      className="py-1 px-1.5 border-r border-[#8fba94] text-center w-48 min-w-[192px] max-w-[192px] relative cursor-pointer hover:bg-emerald-800/10 transition-colors select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingCell({ id: m.id, field: 's_slujinnya_spysok' });
+                      }}
+                      title="Клацніть для швидкої зміни служінь"
+                    >
+                      {editingCell?.id === m.id && editingCell?.field === 's_slujinnya_spysok' && (
+                        <>
+                          {/* Invisible click backdrop to dismiss edit mode on outer-click */}
+                          <div 
+                            className="fixed inset-0 z-[240] cursor-default bg-transparent" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingCell(null);
+                            }}
+                          />
+                          <div 
+                            className="absolute left-1/2 top-full -translate-x-1/2 mt-1 z-[250] bg-white border border-slate-300 rounded-lg shadow-xl p-2 w-[240px]"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center justify-between border-b pb-1 mb-1.5">
+                              <span className="font-extrabold text-[10px] text-slate-700 uppercase tracking-tight">Служіння</span>
+                              <button 
+                                onClick={() => setEditingCell(null)}
+                                className="text-white hover:bg-emerald-800 bg-emerald-700 px-2 py-0.5 rounded text-[9px] font-bold shadow-sm transition-colors cursor-pointer"
+                              >
+                                Готово
+                              </button>
+                            </div>
+                            <div className="max-h-52 overflow-y-auto text-left space-y-1.5 pr-1">
+                              {ministryOptions.map((opt) => {
+                                const selectedList = m.s_slujinnya_spysok 
+                                  ? m.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                                  : [];
+                                const isChecked = selectedList.includes(opt);
+                                return (
+                                  <label 
+                                    key={opt} 
+                                    className="flex items-center gap-2 py-1 px-1.5 cursor-pointer rounded hover:bg-slate-100/80 transition-colors select-none text-[10.5px] font-bold text-slate-700"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={async (e) => {
+                                        let newList;
+                                        if (e.target.checked) {
+                                          newList = [...selectedList, opt];
+                                        } else {
+                                          newList = selectedList.filter(item => item !== opt);
+                                        }
+                                        const sortedNewList = ministryOptions.filter(o => newList.includes(o));
+                                        const valString = sortedNewList.join(', ');
+                                        await onUpdateMember(m.id, { s_slujinnya_spysok: valString });
+                                      }}
+                                      className="h-3 w-3 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                    />
+                                    <span className={isChecked ? 'text-emerald-950 font-extrabold' : ''}>{opt}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Display of selected */}
+                      {(() => {
+                        const selectedList = m.s_slujinnya_spysok 
+                          ? m.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                          : [];
+                        return selectedList.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-1 w-full p-0.5">
+                            {selectedList.map(name => (
+                              <span 
+                                key={name} 
+                                className="bg-emerald-800/10 border border-emerald-800/25 text-[#0d341d] px-1 py-0.5 rounded text-[9px] truncate font-extrabold block text-center shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
+                                title={name}
+                              >
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 font-bold text-[10px]">немає</span>
+                        );
+                      })()}
+                    </td>
 
                     {/* "Відвідуваність" Inline Dropdown (Request 6) */}
                     {renderDropdownCell(m, 'vidviduvanist', lookups?.directories?.vidviduvanist || [], 'н/д', 'text-slate-700 bg-slate-100/70 rounded-full px-1.5 py-0.5')}

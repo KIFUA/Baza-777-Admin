@@ -310,6 +310,15 @@ function loadDatabase() {
         const attendanceAttr = (row.vidviduvanist || "").trim();
         const presenceAttr = (row.prysutnist || "").trim();
 
+        const memberMinistries = ministries
+          .filter(m => Number(m.id_anketa) === Number(row.id) && !m.d_end)
+          .map(m => {
+            const minId = Number(m.id_slujinnya);
+            return MINISTRY_MAP[minId] || `Служіння #${minId}`;
+          })
+          .filter(Boolean);
+        const ministriesStr = memberMinistries.join(", ");
+
         return {
           id: Number(row.id),
           pib: String(row.pib || "").trim(),
@@ -323,6 +332,7 @@ function loadDatabase() {
           id_osvita: Number(row.id_osvita || 4),
           s_profesiya_ukr: String(row.s_profesiya_ukr || "").trim(),
           id_profesiya: Number(row.id_profesiya || 41),
+          s_slujinnya_spysok: ministriesStr,
           zaklad_osv: String(row.zaklad_osv || "").trim(),
           
           d_narodjennya: birthDate,
@@ -384,6 +394,9 @@ function loadDatabase() {
   saveDatabaseToCache();
 }
 
+let cachedMembersJson: any = null;
+let lastCacheUpdateTime = 0;
+
 function saveDatabaseToCache() {
   try {
     const db = {
@@ -397,6 +410,11 @@ function saveDatabaseToCache() {
       access_dostup
     };
     fs.writeFileSync(DB_CACHE_FILE, JSON.stringify(db, null, 2), "utf-8");
+    
+    // Invalidate the cache of members.json so any query dynamically gets the freshest Firebase details
+    cachedMembersJson = null;
+    lastCacheUpdateTime = 0;
+    console.log("[Cache Invalidation] Successfully invalidated members.json cache during write/update operation.");
   } catch (err: any) {
     console.error(`Error saving cache file: ${err.message}`);
   }
@@ -412,8 +430,6 @@ if (FIREBASE_URL.endsWith("/")) {
 }
 const FIREBASE_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
 
-let cachedMembersJson: any = null;
-let lastCacheUpdateTime = 0;
 const CACHE_TTL_MS = 60000; // 1 minute local server-side cache
 
 app.use('/api/firebase', async (req, res) => {
@@ -1021,7 +1037,8 @@ app.get("/api/members", (req, res) => {
       m.tel_mob.includes(query) ||
       m.tel1.includes(query) ||
       m.id.toString() === query ||
-      m.s_profesiya_ukr.toLowerCase().includes(query)
+      m.s_profesiya_ukr.toLowerCase().includes(query) ||
+      (m.s_slujinnya_spysok && m.s_slujinnya_spysok.toLowerCase().includes(query))
     );
   }
 
@@ -1213,6 +1230,9 @@ async function syncMemberToFirebase(id: number, member: Member) {
   // Format standard status
   const statusStr = member.id_vybuttya > 0 ? "вибув" : "активний";
   
+  // Convert ministries comma separated string into standard list for legacy checkboxes/hidden input compatibility
+  const slujList = (member.s_slujinnya_spysok || "").split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+
   const updates: any = {
     "01_PIB": member.pib,
     "pib": member.pib,
@@ -1227,6 +1247,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "02_OSOBYSTE/8_profesiya": member.s_profesiya_ukr || "н/д",
     "02_OSOBYSTE/6_socialniy": member.s_socialniy_ukr || "н/д",
     "02_OSOBYSTE/13_status": statusStr,
+    "02_OSOBYSTE/s_simeyniy_ukr": member.s_simeyniy_ukr || "неодружений",
     
     "04_STRUCTURA/1_rayon": member.rayon2_ukr || "",
     "04_STRUCTURA/4_opika": member.presviter || "",
@@ -1235,6 +1256,11 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "04_STRUCTURA/6_d_vstupu": member.d_vstupu || "",
     "04_STRUCTURA/8_vidviduvanist": member.vidviduvanist || "",
     "04_STRUCTURA/9_prysutnist": member.prysutnist || "",
+    "04_STRUCTURA/3_san": member.di_admin || "",
+    
+    "05_ISTORIJA/1_slujinnya": slujList,
+    "04_STRUCTURA/slujinnya": slujList,
+    "slujinnya": slujList,
     
     "06_VYBUTTYA/2_prichina": member.s_vybuv_ukr || "",
     "06_VYBUTTYA/1_d_vybuttya": member.d_vybuttya || "",
@@ -1275,7 +1301,7 @@ app.post("/api/members/:id", (req, res) => {
   // Capture changed fields for history audit log tracking
   const fieldsToCheck: (keyof Member)[] = [
     "pib", "tel_mob", "s_osvita_ukr", "s_socialniy_ukr", "s_simeyniy_ukr", 
-    "s_profesiya_ukr", "zaklad_osv", "d_narodjennya", "presviter", 
+    "s_profesiya_ukr", "s_slujinnya_spysok", "zaklad_osv", "d_narodjennya", "presviter", 
     "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "di_admin"
   ];
 
@@ -1612,6 +1638,7 @@ app.post("/api/members", (req, res) => {
     id_osvita: Number(newMemberData.id_osvita || 4),
     s_profesiya_ukr: String(newMemberData.s_profesiya_ukr || "н/д").trim(),
     id_profesiya: Number(newMemberData.id_profesiya || 41),
+    s_slujinnya_spysok: String(newMemberData.s_slujinnya_spysok || "").trim(),
     zaklad_osv: String(newMemberData.zaklad_osv || "").trim(),
     
     d_narodjennya: birthDate,
@@ -1789,19 +1816,70 @@ async function syncDatabaseWithFirebase() {
           }
         }
 
+        // Construct robust marital status checking last history entry or direct s_simeyniy_ukr
+        let simeyniyVal = String(особисте["s_simeyniy_ukr"] || "").trim();
+        if (!simeyniyVal) {
+          const shlyubArr = особисте["4_shlyub_history"];
+          if (Array.isArray(shlyubArr) && shlyubArr.length > 0) {
+            const sh = shlyubArr[shlyubArr.length - 1];
+            if (sh && sh["status"]) {
+              simeyniyVal = String(sh["status"]).trim();
+            }
+          }
+        }
+        if (!simeyniyVal) simeyniyVal = "неодружений";
+
+        // Parse ministries (slujinnya) list from Firebase paths
+        let ministriesStr = "";
+        const rawHistory =
+          (raw["05_ISTORIJA"] && raw["05_ISTORIJA"]["1_slujinnya"]) ||
+          (структура && структура["slujinnya"]) ||
+          raw["slujinnya"];
+
+        if (Array.isArray(rawHistory)) {
+          ministriesStr = rawHistory.filter(Boolean).map((h: any) => typeof h === "string" ? h.trim() : (h.podiya || h.id_slujinnya || "")).filter(Boolean).join(", ");
+        } else if (typeof rawHistory === "string" && rawHistory.trim()) {
+          try {
+            const parsed = JSON.parse(rawHistory);
+            if (Array.isArray(parsed)) {
+              ministriesStr = parsed.filter(Boolean).map((h: any) => typeof h === "string" ? h.trim() : "").filter(Boolean).join(", ");
+            } else {
+              ministriesStr = rawHistory.trim();
+            }
+          } catch (e) {
+            ministriesStr = rawHistory.trim();
+          }
+        }
+
+        let professionStr = String(особисте["8_profesiya"] || особисте["s_profesiya_ukr"] || "").trim();
+        const lowerProf = professionStr.toLowerCase();
+        const hasMinistriesKeywords = lowerProf.includes("молитовне") || 
+                                     lowerProf.includes("милосердя") || 
+                                     lowerProf.includes("соціальне") || 
+                                     lowerProf.includes("sun shine") || 
+                                     lowerProf.includes("медіа") ||
+                                     lowerProf.includes("спів") ||
+                                     lowerProf.includes("недільн");
+        if (!professionStr || professionStr === "н/д" || hasMinistriesKeywords) {
+          const profId = Number(особисте["id_profesiya"] || 41);
+          const profItem = s_profesiya.find((p: any) => Number(p.ID) === profId);
+          professionStr = profItem ? String(profItem.Value || "н/д") : "н/д";
+        }
+
         const mapped: Member = {
           id: id,
           pib: pibName,
           stat: normStat,
 
-          s_simeyniy_ukr: String(особисте["s_simeyniy_ukr"] || "н/д").trim(),
+          s_simeyniy_ukr: simeyniyVal,
           id_simeyniy: Number(особисте["id_simeyniy"] || 5),
           s_socialniy_ukr: String(особисте["6_socialniy"] || особисте["s_socialniy_ukr"] || "н/д").trim(),
           id_socialniy: Number(особисте["id_socialniy"] || 6),
           s_osvita_ukr: String(особисте["7_osvita"] || особисте["s_osvita_ukr"] || "н/д").trim(),
           id_osvita: Number(особисте["id_osvita"] || 4),
-          s_profesiya_ukr: String(особисте["8_profesiya"] || особисте["s_profesiya_ukr"] || "").trim(),
+          s_profesiya_ukr: professionStr,
           id_profesiya: Number(особисте["id_profesiya"] || 41),
+          s_slujinnya_spysok: ministriesStr,
           zaklad_osv: String(особисте["zaklad_osv"] || "").trim(),
 
           d_narodjennya: birthDate,
@@ -1821,6 +1899,7 @@ async function syncDatabaseWithFirebase() {
 
           vidviduvanist: String(структура["8_vidviduvanist"] || "").trim(),
           prysutnist: String(структура["9_prysutnist"] || "").trim(),
+          di_admin: String(структура["3_san"] || raw["di_admin"] || "").trim(),
 
           presviter: String(структура["4_opika"] || "").trim(),
           rayon2_ukr: String(структура["1_rayon"] || "").trim(),

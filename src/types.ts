@@ -74,6 +74,7 @@ export interface Member {
   id_osvita: number;
   s_profesiya_ukr: string;
   id_profesiya: number;
+  s_slujinnya_spysok?: string;
   zaklad_osv: string;
   
   d_narodjennya?: string; // formatted date (YYYY-MM-DD)

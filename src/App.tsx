@@ -167,6 +167,7 @@ export default function App() {
         setAllMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
         setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
         await fetchLookupsAndStats();
+        await preloadRawFirebase();
         return true;
       }
     } catch (err) {

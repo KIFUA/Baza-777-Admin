@@ -1006,6 +1006,8 @@
         }
       };
 
+      window.lastLoadedUnmappedMinistries = [];
+
       function updateSelectedMinistriesText() {
         const selected = [];
         ST_MINISTRIES.forEach((mName, index) => {
@@ -1014,6 +1016,15 @@
             selected.push(mName);
           }
         });
+
+        // Append any unmapped custom ministries to preserve them in list and on save
+        if (Array.isArray(window.lastLoadedUnmappedMinistries)) {
+          window.lastLoadedUnmappedMinistries.forEach((unm) => {
+            if (!selected.includes(unm)) {
+              selected.push(unm);
+            }
+          });
+        }
 
         const container = document.getElementById("ministrySelectedListContainer");
         if (container) {
@@ -1053,6 +1064,8 @@
           if (chk) chk.checked = false;
         });
 
+        window.lastLoadedUnmappedMinistries = [];
+
         let ministriesList = [];
         const rawHistory =
           member.rawData["05_ISTORIJA"]?.["1_slujinnya"] ||
@@ -1077,24 +1090,52 @@
             const parsed = JSON.parse(rawHistory);
             if (Array.isArray(parsed)) {
               ministriesList = parsed;
+            } else if (rawHistory.trim()) {
+              ministriesList = rawHistory.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
             }
-          } catch (e) {}
+          } catch (e) {
+            if (rawHistory.trim()) {
+              ministriesList = rawHistory.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+            }
+          }
         }
 
         ministriesList.forEach((m) => {
-          const index = ST_MINISTRIES.indexOf(m);
-          if (index !== -1) {
-            const chk = document.getElementById(`chk_min_${index}`);
-            if (chk) chk.checked = true;
+          m = String(m).trim();
+          if (!m || m.toLowerCase() === "н/д") return;
+
+          let matched = false;
+          const normalized = m.toLowerCase();
+
+          // 1. Direct exact match
+          const exactIndex = ST_MINISTRIES.indexOf(m);
+          if (exactIndex !== -1) {
+            const chk = document.getElementById(`chk_min_${exactIndex}`);
+            if (chk) { chk.checked = true; matched = true; }
           } else {
-            const normalized = String(m).toLowerCase().trim();
-            const matchedIdx = ST_MINISTRIES.findIndex(
-              (item) => item.toLowerCase().trim() === normalized,
-            );
+            // 2. Exact lowercase match or bidirectional fuzzy substring contains/starts-with check
+            const matchedIdx = ST_MINISTRIES.findIndex((item) => {
+              const itemNorm = item.toLowerCase().trim();
+              if (itemNorm === normalized) return true;
+              
+              // If "милосердя" matches "Милосердя / Відвідування хворих" or "молитовне" matches "Молитовна група"
+              if (normalized.length >= 4 && itemNorm.includes(normalized)) return true;
+              if (itemNorm.length >= 4 && normalized.includes(itemNorm)) return true;
+              
+              // Handle prefix like "молит" for "Молитовна група" and "Молитовне"
+              if (normalized.length >= 5 && itemNorm.startsWith(normalized.slice(0, 5))) return true;
+
+              return false;
+            });
+
             if (matchedIdx !== -1) {
               const chk = document.getElementById(`chk_min_${matchedIdx}`);
-              if (chk) chk.checked = true;
+              if (chk) { chk.checked = true; matched = true; }
             }
+          }
+
+          if (!matched) {
+            window.lastLoadedUnmappedMinistries.push(m);
           }
         });
 

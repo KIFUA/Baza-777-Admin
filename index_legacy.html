@@ -172,7 +172,7 @@
       >
         <span
           id="pibTextSpan"
-          class="text-xl font-black text-white text-center tracking-wide uppercase w-full"
+          class="text-sm md:text-base font-black text-white text-center tracking-wide uppercase w-full"
         ></span>
         <div class="w-full flex justify-start mt-0.5">
           <div id="historyBadge" class="hidden text-left">
@@ -385,13 +385,13 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-[80px_80px_1fr] gap-2">
+            <div class="flex flex-wrap gap-x-2.5 gap-y-1.5 items-end">
               <div>
                 <label class="block text-[11px] text-gray-400">Освіта</label>
                 <input
                   type="text"
                   id="education"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
+                  class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
                 />
               </div>
               <div>
@@ -399,7 +399,7 @@
                 <input
                   type="text"
                   id="social_status"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
+                  class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
                 />
               </div>
               <div>
@@ -407,7 +407,7 @@
                 <input
                   type="text"
                   id="profession"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
+                  class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none text-xs"
                 />
               </div>
             </div>
@@ -435,7 +435,7 @@
                   >
                   <select
                     id="spouse_status"
-                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="w-[95px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   >
                     <option value="" class="text-gray-500">н/д</option>
                     <option value="неодруж.">неодруж.</option>
@@ -478,7 +478,7 @@
               </div>
               <div
                 id="partner_id_container"
-                class="hidden relative flex-1 min-w-[180px]"
+                class="hidden relative inline-block text-left"
               >
                 <input type="hidden" id="spouse_id" />
                 <div>
@@ -488,7 +488,7 @@
                   <input
                     type="text"
                     id="partner_name_input"
-                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                     autocomplete="off"
                   />
                   <ul
@@ -533,7 +533,7 @@
               АДРЕС <span class="text-teal-500/50">▼</span>
             </h3>
             <div id="address_content" class="space-y-2 hidden">
-              <div class="grid grid-cols-2 gap-2">
+              <div class="flex flex-wrap gap-2">
                 <div>
                   <label class="block text-[11px] text-gray-400"
                     >Населений пункт</label
@@ -541,10 +541,10 @@
                   <input
                     type="text"
                     id="addr_city"
-                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
-                <div>
+                <div class="flex-1 min-w-[140px]">
                   <label class="block text-[11px] text-gray-400">Вулиця</label>
                   <input
                     type="text"
@@ -621,14 +621,14 @@
                     class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
-                <div class="flex-1 min-w-[80px]">
+                <div>
                   <label class="block text-[11px] text-purple-400 select-none"
                     >Сан</label
                   >
                   <input
                     type="text"
                     id="san"
-                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
               </div>
@@ -641,10 +641,10 @@
                   <input
                     type="text"
                     id="rayon"
-                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
-                <div class="flex-1 min-w-[100px]">
+                <div>
                   <label
                     class="block text-[11px] text-purple-400 font-bold select-none"
                     >Опіка</label
@@ -652,39 +652,32 @@
                   <input
                     type="text"
                     id="opika"
-                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <input type="hidden" id="group_name" />
               </div>
-              <div class="relative w-[200px]">
-                <label
-                  class="block text-[11px] text-purple-400 font-bold select-none mb-1"
-                  >Служіння</label
-                >
-                <button
-                  type="button"
+              <div class="relative w-fit min-w-[130px]">
+                <div class="flex items-center justify-between gap-1 mb-1 cursor-pointer select-none" onclick="toggleMinistryDropdown()">
+                  <label class="block text-[11px] text-purple-400 font-bold cursor-pointer">Служіння</label>
+                  <span id="ministryArrow" class="text-[9px] text-purple-400/70">▼</span>
+                </div>
+                <div
+                  id="ministrySelectedListContainer"
                   onclick="toggleMinistryDropdown()"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white text-left px-2 py-1.5 text-xs flex justify-between items-center focus:border-blue-500 outline-none select-none"
+                  class="bg-inputBg border border-borderClr rounded text-white text-left p-1.5 text-xs flex flex-col gap-1 min-w-[130px] cursor-pointer focus-within:border-blue-500 outline-none select-none"
                 >
-                  <span
-                    id="ministrySelectedText"
-                    class="truncate text-gray-500 text-xs"
-                    >н/д</span
-                  >
-                  <span id="ministryArrow" class="text-[9px] text-gray-500"
-                    >▼</span
-                  >
-                </button>
+                  <span id="ministrySelectedText" class="text-gray-500 text-xs">н/д</span>
+                </div>
                 <div
                   id="ministryDropdownContainer"
-                  class="absolute left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1"
+                  class="absolute left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1 min-w-[220px] w-max"
                 >
                   <!-- Checkboxes populated dynamically -->
                 </div>
                 <input type="hidden" id="slujinnya" />
               </div>
-              <div class="grid grid-cols-2 gap-2">
+              <div class="flex flex-wrap gap-2">
                 <div>
                   <label
                     class="block text-[11px] text-purple-400 font-bold select-none"
@@ -693,7 +686,7 @@
                   <input
                     type="text"
                     id="vidviduvanist"
-                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div>
@@ -704,7 +697,7 @@
                   <input
                     type="text"
                     id="prysutnist"
-                    class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
               </div>
@@ -734,7 +727,7 @@
                   <input
                     type="text"
                     id="exit_reason"
-                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
                   />
                 </div>
                 <div>
@@ -1022,13 +1015,34 @@
           }
         });
 
-        const btnText = document.getElementById("ministrySelectedText");
-        if (selected.length === 0) {
-          btnText.textContent = "н/д";
-          btnText.className = "truncate text-gray-500 text-xs w-full";
-        } else {
-          btnText.textContent = selected.join(", ");
-          btnText.className = "truncate text-gray-100 font-bold text-xs w-full";
+        const container = document.getElementById("ministrySelectedListContainer");
+        if (container) {
+          container.innerHTML = "";
+          if (selected.length === 0) {
+            const span = document.createElement("span");
+            span.id = "ministrySelectedText";
+            span.className = "text-gray-500 text-xs";
+            span.textContent = "н/д";
+            container.appendChild(span);
+          } else {
+            selected.forEach((mName, i) => {
+              const div = document.createElement("div");
+              div.className = "text-gray-100 font-bold text-xs whitespace-nowrap flex items-center gap-1.5 py-0.5";
+              
+              const dot = document.createElement("span");
+              dot.className = "w-1 h-1 rounded-full bg-purple-400 shrink-0";
+              div.appendChild(dot);
+              
+              const textSpan = document.createElement("span");
+              if (i === 0) {
+                textSpan.id = "ministrySelectedText";
+              }
+              textSpan.textContent = mName;
+              div.appendChild(textSpan);
+              
+              container.appendChild(div);
+            });
+          }
         }
         document.getElementById("slujinnya").value = JSON.stringify(selected);
       }
@@ -1267,6 +1281,8 @@
         if (container) {
           if (status === "одр.") {
             container.classList.remove("hidden");
+            const inp = document.getElementById("partner_name_input");
+            if (inp) autoSizeInput(inp);
           } else {
             container.classList.add("hidden");
           }
@@ -1275,6 +1291,8 @@
         if (endDateContainer) {
           if (status === "розлуч." || status === "вдов.") {
             endDateContainer.classList.remove("hidden");
+            const inp = document.getElementById("d_shlyub_end");
+            if (inp) autoSizeInput(inp);
           } else {
             endDateContainer.classList.add("hidden");
           }
@@ -1285,6 +1303,8 @@
             startDateContainer.classList.add("hidden");
           } else {
             startDateContainer.classList.remove("hidden");
+            const inp = document.getElementById("d_shlyub_from");
+            if (inp) autoSizeInput(inp);
           }
         }
       }
@@ -1294,19 +1314,29 @@
         if (!area) return;
         const text = area.value || "";
         const lines = text.split("\n");
-        let maxLen = 0;
+        
+        const canvas = window.resizeDityWidth.canvas || (window.resizeDityWidth.canvas = document.createElement("canvas"));
+        const ctx = canvas.getContext("2d");
+        ctx.font = "12px Inter, system-ui, -apple-system, sans-serif";
+        
+        let maxWidth = 0;
         lines.forEach((l) => {
           const clean = l.replace("\r", "").trim();
-          if (clean.length > maxLen) {
-            maxLen = clean.length;
+          const w = ctx.measureText(clean || " ").width;
+          if (w > maxWidth) {
+            maxWidth = w;
           }
         });
-        if (maxLen > 0) {
-          area.style.width = Math.max(200, maxLen * 8.5 + 24) + "px";
-          area.style.maxWidth = "100%";
-        } else {
-          area.style.width = "100%";
+
+        // Add padding + safe scrollbar/cursor padding
+        let finalWidth = maxWidth + 24; 
+        const minWidth = 140; // sleek compact minimum width for dity
+        if (finalWidth < minWidth) {
+          finalWidth = minWidth;
         }
+        
+        area.style.width = `${Math.ceil(finalWidth)}px`;
+        area.style.maxWidth = "100%";
       };
 
       window.autoResizeDity = function () {
@@ -1490,12 +1520,60 @@
         if (!el) return;
         const id = el.id;
         const val = el.value || "";
-        let minChars = 8;
+        const placeholder = el.placeholder || "";
+        const textToMeasure = val || placeholder || " ";
+
+        const font = "12.5px Inter, system-ui, -apple-system, sans-serif";
+
+        const canvas = autoSizeInput.canvas || (autoSizeInput.canvas = document.createElement("canvas"));
+        const ctx = canvas.getContext("2d");
+        ctx.font = font;
+        const textWidth = ctx.measureText(textToMeasure).width;
+
+        let extraWidth = 14; 
         if (id === "tel" || id === "tel_extra") {
-          minChars = 10;
+          extraWidth = 22; 
+        } else if (id === "partner_name_input") {
+          extraWidth = 24; 
         }
-        const chars = val.length > 0 ? val.length : minChars;
-        el.style.width = `${chars + 1}ch`;
+
+        let finalWidth = textWidth + extraWidth;
+
+        // Establish sensible min-widths
+        let minWidth = 60;
+        if (id === "tel" || id === "tel_extra") {
+          minWidth = 115;
+        } else if (id === "partner_name_input") {
+          minWidth = 150;
+        } else if (id === "education") {
+          minWidth = 70;
+        } else if (id === "social_status") {
+          minWidth = 60;
+        } else if (id === "profession") {
+          minWidth = 80;
+        } else if (id === "d_shlyub_from" || id === "d_shlyub_end" || id === "d_nar" || id === "exit_date" || id === "d_vodnogo" || id === "d_vstupu") {
+          minWidth = 85;
+        } else if (id === "addr_city") {
+          minWidth = 120;
+        } else if (id === "san") {
+          minWidth = 75;
+        } else if (id === "rayon") {
+          minWidth = 110;
+        } else if (id === "opika") {
+          minWidth = 110;
+        } else if (id === "vidviduvanist") {
+          minWidth = 115;
+        } else if (id === "prysutnist") {
+          minWidth = 115;
+        } else if (id === "exit_reason") {
+          minWidth = 130;
+        }
+
+        if (finalWidth < minWidth) {
+          finalWidth = minWidth;
+        }
+
+        el.style.width = `${Math.ceil(finalWidth)}px`;
       }
 
       function calculateAgeByDOB(birthDateStr) {
@@ -1658,6 +1736,33 @@
           });
           autoSizeInput(phone2Inp);
         }
+
+        const extraAutoInps = [
+          "education",
+          "social_status",
+          "profession",
+          "partner_name_input",
+          "d_shlyub_end",
+          "exit_date",
+          "d_vodnogo",
+          "d_vstupu",
+          "addr_city",
+          "san",
+          "rayon",
+          "opika",
+          "vidviduvanist",
+          "prysutnist",
+          "exit_reason"
+        ];
+        extraAutoInps.forEach(id => {
+          const inp = document.getElementById(id);
+          if (inp) {
+            inp.addEventListener("input", () => {
+              autoSizeInput(inp);
+            });
+            autoSizeInput(inp);
+          }
+        });
 
         const btnAddPhone = document.getElementById("btnAddPhone");
         if (btnAddPhone) {
@@ -2111,7 +2216,28 @@
         if (!el) return;
         el.value = valOrNA(val);
         applyGrayForNA(el);
-        if (id === "d_nar" || id === "tel" || id === "tel_extra") {
+        const autoSizeIds = [
+          "d_nar",
+          "tel",
+          "tel_extra",
+          "education",
+          "social_status",
+          "profession",
+          "d_shlyub_from",
+          "partner_name_input",
+          "d_shlyub_end",
+          "exit_date",
+          "d_vodnogo",
+          "d_vstupu",
+          "addr_city",
+          "san",
+          "rayon",
+          "opika",
+          "vidviduvanist",
+          "prysutnist",
+          "exit_reason"
+        ];
+        if (autoSizeIds.includes(id)) {
           autoSizeInput(el);
         }
       }
@@ -2340,11 +2466,9 @@
         document.getElementById("spouse_id").value = sId;
 
         const partner = allMembers.find((m) => String(m.id) === String(sId));
-        document.getElementById("partner_name_input").value = partner
-          ? partner.pib
-          : sId
-            ? ""
-            : "";
+        const partnerNameInp = document.getElementById("partner_name_input");
+        partnerNameInp.value = partner ? partner.pib : "";
+        autoSizeInput(partnerNameInp);
 
         setAndStyleField("exit_reason", vybuttya["2_prichina"]);
         setAndStyleField(
@@ -2670,6 +2794,7 @@
               partnerNameInput.value = m.pib;
               spouseIdInput.value = m.id;
               partnerSearchResults.classList.add("hidden");
+              autoSizeInput(partnerNameInput);
             };
             li.onkeydown = (ev) => {
               if (ev.key === "ArrowDown") {
@@ -2728,8 +2853,8 @@
           "ministryDropdownContainer",
         );
         const minButton = document.getElementById(
-          "ministrySelectedText",
-        )?.parentElement;
+          "ministrySelectedListContainer",
+        );
         if (
           minDropdown &&
           !minDropdown.contains(e.target) &&

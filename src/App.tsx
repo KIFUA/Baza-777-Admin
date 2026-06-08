@@ -155,6 +155,8 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeAnketaId]);
 
+
+
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
     try {
       const resp = await fetch(`/api/members/${id}`, {
@@ -276,14 +278,30 @@ export default function App() {
 
           <nav className="flex space-x-2">
             <button
-              onClick={() => { setMainMode('spreadsheet'); setSelectedMemberId(null); setShowForm(false); }}
+              onClick={async () => { 
+                setMainMode('spreadsheet'); 
+                setSelectedMemberId(null); 
+                setShowForm(false); 
+                // Instant reload to sync any changes made inside iframe
+                await fetchAllMembers();
+                await fetchMembers();
+                await fetchLookupsAndStats();
+              }}
               className={`px-5 py-2 text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
             >
               СПИСОК
             </button>
             <button
               title="Перейти до анкет"
-              onClick={() => { setMainMode('questionnaire'); setSelectedMemberId(null); setShowForm(false); }}
+              onClick={async () => { 
+                setMainMode('questionnaire'); 
+                setSelectedMemberId(null); 
+                setShowForm(false); 
+                // Instant reload to keep the iframe raw background data in sync
+                await fetchAllMembers();
+                await fetchMembers();
+                await fetchLookupsAndStats();
+              }}
               className={`px-5 py-2 text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
             >
               АНКЕТИ

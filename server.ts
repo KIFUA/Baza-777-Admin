@@ -20,6 +20,16 @@ const tablyciDir = path.join(process.cwd(), "tablyci");
 
 app.use(express.json());
 
+// Prevent browser/proxy/CDN caching for all API endpoints to guarantee active synchronization
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
+});
+
 // In-memory Database State
 let members: Member[] = [];
 let marriages: any[] = [];

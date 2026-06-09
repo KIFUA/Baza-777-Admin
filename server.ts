@@ -1787,6 +1787,140 @@ async function syncDirectoriesFromFirebase() {
   }
 }
 
+function formatAddress(addrObj: any): string {
+  if (!addrObj) return "";
+  
+  let city = addrObj["1_nas_punkt"] !== undefined ? String(addrObj["1_nas_punkt"]) : (addrObj["1_misto"] !== undefined ? String(addrObj["1_misto"]) : "");
+  let street = addrObj["2_vulycja"] !== undefined ? String(addrObj["2_vulycja"]) : (addrObj["2_vulitsya"] !== undefined ? String(addrObj["2_vulitsya"]) : "");
+  let house = addrObj["3_budynok"] !== undefined ? String(addrObj["3_budynok"]) : (addrObj["3_budinok"] !== undefined ? String(addrObj["3_budinok"]) : "");
+  let korpus = addrObj["4_korpus"] !== undefined ? String(addrObj["4_korpus"]) : "";
+  let flat = addrObj["5_kvartyra"] !== undefined ? String(addrObj["5_kvartyra"]) : (addrObj["4_kvartira"] !== undefined ? String(addrObj["4_kvartira"]) : "");
+
+  // Clean fields of any leading/trailing spaces and commas
+  const cleanField = (val: string) => {
+    return val.trim().replace(/^,+/, "").replace(/,+$/, "").trim();
+  };
+
+  city = cleanField(city);
+  street = cleanField(street);
+  house = cleanField(house);
+  korpus = cleanField(korpus);
+  flat = cleanField(flat);
+  
+  let cityPart = "";
+  if (city) {
+    const cityLower = city.toLowerCase();
+    const isIF = cityLower.includes("івано-франківськ") || 
+                 cityLower.includes("івано франківськ") || 
+                 cityLower.includes("ів.-франк") || 
+                 cityLower.includes("іва.-фран") ||
+                 cityLower === "іванофранківськ" ||
+                 cityLower === "іф" ||
+                 cityLower === "і.ф.";
+    
+    if (!isIF) {
+      // Check if it already has a standard prefix (м., с., смт., с-ще., т.)
+      const hasPrefix = /^(м\.|с\.|с-ще\.|смт\.|т\.)/i.test(city) || 
+                        cityLower.startsWith("м ") || 
+                        cityLower.startsWith("с ") || 
+                        cityLower.startsWith("смт ") || 
+                        cityLower.startsWith("с-ще ") || 
+                        cityLower.startsWith("село ") || 
+                        cityLower.startsWith("місто ");
+                        
+      if (!hasPrefix) {
+        // Classify and prepend the right prefix
+        const regionalCities = [
+          "калуш", "коломия", "долина", "яремче", "надвірна", "болєхів", "болехів",
+          "рогатин", "снятин", "городенка", "косів", "тлумач", "тисмениця", "галич", "бурштин"
+        ];
+        const regionalSmt = [
+          "богородчани", "отинія", "брошнів", "верховина", "войнилів", "делятин", 
+          "заболотів", "ланчин", "перегінське", "рожнятів", "солотвин", "чернелиця", 
+          "більшівці", "єзупіль", "кути", "печеніжин", "верховина"
+        ];
+        
+        const cleanName = city.replace(/^[,\s\.\-]+/, "").trim().toLowerCase();
+        
+        if (regionalCities.some(rc => cleanName.includes(rc))) {
+          cityPart = "м. " + city;
+        } else if (regionalSmt.some(rs => cleanName.includes(rs))) {
+          cityPart = "смт. " + city;
+        } else {
+          cityPart = "с. " + city;
+        }
+      } else {
+        cityPart = city;
+      }
+    }
+  }
+  
+  let streetPart = "";
+  if (street) {
+    const streetLower = street.toLowerCase();
+    const hasStreetPrefix = streetLower.startsWith("вул.") || 
+                            streetLower.startsWith("вулиця") || 
+                            streetLower.startsWith("пл.") || 
+                            streetLower.startsWith("площа") || 
+                            streetLower.startsWith("пров.") || 
+                            streetLower.startsWith("провілок") || 
+                            streetLower.startsWith("бул.") || 
+                            streetLower.startsWith("бульвар") || 
+                            streetLower.startsWith("просп.") || 
+                            streetLower.startsWith("проспект") || 
+                            streetLower.startsWith("тракт") || 
+                            streetLower.startsWith("шосе");
+    if (!hasStreetPrefix) {
+      streetPart = "вул. " + street;
+    } else {
+      streetPart = street;
+    }
+  }
+  
+  let addressMain = streetPart;
+  if (house) {
+    if (addressMain) {
+      addressMain += ", " + house;
+    } else {
+      addressMain = house;
+    }
+  }
+  
+  if (korpus) {
+    if (addressMain) {
+      addressMain += " / " + korpus;
+    } else {
+      addressMain = korpus;
+    }
+  }
+  
+  if (flat) {
+    if (addressMain) {
+      addressMain += " / " + flat;
+    } else {
+      addressMain = flat;
+    }
+  }
+  
+  let fullAddress = "";
+  if (cityPart && addressMain) {
+    fullAddress = cityPart + ", " + addressMain;
+  } else if (cityPart) {
+    fullAddress = cityPart;
+  } else if (addressMain) {
+    fullAddress = addressMain;
+  }
+
+  // De-duplicate commas and format spaces properly
+  fullAddress = fullAddress
+    .replace(/,(\s*,)+/g, ",")       // Remove comma lists like ", , " or ",,"
+    .replace(/,+/g, ",")             // Merge multiple consecutive commas
+    .replace(/\s*,\s*/g, ", ")       // Ensure exactly one space after each comma and no space before
+    .trim();
+  
+  return fullAddress;
+}
+
 async function syncDatabaseWithFirebase() {
   console.log("[Firebase Startup Sync] Loading database from Firebase RTDB...");
   
@@ -1956,7 +2090,8 @@ async function syncDatabaseWithFirebase() {
           hvoryi: String(raw["hvoryi"] || "").trim(),
           insha_gromada: String(raw["insha_gromada"] || "").trim(),
           primitka: String(raw["primitka"] || "").trim(),
-          efile: raw["efile"]
+          efile: raw["efile"],
+          address: formatAddress(адреса)
         };
         parsedMembers.push(mapped);
       }

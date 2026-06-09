@@ -118,6 +118,7 @@ export interface Member {
   d_kontaktiv?: string; // presbyter contact dates migrated from Church Management CSS spreadsheet
   di_admin?: string;
   efile?: boolean | number;
+  address?: string;
 }
 
 export interface MemberDetailExtended {

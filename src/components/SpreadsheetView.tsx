@@ -15,6 +15,7 @@ interface SpreadsheetViewProps {
 export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpdateMember }: SpreadsheetViewProps) {
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showRayonColumn, setShowRayonColumn] = useState(false);
   
   // Inline edit state
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -99,8 +100,9 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         const presvMatch = m.presviter?.toLowerCase().includes(q);
         const rayonMatch = m.rayon2_ukr?.toLowerCase().includes(q);
         const primitkaMatch = m.primitka?.toLowerCase().includes(q);
+        const addressMatch = m.address?.toLowerCase().includes(q);
         
-        return pibMatch || phoneMatch || presvMatch || rayonMatch || primitkaMatch;
+        return pibMatch || phoneMatch || presvMatch || rayonMatch || primitkaMatch || addressMatch;
       }
 
       return true;
@@ -140,6 +142,9 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     });
     return Math.max(208, maxCharLen * 7.5 + 105);
   }, [filteredMembers]);
+
+  const rayonColWidth = 90;
+  const pibLeftSticky = showRayonColumn ? (40 + rayonColWidth) : 40;
 
   // Dropdown inline cell renderer (Request 5 & 6)
   const renderDropdownCell = (
@@ -304,6 +309,25 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           )}
         </div>
 
+        {/* Toggle Rayon Column */}
+        <div className="flex items-center space-x-2 shrink-0 sm:ml-auto">
+          <button
+            id="toggle_rayon_col_btn"
+            type="button"
+            onClick={() => setShowRayonColumn(!showRayonColumn)}
+            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md border text-[10px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none ${
+              showRayonColumn
+                ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm font-semibold"
+                : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
+            }`}
+          >
+            <span>Район у таблиці 🧭</span>
+            <span className="opacity-80">
+              {showRayonColumn ? "(Показано)" : "(Приховано)"}
+            </span>
+          </button>
+        </div>
+
       </div>
 
       {/* Spreadsheet grid scroll core */}
@@ -311,10 +335,28 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         <table className="w-full border-collapse border border-[#8fba94] text-[11px] bg-[#cde0cf] select-text">
           <thead className="sticky top-0 z-[100] shadow-[0_1px_2px_rgba(0,0,0,0.1)] outline outline-1 outline-[#8fba94]">
             <tr className="bg-[#b2cfb6] text-[#0d341d]">
-              <th className="py-2 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky left-0 z-[120] w-10 min-w-[40px]">№</th>
               <th 
-                style={{ width: `${pibColumnWidth}px`, minWidth: `${pibColumnWidth}px`, maxWidth: `${pibColumnWidth}px` }}
-                className="py-2 px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] sticky left-10 z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
+                style={{ width: '40px', minWidth: '40px', maxWidth: '40px', left: '0px' }}
+                className="py-2 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[120]"
+              >
+                №
+              </th>
+              {showRayonColumn && (
+                <th 
+                  style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: '40px' }}
+                  className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[115] shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate"
+                >
+                  РАЙОН
+                </th>
+              )}
+              <th 
+                style={{ 
+                  width: `${pibColumnWidth}px`, 
+                  minWidth: `${pibColumnWidth}px`, 
+                  maxWidth: `${pibColumnWidth}px`,
+                  left: `${pibLeftSticky}px` 
+                }}
+                className="py-2 px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] sticky z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
               >
                 ПІБ
               </th>
@@ -326,7 +368,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Відвідування</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Присутність</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6]">Вік</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-left font-bold min-w-40 bg-[#b2cfb6]">Адрес</th>
+              <th className="py-2 px-2 border border-[#8fba94] text-left font-bold min-w-44 bg-[#b2cfb6]">Адрес</th>
+              <th className="py-2 px-2 border border-[#8fba94] text-left font-bold min-w-36 bg-[#b2cfb6]">Район / Дільниця</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6]">Телефон</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">Дата народж.</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Ос-та</th>
@@ -351,14 +394,33 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     onDoubleClick={() => onOpenProfile(m.id)}
                   >
                     {/* Sticky index cell */}
-                    <td className="py-1.5 px-2 border border-[#8fba94] text-center bg-[#b2cfb6] group-hover:bg-[#a8c7ab] font-bold sticky left-0 z-20 shadow-[1px_0_2px_rgba(0,0,0,0.05)] text-slate-800">
+                    <td 
+                      style={{ width: '40px', minWidth: '40px', maxWidth: '40px', left: '0px' }}
+                      className="py-1.5 px-2 border border-[#8fba94] text-center bg-[#b2cfb6] group-hover:bg-[#a8c7ab] font-bold sticky z-20 shadow-[1px_0_2px_rgba(0,0,0,0.05)] text-slate-800"
+                    >
                       {idx + 1}
                     </td>
 
+                    {/* Sticky РАЙОН cell if shown */}
+                    {showRayonColumn && (
+                      <td 
+                        style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: '40px' }}
+                        className="py-1.5 px-2 border border-[#8fba94] text-center bg-[#c3dfc7]/80 font-extrabold text-[#0a2f16] group-hover:bg-[#a8c7ab] sticky z-15 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate text-[10px]"
+                        title={m.rayon2_ukr || "Не вказано"}
+                      >
+                        {m.rayon2_ukr || '—'}
+                      </td>
+                    )}
+
                     {/* Sticky ПІБ cell */}
                     <td 
-                      style={{ width: `${pibColumnWidth}px`, minWidth: `${pibColumnWidth}px`, maxWidth: `${pibColumnWidth}px` }}
-                      className="py-1.5 px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky left-10 z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
+                      style={{ 
+                        width: `${pibColumnWidth}px`, 
+                        minWidth: `${pibColumnWidth}px`, 
+                        maxWidth: `${pibColumnWidth}px`,
+                        left: `${pibLeftSticky}px`
+                      }}
+                      className="py-1.5 px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
                     >
                       <div className="flex items-center justify-between space-x-1">
                         <div className="flex items-center space-x-1 truncate">
@@ -524,6 +586,9 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     </td>
 
                     {/* Address & Tel */}
+                    <td className="py-1.5 px-2 border-r border-slate-300 text-[#0d341d] font-bold bg-[#edf7f0]/45 truncate max-w-xs" title={m.address}>
+                      {m.address || '—'}
+                    </td>
                     <td className="py-1.5 px-2 border-r border-slate-300 text-slate-600 truncate max-w-xs">
                       {m.rayon2_ukr ? `${m.rayon2_ukr} | ${m.n_dilyci || 'Дільниця'}` : '—'}
                     </td>

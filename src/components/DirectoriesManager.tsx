@@ -34,7 +34,7 @@ export default function DirectoriesManager({
   const [syncResult, setSyncResult] = useState<any>(null);
 
   // Dictionary editor state
-  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin'>('opika');
+  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon2'>('opika');
   const [newDictValue, setNewDictValue] = useState('');
   const [dictItems, setDictItems] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState(false);
@@ -490,7 +490,8 @@ export default function DirectoriesManager({
                     { id: 'slujinnya', title: 'Християнські служіння (Служіння)' },
                     { id: 'vidviduvanist', title: 'Характеристики відвідування' },
                     { id: 'prysutnist', title: 'Характеристики присутності' },
-                    { id: 'di_admin', title: 'Дії адміністратора (переміщення)' }
+                    { id: 'di_admin', title: 'Дії адміністратора (переміщення)' },
+                    { id: 'rayon2', title: 'Райони структури (rayon2)' }
                   ].map(x => (
                     <button
                       key={x.id}
@@ -531,6 +532,11 @@ export default function DirectoriesManager({
                   {selectedDictKey === 'prysutnist' && (
                     <span>
                       📌 <strong>Характеристики присутності:</strong> Загальний статус перебування та залученості члена церкви в повсякденне життя громади.
+                    </span>
+                  )}
+                  {selectedDictKey === 'rayon2' && (
+                    <span>
+                      🗺️ <strong>Райони структури (rayon2):</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації.
                     </span>
                   )}
                 </div>

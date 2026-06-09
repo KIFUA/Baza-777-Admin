@@ -23,7 +23,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   const [savingId, setSavingId] = useState<number | null>(null);
 
   // Dropdown cell editing state
-  const [editingCell, setEditingCell] = useState<{ id: number; field: 'di_admin' | 's_slujinnya_spysok' | 'vidviduvanist' | 'prysutnist' | 'presviter' } | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: number; field: 'di_admin' | 's_slujinnya_spysok' | 'vidviduvanist' | 'prysutnist' | 'presviter' | 'rayon2_ukr' } | null>(null);
 
   const caregivers = useMemo(() => {
     return (lookups?.directories?.opika as string[]) || [
@@ -149,17 +149,25 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   // Dropdown inline cell renderer (Request 5 & 6)
   const renderDropdownCell = (
     m: Member, 
-    field: 'di_admin' | 's_slujinnya_spysok' | 'vidviduvanist' | 'prysutnist' | 'presviter',
+    field: 'di_admin' | 's_slujinnya_spysok' | 'vidviduvanist' | 'prysutnist' | 'presviter' | 'rayon2_ukr',
     options: string[],
     fallbackText = '—',
-    colorClasses = 'text-slate-600'
+    colorClasses = 'text-slate-600',
+    extraTdProps: React.HTMLAttributes<HTMLTableCellElement> = {}
   ) => {
     const isEditingCell = editingCell?.id === m.id && editingCell?.field === field;
     const value = m[field] || '';
 
+    const tdStyle = extraTdProps.style;
+    const tdClassName = extraTdProps.className || "py-1 px-1.5 border-r border-slate-300 text-center cursor-pointer hover:bg-slate-200/50 min-h-[28px] transition-colors";
+
     if (isEditingCell) {
       return (
-        <td className="py-1 px-1 border-r border-slate-300 bg-white" onClick={(e) => e.stopPropagation()}>
+        <td 
+          style={tdStyle}
+          className={`${extraTdProps.className || ""} py-1 px-1 border-r border-slate-300 bg-white`}
+          onClick={(e) => e.stopPropagation()}
+        >
           <select
             value={value}
             onChange={async (e) => {
@@ -182,8 +190,9 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
     return (
       <td 
+        style={tdStyle}
         onClick={(e) => { e.stopPropagation(); setEditingCell({ id: m.id, field }); }}
-        className="py-1 px-1.5 border-r border-slate-300 text-center cursor-pointer hover:bg-slate-200/50 min-h-[28px] transition-colors"
+        className={`${tdClassName} text-center cursor-pointer hover:bg-slate-200/50 min-h-[28px] transition-colors`}
         title="Клацніть для швидкої зміни значення"
       >
         <span className={`inline-block text-[10px] font-bold ${colorClasses}`}>
@@ -402,14 +411,16 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     </td>
 
                     {/* Sticky РАЙОН cell if shown */}
-                    {showRayonColumn && (
-                      <td 
-                        style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: '40px' }}
-                        className="py-1.5 px-2 border border-[#8fba94] text-center bg-[#c3dfc7]/80 font-extrabold text-[#0a2f16] group-hover:bg-[#a8c7ab] sticky z-15 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate text-[10px]"
-                        title={m.rayon2_ukr || "Не вказано"}
-                      >
-                        {m.rayon2_ukr || '—'}
-                      </td>
+                    {showRayonColumn && renderDropdownCell(
+                      m,
+                      'rayon2_ukr',
+                      lookups?.directories?.rayon2 || [],
+                      '—',
+                      'text-[#0a2f16] font-extrabold text-[10px]',
+                      {
+                        style: { width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: '40px' },
+                        className: "py-1.5 px-2 border border-[#8fba94] text-center bg-[#c3dfc7]/80 group-hover:bg-[#a8c7ab] sticky z-15 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate text-[10px]"
+                      }
                     )}
 
                     {/* Sticky ПІБ cell */}

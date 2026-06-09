@@ -105,6 +105,10 @@ const DEFAULT_DI_ADMIN = [
   "перевести на КАСКАД", "перевести на АЕРОПОРТ", "перевести на ЦЕНТР", "перевести на ОБ'ЇЗНУ"
 ];
 
+const DEFAULT_RAYON2 = [
+  "ЦЕНТР", "КАСКАД", "АЕРОПОРТ", "ОБ'ЇЗНА"
+];
+
 // Google Sheets Tab: ДОСТУП - Default Fallback Constants
 const DEFAULT_DOSTUP = [
   { "rayon": "ЦЕНТР", "user": "Босик Л.", "position": "", "email": "" },
@@ -141,6 +145,7 @@ let directories_slujinnya: string[] = [...DEFAULT_SLUJINNYA];
 let directories_vidviduvanist: string[] = [...DEFAULT_VIDVIDUVANIST_PARAMS];
 let directories_prysutnist: string[] = [...DEFAULT_PRYSUTNIST_PARAMS];
 let directories_di_admin: string[] = [...DEFAULT_DI_ADMIN];
+let directories_rayon2: string[] = [...DEFAULT_RAYON2];
 let access_dostup: any[] = [...DEFAULT_DOSTUP];
 
 // Standard ministry translation name mapping for IDs (from 0 to 37)
@@ -299,6 +304,9 @@ function loadDatabase() {
       directories_vidviduvanist = db.directories_vidviduvanist || [...DEFAULT_VIDVIDUVANIST_PARAMS];
       directories_prysutnist = db.directories_prysutnist || [...DEFAULT_PRYSUTNIST_PARAMS];
       directories_di_admin = db.directories_di_admin || [...DEFAULT_DI_ADMIN];
+      directories_rayon2 = ((db as any).directories_rayon2 || [...DEFAULT_RAYON2])
+        .map((r: string) => String(r || "").replace(/\s*-\s*SOS/gi, "").trim())
+        .filter((r: string, idx: number, arr: string[]) => r && arr.indexOf(r) === idx);
       access_dostup = db.access_dostup || [...DEFAULT_DOSTUP];
       console.log(`Loaded cache: ${members.length} members.`);
       loadedFromCache = true;
@@ -435,6 +443,8 @@ function loadDatabase() {
 
 let cachedMembersJson: any = null;
 let lastCacheUpdateTime = 0;
+let lastDatabaseSyncTime = 0;
+const DB_SYNC_TTL_MS = 10000; // 10 seconds TTL to keep serverless / warm container state in perfect synchronization
 
 function saveDatabaseToCache() {
   try {
@@ -446,6 +456,7 @@ function saveDatabaseToCache() {
       directories_vidviduvanist,
       directories_prysutnist,
       directories_di_admin,
+      directories_rayon2,
       access_dostup
     };
     fs.writeFileSync(DB_CACHE_FILE, JSON.stringify(db, null, 2), "utf-8");
@@ -702,7 +713,8 @@ app.get("/api/health", (req, res) => {
 });
 
 // 2. Lookup Tables Catalog Access
-app.get("/api/lookups", (req, res) => {
+app.get("/api/lookups", async (req, res) => {
+  await ensureDatabaseIsFresh();
   res.json({
     osvita: s_osvita,
     socialniy: s_socialniy,
@@ -720,7 +732,8 @@ app.get("/api/lookups", (req, res) => {
       slujinnya: directories_slujinnya,
       vidviduvanist: directories_vidviduvanist,
       prysutnist: directories_prysutnist,
-      di_admin: directories_di_admin
+      di_admin: directories_di_admin,
+      rayon2: directories_rayon2
     },
     access: access_dostup
   });
@@ -832,7 +845,8 @@ app.post("/api/sync-sheets", async (req, res) => {
         slujinnya: directories_slujinnya.length,
         vidviduvanist: directories_vidviduvanist.length,
         prysutnist: directories_prysutnist.length,
-        di_admin: directories_di_admin.length
+        di_admin: directories_di_admin.length,
+        rayon2: directories_rayon2.length
       },
       access: access_dostup.length
     });
@@ -930,7 +944,8 @@ function getBirthdaysForThisWeek() {
 }
 
 // 2.2 API: Get Current Week's Birthday celebrants
-app.get("/api/birthdays", (req, res) => {
+app.get("/api/birthdays", async (req, res) => {
+  await ensureDatabaseIsFresh();
   res.json(getBirthdaysForThisWeek());
 });
 
@@ -1017,14 +1032,15 @@ app.post("/api/birthdays/send", async (req, res) => {
 });
 
 // 2.4 API: Save Custom Directories manually edited in directories tab
-app.post("/api/directories/save", (req, res) => {
-  const { opika, slujinnya, vidviduvanist, prysutnist, di_admin, access } = req.body;
+app.post("/api/directories/save", async (req, res) => {
+  const { opika, slujinnya, vidviduvanist, prysutnist, di_admin, rayon2, access } = req.body;
   
   if (Array.isArray(opika)) directories_opika = opika;
   if (Array.isArray(slujinnya)) directories_slujinnya = slujinnya;
   if (Array.isArray(vidviduvanist)) directories_vidviduvanist = vidviduvanist;
   if (Array.isArray(prysutnist)) directories_prysutnist = prysutnist;
   if (Array.isArray(di_admin)) directories_di_admin = di_admin;
+  if (Array.isArray(rayon2)) directories_rayon2 = rayon2;
   if (Array.isArray(access)) access_dostup = access;
 
   auditLogs.push({
@@ -1037,7 +1053,11 @@ app.post("/api/directories/save", (req, res) => {
   });
 
   saveDatabaseToCache();
-  syncDirectoriesToFirebase().catch(e => console.error("Firebase manual directories save error:", e));
+  try {
+    await syncDirectoriesToFirebase();
+  } catch (e) {
+    console.error("Firebase manual directories save error:", e);
+  }
   res.json({ success: true });
 });
 
@@ -1059,7 +1079,8 @@ function isMergedProfileServer(m: any, list: any[]) {
 }
 
 // 3. Get Members (summary list with options to search, filter by tag, caretakers, etc)
-app.get("/api/members", (req, res) => {
+app.get("/api/members", async (req, res) => {
+  await ensureDatabaseIsFresh();
   const query = (req.query.q as string || "").toLowerCase();
   const gender = req.query.gender as string || ""; // 'брат' | 'сестра'
   const area = req.query.area as string || ""; // 'АЕРОПОРТ' etc
@@ -1114,7 +1135,8 @@ app.get("/api/members", (req, res) => {
 });
 
 // 4. Get Core Statistics
-app.get("/api/stats", (req, res) => {
+app.get("/api/stats", async (req, res) => {
+  await ensureDatabaseIsFresh();
   const activeOnly = members.filter(m => m.id_vybuttya === 0 && !isMergedProfileServer(m, members));
   
   const stats: DashboardStats = {
@@ -1161,7 +1183,8 @@ app.get("/api/stats", (req, res) => {
 });
 
 // 5. Get Extended Member Detail
-app.get("/api/members/:id", (req, res) => {
+app.get("/api/members/:id", async (req, res) => {
+  await ensureDatabaseIsFresh();
   const id = Number(req.params.id);
   const member = members.find(m => m.id === id);
   if (!member) {
@@ -1325,7 +1348,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
 }
 
 // 6. Write/Edit Member Card detail
-app.post("/api/members/:id", (req, res) => {
+app.post("/api/members/:id", async (req, res) => {
   const id = Number(req.params.id);
   const updatedData = req.body as Partial<Member>;
   const memberIndex = members.findIndex(m => m.id === id);
@@ -1403,10 +1426,12 @@ app.post("/api/members/:id", (req, res) => {
 
   members[memberIndex] = mergedMember as Member;
 
-  // Sync update back to Firebase Realtime Database asynchronously
-  syncMemberToFirebase(id, mergedMember as Member).catch(err => {
+  // Sync update back to Firebase Realtime Database and await it to prevent client race conditions
+  try {
+    await syncMemberToFirebase(id, mergedMember as Member);
+  } catch (err) {
     console.error(`[Firebase Sync Post-update] Error syncing member ${id}:`, err);
-  });
+  }
 
   // Insert change audit log (user request 05 - History Audit/Journal tracking)
   if (changes.length > 0) {
@@ -1524,11 +1549,12 @@ app.post("/api/members/:id/children", async (req, res) => {
 });
 
 // 10. Add a Member Ministry record
-app.post("/api/members/:id/ministries", (req, res) => {
+app.post("/api/members/:id/ministries", async (req, res) => {
   const memberId = Number(req.params.id);
   const { ministryId, startDate } = req.body;
-  const member = members.find(m => m.id === memberId);
-  if (!member) return res.status(404).json({ error: "Member not found" });
+  const memberIndex = members.findIndex(m => m.id === memberId);
+  if (memberIndex === -1) return res.status(404).json({ error: "Member not found" });
+  const member = members[memberIndex];
 
   const newId = ministries.length + 1;
   const newMinRow = {
@@ -1540,6 +1566,13 @@ app.post("/api/members/:id/ministries", (req, res) => {
   };
   ministries.push(newMinRow);
 
+  // Recalculate member's active ministries list
+  const activeMins = ministries
+    .filter(m => Number(m.id_anketa) === memberId && !m.d_end)
+    .map(m => MINISTRY_MAP[Number(m.id_slujinnya)] || "")
+    .filter(Boolean);
+  member.s_slujinnya_spysok = activeMins.join(", ");
+
   const minLabel = MINISTRY_MAP[Number(ministryId)] || `Служіння #${ministryId}`;
   auditLogs.push({
     id: "min_" + Date.now(),
@@ -1550,17 +1583,25 @@ app.post("/api/members/:id/ministries", (req, res) => {
     details: `Призначено служіння: <b>${minLabel}</b> починаючи з ${startDate}`
   });
 
+  // Await firebase sync to guarantee client consistency
+  try {
+    await syncMemberToFirebase(memberId, member);
+  } catch (err) {
+    console.error(`Error syncing member ministries:`, err);
+  }
+
   saveDatabaseToCache();
   res.json({ success: true, id: newId });
 });
 
 // 11. End an active ministry record
-app.post("/api/members/:id/ministries/:recId/end", (req, res) => {
+app.post("/api/members/:id/ministries/:recId/end", async (req, res) => {
   const memberId = Number(req.params.id);
   const recId = Number(req.params.recId);
   const { endDate } = req.body;
-  const member = members.find(m => m.id === memberId);
-  if (!member) return res.status(404).json({ error: "Member not found" });
+  const memberIndex = members.findIndex(m => m.id === memberId);
+  if (memberIndex === -1) return res.status(404).json({ error: "Member not found" });
+  const member = members[memberIndex];
 
   const idx = ministries.findIndex(m => Number(m.id) === recId && Number(m.id_anketa) === memberId);
   if (idx !== -1) {
@@ -1568,6 +1609,13 @@ app.post("/api/members/:id/ministries/:recId/end", (req, res) => {
     const minId = ministries[idx].id_slujinnya;
     const minLabel = MINISTRY_MAP[minId] || `Служіння #${minId}`;
     
+    // Recalculate member's active ministries list
+    const activeMins = ministries
+      .filter(m => Number(m.id_anketa) === memberId && !m.d_end)
+      .map(m => MINISTRY_MAP[Number(m.id_slujinnya)] || "")
+      .filter(Boolean);
+    member.s_slujinnya_spysok = activeMins.join(", ");
+
     auditLogs.push({
       id: "min_end_" + Date.now(),
       timestamp: new Date().toISOString(),
@@ -1577,6 +1625,13 @@ app.post("/api/members/:id/ministries/:recId/end", (req, res) => {
       details: `Завершено служіння: <b>${minLabel}</b> на дату ${endDate}`
     });
     
+    // Await firebase sync to guarantee client consistency
+    try {
+      await syncMemberToFirebase(memberId, member);
+    } catch (err) {
+      console.error(`Error syncing member end-ministry:`, err);
+    }
+
     saveDatabaseToCache();
     return res.json({ success: true });
   }
@@ -1649,7 +1704,7 @@ app.post("/api/members/:id/disciplines/:recId/resolve", (req, res) => {
 });
 
 // 14. Create a completely New Member Profile
-app.post("/api/members", (req, res) => {
+app.post("/api/members", async (req, res) => {
   const newMemberData = req.body as Partial<Member>;
   const nextId = Math.max(...members.map(m => m.id)) + 1;
 
@@ -1720,10 +1775,12 @@ app.post("/api/members", (req, res) => {
 
   members.push(newMember);
 
-  // Sync new member card to Firebase asynchronously
-  syncMemberToFirebase(nextId, newMember).catch(err => {
+  // Sync new member card to Firebase and await it to prevent client race conditions
+  try {
+    await syncMemberToFirebase(nextId, newMember);
+  } catch (err) {
     console.error(`[Firebase Member Sync] Error creating member ${nextId}:`, err);
-  });
+  }
 
   auditLogs.push({
     id: "add_mem_" + Date.now(),
@@ -1750,7 +1807,8 @@ async function syncDirectoriesToFirebase() {
       slujinnya: directories_slujinnya,
       vidviduvanist: directories_vidviduvanist,
       prysutnist: directories_prysutnist,
-      di_admin: directories_di_admin
+      di_admin: directories_di_admin,
+      rayon2: directories_rayon2
     };
     const res = await fetch(url, {
       method: "PUT",
@@ -1771,13 +1829,34 @@ async function syncDirectoriesFromFirebase() {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data: any = await res.json();
-    if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin)) {
+    if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin || data.rayon2)) {
       if (Array.isArray(data.opika)) directories_opika = data.opika;
       if (Array.isArray(data.slujinnya)) directories_slujinnya = data.slujinnya;
       if (Array.isArray(data.vidviduvanist)) directories_vidviduvanist = data.vidviduvanist;
       if (Array.isArray(data.prysutnist)) directories_prysutnist = data.prysutnist;
       if (Array.isArray(data.di_admin)) directories_di_admin = data.di_admin;
+      
+      let needsSaving = false;
+      if (Array.isArray(data.rayon2) && data.rayon2.length > 0) {
+        directories_rayon2 = data.rayon2
+          .map((r: string) => String(r || "").replace(/\s*-\s*SOS/gi, "").trim())
+          .filter((r: string, idx: number, arr: string[]) => r && arr.indexOf(r) === idx);
+        
+        // If the Firebase version had "- SOS" items, we should write the clean list back to Firebase
+        if (data.rayon2.some((r: string) => String(r || "").toUpperCase().includes("SOS"))) {
+          console.log("[Firebase Directories Sync] Stale 'SOS' elements found in Firebase list, writing clean version...");
+          needsSaving = true;
+        }
+      } else {
+        // If rayon2 key is missing in Firebase, push local cleaned defaults to Firebase
+        console.warn("[Firebase Directories Sync] rayon2 list is missing in Firebase, seeding it now...");
+        needsSaving = true;
+      }
+
       console.log("[Firebase Directories Sync] Directories loaded from Firebase RTDB.");
+      if (needsSaving) {
+        await syncDirectoriesToFirebase();
+      }
     } else {
       console.warn("[Firebase Directories Sync] No directories found in Firebase RTDB, pushing local defaults to Firebase RTDB...");
       await syncDirectoriesToFirebase();
@@ -2190,10 +2269,24 @@ async function syncDatabaseWithFirebase() {
       });
 
       saveDatabaseToCache();
+      lastDatabaseSyncTime = Date.now();
+      console.log(`[Cache Sync] Database timestamp updated to: ${new Date(lastDatabaseSyncTime).toISOString()}`);
     }
   } catch (err: any) {
     console.error(`[Firebase Startup Sync] Failed to sync with Firebase: ${err.message}. Using cache fallback.`);
     throw err;
+  }
+}
+
+async function ensureDatabaseIsFresh() {
+  const now = Date.now();
+  if (now - lastDatabaseSyncTime > DB_SYNC_TTL_MS) {
+    console.log(`[Cache Sync] Database state is older than ${DB_SYNC_TTL_MS}ms (last sync: ${new Date(lastDatabaseSyncTime).toISOString()}), pulling fresh state from Firebase RTDB...`);
+    try {
+      await syncDatabaseWithFirebase();
+    } catch (err: any) {
+      console.error("[Cache Sync] Background automatic sync failed:", err.message);
+    }
   }
 }
 

@@ -30,6 +30,35 @@ app.use((req, res, next) => {
   next();
 });
 
+let initialSyncPromise: Promise<void> | null = null;
+
+function ensureInitialSync() {
+  if (!initialSyncPromise) {
+    initialSyncPromise = syncDatabaseWithFirebase()
+      .then(() => {
+        console.log("[ensureInitialSync] Initial Firebase sync finished successfully.");
+      })
+      .catch((err) => {
+        console.error("[ensureInitialSync] Initial Firebase sync failed:", err);
+        // Reset so that a subsequent request can retry syncing if it failed
+        initialSyncPromise = null;
+      });
+  }
+  return initialSyncPromise;
+}
+
+// Middleware to guarantee that database is fully initialized/synced before serving any API route
+app.use(async (req, res, next) => {
+  if (req.path.startsWith("/api") && req.path !== "/api/health") {
+    try {
+      await ensureInitialSync();
+    } catch (err: any) {
+      console.error("[Sync Middleware] Error awaiting database sync:", err.message);
+    }
+  }
+  next();
+});
+
 // In-memory Database State
 let members: Member[] = [];
 let marriages: any[] = [];
@@ -2029,6 +2058,7 @@ async function syncDatabaseWithFirebase() {
     }
   } catch (err: any) {
     console.error(`[Firebase Startup Sync] Failed to sync with Firebase: ${err.message}. Using cache fallback.`);
+    throw err;
   }
 }
 
@@ -2036,7 +2066,7 @@ async function syncDatabaseWithFirebase() {
 
 async function startServer() {
   // Sync the database state with Firebase RTDB on startup in background
-  await syncDatabaseWithFirebase();
+  await ensureInitialSync();
 
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
@@ -2061,8 +2091,10 @@ async function startServer() {
 if (!process.env.VERCEL) {
   startServer();
 } else {
-  // On Vercel, start state synchronization on module load asynchronously
-  syncDatabaseWithFirebase().catch(e => console.error("Vercel initial Firebase sync error:", e));
+  // On Vercel, we do NOT trigger sync on module load.
+  // The first incoming HTTP request will trigger and await ensureInitialSync() via the middleware.
+  // This guarantees reliable execution in the request execution sandbox.
+  console.log("[Vercel Module Load] Server initialized. Sync will trigger on first request.");
 }
 
 export default app;

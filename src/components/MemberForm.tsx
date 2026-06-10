@@ -115,7 +115,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
   };
 
   // Pre-compiled list of standard church structural areas to clean up data entry
-  const STRUCTURAL_AREAS = [
+  const STRUCTURAL_AREAS = lookups?.directories?.rayon2 || [
     "ЦЕНТР",
     "АЕРОПОРТ",
     "КАСКАД",
@@ -149,6 +149,21 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
   const diAdminOptions = lookups?.directories?.di_admin || [
     "перевести на КАСКАД", "перевести на АЕРОПОРТ", "перевести на ЦЕНТР", "перевести на ОБ'ЇЗНУ"
   ];
+
+  const fallbackMinistries = [
+    "Загальне служіння / Інше", "Старший пресвітер (пастор)", "Пресвітер (пастор)",
+    "Диякон", "Хор / Співак", "Вчитель недільної школи", "Сестринське служіння",
+    "Молодіжне служіння", "Опікунське служіння", "Бібліотекар", "Режисер / Драмгурт",
+    "Господарське служіння", "Діловодство / Канцелярія", "Місіонерське служіння",
+    "Музичне служіння / Інструменталіст", "Молитовна група", "Братська рада",
+    "Скарбник / Касир", "Рада церкви", "Координатор служінь", "Християнська освіта",
+    "Милосердя / Відвідування хворих", "Будівельний комітет", "Робота з аудіо-відео",
+    "Група порядку / Упорядник", "Організатор заходів", "Звукооператор / Технік",
+    "Інтернет-служіння", "Група прославлення", "Кухонне служіння", "Таборове служіння",
+    "Проповідник", "Дитяче служіння", "Душпастирське консультування", "Регент хору / Диригент"
+  ];
+
+  const ministryOptions = lookups?.directories?.slujinnya || fallbackMinistries;
 
   const VYBUV_STATUS_ID = Number(formData.id_vybuttya || 0);
   const VYBUV_STATUS_TEXT = formData.s_vybuv_ukr || '';
@@ -386,6 +401,45 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
                 ))}
               </select>
               <p className="text-[10px] text-slate-400">Розподіл опікунів, призначених пресвітерами з числа служителів нашої єдиної церковної громади (ст. пастор, пресвітери, диякони, відповідальні за служіння).</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700 block text-slate-800 font-bold">Духовні служіння (вибрані активні служіння)</label>
+              <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 max-h-40 overflow-y-auto space-y-1.5 balance-scroll">
+                {ministryOptions.map((opt) => {
+                  const selectedList = formData.s_slujinnya_spysok 
+                    ? formData.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                    : [];
+                  const isChecked = selectedList.includes(opt);
+                  return (
+                    <label 
+                      key={opt} 
+                      className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 hover:text-slate-900 font-bold"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          let newList;
+                          if (e.target.checked) {
+                            newList = [...selectedList, opt];
+                          } else {
+                            newList = selectedList.filter(item => item !== opt);
+                          }
+                          const sortedNewList = ministryOptions.filter(o => newList.includes(o));
+                          setFormData(prev => ({
+                            ...prev,
+                            s_slujinnya_spysok: sortedNewList.join(', ')
+                          }));
+                        }}
+                        className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className={isChecked ? 'font-bold text-blue-900 border-b border-blue-100' : ''}>{opt}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-slate-400">Швидкий вибір активних служінь для списку (синхронізується з колонкою "СЛУЖІННЯ" в таблиці та базою даних).</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

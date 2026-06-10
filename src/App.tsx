@@ -106,6 +106,7 @@ export default function App() {
       if (lookResp.ok) {
         const lookJson = await lookResp.json();
         setLookups(lookJson);
+        (window as any).__bazaLookupsData = lookJson;
       }
       
       const statsResp = await fetch('/api/stats');
@@ -339,6 +340,7 @@ export default function App() {
                 onEdit={(m) => { setEditingMember(m); setShowForm(true); setSelectedMemberId(null); }}
                 onNavigateToMember={handleNavigateToMember}
                 lookups={lookups}
+                onUpdateMember={handleSpreadsheetUpdate}
               />
             </div>
           </div>

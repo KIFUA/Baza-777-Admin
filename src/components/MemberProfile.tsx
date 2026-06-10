@@ -11,12 +11,50 @@ interface MemberProfileProps {
   onEdit: (member: Member) => void;
   onNavigateToMember: (id: number) => void;
   lookups: any;
+  onUpdateMember?: (id: number, updatedFields: Partial<Member>) => Promise<boolean>;
 }
 
-export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToMember, lookups }: MemberProfileProps) {
+export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToMember, lookups, onUpdateMember }: MemberProfileProps) {
   const [data, setData] = useState<MemberDetailExtended | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');
+
+  const [showMinistrySelect, setShowMinistrySelect] = useState(false);
+
+  const caregivers = lookups?.directories?.opika || [
+    "Бевзюк В.", "Бурчак Ю.", "Галюк Б.", "Дмитраш М.", "Євстратов О.", 
+    "Ільницький О.", "Луцак М.", "Марунчак В.", "Мельничук В.", "Несен Ю.", 
+    "Прохніцький Б.", "Решетило Р.", "Самелюк О.", "Скіцко І.", "Скриник М.", 
+    "Стасінчук В.", "Стафіїв М.", "Стефурак Д.", "Факас О.", "Черняк Вал.", 
+    "Черняк Вікт.", "Шпарман Ю.", "Черняк Вас."
+  ];
+
+  const rayonOptions = lookups?.directories?.rayon2 || [
+    "ЦЕНТР", "АЕРОПОРТ", "КАСКАД", "ПОЗИТРОН", "БАМ", "МИКИТИНЦІ", "КРИХІВЦІ", "ХРИПЛИН", "УГОРНИКИ", "ВОВЧИНЕЦЬ", "ПАСІЧНА", "ДІБРОВА"
+  ];
+
+  const vidviduvanistOptions = lookups?.directories?.vidviduvanist || [
+    "Постійно", "Періодично", "Рідко", "Ніколи", "Хворий", "Проблемний", "Замітка"
+  ];
+
+  const prysutnistOptions = lookups?.directories?.prysutnist || [
+    "За кордоном", "ЗСУ", "Не ходить", "Немічний"
+  ];
+
+  const fallbackMinistries = [
+    "Загальне служіння / Інше", "Старший пресвітер (пастор)", "Пресвітер (пастор)",
+    "Диякон", "Хор / Співак", "Вчитель недільної школи", "Сестринське служіння",
+    "Молодіжне служіння", "Опікунське служіння", "Бібліотекар", "Режисер / Драмгурт",
+    "Господарське служіння", "Діловодство / Канцелярія", "Місіонерське служіння",
+    "Музичне служіння / Інструменталіст", "Молитовна група", "Братська рада",
+    "Скарбник / Касир", "Рада церкви", "Координатор служінь", "Християнська освіта",
+    "Милосердя / Відвідування хворих", "Будівельний комітет", "Робота з аудіо-відео",
+    "Група порядку / Упорядник", "Організатор заходів", "Звукооператор / Технік",
+    "Інтернет-служіння", "Група прославлення", "Кухонне служіння", "Таборове служіння",
+    "Проповідник", "Дитяче служіння", "Душпастирське консультування", "Регент хору / Диригент"
+  ];
+
+  const ministryOptions = lookups?.directories?.slujinnya || fallbackMinistries;
 
   // Input forms states for adding new timeline logs
   const [showAddChild, setShowAddChild] = useState(false);
@@ -45,6 +83,25 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
       console.error("Error loading member details:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFieldUpdate = async (field: string, val: any) => {
+    if (!data || !data.member) return;
+    try {
+      const resp = await fetch(`/api/members/${memberId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: val })
+      });
+      if (resp.ok) {
+        if (onUpdateMember) {
+          await onUpdateMember(memberId, { [field]: val });
+        }
+        await fetchDetails();
+      }
+    } catch (err) {
+      console.error("Error updating member field in profile:", err);
     }
   };
 
@@ -353,9 +410,21 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     <span>Церковна Відповідальність й Опіка</span>
                   </h4>
                   <div className="space-y-3 font-medium text-xs text-slate-700">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">Відповідальний Провідник:</span>
-                      <span className="font-bold text-blue-800">{member.presviter || "не встановлено"}</span>
+                      <select
+                        value={member.presviter || ''}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          await handleFieldUpdate('presviter', val);
+                        }}
+                        className="font-bold text-blue-800 bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] text-[11px]"
+                      >
+                        <option value="">-- не встановлено --</option>
+                        {caregivers.map((c: string) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Сектор / Дільниця:</span>
@@ -365,9 +434,86 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                       <span className="text-slate-400">Староста / Керівник групи:</span>
                       <span>{member.vidpov_grupy || "не вказано"}</span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">Район громади:</span>
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold uppercase text-[10px]">{member.rayon2_ukr || "Не вказано"}</span>
+                      <select
+                        value={member.rayon2_ukr || ''}
+                        onChange={async (e) => {
+                          const val = e.target.value;
+                          await handleFieldUpdate('rayon2_ukr', val);
+                        }}
+                        className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold uppercase text-[10px] border border-blue-200/50 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px]"
+                      >
+                        <option value="">Не вказано</option>
+                        {rayonOptions.map((r: string) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* СЛУЖІННЯ Block (Ministry) */}
+                    <div className="border-t border-slate-250 pt-3 mt-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-400 font-bold text-[11px]">Духовне служіння:</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowMinistrySelect(!showMinistrySelect)}
+                          className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[10px] border border-emerald-200 hover:bg-emerald-100 transition-colors uppercase outline-none"
+                        >
+                          {showMinistrySelect ? "Закрити ✕" : "Змінити ✎"}
+                        </button>
+                      </div>
+
+                      {!showMinistrySelect && (
+                        <div className="mt-1.5 text-slate-800 font-semibold text-[11px] leading-relaxed">
+                          {member.s_slujinnya_spysok ? (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {member.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(term => (
+                                <span key={term} className="inline-block bg-emerald-50 text-emerald-800 border border-emerald-100/80 rounded px-1.5 py-0.5 text-[9.5px] font-bold">
+                                  {term}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic">Служінь не зафіксовано</span>
+                          )}
+                        </div>
+                      )}
+
+                      {showMinistrySelect && (
+                        <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
+                          {ministryOptions.map((opt) => {
+                            const selectedList = member.s_slujinnya_spysok 
+                              ? member.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                              : [];
+                            const isChecked = selectedList.includes(opt);
+                            return (
+                              <label 
+                                key={opt} 
+                                className="flex items-center gap-2 py-0.5 px-1 cursor-pointer rounded hover:bg-slate-50 select-none text-[10.5px] font-semibold text-slate-700"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={async (e) => {
+                                    let newList;
+                                    if (e.target.checked) {
+                                      newList = [...selectedList, opt];
+                                    } else {
+                                      newList = selectedList.filter(item => item !== opt);
+                                    }
+                                    const sortedNewList = ministryOptions.filter(o => newList.includes(o));
+                                    const valString = sortedNewList.join(', ');
+                                    await handleFieldUpdate('s_slujinnya_spysok', valString);
+                                  }}
+                                  className="h-3 w-3 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                />
+                                <span className={isChecked ? 'text-emerald-950 font-extrabold' : ''}>{opt}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -378,20 +524,44 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
               <div className="rounded-xl border border-slate-100 p-5 bg-blue-50/10 space-y-3">
                 <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider block">Оцінка відвідуваності та присутності членів</h4>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-slate-100">
-                    <div className="h-3.5 w-3.5 rounded-full bg-blue-500 animate-pulse"></div>
-                    <div>
+                  <div className="flex flex-col p-3 bg-white rounded-lg border border-slate-100 space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <div className="h-3.5 w-3.5 rounded-full bg-blue-500 animate-pulse"></div>
                       <div className="text-[10px] font-semibold text-slate-400 uppercase">Характеристика Відвідуваності</div>
-                      <div className="font-semibold text-xs text-slate-700">{member.vidviduvanist || "Дані не внесені (Параметри характеристики)"}</div>
                     </div>
+                    <select
+                      value={member.vidviduvanist || ''}
+                      onChange={async (e) => {
+                        const val = e.target.value;
+                        await handleFieldUpdate('vidviduvanist', val);
+                      }}
+                      className="font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      <option value="">-- не внесено --</option>
+                      {vidviduvanistOptions.map((o: string) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
                   </div>
 
-                  <div className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-slate-100">
-                    <div className="h-3.5 w-3.5 rounded-full bg-emerald-500"></div>
-                    <div>
+                  <div className="flex flex-col p-3 bg-white rounded-lg border border-slate-100 space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <div className="h-3.5 w-3.5 rounded-full bg-emerald-500"></div>
                       <div className="text-[10px] font-semibold text-slate-400 uppercase">Характеристика Присутності (перебування)</div>
-                      <div className="font-semibold text-xs text-slate-700">{member.prysutnist || "Дані не внесені (Параметри характеристики)"}</div>
                     </div>
+                    <select
+                      value={member.prysutnist || ''}
+                      onChange={async (e) => {
+                        const val = e.target.value;
+                        await handleFieldUpdate('prysutnist', val);
+                      }}
+                      className="font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                    >
+                      <option value="">-- не внесено --</option>
+                      {prysutnistOptions.map((o: string) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               </div>

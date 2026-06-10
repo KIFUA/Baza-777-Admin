@@ -638,22 +638,24 @@
                     class="block text-[11px] text-purple-400 font-bold select-none"
                     >Район</label
                   >
-                  <input
-                    type="text"
+                  <select
                     id="rayon"
-                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                  />
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-[150px] cursor-pointer bg-zinc-900 text-xs py-0.5"
+                  >
+                    <option value="" class="text-gray-500">н/д</option>
+                  </select>
                 </div>
                 <div>
                   <label
                     class="block text-[11px] text-purple-400 font-bold select-none"
                     >Опіка</label
                   >
-                  <input
-                    type="text"
+                  <select
                     id="opika"
-                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                  />
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-[150px] cursor-pointer bg-zinc-900 text-xs py-0.5"
+                  >
+                    <option value="" class="text-gray-500">н/д</option>
+                  </select>
                 </div>
                 <input type="hidden" id="group_name" />
               </div>
@@ -683,22 +685,24 @@
                     class="block text-[11px] text-purple-400 font-bold select-none"
                     >Відвідуваність</label
                   >
-                  <input
-                    type="text"
+                  <select
                     id="vidviduvanist"
-                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                  />
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-[150px] cursor-pointer bg-zinc-900 text-xs py-0.5"
+                  >
+                    <option value="" class="text-gray-500">н/д</option>
+                  </select>
                 </div>
                 <div>
                   <label
                     class="block text-[11px] text-purple-400 font-bold select-none"
                     >Присутність</label
                   >
-                  <input
-                    type="text"
+                  <select
                     id="prysutnist"
-                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
-                  />
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-[150px] cursor-pointer bg-zinc-900 text-xs py-0.5"
+                  >
+                    <option value="" class="text-gray-500">н/д</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -993,6 +997,120 @@
         36: "Душпастирське консультування",
         37: "Регент хору / Диригент",
       };
+
+      async function loadAndPopulateLookups() {
+        try {
+          let data = null;
+          try {
+            if (window.parent && window.parent !== window && window.parent.__bazaLookupsData) {
+              console.log("Retrieved lookups from parent cache fast!");
+              data = window.parent.__bazaLookupsData;
+            }
+          } catch (pe) {
+            console.warn("Parent access to lookups cache blocked or unavailable:", pe);
+          }
+
+          if (!data) {
+            const res = await fetch('/api/lookups');
+            if (!res.ok) throw new Error("Could not load lookups");
+            data = await res.json();
+          }
+
+          const dirs = data.directories || {};
+
+          // 1. Populate Rayon (District) Select
+          const rayonSelect = document.getElementById("rayon");
+          if (rayonSelect && dirs.rayon2) {
+            rayonSelect.innerHTML = '<option value="" class="text-gray-500">н/д</option>';
+            dirs.rayon2.forEach(r => {
+              if (r) {
+                const opt = document.createElement("option");
+                opt.value = r;
+                opt.textContent = r;
+                rayonSelect.appendChild(opt);
+              }
+            });
+          }
+
+          // 2. Populate Opika (Care) Select
+          const opikaSelect = document.getElementById("opika");
+          if (opikaSelect && dirs.opika) {
+            opikaSelect.innerHTML = '<option value="" class="text-gray-500">н/д</option>';
+            dirs.opika.forEach(o => {
+              if (o) {
+                const opt = document.createElement("option");
+                opt.value = o;
+                opt.textContent = o;
+                opikaSelect.appendChild(opt);
+              }
+            });
+          }
+
+          // 3. Populate Vidviduvanist (Attendance) Select
+          const vidSelect = document.getElementById("vidviduvanist");
+          if (vidSelect && dirs.vidviduvanist) {
+            vidSelect.innerHTML = '<option value="" class="text-gray-500">н/д</option>';
+            dirs.vidviduvanist.forEach(v => {
+              if (v) {
+                const opt = document.createElement("option");
+                opt.value = v;
+                opt.textContent = v;
+                vidSelect.appendChild(opt);
+              }
+            });
+          }
+
+          // 4. Populate Prysutnist (Presence) Select
+          const prySelect = document.getElementById("prysutnist");
+          if (prySelect && dirs.prysutnist) {
+            prySelect.innerHTML = '<option value="" class="text-gray-500">н/д</option>';
+            dirs.prysutnist.forEach(p => {
+              if (p) {
+                const opt = document.createElement("option");
+                opt.value = p;
+                opt.textContent = p;
+                prySelect.appendChild(opt);
+              }
+            });
+          }
+
+          // 5. Update ST_MINISTRIES array and recreate Ministry Dropdown Checkboxes!
+          if (dirs.slujinnya && dirs.slujinnya.length > 0) {
+            ST_MINISTRIES.splice(0, ST_MINISTRIES.length, ...dirs.slujinnya);
+            
+            // Re-populate the checkbox items
+            const dropdown = document.getElementById("ministryDropdownContainer");
+            if (dropdown) {
+              dropdown.innerHTML = ""; // clear old
+              ST_MINISTRIES.forEach((mName, index) => {
+                const div = document.createElement("div");
+                div.className = "flex items-center gap-2 hover:bg-zinc-700/60 p-1 rounded cursor-pointer";
+                div.onclick = (e) => { e.stopPropagation(); };
+
+                const chk = document.createElement("input");
+                chk.type = "checkbox";
+                chk.value = mName;
+                chk.id = `chk_min_${index}`;
+                chk.className = "rounded text-purple-600 bg-zinc-900 border-zinc-700 focus:ring-0 cursor-pointer w-4 h-4";
+                chk.onchange = () => {
+                  updateSelectedMinistriesText();
+                };
+
+                const lbl = document.createElement("label");
+                lbl.htmlFor = `chk_min_${index}`;
+                lbl.textContent = mName;
+                lbl.className = "text-xs text-gray-200 cursor-pointer select-none w-full font-medium";
+
+                div.appendChild(chk);
+                div.appendChild(lbl);
+                dropdown.appendChild(div);
+              });
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load options from lookups API:", e);
+        }
+      }
 
       window.toggleMinistryDropdown = function () {
         const dropdown = document.getElementById("ministryDropdownContainer");
@@ -1515,11 +1633,18 @@
         try {
           statusEl.textContent = "Завантаження...";
 
+          // Trigger lookups asynchronously to make database loading absolutely non-blocking
+          const lookupsPromise = loadAndPopulateLookups().catch((lkErr) => {
+            console.error("Non-blocking error populating lookups:", lkErr);
+          });
+
           // Fast-track: load pre-cached database directly from the parent window
           try {
             if (window.parent && window.parent !== window && window.parent.__bazaRawFirebaseData) {
               console.log("Retrieved database from parent cache fast!");
               processDatabaseData(window.parent.__bazaRawFirebaseData);
+              // Ensure lookups populate on the loaded elements as soon as they finish
+              await lookupsPromise;
               return;
             }
           } catch (e) {
@@ -1538,6 +1663,9 @@
           console.log("Data loaded, count:", data ? Object.keys(data).length : 0);
           
           processDatabaseData(data);
+          
+          // Await lookups populating finish for safe state
+          await lookupsPromise;
         } catch (error) {
           console.error("Помилка:", error);
           statusEl.textContent = "Помилка доступу: " + error.message;
@@ -2255,7 +2383,26 @@
       function setAndStyleField(id, val) {
         const el = document.getElementById(id);
         if (!el) return;
-        el.value = valOrNA(val);
+        const formattedVal = valOrNA(val);
+
+        // Dynamic custom option append for selects to prevent data degradation
+        if (el.tagName === "SELECT" && formattedVal !== "н/д" && formattedVal !== "") {
+          let found = false;
+          for (let i = 0; i < el.options.length; i++) {
+            if (el.options[i].value === formattedVal) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            const extraOpt = document.createElement("option");
+            extraOpt.value = formattedVal;
+            extraOpt.textContent = formattedVal;
+            el.appendChild(extraOpt);
+          }
+        }
+
+        el.value = formattedVal;
         applyGrayForNA(el);
         const autoSizeIds = [
           "d_nar",

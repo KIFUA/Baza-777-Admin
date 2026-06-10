@@ -659,7 +659,7 @@
                 </div>
                 <input type="hidden" id="group_name" />
               </div>
-              <div class="relative w-fit min-w-[130px]">
+              <div class="relative w-fit min-w-[130px]" id="ministryDropdownWrapper">
                 <div class="flex items-center justify-between gap-1 mb-1 cursor-pointer select-none" onclick="toggleMinistryDropdown()">
                   <label class="block text-[11px] text-purple-400 font-bold cursor-pointer">Служіння</label>
                   <span id="ministryArrow" class="text-[9px] text-purple-400/70">▼</span>
@@ -756,14 +756,14 @@
               </div>
 
               <!-- КНОПКА СКАСУВАННЯ ВИБУТТЯ -->
-              <div id="cancel_exit_container" class="hidden pt-1">
+              <div id="cancel_exit_container" class="hidden pt-1 flex justify-end">
                 <button
                   type="button"
                   id="btn_cancel_exit"
-                  class="w-full py-1.5 px-3 bg-teal-600/25 hover:bg-teal-600/40 text-teal-300 hover:text-teal-100 border border-teal-500/30 hover:border-teal-500/50 rounded text-[10px] font-bold transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1 select-none"
+                  class="w-auto px-4 py-1.5 bg-teal-600/25 hover:bg-teal-600/40 text-teal-300 hover:text-teal-100 border border-teal-500/30 hover:border-teal-500/50 rounded text-[10px] font-bold transition-all shadow-sm cursor-pointer text-center select-none leading-tight"
                   onclick="cancelExitForCurrentMember()"
                 >
-                  ↩️ Скасувати вибуття та повернути в наявні
+                  ↩️ Скасувати вибуття<br/>та повернути в наявні
                 </button>
               </div>
             </div>
@@ -1018,11 +1018,12 @@
 
           const dirs = data.directories || {};
 
-          // 1. Populate Rayon (District) Select
+           // 1. Populate Rayon (District) Select
           const rayonSelect = document.getElementById("rayon");
-          if (rayonSelect && dirs.rayon2) {
+          const rayonList = dirs.rayon || dirs.rayon2 || [];
+          if (rayonSelect && rayonList) {
             rayonSelect.innerHTML = '<option value="" class="text-gray-500">н/д</option>';
-            dirs.rayon2.forEach(r => {
+            rayonList.forEach(r => {
               if (r) {
                 const opt = document.createElement("option");
                 opt.value = r;
@@ -1083,6 +1084,7 @@
             if (dropdown) {
               dropdown.innerHTML = ""; // clear old
               ST_MINISTRIES.forEach((mName, index) => {
+                if (!mName) return; // skip empty ministry options
                 const div = document.createElement("div");
                 div.className = "flex items-center gap-2 hover:bg-zinc-700/60 p-1 rounded cursor-pointer";
                 div.onclick = (e) => { e.stopPropagation(); };
@@ -1129,6 +1131,7 @@
       function updateSelectedMinistriesText() {
         const selected = [];
         ST_MINISTRIES.forEach((mName, index) => {
+          if (!mName) return; // skip empty ministry options
           const chk = document.getElementById(`chk_min_${index}`);
           if (chk && chk.checked) {
             selected.push(mName);
@@ -1178,6 +1181,7 @@
 
       function loadSelectedMinistries(member) {
         ST_MINISTRIES.forEach((mName, index) => {
+          if (!mName) return; // skip empty ministry options
           const chk = document.getElementById(`chk_min_${index}`);
           if (chk) chk.checked = false;
         });
@@ -1263,8 +1267,9 @@
       // Populate checkboxes
       document.addEventListener("DOMContentLoaded", () => {
         const dropdown = document.getElementById("ministryDropdownContainer");
-        if (dropdown) {
+        if (dropdown && dropdown.children.length === 0) {
           ST_MINISTRIES.forEach((mName, index) => {
+            if (!mName) return; // skip empty ministry options
             const div = document.createElement("div");
             div.className =
               "flex items-center gap-2 hover:bg-zinc-700/60 p-1 rounded cursor-pointer";
@@ -1575,7 +1580,7 @@
           applyGrayForNA(explanationInp);
         }
         if (statusInp) {
-          statusInp.value = ""; // Очищаємо статус "вибув" для повернення у Наявні
+          statusInp.value = "наявний"; // Очищаємо статус "вибув" для повернення у Наявні
         }
 
         updateAgeFieldVisibilityAndValue();
@@ -3040,14 +3045,11 @@
         const minDropdown = document.getElementById(
           "ministryDropdownContainer",
         );
-        const minButton = document.getElementById(
-          "ministrySelectedListContainer",
-        );
+        const minWrapper = document.getElementById("ministryDropdownWrapper");
         if (
           minDropdown &&
-          !minDropdown.contains(e.target) &&
-          e.target !== minButton &&
-          !minButton?.contains(e.target)
+          minWrapper &&
+          !minWrapper.contains(e.target)
         ) {
           minDropdown.classList.add("hidden");
           const minArrow = document.getElementById("ministryArrow");
@@ -3301,6 +3303,29 @@
           });
 
           if (!res.ok) throw new Error("Помилка збереження через REST");
+
+          // Sync parent frame state if possible to grant instant real-time reactivity!
+          if (window.parent && window.parent !== window) {
+            if (window.parent.__bazaRawFirebaseData) {
+              if (!window.parent.__bazaRawFirebaseData[targetId]) {
+                window.parent.__bazaRawFirebaseData[targetId] = {};
+              }
+              Object.keys(updates).forEach(path => {
+                const parts = path.split('/');
+                if (parts.length === 1) {
+                  window.parent.__bazaRawFirebaseData[targetId][parts[0]] = updates[path];
+                } else if (parts.length === 2) {
+                  if (!window.parent.__bazaRawFirebaseData[targetId][parts[0]]) {
+                    window.parent.__bazaRawFirebaseData[targetId][parts[0]] = {};
+                  }
+                  window.parent.__bazaRawFirebaseData[targetId][parts[0]][parts[1]] = updates[path];
+                }
+              });
+            }
+            if (typeof window.parent.__bazaNotifyDatabaseChanged === "function") {
+              window.parent.__bazaNotifyDatabaseChanged(targetId);
+            }
+          }
 
           const toast = document.getElementById("toast");
           toast.style.opacity = "1";

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Member } from './types';
 import StatsDashboard from './components/StatsDashboard';
 import PastoralCareManager from './components/PastoralCareManager';
@@ -137,10 +137,34 @@ export default function App() {
     setCurrentPage(1); // reset to page 1 on filter changes
   }, [searchQuery, genderFilter, areaFilter, groupFilter, statusFilter, caregiverFilter, currentSessionUser]);
 
+  const syncCallbackRef = useRef<any>(null);
+  syncCallbackRef.current = async () => {
+    try {
+      await fetch('/api/members/invalidate-cache', { method: 'POST' });
+    } catch (e) {
+      console.error("Failed to notify invalidate-cache:", e);
+    }
+    await fetchAllMembers();
+    await fetchMembers();
+    await fetchLookupsAndStats();
+    await preloadRawFirebase();
+  };
+
   useEffect(() => {
     fetchLookupsAndStats();
     fetchAllMembers();
     preloadRawFirebase();
+
+    (window as any).__bazaNotifyDatabaseChanged = async () => {
+      console.log("[Parent Sync Event] Database changed. Reloading all states...");
+      if (syncCallbackRef.current) {
+        await syncCallbackRef.current();
+      }
+    };
+
+    return () => {
+      delete (window as any).__bazaNotifyDatabaseChanged;
+    };
   }, []);
 
   useEffect(() => {

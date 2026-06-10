@@ -54,7 +54,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     "Проповідник", "Дитяче служіння", "Душпастирське консультування", "Регент хору / Диригент"
   ];
 
-  const ministryOptions = lookups?.directories?.slujinnya || fallbackMinistries;
+  const ministryOptions = (lookups?.directories?.slujinnya || fallbackMinistries).filter(Boolean);
 
   // Input forms states for adding new timeline logs
   const [showAddChild, setShowAddChild] = useState(false);

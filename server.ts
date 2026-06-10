@@ -696,10 +696,11 @@ app.use('/api/firebase', async (req, res) => {
       console.log(`[Firebase Proxy] Mutation detected: ${req.method} ${req.path}. Invalidating cache.`);
       cachedMembersJson = null;
       lastCacheUpdateTime = 0;
+      lastDatabaseSyncTime = 0; // force dynamic cache loading immediately on next query
       // Trigger background sync to also keep modern view state updated
       setTimeout(() => {
         syncDatabaseWithFirebase().catch(err => console.error("Mutation background sync error:", err));
-      }, 500);
+      }, 50);
     }
   } catch (error: any) {
     console.error(`[Firebase Proxy] Error: ${error.message}`);
@@ -733,7 +734,8 @@ app.get("/api/lookups", async (req, res) => {
       vidviduvanist: directories_vidviduvanist,
       prysutnist: directories_prysutnist,
       di_admin: directories_di_admin,
-      rayon2: directories_rayon2
+      rayon2: directories_rayon2,
+      rayon: directories_rayon2
     },
     access: access_dostup
   });
@@ -1033,14 +1035,16 @@ app.post("/api/birthdays/send", async (req, res) => {
 
 // 2.4 API: Save Custom Directories manually edited in directories tab
 app.post("/api/directories/save", async (req, res) => {
-  const { opika, slujinnya, vidviduvanist, prysutnist, di_admin, rayon2, access } = req.body;
+  const { opika, slujinnya, vidviduvanist, prysutnist, di_admin, rayon, rayon2, access } = req.body;
   
   if (Array.isArray(opika)) directories_opika = opika;
   if (Array.isArray(slujinnya)) directories_slujinnya = slujinnya;
   if (Array.isArray(vidviduvanist)) directories_vidviduvanist = vidviduvanist;
   if (Array.isArray(prysutnist)) directories_prysutnist = prysutnist;
   if (Array.isArray(di_admin)) directories_di_admin = di_admin;
-  if (Array.isArray(rayon2)) directories_rayon2 = rayon2;
+  
+  const targetRayons = Array.isArray(rayon) ? rayon : rayon2;
+  if (Array.isArray(targetRayons)) directories_rayon2 = targetRayons;
   if (Array.isArray(access)) access_dostup = access;
 
   auditLogs.push({
@@ -1077,6 +1081,20 @@ function isMergedProfileServer(m: any, list: any[]) {
     return other.id_vybuttya === 0;
   });
 }
+
+// Cache Invalidation Hook
+app.post("/api/members/invalidate-cache", async (req, res) => {
+  console.log("[Invalidate Cache Endpoint] Invalidation triggered by client. Setting lastDatabaseSyncTime = 0...");
+  lastDatabaseSyncTime = 0;
+  cachedMembersJson = null;
+  lastCacheUpdateTime = 0;
+  try {
+    await syncDatabaseWithFirebase();
+  } catch (e: any) {
+    console.error("Cache invalidated manual sync error:", e.message);
+  }
+  res.json({ success: true });
+});
 
 // 3. Get Members (summary list with options to search, filter by tag, caretakers, etc)
 app.get("/api/members", async (req, res) => {
@@ -1290,7 +1308,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
   const patchUrl = `${FIREBASE_URL}/members/${id}.json?auth=${FIREBASE_SECRET}`;
   
   // Format standard status
-  const statusStr = member.id_vybuttya > 0 ? "вибув" : "активний";
+  const statusStr = member.id_vybuttya > 0 ? "вибув" : "наявний";
   
   // Convert ministries comma separated string into standard list for legacy checkboxes/hidden input compatibility
   const slujList = (member.s_slujinnya_spysok || "").split(/[,;]+/).map(s => s.trim()).filter(Boolean);
@@ -1808,7 +1826,7 @@ async function syncDirectoriesToFirebase() {
       vidviduvanist: directories_vidviduvanist,
       prysutnist: directories_prysutnist,
       di_admin: directories_di_admin,
-      rayon2: directories_rayon2
+      rayon: directories_rayon2 // saved as rayon key on Firebase now
     };
     const res = await fetch(url, {
       method: "PUT",
@@ -1829,27 +1847,42 @@ async function syncDirectoriesFromFirebase() {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data: any = await res.json();
-    if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin || data.rayon2)) {
+    if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin || data.rayon || data.rayon2)) {
       if (Array.isArray(data.opika)) directories_opika = data.opika;
-      if (Array.isArray(data.slujinnya)) directories_slujinnya = data.slujinnya;
+      
+      // Shift/Prepend "" empty option into slujinnya lookup array if needed
+      if (Array.isArray(data.slujinnya)) {
+        let slList = data.slujinnya;
+        if (slList.length === 0 || slList[0] !== "") {
+          slList = ["", ...slList.filter(Boolean)];
+        }
+        directories_slujinnya = slList;
+      }
+      
       if (Array.isArray(data.vidviduvanist)) directories_vidviduvanist = data.vidviduvanist;
       if (Array.isArray(data.prysutnist)) directories_prysutnist = data.prysutnist;
       if (Array.isArray(data.di_admin)) directories_di_admin = data.di_admin;
       
       let needsSaving = false;
-      if (Array.isArray(data.rayon2) && data.rayon2.length > 0) {
-        directories_rayon2 = data.rayon2
+      const rawRayons = Array.isArray(data.rayon) ? data.rayon : (Array.isArray(data.rayon2) ? data.rayon2 : []);
+      
+      if (rawRayons.length > 0) {
+        directories_rayon2 = rawRayons
           .map((r: string) => String(r || "").replace(/\s*-\s*SOS/gi, "").trim())
           .filter((r: string, idx: number, arr: string[]) => r && arr.indexOf(r) === idx);
         
-        // If the Firebase version had "- SOS" items, we should write the clean list back to Firebase
-        if (data.rayon2.some((r: string) => String(r || "").toUpperCase().includes("SOS"))) {
-          console.log("[Firebase Directories Sync] Stale 'SOS' elements found in Firebase list, writing clean version...");
+        // If the Firebase version had "- SOS" items, or used the legacy 'rayon2' key, write the cleaned version back as 'rayon'
+        if (rawRayons.some((r: string) => String(r || "").toUpperCase().includes("SOS")) || data.rayon2) {
+          console.log("[Firebase Directories Sync] Legacy structure or 'SOS' elements found in Firebase list, writing clean version...");
           needsSaving = true;
         }
       } else {
-        // If rayon2 key is missing in Firebase, push local cleaned defaults to Firebase
-        console.warn("[Firebase Directories Sync] rayon2 list is missing in Firebase, seeding it now...");
+        console.warn("[Firebase Directories Sync] rayon list is missing in Firebase, seeding it now...");
+        needsSaving = true;
+      }
+
+      // If slujinnya did not have the empty "" element at index 0 initially in Firebase, force save back to Firebase RTDB
+      if (Array.isArray(data.slujinnya) && (data.slujinnya.length === 0 || data.slujinnya[0] !== "")) {
         needsSaving = true;
       }
 
@@ -1858,7 +1891,7 @@ async function syncDirectoriesFromFirebase() {
         await syncDirectoriesToFirebase();
       }
     } else {
-      console.warn("[Firebase Directories Sync] No directories found in Firebase RTDB, pushing local defaults to Firebase RTDB...");
+      console.warn("[Firebase Directories Sync] No directories found in Firebase RTDB, pushing local defaults...");
       await syncDirectoriesToFirebase();
     }
   } catch (err: any) {
@@ -2020,6 +2053,34 @@ async function syncDatabaseWithFirebase() {
 
     console.log(`[Firebase Startup Sync] Data retrieved: ${Object.keys(data).length} objects found.`);
     
+    // Scan and migrate legacy statuses to "наявний"
+    const statusMigrationUpdates: any = {};
+    Object.keys(data).forEach((stringId) => {
+      const osobyste = data[stringId]?.["02_OSOBYSTE"];
+      if (osobyste && osobyste["13_status"] === "активний") {
+        statusMigrationUpdates[`${stringId}/02_OSOBYSTE/13_status`] = "наявний";
+        osobyste["13_status"] = "наявний"; // Update in-memory reference immediately for current loop load
+      }
+    });
+
+    if (Object.keys(statusMigrationUpdates).length > 0) {
+      console.log(`[Firebase Status Migration] Found ${Object.keys(statusMigrationUpdates).length} records with legacy 'активний' status. Performing atomic migration to 'наявний' status...`);
+      try {
+        const migRes = await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(statusMigrationUpdates)
+        });
+        if (migRes.ok) {
+          console.log(`[Firebase Status Migration] Atomic migration succeeded for ${Object.keys(statusMigrationUpdates).length} records!`);
+        } else {
+          console.error(`[Firebase Status Migration] Failed with status: ${migRes.status}`);
+        }
+      } catch (migErr: any) {
+        console.error(`[Firebase Status Migration] Failed with error:`, migErr.message);
+      }
+    }
+
     // Parse each record
     const parsedMembers: Member[] = [];
     Object.keys(data).forEach((stringId) => {

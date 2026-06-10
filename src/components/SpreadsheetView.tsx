@@ -49,7 +49,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   ], []);
 
   const ministryOptions = useMemo(() => {
-    return (lookups?.directories?.slujinnya as string[]) || fallbackMinistries;
+    const list = (lookups?.directories?.slujinnya as string[]) || fallbackMinistries;
+    return list.filter(Boolean);
   }, [lookups, fallbackMinistries]);
 
   const [isAdmin, setIsAdmin] = useState(false);

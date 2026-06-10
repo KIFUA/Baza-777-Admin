@@ -34,7 +34,7 @@ export default function DirectoriesManager({
   const [syncResult, setSyncResult] = useState<any>(null);
 
   // Dictionary editor state
-  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon2'>('opika');
+  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon'>('opika');
   const [newDictValue, setNewDictValue] = useState('');
   const [dictItems, setDictItems] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState(false);
@@ -491,7 +491,7 @@ export default function DirectoriesManager({
                     { id: 'vidviduvanist', title: 'Характеристики відвідування' },
                     { id: 'prysutnist', title: 'Характеристики присутності' },
                     { id: 'di_admin', title: 'Дії адміністратора (переміщення)' },
-                    { id: 'rayon2', title: 'Райони структури (rayon2)' }
+                    { id: 'rayon', title: 'Райони структури (rayon)' }
                   ].map(x => (
                     <button
                       key={x.id}
@@ -534,9 +534,9 @@ export default function DirectoriesManager({
                       📌 <strong>Характеристики присутності:</strong> Загальний статус перебування та залученості члена церкви в повсякденне життя громади.
                     </span>
                   )}
-                  {selectedDictKey === 'rayon2' && (
+                  {selectedDictKey === 'rayon' && (
                     <span>
-                      🗺️ <strong>Райони структури (rayon2):</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації.
+                      🗺️ <strong>Райони структури (rayon):</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації.
                     </span>
                   )}
                 </div>

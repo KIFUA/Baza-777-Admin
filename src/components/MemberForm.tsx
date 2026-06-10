@@ -163,7 +163,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
     "Проповідник", "Дитяче служіння", "Душпастирське консультування", "Регент хору / Диригент"
   ];
 
-  const ministryOptions = lookups?.directories?.slujinnya || fallbackMinistries;
+  const ministryOptions = (lookups?.directories?.slujinnya || fallbackMinistries).filter(Boolean);
 
   const VYBUV_STATUS_ID = Number(formData.id_vybuttya || 0);
   const VYBUV_STATUS_TEXT = formData.s_vybuv_ukr || '';

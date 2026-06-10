@@ -379,7 +379,6 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Присутність</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6]">Вік</th>
               <th className="py-2 px-2 border border-[#8fba94] text-left font-bold min-w-44 bg-[#b2cfb6]">Адрес</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-left font-bold min-w-36 bg-[#b2cfb6]">Район / Дільниця</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6]">Телефон</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">Дата народж.</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Ос-та</th>
@@ -432,21 +431,34 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className="py-1.5 px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
+                      className="py-1 px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden"
                     >
                       <div className="flex items-center justify-between space-x-1">
-                        <div className="flex items-center space-x-1 truncate">
+                        <div className="flex items-center space-x-1 truncate min-w-0 flex-1">
                           {m.id_vybuttya > 0 && (
                             <span className="inline-block h-2 w-2 rounded-full bg-amber-500 shrink-0" title="Знято з обліку" />
                           )}
-                          <span className="truncate text-xs font-extrabold">{m.pib}</span>
+                          {(() => {
+                            const parts = (m.pib || "").trim().split(/\s+/);
+                            if (parts.length <= 1) {
+                              return <span className="truncate text-xs font-extrabold">{m.pib}</span>;
+                            }
+                            const lastName = parts[0];
+                            const givenName = parts.slice(1).join(" ");
+                            return (
+                              <div className="flex flex-col min-w-0 leading-tight">
+                                <span className="text-xs font-extrabold text-[#052e16] truncate">{lastName}</span>
+                                <span className="text-[10px] font-semibold text-slate-600 truncate">{givenName}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             onOpenProfile(m.id);
                           }}
-                          className="opacity-0 group-hover:opacity-100 ml-2 px-1.5 py-0.5 text-[9px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded flex items-center space-x-0.5 transition-all text-center h-5 shrink-0 scale-75 origin-center"
+                          className="opacity-0 group-hover:opacity-100 ml-1 px-1.5 py-0.5 text-[9px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded flex items-center space-x-0.5 transition-all text-center h-5 shrink-0 scale-75 origin-center"
                           title="Двічі клацніть або натисніть сюди, щоб редагувати анкету цієї особи у вікні"
                         >
                           <span className="tracking-tighter">Анкета ↗</span>
@@ -600,9 +612,6 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     {/* Address & Tel */}
                     <td className="py-1.5 px-2 border-r border-slate-300 text-[#0d341d] font-bold bg-[#edf7f0]/45 truncate max-w-xs" title={m.address}>
                       {m.address || '—'}
-                    </td>
-                    <td className="py-1.5 px-2 border-r border-slate-300 text-slate-600 truncate max-w-xs">
-                      {m.rayon2_ukr ? `${m.rayon2_ukr} | ${m.n_dilyci || 'Дільниця'}` : '—'}
                     </td>
                     <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono font-bold text-slate-700 whitespace-nowrap">
                       {m.tel_mob || '—'}

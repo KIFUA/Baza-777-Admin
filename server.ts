@@ -743,30 +743,51 @@ app.get("/api/lookups", async (req, res) => {
 
 // Parse Google Sheet CSV (Simple quote-aware parser)
 function parseCSV(text: string): string[][] {
-  const lines = text.split(/\r?\n/);
-  return lines.map(line => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += char;
+  const results: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+    
+    if (char === '"' && inQuotes && nextChar === '"') {
+      field += '"';
+      i++;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === ',' && !inQuotes) {
+      row.push(field.trim());
+      field = "";
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (field || row.length > 0) {
+        row.push(field.trim());
+        results.push(row);
+        row = [];
+        field = "";
       }
+      if (char === '\r' && nextChar === '\n') i++;
+    } else {
+      field += char;
     }
-    result.push(current.trim());
-    return result.map(v => {
-      if (v.startsWith('"') && v.endsWith('"')) {
-        return v.substring(1, v.length - 1).trim();
+  }
+  
+  if (field || row.length > 0) {
+    row.push(field.trim());
+    results.push(row);
+  }
+  
+  // Post-process to clean values
+  return results.map(rowCols => 
+    rowCols.map(v => {
+      let val = v.trim();
+      if (val.startsWith('"') && val.endsWith('"')) {
+        val = val.substring(1, val.length - 1).trim();
       }
-      return v;
-    });
-  }).filter(line => line.length > 0 && line.some(col => col !== ""));
+      return val;
+    })
+  ).filter(rowCols => rowCols.length > 0 && rowCols.some(col => col !== ""));
 }
 
 // 2.1 Sync Directories & Access Lists with Google Sheets
@@ -829,13 +850,398 @@ app.post("/api/sync-sheets", async (req, res) => {
     // Write synchronized directories and access control lists to Firebase Realtime Database
     await syncDirectoriesToFirebase();
 
+    // Fetch and Sync members list "СПИСОК" from Google Sheets
+    let syncedMembersCount = 0;
+    let syncMemberDetailsMsg = "";
+    try {
+      const listUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("СПИСОК")}`;
+      const listResp = await fetch(listUrl);
+      if (listResp.ok) {
+        const listCsvText = await listResp.text();
+        const listRows = parseCSV(listCsvText);
+        if (listRows.length > 1) {
+          const headers = listRows[0];
+          
+          // Helper to normalize and match headers
+          const normalizeString = (str: string): string => {
+            if (!str) return "";
+            let res = str
+              .toLowerCase()
+              .replace(/[\s\-_.,;()]/g, "")
+              .replace(/і/gi, "i")
+              .replace(/ї/gi, "i")
+              .replace(/є/gi, "e")
+              .trim();
+            // Deduplicate English 'i' to handle double-i letters (e.g., 'ii' -> 'i')
+            return res.replace(/ii+/g, "i");
+          };
+
+          const getColIndex = (hdrs: string[], searchTerms: string[]): number => {
+            const normTerms = searchTerms.map(t => normalizeString(t));
+            return hdrs.findIndex(h => {
+              const normH = normalizeString(h);
+              return normTerms.some(term => normH.includes(term) || term.includes(normH));
+            });
+          };
+
+          const matchesName = (memberPib: string, sheetPib: string): boolean => {
+            const cleanMember = cleanMaidenName(memberPib);
+            const cleanSheet = cleanMaidenName(sheetPib);
+            return normalizeString(cleanMember) === normalizeString(cleanSheet);
+          };
+
+          const parseSheetDate = (dateStr: string): string => {
+            if (!dateStr) return "";
+            const trimmed = dateStr.trim();
+            const match = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+            if (match) {
+              const [_, dd, mm, yyyy] = match;
+              return `${yyyy}-${mm}-${dd}`;
+            }
+            return trimmed;
+          };
+
+          // Define columns - Do NOT use sequential row ID matching for Google Sheets
+          const pibColIdx = getColIndex(headers, ["ПІБ", "піб", "пiб", "pib", "pib_full", "член", "прізвище"]);
+          const rayonColIdx = getColIndex(headers, ["РАЙОН", "район", "rayon"]);
+          const contactColIdx = getColIndex(headers, ["Дати контактів з пресвітером", "ДАТА КОНТАКТУ з пресвітером", "ДАТА КОНТАКТУ", "контакт", "пресвітер", "пресвитер", "d_kontaktiv", "kontakt"]);
+          const ministryColIdx = getColIndex(headers, ["СЛУЖІННЯ", "служiння", "СОУДІЕЕЯ", "соудiеея", "sluj", "slujinnya"]);
+          const attendanceColIdx = getColIndex(headers, ["ВІДВІДУВАННЯ", "відвідуваність", "вiдвiдуванiсть", "відвідув", "vidviduvanist", "attendance"]);
+          const presenceColIdx = getColIndex(headers, ["ПРИСУТНІСТЬ", "присутність", "присутнiсть", "prysutnist", "presence"]);
+
+          const opikaColIdx = getColIndex(headers, ["ОПІКА", "опіка", "опiка", "opika", "presviter"]);
+          const diAdminColIdx = getColIndex(headers, ["ДІЇ", "дiї", "di_admin", "адміністратор"]);
+          const addressColIdx = getColIndex(headers, ["АДРЕС", "адрес", "адреса", "address"]);
+          const phoneColIdx = getColIndex(headers, ["ТЕЛЕФОН", "телефон", "tel_mob", "phone"]);
+          const bdayColIdx = getColIndex(headers, ["ДАТА НАРОДЖЕННЯ", "дата народж", "народж", "d_narodjennya"]);
+          const osvitaColIdx = getColIndex(headers, ["ОСВІТА", "освіта", "освiта", "ос-та", "osvita"]);
+          const hsdColIdx = getColIndex(headers, ["ХР. С.Д.", "хр. с.д.", "хрсд", "hsd"]);
+          const simeyniyColIdx = getColIndex(headers, ["СІМ. СТАН", "сім. стан", "сiм. стан", "сімейний", "simeyniy"]);
+          const socialniyColIdx = getColIndex(headers, ["СОЦ. СТАН", "соц. стан", "соціальний", "socialniy"]);
+          const vstupuColIdx = getColIndex(headers, ["В_ЦЕРКВІ_З", "в_церкві_з", "вцерквiз", "v_cerkvi_z", "вступ"]);
+
+          console.log(`[Google Sheet Sync] Found Column Indexes: PIB=${pibColIdx}, RAYON=${rayonColIdx}, CONTACT=${contactColIdx}, MINISTRY=${ministryColIdx}, ATTENDANCE=${attendanceColIdx}, PRESENCE=${presenceColIdx}, OPIKA=${opikaColIdx}`);
+
+          const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+          const firebaseUpdates: any = {};
+          
+          for (let r = 1; r < listRows.length; r++) {
+            const row = listRows[r];
+            if (!row || row.length === 0) continue;
+
+            const pibVal = pibColIdx !== -1 && row[pibColIdx] ? row[pibColIdx].trim() : "";
+            if (!pibVal) continue;
+
+            let matchedMember = members.find(m => matchesName(m.pib, pibVal));
+
+            if (matchedMember) {
+              let rowUpdated = false;
+              const memId = matchedMember.id;
+
+              // Update rayon column
+              if (rayonColIdx !== -1) {
+                const rVal = row[rayonColIdx].trim();
+                if (rVal !== undefined && matchedMember.rayon2_ukr !== rVal) {
+                  matchedMember.rayon2_ukr = rVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/1_rayon`] = rVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update contact date column
+              if (contactColIdx !== -1) {
+                const cVal = row[contactColIdx].trim();
+                if (cVal !== undefined && matchedMember.d_kontaktiv !== cVal) {
+                  matchedMember.d_kontaktiv = cVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/7_d_kontaktiv`] = cVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/d_kontaktiv`] = cVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update ministry column (SOUDIEEJA)
+              if (ministryColIdx !== -1) {
+                const mVal = row[ministryColIdx].trim();
+                if (mVal !== undefined && matchedMember.s_slujinnya_spysok !== mVal) {
+                  matchedMember.s_slujinnya_spysok = mVal;
+                  const slujList = mVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                  firebaseUpdates[`members/${memId}/s_slujinnya_spysok`] = mVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/slujinnya`] = slujList;
+                  firebaseUpdates[`members/${memId}/05_ISTORIJA/1_slujinnya`] = slujList;
+                  firebaseUpdates[`members/${memId}/slujinnya`] = slujList;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update attendance column
+              if (attendanceColIdx !== -1) {
+                const aVal = row[attendanceColIdx].trim();
+                if (aVal !== undefined && matchedMember.vidviduvanist !== aVal) {
+                  matchedMember.vidviduvanist = aVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/8_vidviduvanist`] = aVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update presence column
+              if (presenceColIdx !== -1) {
+                const pVal = row[presenceColIdx].trim();
+                if (pVal !== undefined && matchedMember.prysutnist !== pVal) {
+                  matchedMember.prysutnist = pVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/9_prysutnist`] = pVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update supervisor (opika)
+              if (opikaColIdx !== -1) {
+                const opVal = row[opikaColIdx].trim();
+                if (opVal !== undefined && matchedMember.presviter !== opVal) {
+                  matchedMember.presviter = opVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/4_opika`] = opVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update admin actions (di_admin / san)
+              if (diAdminColIdx !== -1) {
+                const daVal = row[diAdminColIdx].trim();
+                if (daVal !== undefined && matchedMember.di_admin !== daVal) {
+                  matchedMember.di_admin = daVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/3_san`] = daVal;
+                  firebaseUpdates[`members/${memId}/di_admin`] = daVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update phone number
+              if (phoneColIdx !== -1) {
+                const phVal = row[phoneColIdx].trim();
+                if (phVal !== undefined && matchedMember.tel_mob !== phVal) {
+                  matchedMember.tel_mob = phVal;
+                  firebaseUpdates[`members/${memId}/02_OSOBYSTE/2_tel`] = phVal;
+                  firebaseUpdates[`members/${memId}/02_OSOBYSTE/phone`] = phVal;
+                  firebaseUpdates[`members/${memId}/02_OSOBYSTE/tel`] = phVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update address
+              if (addressColIdx !== -1) {
+                const addrVal = row[addressColIdx].trim();
+                if (addrVal !== undefined && matchedMember.address !== addrVal) {
+                  matchedMember.address = addrVal;
+                  firebaseUpdates[`members/${memId}/03_ADRESA/address`] = addrVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update birthday
+              if (bdayColIdx !== -1) {
+                const bdayVal = row[bdayColIdx].trim();
+                if (bdayVal) {
+                  const parsedBday = parseSheetDate(bdayVal);
+                  if (parsedBday && matchedMember.d_narodjennya !== parsedBday) {
+                    matchedMember.d_narodjennya = parsedBday;
+                    firebaseUpdates[`members/${memId}/02_OSOBYSTE/1_d_narodjennya`] = parsedBday;
+                    firebaseUpdates[`members/${memId}/02_OSOBYSTE/3_d_nar`] = parsedBday;
+                    rowUpdated = true;
+                  }
+                }
+              }
+
+              // Update education level
+              if (osvitaColIdx !== -1) {
+                const oVal = row[osvitaColIdx].trim();
+                if (oVal !== undefined && matchedMember.s_osvita_ukr !== oVal) {
+                  matchedMember.s_osvita_ukr = oVal;
+                  firebaseUpdates[`members/${memId}/02_OSOBYSTE/7_osvita`] = oVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update Holy Spirit baptism (hsd)
+              if (hsdColIdx !== -1) {
+                const hsdVal = row[hsdColIdx].trim().toLowerCase() === "так";
+                if (matchedMember.hsd !== hsdVal) {
+                  matchedMember.hsd = hsdVal;
+                  firebaseUpdates[`members/${memId}/04_STRUCTURA/hsd`] = hsdVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update family marital status
+              if (simeyniyColIdx !== -1) {
+                const sVal = row[simeyniyColIdx].trim();
+                if (sVal !== undefined && matchedMember.s_simeyniy_ukr !== sVal) {
+                  matchedMember.s_simeyniy_ukr = sVal;
+                  firebaseUpdates[`members/${memId}/02_OSOBYSTE/s_simeyniy_ukr`] = sVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update social status
+              if (socialniyColIdx !== -1) {
+                const socVal = row[socialniyColIdx].trim();
+                if (socVal !== undefined && matchedMember.s_socialniy_ukr !== socVal) {
+                  matchedMember.s_socialniy_ukr = socVal;
+                  firebaseUpdates[`members/${memId}/02_OSOBYSTE/6_socialniy`] = socVal;
+                  rowUpdated = true;
+                }
+              }
+
+              // Update entry date (vstupu)
+              if (vstupuColIdx !== -1) {
+                const vVal = row[vstupuColIdx].trim();
+                if (vVal) {
+                  const parsedVstupu = parseSheetDate(vVal);
+                  if (parsedVstupu && matchedMember.d_vstupu !== parsedVstupu) {
+                    matchedMember.d_vstupu = parsedVstupu;
+                    firebaseUpdates[`members/${memId}/04_STRUCTURA/6_d_vstupu`] = parsedVstupu;
+                    rowUpdated = true;
+                  }
+                }
+              }
+
+              if (rowUpdated) {
+                syncedMembersCount++;
+              }
+            } else {
+              // Automatically CREATE unmatched members from Google SheetСПИСОК tab
+              const nextId = Math.max(...members.map(m => m.id), 1200) + 1;
+              const genderCol = getColIndex(headers, ["Стать", "стать", "stat"]);
+              let rawStat = genderCol !== -1 && row[genderCol] ? row[genderCol].trim().toLowerCase() : "";
+              let normStat = "брат";
+              if (rawStat.includes("сестр") || rawStat.includes("сес") || rawStat === "с") {
+                normStat = "сестра";
+              }
+
+              const birthDateRaw = bdayColIdx !== -1 && row[bdayColIdx] ? row[bdayColIdx].trim() : "";
+              const birthDate = parseSheetDate(birthDateRaw);
+              let calculatedAge = 0;
+              if (birthDate) {
+                try {
+                  const birth = new Date(birthDate);
+                  const ageDiff = Date.now() - birth.getTime();
+                  const ageDate = new Date(ageDiff);
+                  calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970);
+                } catch (_) {}
+              }
+
+              const newMember: Member = {
+                id: nextId,
+                pib: pibVal,
+                stat: normStat,
+                s_simeyniy_ukr: simeyniyColIdx !== -1 && row[simeyniyColIdx] ? row[simeyniyColIdx].trim() : "неодружений",
+                id_simeyniy: 5,
+                s_socialniy_ukr: socialniyColIdx !== -1 && row[socialniyColIdx] ? row[socialniyColIdx].trim() : "н/д",
+                id_socialniy: 6,
+                s_osvita_ukr: osvitaColIdx !== -1 && row[osvitaColIdx] ? row[osvitaColIdx].trim() : "н/д",
+                id_osvita: 4,
+                s_profesiya_ukr: "н/д",
+                id_profesiya: 41,
+                s_slujinnya_spysok: ministryColIdx !== -1 && row[ministryColIdx] ? row[ministryColIdx].trim() : "",
+                zaklad_osv: "",
+                d_narodjennya: birthDate,
+                d_narodjennya_excel: dateToExcelSerialNumber(birthDate),
+                tel_mob: phoneColIdx !== -1 && row[phoneColIdx] ? row[phoneColIdx].trim() : "",
+                tel1: "",
+                skype: "",
+                vik_rokiv1: calculatedAge,
+                d_pokayannya: "",
+                d_pokayannya_excel: 0,
+                d_vodnogo: "",
+                d_vodnogo_excel: 0,
+                hsd: hsdColIdx !== -1 && row[hsdColIdx] ? row[hsdColIdx].trim().toLowerCase() === "так" : false,
+                d_vstupu: vstupuColIdx !== -1 && row[vstupuColIdx] ? parseSheetDate(row[vstupuColIdx].trim()) : "",
+                d_vstupu_excel: 0,
+                vidviduvanist: attendanceColIdx !== -1 && row[attendanceColIdx] ? row[attendanceColIdx].trim() : "",
+                prysutnist: presenceColIdx !== -1 && row[presenceColIdx] ? row[presenceColIdx].trim() : "",
+                di_admin: diAdminColIdx !== -1 && row[diAdminColIdx] ? row[diAdminColIdx].trim() : "",
+                d_kontaktiv: contactColIdx !== -1 && row[contactColIdx] ? row[contactColIdx].trim() : "",
+                presviter: opikaColIdx !== -1 && row[opikaColIdx] ? row[opikaColIdx].trim() : "",
+                rayon2_ukr: rayonColIdx !== -1 && row[rayonColIdx] ? row[rayonColIdx].trim() : "",
+                id_rayon2: "",
+                id_dilnicya: "",
+                n_dilyci: "",
+                vidpov_grupy: "",
+                id_vybuttya: 0,
+                s_vybuv_ukr: "",
+                d_vybuttya: "",
+                d_vybuttya_excel: 0,
+                vybutty_prymitka: "",
+                hvoryi: "",
+                insha_gromada: "",
+                primitka: "",
+                efile: true,
+                address: addressColIdx !== -1 && row[addressColIdx] ? row[addressColIdx].trim() : ""
+              };
+
+              members.push(newMember);
+
+              // Structure for Firebase atomic batch write
+              firebaseUpdates[`members/${nextId}/01_PIB`] = pibVal;
+              firebaseUpdates[`members/${nextId}/pib`] = pibVal;
+              firebaseUpdates[`members/${nextId}/stat`] = normStat;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/1_d_narodjennya`] = birthDate;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/3_d_nar`] = birthDate;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/2_tel`] = newMember.tel_mob;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/phone`] = newMember.tel_mob;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/tel`] = newMember.tel_mob;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/2_stat`] = normStat;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/7_osvita`] = newMember.s_osvita_ukr;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/13_status`] = "наявний";
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/s_simeyniy_ukr`] = newMember.s_simeyniy_ukr;
+              firebaseUpdates[`members/${nextId}/02_OSOBYSTE/6_socialniy`] = newMember.s_socialniy_ukr;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/1_rayon`] = newMember.rayon2_ukr;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/4_opika`] = newMember.presviter;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/8_vidviduvanist`] = newMember.vidviduvanist;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/9_prysutnist`] = newMember.prysutnist;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/7_d_kontaktiv`] = newMember.d_kontaktiv;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/d_kontaktiv`] = newMember.d_kontaktiv;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/3_san`] = newMember.di_admin;
+              firebaseUpdates[`members/${nextId}/03_ADRESA/address`] = newMember.address;
+              if (newMember.s_slujinnya_spysok) {
+                const slujList = newMember.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                firebaseUpdates[`members/${nextId}/s_slujinnya_spysok`] = newMember.s_slujinnya_spysok;
+                firebaseUpdates[`members/${nextId}/04_STRUCTURA/slujinnya`] = slujList;
+                firebaseUpdates[`members/${nextId}/05_ISTORIJA/1_slujinnya`] = slujList;
+                firebaseUpdates[`members/${nextId}/slujinnya`] = slujList;
+              }
+
+              syncedMembersCount++;
+              console.log(`[Google Sheet Sync] Automatically created brand new synced member: ${pibVal} with ID ${nextId}`);
+            }
+          }
+
+          if (Object.keys(firebaseUpdates).length > 0) {
+            const bulkRes = await fetch(`${FIREBASE_URL}/.json?auth=${DB_SECRET}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(firebaseUpdates)
+            });
+            if (bulkRes.ok) {
+              syncMemberDetailsMsg = `, також успішно перенесено дані ${syncedMembersCount} членів з Google-Таблиці на Firebase.`;
+            } else {
+              syncMemberDetailsMsg = `, проте виникла помилка Firebase під час запису супутніх полів для членів.`;
+            }
+          } else {
+            syncMemberDetailsMsg = `, розбіжностей у даних членів церкви не зафіксовано.`;
+          }
+        }
+      }
+    } catch (errMembers: any) {
+      console.error("Error syncing spreadsheet members list:", errMembers);
+      syncMemberDetailsMsg = `, помилка при аналізі аркушу СПИСОК: ${errMembers.message}`;
+    }
+
     auditLogs.push({
       id: "sync_" + Date.now(),
       timestamp: new Date().toISOString(),
       memberId: 0,
       memberName: "Адмін",
       action: "sync",
-      details: "<b>Синхронізація з Sheets</b>: завантажено актуальні списки опікунів, служінь, параметрів та рівнів доступу і перенесено в базу Firebase."
+      details: `<b>Синхронізація з Sheets</b>: завантажено актуальні списки опікунів, служінь, параметрів та рівнів доступу${syncMemberDetailsMsg}`
     });
     
     saveDatabaseToCache();
@@ -848,7 +1254,8 @@ app.post("/api/sync-sheets", async (req, res) => {
         vidviduvanist: directories_vidviduvanist.length,
         prysutnist: directories_prysutnist.length,
         di_admin: directories_di_admin.length,
-        rayon2: directories_rayon2.length
+        rayon2: directories_rayon2.length,
+        syncedMembersCount: syncedMembersCount
       },
       access: access_dostup.length
     });
@@ -1336,6 +1743,8 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "04_STRUCTURA/6_d_vstupu": member.d_vstupu || "",
     "04_STRUCTURA/8_vidviduvanist": member.vidviduvanist || "",
     "04_STRUCTURA/9_prysutnist": member.prysutnist || "",
+    "04_STRUCTURA/7_d_kontaktiv": member.d_kontaktiv || "",
+    "04_STRUCTURA/d_kontaktiv": member.d_kontaktiv || "",
     "04_STRUCTURA/3_san": member.di_admin || "",
     
     "05_ISTORIJA/1_slujinnya": slujList,
@@ -1771,6 +2180,7 @@ app.post("/api/members", async (req, res) => {
     vidviduvanist: String(newMemberData.vidviduvanist || "").trim(),
     prysutnist: String(newMemberData.prysutnist || "").trim(),
     di_admin: String(newMemberData.di_admin || "").trim(),
+    d_kontaktiv: String(newMemberData.d_kontaktiv || "").trim(),
 
     presviter: String(newMemberData.presviter || "").trim(),
     rayon2_ukr: String(newMemberData.rayon2_ukr || "").trim(),
@@ -2055,11 +2465,43 @@ async function syncDatabaseWithFirebase() {
     
     // Scan and migrate legacy statuses to "наявний"
     const statusMigrationUpdates: any = {};
+    const dilyciaCleanupUpdates: any = {};
+    
     Object.keys(data).forEach((stringId) => {
-      const osobyste = data[stringId]?.["02_OSOBYSTE"];
-      if (osobyste && osobyste["13_status"] === "активний") {
+      const parent = data[stringId];
+      if (!parent) return;
+      const особисте = parent["02_OSOBYSTE"] || {};
+      const вибуття = parent["06_VYBUTTYA"] || {};
+      const структура = parent["04_STRUCTURA"] || {};
+      
+      if (особисте["13_status"] === "активний") {
         statusMigrationUpdates[`${stringId}/02_OSOBYSTE/13_status`] = "наявний";
-        osobyste["13_status"] = "наявний"; // Update in-memory reference immediately for current loop load
+        особисте["13_status"] = "наявний"; // Update in-memory reference immediately for current loop load
+      }
+
+      const hasLeftStatus = особисте["13_status"] === "вибув";
+      const hasVybuttyaReason = !!вибуття["2_prichina"];
+      const hasVybuttyaDate = !!(вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"]);
+      const id_vybuttya = (hasLeftStatus || hasVybuttyaReason || hasVybuttyaDate) ? 1 : 0;
+
+      // Active / existing ("наявних") members only
+      if (id_vybuttya === 0) {
+        if (структура["2_grupa"] && структура["2_grupa"] !== "") {
+          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/2_grupa`] = "";
+          структура["2_grupa"] = "";
+        }
+        if (структура["id_dilnicya"] && структура["id_dilnicya"] !== "") {
+          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/id_dilnicya`] = "";
+          структура["id_dilnicya"] = "";
+        }
+        if (parent["id_dilnicya"] && parent["id_dilnicya"] !== "") {
+          dilyciaCleanupUpdates[`${stringId}/id_dilnicya`] = "";
+          parent["id_dilnicya"] = "";
+        }
+        if (parent["n_dilyci"] && parent["n_dilyci"] !== "") {
+          dilyciaCleanupUpdates[`${stringId}/n_dilyci`] = "";
+          parent["n_dilyci"] = "";
+        }
       }
     });
 
@@ -2078,6 +2520,24 @@ async function syncDatabaseWithFirebase() {
         }
       } catch (migErr: any) {
         console.error(`[Firebase Status Migration] Failed with error:`, migErr.message);
+      }
+    }
+
+    if (Object.keys(dilyciaCleanupUpdates).length > 0) {
+      console.log(`[Firebase Dilycia Cleanup] Found dilycia records on active members. Performing atomic cleanup from database...`);
+      try {
+        const cleanRes = await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(dilyciaCleanupUpdates)
+        });
+        if (cleanRes.ok) {
+          console.log(`[Firebase Dilycia Cleanup] Atomic cleanup of dilycia from active records succeeded!`);
+        } else {
+          console.error(`[Firebase Dilycia Cleanup] Cleanup failed with status: ${cleanRes.status}`);
+        }
+      } catch (cleanErr: any) {
+        console.error(`[Firebase Dilycia Cleanup] Cleanup failed:`, cleanErr.message);
       }
     }
 
@@ -2213,6 +2673,7 @@ async function syncDatabaseWithFirebase() {
           vidviduvanist: String(структура["8_vidviduvanist"] || "").trim(),
           prysutnist: String(структура["9_prysutnist"] || "").trim(),
           di_admin: String(структура["3_san"] || raw["di_admin"] || "").trim(),
+          d_kontaktiv: String(структура["7_d_kontaktiv"] || структура["d_kontaktiv"] || "").trim(),
 
           presviter: String(структура["4_opika"] || "").trim(),
           rayon2_ukr: String(структура["1_rayon"] || "").trim(),

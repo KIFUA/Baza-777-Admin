@@ -164,6 +164,63 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   const rayonColWidth = 90;
   const pibLeftSticky = showRayonColumn ? (40 + rayonColWidth) : 40;
 
+  // Style lookups matching Google Sheets exactly
+  const getOpikaStyle = (val: string) => {
+    const norm = val.trim();
+    if (norm === "Бевзюк В.") {
+      return { bg: "#F7CB4D", text: "#2c2205", border: "#deae21" };
+    }
+    const creamShepherds = [
+      "Галюк Б.", "Євстратов О.", "Луцак М.", "Мельничук В.", "Прохніцький Б.", 
+      "Самелюк О.", "Скриник М.", "Стафіїв М.", "Факас О.", "Черняк Вікт.", "Шпарман Ю."
+    ];
+    if (creamShepherds.includes(norm)) {
+      return { bg: "#FEF8E3", text: "#4a3c10", border: "#ebdcb1" };
+    }
+    return { bg: "#FFFFFF", text: "#334155", border: "#e2e8f0" };
+  };
+
+  const getSlujStyle = (val: string) => {
+    const norm = val.trim();
+    if (norm === "SUN SHINE") {
+      return { bg: "#8989EB", text: "#FFFFFF", border: "#7373e6" };
+    }
+    const lavenderList = [
+      "АДМІНІСТРАТИВНЕ", "ГОСТИННОСТІ", "ДИЗАЙНЕРСЬКЕ", "ДИЯКОН", "Лідер ДГ", 
+      "Молитовне", "СОЦІАЛЬНЕ", "ПЕРЕКЛАДЧІ", "Підтр. мал. церков", "Проповідники", 
+      "Служіння Г/Н"
+    ];
+    if (lavenderList.includes(norm)) {
+      return { bg: "#E8E7FC", text: "#2d1663", border: "#caccfa" };
+    }
+    return { bg: "#FFFFFF", text: "#0d341d", border: "#cbd5e1" };
+  };
+
+  const getVidvidStyle = (val: string) => {
+    const norm = val.trim();
+    if (norm === "Постійно") return { bg: "#BDBDBD", text: "#111827", border: "#a6a6a6" };
+    if (norm === "Рідко") return { bg: "#F3F3F3", text: "#374151", border: "#e5e5e5" };
+    if (norm === "Періодично") return { bg: "#FFFFFF", text: "#1e3a1e", border: "#8fba94" };
+    if (norm === "Ніколи") return { bg: "#FFFFFF", text: "#991b1b", border: "#dc2626" };
+    return { bg: "#F9FAFB", text: "#4B5563", border: "#e5e7eb" };
+  };
+
+  const getPrysutStyle = (val: string) => {
+    const norm = val.trim();
+    if (norm === "За кордоном") return { bg: "#26A69A", text: "#FFFFFF", border: "#1f8c81" };
+    if (norm === "Хворий") return { bg: "#DDF2F0", text: "#004D40", border: "#b2e3dd" };
+    return { bg: "#FFFFFF", text: "#1F2937", border: "#CBD5E1" };
+  };
+
+  const getCellStyling = (field: string, val: string) => {
+    if (!val) return null;
+    const v = val.trim();
+    if (field === 'presviter') return getOpikaStyle(v);
+    if (field === 'vidviduvanist') return getVidvidStyle(v);
+    if (field === 'prysutnist') return getPrysutStyle(v);
+    return null;
+  };
+
   // Dropdown inline cell renderer (Request 5 & 6)
   const renderDropdownCell = (
     m: Member, 
@@ -198,13 +255,29 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
             className="w-full bg-white border border-emerald-500 rounded px-1 py-0.5 text-[10px] font-bold focus:outline-none"
           >
             <option value="">—</option>
-            {options.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
+            {options.map((opt) => {
+              const style = getCellStyling(field, opt);
+              return (
+                <option 
+                  key={opt} 
+                  value={opt}
+                  style={style ? { backgroundColor: style.bg, color: style.text } : undefined}
+                >
+                  {opt}
+                </option>
+              );
+            })}
           </select>
         </td>
       );
     }
+
+    const customStyle = getCellStyling(field, value);
+    const badgeStyle = customStyle ? { 
+      backgroundColor: customStyle.bg, 
+      color: customStyle.text, 
+      borderColor: customStyle.border 
+    } : undefined;
 
     return (
       <td 
@@ -213,7 +286,12 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         className={`${tdClassName} text-center cursor-pointer hover:bg-slate-200/50 min-h-[28px] transition-colors`}
         title="Клацніть для швидкої зміни значення"
       >
-        <span className={`inline-block text-[10px] font-bold ${colorClasses}`}>
+        <span 
+          style={badgeStyle}
+          className={customStyle 
+            ? "inline-block text-[10.5px] font-extrabold px-2 py-0.5 rounded border text-center truncate max-w-full font-sans tracking-tight shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
+            : `inline-block text-[10px] font-bold ${colorClasses}`}
+        >
           {value || fallbackText}
         </span>
       </td>
@@ -629,24 +707,25 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                             }}
                           />
                           <div 
-                            className="absolute left-1/2 top-full -translate-x-1/2 mt-1 z-[250] bg-white border border-slate-300 rounded-lg shadow-xl p-2 w-[240px]"
+                            className="absolute right-0 top-full mt-1 bg-white border-2 border-emerald-600 rounded-lg shadow-xl p-3 z-[250] w-64 text-slate-800"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex items-center justify-between border-b pb-1 mb-1.5">
-                              <span className="font-extrabold text-[10px] text-slate-700 uppercase tracking-tight">Служіння</span>
+                            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 mb-2">
+                              <span className="text-[11px] font-extrabold text-emerald-800">Швидка зміна служінь</span>
                               <button 
-                                onClick={() => setEditingCell(null)}
-                                className="text-white hover:bg-emerald-800 bg-emerald-700 px-2 py-0.5 rounded text-[9px] font-bold shadow-sm transition-colors cursor-pointer"
+                                onClick={(e) => { e.stopPropagation(); setEditingCell(null); }}
+                                className="text-slate-450 hover:text-rose-600 font-black text-xs px-1 hover:bg-slate-100 rounded leading-none transition-colors"
                               >
-                                Готово
+                                ✕
                               </button>
                             </div>
-                            <div className="max-h-52 overflow-y-auto text-left space-y-1.5 pr-1">
+                            <div className="max-h-52 overflow-y-auto text-left space-y-1.5 pr-1 font-sans">
                               {ministryOptions.map((opt) => {
                                 const selectedList = m.s_slujinnya_spysok 
                                   ? m.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
                                   : [];
                                 const isChecked = selectedList.includes(opt);
+                                const slStyle = getSlujStyle(opt);
                                 return (
                                   <label 
                                     key={opt} 
@@ -668,7 +747,19 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                                       }}
                                       className="h-3 w-3 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                                     />
-                                    <span className={isChecked ? 'text-emerald-950 font-extrabold' : ''}>{opt}</span>
+                                    <span 
+                                      style={{
+                                        backgroundColor: slStyle.bg,
+                                        color: slStyle.text,
+                                        border: `1px solid ${slStyle.border}`,
+                                        padding: '1px 4px',
+                                        borderRadius: '3px'
+                                      }}
+                                      className={`text-[9.5px] truncate max-w-[160px] ${isChecked ? 'font-black shadow-sm' : 'font-semibold opacity-85'}`}
+                                      title={opt}
+                                    >
+                                      {opt}
+                                    </span>
                                   </label>
                                 );
                               })}
@@ -684,15 +775,23 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                           : [];
                         return selectedList.length > 0 ? (
                           <div className="grid grid-cols-2 gap-1 w-full p-0.5">
-                            {selectedList.map(name => (
-                              <span 
-                                key={name} 
-                                className="bg-emerald-800/10 border border-emerald-800/25 text-[#0d341d] px-1 py-0.5 rounded text-[9px] truncate font-extrabold block text-center shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
-                                title={name}
-                              >
-                                {name}
-                              </span>
-                            ))}
+                            {selectedList.map(name => {
+                              const style = getSlujStyle(name);
+                              return (
+                                <span 
+                                  key={name} 
+                                  style={{
+                                    backgroundColor: style.bg,
+                                    color: style.text,
+                                    borderColor: style.border
+                                  }}
+                                  className="border px-1 py-0.5 rounded text-[9px] truncate font-extrabold block text-center shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
+                                  title={name}
+                                >
+                                  {name}
+                                </span>
+                              );
+                            })}
                           </div>
                         ) : (
                           <span className="text-slate-400 font-bold text-[10px]">немає</span>

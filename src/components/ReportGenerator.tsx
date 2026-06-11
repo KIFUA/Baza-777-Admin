@@ -31,6 +31,8 @@ const AVAILABLE_COLUMNS: ColumnOption[] = [
 
 export default function ReportGenerator({ members = [], lookups }: ReportGeneratorProps) {
   // Available filters configuration (expandable)
+  const [selectedStatus, setSelectedStatus] = useState<string>('Всі');
+  const [selectedVybuttyaId, setSelectedVybuttyaId] = useState<string>('');
   const [selectedRayon, setSelectedRayon] = useState<string>('');
   const [selectedPresviter, setSelectedPresviter] = useState<string>('');
   const [selectedSlujinnya, setSelectedSlujinnya] = useState<string>('');
@@ -40,6 +42,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const [selectedPrysutnist, setSelectedPrysutnist] = useState<string>('');
   const [selectedStat, setSelectedStat] = useState<string>('');
   const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
+  const [internalSearch, setInternalSearch] = useState<string>('');
 
   // Column choices
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
@@ -48,12 +51,15 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
   // Reset all filters
   const handleReset = () => {
+    setSelectedStatus('Всі');
+    setSelectedVybuttyaId('');
     setSelectedRayon('');
     setSelectedPresviter('');
     setSelectedSlujinnya('');
     setSelectedVidviduvanist('');
     setSelectedPrysutnist('');
     setSelectedStat('');
+    setInternalSearch('');
   };
 
   // Extract unique dropdown selections from either lookups or databases dynamically
@@ -95,14 +101,52 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     return Array.from(set).sort();
   }, [lookups, members]);
 
-  // Calculate filtered members
+  // Helper code to deduplicate profile records
+  const isMergedProfile = (m: Member, list: Member[]) => {
+    const pibSelf = String(m.pib || "").trim().toLowerCase();
+    if (!pibSelf) return false;
+    
+    const selfId = Number(m.id);
+    return list.some(other => {
+      const otherId = Number(other.id);
+      if (otherId <= selfId) return false;
+      
+      const otherPib = String(other.pib || "").trim().toLowerCase();
+      if (otherPib !== pibSelf) return false;
+      
+      return other.id_vybuttya === 0;
+    });
+  };
+
+  // Calculate filtered members with case-insensitivity, trim, and duplicate control
   const filteredRecords = useMemo(() => {
     return members.filter(m => {
+      // 0. Status Filter of Active / Inactive
+      if (selectedStatus === 'Наявні') {
+        if (m.id_vybuttya > 0) return false;
+        if (isMergedProfile(m, members)) return false;
+      } else if (selectedStatus === 'Вибулі') {
+        if (m.id_vybuttya === 0) return false;
+        if (isMergedProfile(m, members)) return false;
+        if (selectedVybuttyaId && String(m.id_vybuttya) !== selectedVybuttyaId) return false;
+      } else {
+        // "Всі" members: still deduplicate to match standard active lists
+        if (isMergedProfile(m, members)) return false;
+      }
+
       // 1. Rayon Filter
-      if (selectedRayon && m.rayon2_ukr !== selectedRayon) return false;
+      if (selectedRayon) {
+        const memRayon = String(m.rayon2_ukr || '').trim().toLowerCase();
+        const selRayon = String(selectedRayon).trim().toLowerCase();
+        if (memRayon !== selRayon) return false;
+      }
 
       // 2. Presviter Filter
-      if (selectedPresviter && m.presviter !== selectedPresviter) return false;
+      if (selectedPresviter) {
+        const memCaretaker = String(m.presviter || '').trim().toLowerCase();
+        const selCaretaker = String(selectedPresviter).trim().toLowerCase();
+        if (memCaretaker !== selCaretaker) return false;
+      }
 
       // 3. Slujinnya Filter
       if (selectedSlujinnya) {
@@ -113,17 +157,40 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       }
 
       // 4. Vidviduvanist Filter
-      if (selectedVidviduvanist && m.vidviduvanist !== selectedVidviduvanist) return false;
+      if (selectedVidviduvanist) {
+        const memVidvid = String(m.vidviduvanist || '').trim().toLowerCase();
+        const selVidvid = String(selectedVidviduvanist).trim().toLowerCase();
+        if (memVidvid !== selVidvid) return false;
+      }
 
       // 5. Prysutnist Filter
-      if (selectedPrysutnist && m.prysutnist !== selectedPrysutnist) return false;
+      if (selectedPrysutnist) {
+        const memPrysut = String(m.prysutnist || '').trim().toLowerCase();
+        const selPrysut = String(selectedPrysutnist).trim().toLowerCase();
+        if (memPrysut !== selPrysut) return false;
+      }
 
       // 6. Gender Filter
-      if (selectedStat && m.stat !== selectedStat) return false;
+      if (selectedStat) {
+        const memGender = String(m.stat || '').trim().toLowerCase();
+        const selGender = String(selectedStat).trim().toLowerCase();
+        if (memGender !== selGender) return false;
+      }
+
+      // 7. Text Search query filter
+      if (internalSearch) {
+        const q = internalSearch.toLowerCase().trim();
+        const pibMatch = String(m.pib || '').toLowerCase().includes(q);
+        const telMatch = String(m.tel_mob || '').toLowerCase().includes(q);
+        const addMatch = String(m.address || '').toLowerCase().includes(q);
+        const caretMatch = String(m.presviter || '').toLowerCase().includes(q);
+        const rayonMatch = String(m.rayon2_ukr || '').toLowerCase().includes(q);
+        if (!pibMatch && !telMatch && !addMatch && !caretMatch && !rayonMatch) return false;
+      }
 
       return true;
     });
-  }, [members, selectedRayon, selectedPresviter, selectedSlujinnya, selectedVidviduvanist, selectedPrysutnist, selectedStat]);
+  }, [members, selectedStatus, selectedVybuttyaId, selectedRayon, selectedPresviter, selectedSlujinnya, selectedVidviduvanist, selectedPrysutnist, selectedStat, internalSearch]);
 
   // Column Toggle handler
   const handleToggleColumn = (colKey: string) => {
@@ -143,6 +210,15 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
     // Prepare active filters list description
     const activeFiltersText: string[] = [];
+    if (selectedStatus && selectedStatus !== 'Всі') {
+      activeFiltersText.push(`Статус: ${selectedStatus}`);
+      if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
+        const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
+        if (found) {
+          activeFiltersText.push(`Причина вибуття: ${found.Value}`);
+        }
+      }
+    }
     if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
     if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
     if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
@@ -363,10 +439,47 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         {/* Dynamic Filters Area */}
         <div className="bg-[#11252d] rounded-xl border border-[#1f424f] p-4">
           <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-3">Вибір встановлених фільтрів</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex flex-wrap gap-4 items-end">
             
+            {/* Filter: СТАТУС */}
+            <div className="flex flex-col space-y-1 w-full md:w-[130px] shrink-0">
+              <label className="text-xs font-bold text-slate-350">Статус</label>
+              <select
+                value={selectedStatus}
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedStatus(val);
+                  if (val !== 'Вибулі') {
+                    setSelectedVybuttyaId('');
+                  }
+                }}
+                className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+              >
+                <option value="Всі">Всі члени</option>
+                <option value="Наявні">Наявні</option>
+                <option value="Вибулі">Вибулі</option>
+              </select>
+            </div>
+
+            {/* Filter: ПРИЧИНА ВИБУТТЯ */}
+            {selectedStatus === 'Вибулі' && (
+              <div className="flex flex-col space-y-1 w-full md:w-[230px] shrink-0 animate-fade-in">
+                <label className="text-xs font-bold text-slate-350 text-amber-400">Причина вибуття</label>
+                <select
+                  value={selectedVybuttyaId}
+                  onChange={e => setSelectedVybuttyaId(e.target.value)}
+                  className="w-full rounded-lg border border-amber-500/50 p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                >
+                  <option value="">-- Всі причини --</option>
+                  {lookups?.vybuv?.map((v: any) => (
+                    <option key={v.ID} value={String(v.ID)}>{v.Value}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Filter: РАЙОН */}
-            <div className="flex flex-col space-y-1">
+            <div className="flex flex-col space-y-1 w-full md:w-[150px] shrink-0">
               <label className="text-xs font-bold text-slate-350">Район громади</label>
               <select
                 value={selectedRayon}
@@ -381,7 +494,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             </div>
 
             {/* Filter: ОПІКУН */}
-            <div className="flex flex-col space-y-1">
+            <div className="flex flex-col space-y-1 w-full md:w-[220px] shrink-0">
               <label className="text-xs font-bold text-slate-350">Пастор відповідальний / Опікун</label>
               <select
                 value={selectedPresviter}
@@ -396,7 +509,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             </div>
 
             {/* Filter: СЛУЖІННЯ */}
-            <div className="flex flex-col space-y-1">
+            <div className="flex flex-col space-y-1 w-full md:w-[250px] shrink-0">
               <label className="text-xs font-bold text-slate-350">Задіяне християнське служіння</label>
               <select
                 value={selectedSlujinnya}
@@ -410,7 +523,80 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               </select>
             </div>
 
+            {/* Filter: ШВИДКИЙ ПОШУК (Name/Phone) */}
+            <div className="flex flex-col space-y-1 w-full md:w-[180px] shrink-0">
+              <label className="text-xs font-bold text-teal-400">Пошук ім'я / тел.</label>
+              <input
+                type="text"
+                value={internalSearch}
+                onChange={e => setInternalSearch(e.target.value)}
+                placeholder="Фільтр результатів..."
+                className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200 placeholder-slate-400"
+              />
+            </div>
+
           </div>
+
+          {/* Active Filter Chips Area */}
+          {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || internalSearch) && (
+            <div className="mt-4 pt-3 border-t border-[#1f424f]/60 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Активні фільтри:</span>
+              {selectedStatus && selectedStatus !== 'Всі' && (
+                <span className="inline-flex items-center gap-1 bg-teal-950/40 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35">
+                  <span>Статус: {selectedStatus}</span>
+                  <button onClick={() => setSelectedStatus('Всі')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {selectedVybuttyaId && (
+                <span className="inline-flex items-center gap-1 bg-amber-950/40 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/35">
+                  <span>Причина вибуття</span>
+                  <button onClick={() => setSelectedVybuttyaId('')} className="hover:text-red-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {selectedRayon && (
+                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
+                  <span>Район: {selectedRayon}</span>
+                  <button onClick={() => setSelectedRayon('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {selectedPresviter && (
+                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
+                  <span>Опікун: {selectedPresviter}</span>
+                  <button onClick={() => setSelectedPresviter('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {selectedSlujinnya && (
+                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
+                  <span>Служіння: {selectedSlujinnya}</span>
+                  <button onClick={() => setSelectedSlujinnya('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {selectedVidviduvanist && (
+                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
+                  <span>Відвідування: {selectedVidviduvanist}</span>
+                  <button onClick={() => setSelectedVidviduvanist('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {selectedPrysutnist && (
+                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
+                  <span>Причина відсутності: {selectedPrysutnist}</span>
+                  <button onClick={() => setSelectedPrysutnist('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {selectedStat && (
+                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
+                  <span>Стать: {selectedStat}</span>
+                  <button onClick={() => setSelectedStat('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+              {internalSearch && (
+                <span className="inline-flex items-center gap-1 bg-slate-900 border border-slate-700/80 text-teal-200 text-[10px] font-semibold px-2 py-0.5 rounded animate-fade-in">
+                  <span>Пошук: "{internalSearch}"</span>
+                  <button onClick={() => setInternalSearch('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Toggle for Expandable Extra Filters */}
           <div className="mt-3.5 border-t border-[#1f424f] pt-3 flex justify-between items-center">

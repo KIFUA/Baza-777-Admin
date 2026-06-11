@@ -36,6 +36,134 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   // Dropdown cell editing state
   const [editingCell, setEditingCell] = useState<{ id: number; field: 'di_admin' | 's_slujinnya_spysok' | 'vidviduvanist' | 'prysutnist' | 'presviter' | 'rayon2_ukr' } | null>(null);
 
+  // States for the contact dates multi-record modal
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [contactModalMember, setContactModalMember] = useState<Member | null>(null);
+  const [modalDates, setModalDates] = useState<string[]>([]);
+  const [newDateVal, setNewDateVal] = useState('');
+
+  // Helper to parse contact dates safely
+  const parseContactDates = (dKontaktiv?: string): string[] => {
+    if (!dKontaktiv) return [];
+    let tokens = dKontaktiv.split(/[,;\n]+/);
+    let finalTokens: string[] = [];
+    tokens.forEach(t => {
+      const trimmed = t.trim();
+      if (!trimmed) return;
+      
+      if (trimmed.includes(' ') && /\d{2}\.\d{2}\.\d{2}/.test(trimmed)) {
+        const spaceParts = trimmed.split(/\s+/);
+        spaceParts.forEach(sp => {
+          const spt = sp.trim();
+          if (spt) finalTokens.push(spt);
+        });
+      } else {
+        finalTokens.push(trimmed);
+      }
+    });
+    return finalTokens.filter(p => p && p !== '—' && p !== 'н/д');
+  };
+
+  // Helper to get latest contact date
+  const getLatestContactDate = (dKontaktiv?: string): string => {
+    if (!dKontaktiv) return '—';
+    const trimmed = dKontaktiv.trim();
+    if (!trimmed || trimmed === '—' || trimmed === 'н/д') return '—';
+
+    let latestDate: Date | null = null;
+
+    // 1. Check DD.MM.YYYY patterns
+    const dmYRegex = /(\d{1,2})\.(\d{1,2})\.(\d{4})/g;
+    let match;
+    while ((match = dmYRegex.exec(trimmed)) !== null) {
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const year = parseInt(match[3], 10);
+      const parsedDate = new Date(year, month, day);
+      if (!isNaN(parsedDate.getTime())) {
+        if (!latestDate || parsedDate > latestDate) {
+          latestDate = parsedDate;
+        }
+      }
+    }
+
+    // 2. Check YYYY-MM-DD patterns
+    const yMdRegex = /(\d{4})-(\d{1,2})-(\d{1,2})/g;
+    while ((match = yMdRegex.exec(trimmed)) !== null) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const day = parseInt(match[3], 10);
+      const parsedDate = new Date(year, month, day);
+      if (!isNaN(parsedDate.getTime())) {
+        if (!latestDate || parsedDate > latestDate) {
+          latestDate = parsedDate;
+        }
+      }
+    }
+
+    // 3. Check DD.MM.YY patterns
+    const dmY2Regex = /(\b\d{1,2})\.(\d{1,2})\.(\d{2})\b/g;
+    while ((match = dmY2Regex.exec(trimmed)) !== null) {
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const yy = parseInt(match[3], 10);
+      const year = yy + (yy < 50 ? 2000 : 1900);
+      const parsedDate = new Date(year, month, day);
+      if (!isNaN(parsedDate.getTime())) {
+        if (!latestDate || parsedDate > latestDate) {
+          latestDate = parsedDate;
+        }
+      }
+    }
+
+    if (latestDate) {
+      const dd = String(latestDate.getDate()).padStart(2, '0');
+      const mm = String(latestDate.getMonth() + 1).padStart(2, '0');
+      const yyyy = latestDate.getFullYear();
+      return `${dd}.${mm}.${yyyy}`;
+    }
+
+    const parts = trimmed.split(/[\s,;]+/).map(p => p.trim()).filter(Boolean);
+    if (parts.length > 0) {
+      return parts[parts.length - 1];
+    }
+
+    return trimmed;
+  };
+
+  const handleOpenContactModal = (m: Member) => {
+    setContactModalMember(m);
+    const parsed = parseContactDates(m.d_kontaktiv);
+    setModalDates(parsed);
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    setNewDateVal(`${dd}.${mm}.${yyyy}`);
+    setIsContactModalOpen(true);
+  };
+
+  const handleAddNewDate = () => {
+    const trimmed = newDateVal.trim();
+    if (!trimmed) return;
+    setModalDates(prev => [...prev, trimmed]);
+    setNewDateVal('');
+  };
+
+  const handleSaveContactModal = async () => {
+    if (!contactModalMember) return;
+    const joined = modalDates
+      .map(d => d.trim())
+      .filter(Boolean)
+      .join(', ');
+      
+    const ok = await onUpdateMember(contactModalMember.id, { d_kontaktiv: joined });
+    if (ok) {
+      setIsContactModalOpen(false);
+      setContactModalMember(null);
+    }
+  };
+
   const caregivers = useMemo(() => {
     return (lookups?.directories?.opika as string[]) || [
       "Бевзюк В.", "Бурчак Ю.", "Галюк Б.", "Дмитраш М.", "Євстратов О.", 
@@ -664,34 +792,21 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       const bgClass = getContactDateBgClass(m.d_kontaktiv);
                       const isSalat = bgClass === 'bg-[#69DD90]';
                       const textClass = isSalat ? 'text-[#06331a]' : 'text-rose-950';
+                      const latestDateUA = getLatestContactDate(m.d_kontaktiv);
                       return (
-                        <td className={`py-1 px-1 border-r border-[#8fba94] text-center w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] relative group/cell ${bgClass}`}>
-                          {isEditing ? (
-                            <div className="flex items-center space-x-0.5" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="text"
-                                value={editingDates}
-                                onChange={(e) => setEditingDates(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleSaveEdit(m.id);
-                                  if (e.key === 'Escape') setEditingId(null);
-                                }}
-                                className="w-full bg-white border border-emerald-500 rounded px-1 py-0.5 text-[8px] sm:text-[9px] font-bold font-mono focus:outline-none"
-                                placeholder="ДД.ММ.РРРР"
-                                autoFocus
-                              />
-                            </div>
-                          ) : (
-                            <div 
-                              className="flex items-center justify-between min-h-6"
-                               onClick={(e) => { e.stopPropagation(); handleStartEdit(m); }}
-                              title="Швидке редагування дати контакту"
-                            >
-                              <span className={`font-extrabold font-mono tracking-tighter text-[8px] xs:text-[8.5px] sm:text-[9px] mx-auto ${textClass}`}>
-                                 {formatDateToUA(m.d_kontaktiv)}
-                              </span>
-                            </div>
-                          )}
+                        <td 
+                          className={`py-1 px-1 border-r border-[#8fba94] text-center w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] relative group/cell cursor-pointer select-none hover:brightness-95 transition-all ${bgClass}`}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenContactModal(m);
+                          }}
+                          title="Двічі клацніть для перегляду та редагування всіх дат контактів"
+                        >
+                          <div className="flex items-center justify-between min-h-6">
+                            <span className={`font-extrabold font-mono tracking-tighter text-[8px] xs:text-[8.5px] sm:text-[9.2px] mx-auto ${textClass}`}>
+                              {latestDateUA}
+                            </span>
+                          </div>
                         </td>
                       );
                     })()}
@@ -883,6 +998,123 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           </tbody>
         </table>
       </div>
+
+      {/* Contact Dates Modal */}
+      {isContactModalOpen && contactModalMember && (
+        <div className="fixed inset-0 bg-[#071318]/70 backdrop-blur-xs z-[300] flex items-center justify-center p-3 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg shadow-xl border border-[#b2dad3]/40 max-w-[325px] w-full overflow-hidden flex flex-col scale-in duration-150">
+            {/* Header */}
+            <div className="bg-[#113a31] px-4 py-2.5 text-white flex justify-between items-center shrink-0">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#a9e2d7]">Контакти з пресвітерами</span>
+              <button 
+                onClick={() => {
+                  setIsContactModalOpen(false);
+                  setContactModalMember(null);
+                }}
+                className="text-white/60 hover:text-white p-0.5 rounded hover:bg-white/10 transition-colors"
+                title="Закрити вікно"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Member name */}
+            <div className="bg-[#f0f8f6] border-b border-[#ddeee9] px-4 py-2 shrink-0">
+              <span className="text-[8px] uppercase tracking-wider text-[#2d6e60] font-bold block">Член церкви</span>
+              <h3 className="text-xs font-bold text-[#0d2a24] tracking-tight truncate">{contactModalMember.pib}</h3>
+            </div>
+
+            {/* Existing Contact Dates */}
+            <div className="px-4 py-2.5 flex-1 overflow-y-auto max-h-[145px] space-y-1.5 bg-white">
+              <span className="text-[8.5px] uppercase tracking-wider text-slate-400 font-bold block">Усі збережені дати:</span>
+              
+              {modalDates.length === 0 ? (
+                <p className="text-[11px] text-slate-400 italic py-1">Записів про контакти ще немає.</p>
+              ) : (
+                <div className="space-y-1">
+                  {modalDates.map((date, idx) => (
+                    <div key={idx} className="flex items-center space-x-1.5">
+                      <div className="text-[9px] font-bold text-[#5fa396] font-mono w-4">#{idx + 1}</div>
+                      <input
+                        type="text"
+                        value={date}
+                        onChange={(e) => {
+                          const updated = [...modalDates];
+                          updated[idx] = e.target.value;
+                          setModalDates(updated);
+                        }}
+                        className="flex-1 bg-white border border-[#d3eae5] hover:border-[#a8ddd1] rounded-md px-2 py-0.5 text-[11px] font-mono font-bold text-slate-700 focus:border-[#113a31] focus:ring-1 focus:ring-[#113a31]/10 focus:outline-none transition-all"
+                        placeholder="ДД.ММ.РРРР"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = modalDates.filter((_, i) => i !== idx);
+                          setModalDates(updated);
+                        }}
+                        className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50/50 rounded transition-colors font-bold text-[10px]"
+                        title="Видалити"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* New Entry (at the bottom) */}
+            <div className="border-t border-[#e8f5f2] px-4 py-2.5 bg-[#fafffe] shrink-0">
+              <span className="text-[8.5px] uppercase tracking-wider text-[#1e584f] font-bold block mb-1">Створити новий запис:</span>
+              <div className="flex items-center space-x-1.5">
+                <input
+                  type="text"
+                  value={newDateVal}
+                  onChange={(e) => setNewDateVal(e.target.value)}
+                  className="flex-1 bg-white border border-[#cedfdb] hover:border-[#a8ddd1] rounded-md px-2.5 py-1 text-[11px] font-mono font-bold text-slate-700 focus:border-[#113a31] focus:ring-1 focus:ring-[#113a31]/10 focus:outline-none transition-all placeholder:font-mono"
+                  placeholder="ДД.ММ.РРРР"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddNewDate();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddNewDate}
+                  className="px-2.5 bg-[#1e584f] hover:bg-[#113a31] text-white font-extrabold rounded-md shadow-xs hover:shadow-sm transition-colors text-xs h-[24px] flex items-center justify-center focus:outline-none cursor-pointer"
+                  title="Додати новий запис"
+                >
+                  +
+                </button>
+              </div>
+              <p className="text-[7.5px] text-slate-400 mt-1 leading-normal">Формат: <span className="font-mono text-[8px] bg-slate-100 px-1 py-0.5 rounded">ДД.ММ.РРРР</span>. Натисніть "+", потім "Зберегти".</p>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-[#e8f5f2] px-4 py-2 bg-[#f4faf8] flex justify-end space-x-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsContactModalOpen(false);
+                  setContactModalMember(null);
+                }}
+                className="px-2.5 py-1 text-[10px] font-bold text-[#1e584f] hover:text-[#113a31] bg-white border border-[#cedfdb] hover:bg-slate-50 rounded transition-all"
+              >
+                Скасувати
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveContactModal}
+                className="px-3 py-1 text-[10px] font-extrabold text-white bg-[#1e584f] hover:bg-[#113a31] rounded shadow-xs hover:shadow-sm transition-all"
+              >
+                Зберегти
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -1214,6 +1214,7 @@ app.post("/api/sync-sheets", async (req, res) => {
               firebaseUpdates[`members/${nextId}/04_STRUCTURA/7_d_kontaktiv`] = newMember.d_kontaktiv;
               firebaseUpdates[`members/${nextId}/04_STRUCTURA/d_kontaktiv`] = newMember.d_kontaktiv;
               firebaseUpdates[`members/${nextId}/04_STRUCTURA/3_san`] = newMember.di_admin;
+              firebaseUpdates[`members/${nextId}/04_STRUCTURA/hsd`] = !!newMember.hsd;
               firebaseUpdates[`members/${nextId}/03_ADRESA/address`] = newMember.address;
               if (newMember.s_slujinnya_spysok) {
                 const slujList = newMember.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean);

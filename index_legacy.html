@@ -97,7 +97,7 @@
         </button>
       </div>
       
-      <div class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg">
+      <div id="legacySearchSection" class="bg-cardBg border border-borderClr rounded-lg p-3 shadow-lg">
         <!-- КНОПКИ ШВИДКОГО ФІЛЬТРУ ЧЛЕНСТВА -->
         <div id="quickFilterContainer" class="flex gap-1.5 mb-3">
           <button
@@ -1627,6 +1627,10 @@
           if (autoId) {
             console.log("Auto-selecting member ID:", autoId);
             selectMember(autoId);
+            const searchSec = document.getElementById("legacySearchSection");
+            if (searchSec) {
+              searchSec.classList.add("hidden");
+            }
           }
         } else {
           statusEl.textContent = "База порожня";

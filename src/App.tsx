@@ -10,7 +10,7 @@ import DirectoriesManager from './components/DirectoriesManager';
 import { 
   Users, UserCheck, Heart, Shield, History, BarChart3, Search, 
   MapPin, Phone, UserPlus, Filter, RotateCcw, ChevronLeft, ChevronRight, BookOpen,
-  Table2, Lock
+  Table2, X
 } from 'lucide-react';
 
 export default function App() {
@@ -25,7 +25,6 @@ export default function App() {
   // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'settings' (НАЛАШТУВАННЯ)
   const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'settings'>('spreadsheet');
   const [activeTab, setActiveTab] = useState<'members' | 'pastoral' | 'history' | 'stats'>('members');
-  const [activeAnketaId, setActiveAnketaId] = useState<number | null>(null);
 
   // Interactive local session simulator based on Google Sheet tab "ДОСТУП"
   const [currentSessionUser, setCurrentSessionUser] = useState<any>(null);
@@ -166,19 +165,6 @@ export default function App() {
       delete (window as any).__bazaNotifyDatabaseChanged;
     };
   }, []);
-
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && activeAnketaId) {
-        setActiveAnketaId(null);
-        await fetchAllMembers();
-        await fetchMembers();
-        await preloadRawFirebase();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeAnketaId]);
 
 
 
@@ -401,33 +387,29 @@ export default function App() {
                 <SpreadsheetView
                   members={allMembers}
                   lookups={lookups}
-                  onOpenProfile={(id) => {
-                    setActiveAnketaId(id);
+                  onOpenProfile={async (id) => {
+                    setSelectedMemberId(id);
+                    setMainMode('questionnaire');
                   }}
                   onUpdateMember={handleSpreadsheetUpdate}
                 />
               )
             ) : mainMode === 'questionnaire' ? (
               /* Questionnaire Legacy Embedded View */
-              <div className="flex-1 flex flex-col min-h-0 bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
-                {/* Visual Utility Bar to help transition from iframe to standalone window */}
-                {isAdmin && selectedMemberId && (
-                  <div className="bg-[#222222] px-4 py-2 flex items-center justify-end border-b border-[#1a1a1a]">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={async () => {
-                          setSelectedMemberId(null);
-                          await fetchAllMembers();
-                          await fetchMembers();
-                        }}
-                        className="bg-zinc-700 hover:bg-zinc-600 hover:text-white px-3 py-1.5 text-[11px] text-slate-200 font-bold rounded-md transition-colors cursor-pointer"
-                      >
-                        Очистити вибір
-                      </button>
-                    </div>
+              <div className="flex-1 flex flex-col min-h-[450px] bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
+                {!isAdmin && !selectedMemberId ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                    <p className="text-zinc-500 text-[11px] font-normal tracking-wide">
+                      Ці записи тільки для адміністратора
+                    </p>
                   </div>
+                ) : (
+                  <iframe 
+                    src={`/index_legacy.html?merge=before${selectedMemberId ? `&id=${selectedMemberId}` : ''}`} 
+                    className="w-full h-full border-0 flex-1" 
+                    title="Legacy Questionnaire"
+                  ></iframe>
                 )}
-                <iframe src={`/index_legacy.html?merge=before${selectedMemberId ? `&id=${selectedMemberId}` : ''}`} className="w-full h-full border-0" title="Legacy Questionnaire"></iframe>
               </div>
             ) : mainMode === 'settings' ? (
               <DirectoriesManager
@@ -449,65 +431,6 @@ export default function App() {
       </footer>
 
       </div>
-
-      {/* Legacy Anketa Overlay Tool Suite (No tab navigation required) */}
-      {activeAnketaId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-6 md:p-10 animate-fade-in">
-          <div className="bg-[#1b1b1b] w-full max-w-7xl h-full rounded-2xl flex flex-col overflow-hidden shadow-2xl border border-emerald-800/40">
-            {/* Elegant Header with control suite */}
-            <div className="bg-[#142327] border-b border-emerald-900/40 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="flex items-center space-x-3">
-                <span className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
-                <div>
-                  <h3 className="text-white text-sm md:text-base font-extrabold tracking-wide uppercase">
-                    Картка особи в реальному часі • ID {activeAnketaId}
-                  </h3>
-                  <p className="text-[10px] md:text-xs text-emerald-400 font-medium">
-                    Спільний локальний кеш та Firebase Realtime Database. Синхронізація 100% залізна!
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center space-x-3 shrink-0">
-                {isAdmin && (
-                  <button
-                    onClick={() => window.open(`/index_legacy.html?merge=before&id=${activeAnketaId}`, '_blank')}
-                    className="bg-[#0e3b2a] hover:bg-[#15563e] border border-emerald-700/60 text-emerald-300 font-bold text-xs py-2 px-3.5 rounded-lg transition-all flex items-center space-x-1.5 cursor-pointer shadow-md"
-                    title="Відкрити анкету цієї особи в новому повному вікні"
-                  >
-                    <span>Відкрити в новому вікні ↗</span>
-                  </button>
-                )}
-                
-                <button
-                  onClick={async () => {
-                    setActiveAnketaId(null);
-                    // Refresh parent lists with any newly saved profile details
-                    setSpreadsheetLoading(true);
-                    await fetchAllMembers();
-                    await fetchMembers();
-                    await preloadRawFirebase();
-                    setSpreadsheetLoading(false);
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs py-2 px-5 rounded-lg transition-all cursor-pointer shadow-md transform active:scale-95"
-                >
-                  ЗБЕРЕГТИ & ЗАКРИТИ (Esc)
-                </button>
-              </div>
-            </div>
-
-            {/* Embedded legacy frame */}
-            <div className="flex-1 bg-[#222222] relative">
-              <iframe 
-                src={`/index_legacy.html?merge=before&id=${activeAnketaId}`} 
-                className="w-full h-full border-0 absolute inset-0" 
-                title="Legacy Modal Interactive Questionnaire"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

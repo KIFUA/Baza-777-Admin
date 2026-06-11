@@ -697,7 +697,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6]">Опіка</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-48 min-w-[192px] max-w-[192px] bg-[#b2cfb6]">Служіння</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Відвідування</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Присутність</th>
+              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-24 min-w-[96px] bg-[#b2cfb6]" title="Причина відсутності">Прич. відсутності</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6]">Вік</th>
               <th className="py-2 px-2 border border-[#8fba94] text-left font-bold min-w-44 bg-[#b2cfb6]">Адрес</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6]">Телефон</th>
@@ -937,7 +937,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     {/* "Відвідуваність" Inline Dropdown (Request 6) */}
                     {renderDropdownCell(m, 'vidviduvanist', lookups?.directories?.vidviduvanist || [], 'н/д', 'text-slate-700 bg-slate-100/70 rounded-full px-1.5 py-0.5')}
 
-                    {/* "Присутність" Inline Dropdown (Request 6) */}
+                    {/* "Прич. відсутності" Inline Dropdown */}
                     {renderDropdownCell(m, 'prysutnist', lookups?.directories?.prysutnist || [], 'н/д', 'text-blue-700 bg-blue-50 rounded-full px-1.5 py-0.5')}
 
                     {/* Demographics */}

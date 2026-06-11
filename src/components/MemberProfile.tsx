@@ -522,7 +522,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
               {/* Attendance parameters (Requests 8 & 9) */}
               <div className="rounded-xl border border-slate-100 p-5 bg-blue-50/10 space-y-3">
-                <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider block">Оцінка відвідуваності та присутності членів</h4>
+                <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider block">Оцінка відвідуваності та статусу відсутності членів</h4>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="flex flex-col p-3 bg-white rounded-lg border border-slate-100 space-y-1">
                     <div className="flex items-center space-x-2">
@@ -547,7 +547,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <div className="flex flex-col p-3 bg-white rounded-lg border border-slate-100 space-y-1">
                     <div className="flex items-center space-x-2">
                       <div className="h-3.5 w-3.5 rounded-full bg-emerald-500"></div>
-                      <div className="text-[10px] font-semibold text-slate-400 uppercase">Характеристика Присутності (перебування)</div>
+                      <div className="text-[10px] font-semibold text-slate-400 uppercase">Причина відсутності (перебування)</div>
                     </div>
                     <select
                       value={member.prysutnist || ''}

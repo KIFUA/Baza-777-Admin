@@ -57,7 +57,9 @@ export default function App() {
   const [pageSize, setPageSize] = useState(25);
 
   const fetchMembers = async () => {
-    setLoading(true);
+    if (members.length === 0) {
+      setLoading(true);
+    }
     try {
       // Build search query url params
       const params = new URLSearchParams();
@@ -85,7 +87,9 @@ export default function App() {
   };
 
   const fetchAllMembers = async () => {
-    setSpreadsheetLoading(true);
+    if (allMembers.length === 0) {
+      setSpreadsheetLoading(true);
+    }
     try {
       const resp = await fetch('/api/members?status='); // empty status returns all records
       if (resp.ok) {
@@ -291,14 +295,16 @@ export default function App() {
 
           <nav className="flex space-x-1 sm:space-x-2 shrink-0 w-full sm:w-auto justify-center sm:justify-end">
             <button
-              onClick={async () => { 
+              onClick={() => { 
                 setMainMode('spreadsheet'); 
                 setSelectedMemberId(null); 
                 setShowForm(false); 
-                // Instant reload to sync any changes made inside iframe
-                await fetchAllMembers();
-                await fetchMembers();
-                await fetchLookupsAndStats();
+                // Instant load using cache, reload synced changes in background in parallel
+                Promise.all([
+                  fetchAllMembers(),
+                  fetchMembers(),
+                  fetchLookupsAndStats()
+                ]).catch(err => console.error("Error updating tab data:", err));
               }}
               className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
             >
@@ -306,14 +312,16 @@ export default function App() {
             </button>
             <button
               title="Перейти до анкет"
-              onClick={async () => { 
+              onClick={() => { 
                 setMainMode('questionnaire'); 
                 setSelectedMemberId(null); 
                 setShowForm(false); 
-                // Instant reload to keep the iframe raw background data in sync
-                await fetchAllMembers();
-                await fetchMembers();
-                await fetchLookupsAndStats();
+                // Instant load using cache, reload synced changes in background in parallel
+                Promise.all([
+                  fetchAllMembers(),
+                  fetchMembers(),
+                  fetchLookupsAndStats()
+                ]).catch(err => console.error("Error updating tab data:", err));
               }}
               className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
             >
@@ -425,10 +433,7 @@ export default function App() {
 
       </main>
 
-      {/* 3. PORTAL FOOTER CREDENTIAL INDICATOR */}
-      <footer className="bg-slate-900 border-t border-slate-800 text-slate-500 text-[10px] font-mono text-center py-3.5 mt-auto">
-        Архівно-адміністративний кабінет громади • Версія Громади №2.5 (Access Migrated Engine) • {new Date().getFullYear()}
-      </footer>
+
 
       </div>
     </div>

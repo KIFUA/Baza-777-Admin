@@ -476,7 +476,7 @@ export default function DirectoriesManager({
           <div className="space-y-6 animate-fade-in">
             <div>
               <h2 className="font-display text-xl font-bold text-slate-900 tracking-tight">📚 Редактор системних довідників параметрів</h2>
-              <p className="text-xs text-slate-500">Дозволяє коригувати варіанти вибору dropdown-параметрів для полів анкет (опікуни, відвідуваність, присутність)</p>
+              <p className="text-xs text-slate-500">Дозволяє коригувати варіанти вибору dropdown-параметрів для полів анкет (опікуни, відвідуваність, причина відсутності)</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -489,7 +489,7 @@ export default function DirectoriesManager({
                     { id: 'opika', title: 'Опікуни (розподіл служителів класу А)' },
                     { id: 'slujinnya', title: 'Християнські служіння (Служіння)' },
                     { id: 'vidviduvanist', title: 'Характеристики відвідування' },
-                    { id: 'prysutnist', title: 'Характеристики присутності' },
+                    { id: 'prysutnist', title: 'Причини відсутності (prysutnist)' },
                     { id: 'di_admin', title: 'Дії адміністратора (переміщення)' },
                     { id: 'rayon', title: 'Райони структури (rayon)' }
                   ].map(x => (
@@ -531,7 +531,7 @@ export default function DirectoriesManager({
                   )}
                   {selectedDictKey === 'prysutnist' && (
                     <span>
-                      📌 <strong>Характеристики присутності:</strong> Загальний статус перебування та залученості члена церкви в повсякденне життя громади.
+                      📌 <strong>Причина відсутності (перебування):</strong> Статус або причина, по якій член церкви тимчасово чи постійно не відвідує зібрання, групи чи служіння (наприклад: ЗСУ, за кордоном, немічний тощо).
                     </span>
                   )}
                   {selectedDictKey === 'rayon' && (

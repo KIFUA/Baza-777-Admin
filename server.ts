@@ -921,7 +921,7 @@ app.post("/api/sync-sheets", async (req, res) => {
           const contactColIdx = getColIndex(headers, ["Дати контактів з пресвітером", "ДАТА КОНТАКТУ з пресвітером", "ДАТА КОНТАКТУ", "контакт", "пресвітер", "пресвитер", "d_kontaktiv", "kontakt"]);
           const ministryColIdx = getColIndex(headers, ["СЛУЖІННЯ", "служiння", "СОУДІЕЕЯ", "соудiеея", "sluj", "slujinnya"]);
           const attendanceColIdx = getColIndex(headers, ["ВІДВІДУВАННЯ", "відвідуваність", "вiдвiдуванiсть", "відвідув", "vidviduvanist", "attendance"]);
-          const presenceColIdx = getColIndex(headers, ["ПРИСУТНІСТЬ", "присутність", "присутнiсть", "prysutnist", "presence"]);
+          const presenceColIdx = getColIndex(headers, ["ПРИЧ. ВІДСУТНОСТІ", "причина відсутності", "прич. відсутності", "ПРИСУТНІСТЬ", "присутність", "присутнiсть", "prysutnist", "presence"]);
 
           const opikaColIdx = getColIndex(headers, ["ОПІКА", "опіка", "опiка", "opika", "presviter"]);
           const diAdminColIdx = getColIndex(headers, ["ДІЇ", "дiї", "di_admin", "адміністратор"]);

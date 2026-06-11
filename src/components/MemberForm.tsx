@@ -506,14 +506,14 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-700">Характеристика Присутності (вимоги 9)</label>
+            <label className="text-xs font-semibold text-slate-700">Причина відсутності</label>
             <select
               name="prysutnist"
               value={formData.prysutnist || ''}
               onChange={handleChange}
               className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none bg-white"
             >
-              <option value="">-- Оберіть статус перебування --</option>
+              <option value="">-- Оберіть причину відсутності --</option>
               {prysutnistOptions.map((o: string) => (
                 <option key={o} value={o}>{o}</option>
               ))}

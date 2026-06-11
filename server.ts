@@ -94,7 +94,7 @@ const DEFAULT_SLUJINNYA = [
 ];
 
 const DEFAULT_VIDVIDUVANIST_PARAMS = [
-  "Постійно", "Періодично", "Рідко", "Ніколи", "Хворий", "Проблемний", "Замітка", "еміграція", "вивести з списку ЦЕРКВИ"
+  "Постійно", "Періодично", "Рідко", "Ніколи"
 ];
 
 const DEFAULT_PRYSUTNIST_PARAMS = [
@@ -315,7 +315,8 @@ function loadDatabase() {
       s_vulicya = db.s_vulicya || [];
       directories_opika = db.directories_opika || [...DEFAULT_OPIKA];
       directories_slujinnya = db.directories_slujinnya || [...DEFAULT_SLUJINNYA];
-      directories_vidviduvanist = db.directories_vidviduvanist || [...DEFAULT_VIDVIDUVANIST_PARAMS];
+      directories_vidviduvanist = (db.directories_vidviduvanist || [...DEFAULT_VIDVIDUVANIST_PARAMS]).filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
+      if (directories_vidviduvanist.length === 0) directories_vidviduvanist = [...DEFAULT_VIDVIDUVANIST_PARAMS];
       directories_prysutnist = db.directories_prysutnist || [...DEFAULT_PRYSUTNIST_PARAMS];
       directories_di_admin = db.directories_di_admin || [...DEFAULT_DI_ADMIN];
       directories_rayon2 = ((db as any).directories_rayon2 || [...DEFAULT_RAYON2])
@@ -834,7 +835,10 @@ app.post("/api/sync-sheets", async (req, res) => {
     
     if (freshOpika.length > 0) directories_opika = freshOpika;
     if (freshSlujinnya.length > 0) directories_slujinnya = freshSlujinnya;
-    if (freshVidviduvanist.length > 0) directories_vidviduvanist = freshVidviduvanist;
+    if (freshVidviduvanist.length > 0) {
+      directories_vidviduvanist = freshVidviduvanist.filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
+      if (directories_vidviduvanist.length === 0) directories_vidviduvanist = [...DEFAULT_VIDVIDUVANIST_PARAMS];
+    }
     if (freshPrysutnist.length > 0) directories_prysutnist = freshPrysutnist;
     if (freshDiAdmin.length > 0) directories_di_admin = freshDiAdmin;
 
@@ -1461,7 +1465,10 @@ app.post("/api/directories/save", async (req, res) => {
   
   if (Array.isArray(opika)) directories_opika = opika;
   if (Array.isArray(slujinnya)) directories_slujinnya = slujinnya;
-  if (Array.isArray(vidviduvanist)) directories_vidviduvanist = vidviduvanist;
+  if (Array.isArray(vidviduvanist)) {
+    directories_vidviduvanist = vidviduvanist.filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
+    if (directories_vidviduvanist.length === 0) directories_vidviduvanist = [...DEFAULT_VIDVIDUVANIST_PARAMS];
+  }
   if (Array.isArray(prysutnist)) directories_prysutnist = prysutnist;
   if (Array.isArray(di_admin)) directories_di_admin = di_admin;
   
@@ -2287,7 +2294,10 @@ async function syncDirectoriesFromFirebase() {
         directories_slujinnya = slList;
       }
       
-      if (Array.isArray(data.vidviduvanist)) directories_vidviduvanist = data.vidviduvanist;
+      if (Array.isArray(data.vidviduvanist)) {
+        directories_vidviduvanist = data.vidviduvanist.filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
+        if (directories_vidviduvanist.length === 0) directories_vidviduvanist = [...DEFAULT_VIDVIDUVANIST_PARAMS];
+      }
       if (Array.isArray(data.prysutnist)) directories_prysutnist = data.prysutnist;
       if (Array.isArray(data.di_admin)) directories_di_admin = data.di_admin;
       

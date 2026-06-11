@@ -61,7 +61,11 @@ export default function DirectoriesManager({
   // Load selected dictionary items from lookups
   useEffect(() => {
     if (lookups?.directories) {
-      const list = lookups.directories[selectedDictKey] || [];
+      let list = lookups.directories[selectedDictKey] || [];
+      if (selectedDictKey === 'vidviduvanist') {
+        list = list.filter((item: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(item));
+        if (list.length === 0) list = ["Постійно", "Періодично", "Рідко", "Ніколи"];
+      }
       setDictItems([...list]);
     }
   }, [selectedDictKey, lookups]);

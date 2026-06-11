@@ -33,8 +33,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     "ЦЕНТР", "АЕРОПОРТ", "КАСКАД", "ПОЗИТРОН", "БАМ", "МИКИТИНЦІ", "КРИХІВЦІ", "ХРИПЛИН", "УГОРНИКИ", "ВОВЧИНЕЦЬ", "ПАСІЧНА", "ДІБРОВА"
   ];
 
-  const vidviduvanistOptions = lookups?.directories?.vidviduvanist || [
-    "Постійно", "Періодично", "Рідко", "Ніколи", "Хворий", "Проблемний", "Замітка"
+  const vidviduvanistOptions = [
+    "Постійно", "Періодично", "Рідко", "Ніколи"
   ];
 
   const prysutnistOptions = lookups?.directories?.prysutnist || [

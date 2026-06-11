@@ -138,8 +138,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
     "Черняк Вікт.", "Шегда П.", "Шпарман Ю.", "Черняк Вас."
   ];
 
-  const vidviduvanistOptions = lookups?.directories?.vidviduvanist || [
-    "Постійно", "Періодично", "Рідко", "Ніколи", "Хворий", "Проблемний", "Замітка"
+  const vidviduvanistOptions = [
+    "Постійно", "Періодично", "Рідко", "Ніколи"
   ];
 
   const prysutnistOptions = lookups?.directories?.prysutnist || [

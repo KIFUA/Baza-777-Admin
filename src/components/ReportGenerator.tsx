@@ -86,10 +86,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   }, [lookups, members]);
 
   const uniqueVidvid = useMemo(() => {
-    if (lookups?.directories?.vidviduvanist) return lookups.directories.vidviduvanist;
-    const set = new Set(members.map(m => m.vidviduvanist).filter(Boolean));
-    return Array.from(set).sort();
-  }, [lookups, members]);
+    return ["Постійно", "Періодично", "Рідко", "Ніколи"];
+  }, []);
 
   const uniquePrysut = useMemo(() => {
     if (lookups?.directories?.prysutnist) return lookups.directories.prysutnist;

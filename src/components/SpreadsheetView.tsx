@@ -17,6 +17,17 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   const [searchQuery, setSearchQuery] = useState('');
   const [showRayonColumn, setShowRayonColumn] = useState(false);
   
+  // Responsive screen size tracking
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   // Inline edit state
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingDates, setEditingDates] = useState('');
@@ -113,9 +124,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     return [...list].sort((a, b) => (a.pib || '').localeCompare(b.pib || '', 'uk-UA'));
   }, [members, filterType, searchQuery]);
 
-  // Calculate dynamic ПІБ column width based on the longest record
+  // Calculate dynamic ПІБ column width based on the longest record, optimized for mobile screens
   const pibColumnWidth = useMemo(() => {
-    if (!filteredMembers || filteredMembers.length === 0) return 180;
+    const isMobile = windowWidth < 640;
+    if (!filteredMembers || filteredMembers.length === 0) return isMobile ? 120 : 180;
     
     try {
       const canvas = document.createElement("canvas");
@@ -145,8 +157,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           }
         });
         // Scale/button/padding spacing buffer
-        const finalWidth = maxWidth + 72;
-        return Math.max(160, Math.ceil(finalWidth));
+        // On mobile, since we hide the "Анкета ↗" button, we only need a tiny padding buffer (e.g., 20px)
+        const finalWidth = maxWidth + (isMobile ? 22 : 64);
+        const minWidth = isMobile ? 115 : 155;
+        return Math.max(minWidth, Math.ceil(finalWidth));
       }
     } catch (e) {}
 
@@ -158,8 +172,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       const len = Math.max(lastName.length, givenName.length * 0.85);
       if (len > maxCharLen) maxCharLen = len;
     });
-    return Math.max(160, maxCharLen * 7.5 + 75);
-  }, [filteredMembers]);
+    const finalFallbackWidth = maxCharLen * 7.5 + (isMobile ? 22 : 68);
+    const minFallbackWidth = isMobile ? 115 : 155;
+    return Math.max(minFallbackWidth, finalFallbackWidth);
+  }, [filteredMembers, windowWidth]);
 
   const rayonColWidth = 90;
   const pibLeftSticky = showRayonColumn ? (40 + rayonColWidth) : 40;
@@ -631,7 +647,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                             e.stopPropagation();
                             onOpenProfile(m.id);
                           }}
-                          className="opacity-0 group-hover:opacity-100 ml-1 px-1.5 py-0.5 text-[9px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded flex items-center space-x-0.5 transition-all text-center h-5 shrink-0 scale-75 origin-center"
+                          className="opacity-0 group-hover:opacity-100 hidden sm:flex ml-1 px-1.5 py-0.5 text-[9px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded items-center space-x-0.5 transition-all text-center h-5 shrink-0 scale-75 origin-center"
                           title="Двічі клацніть або натисніть сюди, щоб редагувати анкету цієї особи у вікні"
                         >
                           <span className="tracking-tighter">Анкета ↗</span>

@@ -289,19 +289,21 @@ export default function App() {
       
       <div className="w-full max-w-[1100px] mx-auto flex flex-col h-full min-h-0 px-4">
         {/* SLIM TOP BAR (MIMICKING PHOTO 1) */}
-        <div className="text-white py-3 flex flex-wrap gap-4 items-center justify-between">
-          <div className="flex gap-4 items-center">
-            <div className="text-[10px] font-bold text-slate-300 leading-tight">
+        <div className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0">
+          <div className="flex gap-1.5 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
+            <div className="text-[8px] sm:text-[10px] font-bold text-slate-300 leading-tight shrink-0">
               СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
               ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
             </div>
             
-            <div className="bg-[#1a3843] border border-[#142d36] rounded-md px-4 py-1.5 ml-10 flex text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center">
-              ВСЬОГО ЧЛЕНІВ ЦЕРКВИ <span className="ml-4 font-black text-sm">{members.length}</span>
+            <div className="bg-[#1a3843] border border-[#142d36] rounded px-1 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap">
+              <span className="hidden sm:inline mr-2">ВСЬОГО ЧЛЕНІВ ЦЕРКВИ</span>
+              <span className="sm:hidden mr-1">ВСЬОГО</span>
+              <span className="font-black text-[10px] sm:text-sm text-white">{members.length}</span>
             </div>
           </div>
 
-          <nav className="flex space-x-2">
+          <nav className="flex space-x-1 sm:space-x-2 shrink-0 w-full sm:w-auto justify-center sm:justify-end">
             <button
               onClick={async () => { 
                 setMainMode('spreadsheet'); 
@@ -312,7 +314,7 @@ export default function App() {
                 await fetchMembers();
                 await fetchLookupsAndStats();
               }}
-              className={`px-5 py-2 text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+              className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
             >
               СПИСОК
             </button>
@@ -327,17 +329,17 @@ export default function App() {
                 await fetchMembers();
                 await fetchLookupsAndStats();
               }}
-              className={`px-5 py-2 text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+              className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
             >
               АНКЕТИ
             </button>
             <button
-              className="px-5 py-2 text-xs font-bold rounded-md tracking-wider uppercase bg-[#1a3843] text-slate-400 opacity-50 cursor-not-allowed"
+              className="px-1.5 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold rounded-md tracking-wider uppercase bg-[#1a3843] text-slate-400 opacity-50 cursor-not-allowed"
             >
               ОПІКА
             </button>
             <button
-              className="px-5 py-2 text-xs font-bold rounded-md tracking-wider uppercase bg-[#1a3843] text-slate-400 opacity-50 cursor-not-allowed"
+              className="px-1.5 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold rounded-md tracking-wider uppercase bg-[#1a3843] text-slate-400 opacity-50 cursor-not-allowed"
             >
               СТАТ-КА
             </button>

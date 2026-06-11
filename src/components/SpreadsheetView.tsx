@@ -127,7 +127,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   // Calculate dynamic ПІБ column width based on the longest record, optimized for mobile screens
   const pibColumnWidth = useMemo(() => {
     const isMobile = windowWidth < 640;
-    if (!filteredMembers || filteredMembers.length === 0) return isMobile ? 120 : 180;
+    if (!filteredMembers || filteredMembers.length === 0) return isMobile ? 95 : 180;
     
     try {
       const canvas = document.createElement("canvas");
@@ -137,17 +137,17 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         filteredMembers.forEach(m => {
           const parts = (m.pib || "").trim().split(/\s+/);
           if (parts.length <= 1) {
-            ctx.font = "800 12px Inter, system-ui, -apple-system, sans-serif";
+            ctx.font = isMobile ? "800 9px Inter, sans-serif" : "800 12px Inter, sans-serif";
             const w1 = ctx.measureText(m.pib || "").width;
             if (w1 > maxWidth) maxWidth = w1;
           } else {
             const lastName = parts[0];
             const givenName = parts.slice(1).join(" ");
             
-            ctx.font = "800 12px Inter, system-ui, -apple-system, sans-serif";
+            ctx.font = isMobile ? "800 9px Inter, sans-serif" : "800 12px Inter, sans-serif";
             const w1 = ctx.measureText(lastName).width;
             
-            ctx.font = "600 10px Inter, system-ui, -apple-system, sans-serif";
+            ctx.font = isMobile ? "600 8px Inter, sans-serif" : "600 10px Inter, sans-serif";
             const w2 = ctx.measureText(givenName).width;
             
             const cellMax = Math.max(w1, w2);
@@ -157,10 +157,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           }
         });
         // Scale/button/padding spacing buffer
-        // On mobile, since we hide the "Анкета ↗" button, we only need a tiny padding buffer (e.g., 20px)
-        const finalWidth = maxWidth + (isMobile ? 22 : 64);
-        const minWidth = isMobile ? 115 : 155;
-        return Math.max(minWidth, Math.ceil(finalWidth));
+        const finalWidth = maxWidth + (isMobile ? 10 : 64);
+        const minWidth = isMobile ? 80 : 155;
+        const calculatedWidth = Math.max(minWidth, Math.ceil(finalWidth));
+        return isMobile ? Math.min(100, calculatedWidth) : calculatedWidth;
       }
     } catch (e) {}
 
@@ -172,13 +172,16 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       const len = Math.max(lastName.length, givenName.length * 0.85);
       if (len > maxCharLen) maxCharLen = len;
     });
-    const finalFallbackWidth = maxCharLen * 7.5 + (isMobile ? 22 : 68);
-    const minFallbackWidth = isMobile ? 115 : 155;
-    return Math.max(minFallbackWidth, finalFallbackWidth);
+    const finalFallbackWidth = maxCharLen * (isMobile ? 5.5 : 7.5) + (isMobile ? 12 : 68);
+    const minFallbackWidth = isMobile ? 80 : 155;
+    const calculatedFallback = Math.max(minFallbackWidth, finalFallbackWidth);
+    return isMobile ? Math.min(100, calculatedFallback) : calculatedFallback;
   }, [filteredMembers, windowWidth]);
 
+  const isMobile = windowWidth < 640;
+  const indexColWidth = isMobile ? 22 : 40;
   const rayonColWidth = 90;
-  const pibLeftSticky = showRayonColumn ? (40 + rayonColWidth) : 40;
+  const pibLeftSticky = showRayonColumn ? (indexColWidth + rayonColWidth) : indexColWidth;
 
   // Style lookups matching Google Sheets exactly
   const getOpikaStyle = (val: string) => {
@@ -457,30 +460,30 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     <div id="spreadsheet_container" className="flex-1 flex flex-col bg-transparent overflow-hidden min-h-0">
       
       {/* Search & Mode filters rail */}
-      <div className="px-4 py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center sm:justify-start gap-4 shrink-0 shadow-sm">
+      <div className="px-1.5 py-1.5 sm:px-4 sm:py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-row items-center justify-between gap-2 shrink-0 shadow-sm">
         
         {/* Status filtering widgets (Наявні / Вибулі / Всі) */}
         {isAdmin && (
-          <div className="flex items-center space-x-2 shrink-0">
-            <div className="inline-flex rounded-md bg-[#1a3843] p-1 border border-[#1b3642] w-[216px] justify-between">
+          <div className="flex items-center shrink-0">
+            <div className="inline-flex rounded bg-[#1a3843] p-0.5 border border-[#1b3642] w-[140px] xs:w-[165px] sm:w-[216px] justify-between h-[24px] sm:h-[32px] items-center">
               <button
                 id="filter_active_btn"
                 onClick={() => setFilterType('active')}
-                className={`px-3 py-0.5 rounded text-[9px] font-normal uppercase transition-all ${filterType === 'active' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+                className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'active' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
               >
                 Наявні
               </button>
               <button
                 id="filter_dismissed_btn"
                 onClick={() => setFilterType('dismissed')}
-                className={`px-3 py-0.5 rounded text-[9px] font-normal uppercase transition-all ${filterType === 'dismissed' ? "bg-amber-600 text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+                className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'dismissed' ? "bg-amber-600 text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
               >
                 Вибулі
               </button>
               <button
                 id="filter_all_btn"
                 onClick={() => setFilterType('all')}
-                className={`px-3 py-0.5 rounded text-[9px] font-normal uppercase transition-all ${filterType === 'all' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+                className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'all' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
               >
                 Всі
               </button>
@@ -489,40 +492,41 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         )}
 
         {/* Local Search query box */}
-        <div className={`relative w-full sm:w-80 ${!isAdmin ? 'sm:ml-[232px]' : ''} transition-all`}>
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+        <div className={`relative flex-1 min-w-[100px] sm:max-w-80 sm:w-80 ${!isAdmin ? 'sm:ml-[232px]' : ''} transition-all h-[24px] sm:h-[32px] flex items-center`}>
+          <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-3 sm:h-4 sm:w-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Швидкий фільтр за ПІБ, опікою чи телефоном..."
+            placeholder="Фільтр..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-[#1b3642] pl-9 pr-4 py-1.5 text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
+            className="w-full h-full rounded border border-[#1b3642] pl-6 pr-5 py-0 text-[10px] sm:pl-9 sm:pr-8 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
           />
           {searchQuery && (
             <button 
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-2 text-slate-400 hover:text-slate-600"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3 w-3 sm:h-4 sm:w-4" />
             </button>
           )}
         </div>
 
         {/* Toggle Rayon Column */}
-        <div className="flex items-center space-x-2 shrink-0 sm:ml-auto">
+        <div className="hidden sm:flex items-center space-x-2 shrink-0 sm:ml-auto">
           <button
             id="toggle_rayon_col_btn"
             type="button"
             onClick={() => setShowRayonColumn(!showRayonColumn)}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md border text-[10px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none ${
+            className={`flex items-center space-x-1 px-1.5 py-1 sm:px-3 sm:py-1.5 rounded-md border text-[9px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none ${
               showRayonColumn
                 ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm font-semibold"
                 : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
             }`}
           >
-            <span>Район у таблиці 🧭</span>
-            <span className="opacity-80">
-              {showRayonColumn ? "(Показано)" : "(Приховано)"}
+            <span className="hidden sm:inline">Район у таблиці 🧭</span>
+            <span className="sm:hidden">Район 🧭</span>
+            <span className="opacity-85 text-[8px] sm:text-[10px] ml-0.5">
+              {showRayonColumn ? "(Так)" : "(Ні)"}
             </span>
           </button>
         </div>
@@ -530,19 +534,19 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       </div>
 
       {/* Spreadsheet grid scroll core */}
-      <div className="flex-1 overflow-auto bg-[#cde0cf] max-h-[580px] h-[580px] w-full border border-[#8fba94] rounded-md shadow-inner">
+      <div className="flex-1 overflow-auto bg-[#cde0cf] min-h-[220px] max-h-full w-full border border-[#8fba94] rounded-md shadow-inner">
         <table className="w-full border-collapse border border-[#8fba94] text-[11px] bg-[#cde0cf] select-text">
           <thead className="sticky top-0 z-[100] shadow-[0_1px_2px_rgba(0,0,0,0.1)] outline outline-1 outline-[#8fba94]">
             <tr className="bg-[#b2cfb6] text-[#0d341d]">
               <th 
-                style={{ width: '40px', minWidth: '40px', maxWidth: '40px', left: '0px' }}
-                className="py-2 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[120]"
+                style={{ width: `${indexColWidth}px`, minWidth: `${indexColWidth}px`, maxWidth: `${indexColWidth}px`, left: '0px' }}
+                className="py-1.5 px-0.5 border border-[#8fba94] text-center font-black bg-[#b2cfb6] sticky z-[120] text-[9.5px] sm:text-[11px]"
               >
                 №
               </th>
               {showRayonColumn && (
                 <th 
-                  style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: '40px' }}
+                  style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: `${indexColWidth}px` }}
                   className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[115] shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate"
                 >
                   РАЙОН
@@ -555,11 +559,11 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                   maxWidth: `${pibColumnWidth}px`,
                   left: `${pibLeftSticky}px` 
                 }}
-                className="py-2 px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] sticky z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
+                className="py-2 px-1.5 sm:px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] sticky z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
               >
                 ПІБ
               </th>
-              <th className="py-1 px-1 border border-[#8fba94] text-center text-[10px] font-bold text-[#1e4620] bg-[#c3dfc7] w-[86px] min-w-[86px] max-w-[86px] leading-tight">Дати контактів з пресв.</th>
+              <th className="py-1 px-0.5 border border-[#8fba94] text-center text-[7.5px] sm:text-[10px] font-bold text-[#1e4620] bg-[#c3dfc7] w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] leading-[1.1] sm:leading-tight uppercase sm:normal-case">Дати контактів з пресв.</th>
               <th className="py-2 px-3 border border-[#8fba94] text-left font-bold w-48 min-w-[192px] truncate bg-[#b2cfb6]">ПРИМІТКИ і ПОЯСНЕННЯ</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6]">Дії</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6]">Опіка</th>
@@ -593,8 +597,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                   >
                     {/* Sticky index cell */}
                     <td 
-                      style={{ width: '40px', minWidth: '40px', maxWidth: '40px', left: '0px' }}
-                      className="py-1.5 px-2 border border-[#8fba94] text-center bg-[#b2cfb6] group-hover:bg-[#a8c7ab] font-bold sticky z-20 shadow-[1px_0_2px_rgba(0,0,0,0.05)] text-slate-800"
+                      style={{ width: `${indexColWidth}px`, minWidth: `${indexColWidth}px`, maxWidth: `${indexColWidth}px`, left: '0px' }}
+                      className="py-1 px-0.5 border border-[#8fba94] text-center bg-[#b2cfb6] group-hover:bg-[#a8c7ab] font-bold sticky z-20 shadow-[1px_0_2px_rgba(0,0,0,0.05)] text-slate-800 text-[8.5px] sm:text-[10px]"
                     >
                       {idx + 1}
                     </td>
@@ -607,7 +611,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       '—',
                       'text-[#0a2f16] font-extrabold text-[10px]',
                       {
-                        style: { width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: '40px' },
+                        style: { width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: `${indexColWidth}px` },
                         className: "py-1.5 px-2 border border-[#8fba94] text-center bg-[#c3dfc7]/80 group-hover:bg-[#a8c7ab] sticky z-15 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate text-[10px]"
                       }
                     )}
@@ -620,7 +624,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className="py-1 px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden"
+                      className="py-1 px-1.5 sm:px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden"
                     >
                       <div className="flex items-center justify-between space-x-1">
                         <div className="flex items-center space-x-1 truncate min-w-0 flex-1">
@@ -630,14 +634,14 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                           {(() => {
                             const parts = (m.pib || "").trim().split(/\s+/);
                             if (parts.length <= 1) {
-                              return <span className="truncate text-xs font-extrabold">{m.pib}</span>;
+                              return <span className="truncate text-[9px] sm:text-xs font-extrabold">{m.pib}</span>;
                             }
                             const lastName = parts[0];
                             const givenName = parts.slice(1).join(" ");
                             return (
                               <div className="flex flex-col min-w-0 leading-tight">
-                                <span className="text-xs font-extrabold text-[#052e16] truncate">{lastName}</span>
-                                <span className="text-[10px] font-semibold text-slate-600 truncate">{givenName}</span>
+                                <span className="text-[9px] sm:text-xs font-extrabold text-[#052e16] truncate">{lastName}</span>
+                                <span className="text-[8px] sm:text-[10px] font-semibold text-slate-600 truncate">{givenName}</span>
                               </div>
                             );
                           })()}
@@ -661,7 +665,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       const isSalat = bgClass === 'bg-[#69DD90]';
                       const textClass = isSalat ? 'text-[#06331a]' : 'text-rose-950';
                       return (
-                        <td className={`py-1 px-1 border-r border-[#8fba94] text-center w-[86px] min-w-[86px] max-w-[86px] relative group/cell ${bgClass}`}>
+                        <td className={`py-1 px-1 border-r border-[#8fba94] text-center w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] relative group/cell ${bgClass}`}>
                           {isEditing ? (
                             <div className="flex items-center space-x-0.5" onClick={(e) => e.stopPropagation()}>
                               <input
@@ -672,7 +676,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                                   if (e.key === 'Enter') handleSaveEdit(m.id);
                                   if (e.key === 'Escape') setEditingId(null);
                                 }}
-                                className="w-full bg-white border border-emerald-500 rounded px-1 py-0.5 text-[9px] font-bold font-mono focus:outline-none"
+                                className="w-full bg-white border border-emerald-500 rounded px-1 py-0.5 text-[8px] sm:text-[9px] font-bold font-mono focus:outline-none"
                                 placeholder="ДД.ММ.РРРР"
                                 autoFocus
                               />
@@ -680,10 +684,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                           ) : (
                             <div 
                               className="flex items-center justify-between min-h-6"
-                              onClick={(e) => { e.stopPropagation(); handleStartEdit(m); }}
+                               onClick={(e) => { e.stopPropagation(); handleStartEdit(m); }}
                               title="Швидке редагування дати контакту"
                             >
-                              <span className={`font-extrabold font-mono tracking-tighter text-[9px] mx-auto ${textClass}`}>
+                              <span className={`font-extrabold font-mono tracking-tighter text-[8px] xs:text-[8.5px] sm:text-[9px] mx-auto ${textClass}`}>
                                  {formatDateToUA(m.d_kontaktiv)}
                               </span>
                             </div>

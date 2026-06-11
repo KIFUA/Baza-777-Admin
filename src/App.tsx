@@ -7,6 +7,7 @@ import MemberProfile from './components/MemberProfile';
 import MemberForm from './components/MemberForm';
 import SpreadsheetView from './components/SpreadsheetView';
 import DirectoriesManager from './components/DirectoriesManager';
+import ReportGenerator from './components/ReportGenerator';
 import { 
   Users, UserCheck, Heart, Shield, History, BarChart3, Search, 
   MapPin, Phone, UserPlus, Filter, RotateCcw, ChevronLeft, ChevronRight, BookOpen,
@@ -22,8 +23,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [spreadsheetLoading, setSpreadsheetLoading] = useState(true);
   
-  // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'settings' (НАЛАШТУВАННЯ)
-  const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'settings'>('spreadsheet');
+  // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'generator' (ГЕНЕРАТОР) or 'settings' (НАЛАШТУВАННЯ)
+  const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'generator' | 'settings'>('spreadsheet');
   const [activeTab, setActiveTab] = useState<'members' | 'pastoral' | 'history' | 'stats'>('members');
 
   // Interactive local session simulator based on Google Sheet tab "ДОСТУП"
@@ -400,6 +401,16 @@ export default function App() {
                     setMainMode('questionnaire');
                   }}
                   onUpdateMember={handleSpreadsheetUpdate}
+                  onOpenGenerator={() => {
+                    setMainMode('generator');
+                    setSelectedMemberId(null);
+                    setShowForm(false);
+                    Promise.all([
+                      fetchAllMembers(),
+                      fetchMembers(),
+                      fetchLookupsAndStats()
+                    ]).catch(err => console.error("Error updating tab data:", err));
+                  }}
                 />
               )
             ) : mainMode === 'questionnaire' ? (
@@ -419,6 +430,11 @@ export default function App() {
                   ></iframe>
                 )}
               </div>
+            ) : mainMode === 'generator' ? (
+              <ReportGenerator
+                members={allMembers}
+                lookups={lookups}
+              />
             ) : mainMode === 'settings' ? (
               <DirectoriesManager
                 lookups={lookups}

@@ -10,9 +10,10 @@ interface SpreadsheetViewProps {
   lookups: any;
   onOpenProfile: (id: number) => void;
   onUpdateMember: (id: number, updatedFields: Partial<Member>) => Promise<boolean>;
+  onOpenGenerator: () => void;
 }
 
-export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpdateMember }: SpreadsheetViewProps) {
+export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpdateMember, onOpenGenerator }: SpreadsheetViewProps) {
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRayonColumn, setShowRayonColumn] = useState(false);
@@ -619,24 +620,34 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           </div>
         )}
 
-        {/* Local Search query box */}
-        <div className={`relative flex-1 min-w-[100px] sm:max-w-80 sm:w-80 ${!isAdmin ? 'sm:ml-[232px]' : ''} transition-all h-[24px] sm:h-[32px] flex items-center`}>
-          <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-3 sm:h-4 sm:w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Фільтр..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-full rounded border border-[#1b3642] pl-6 pr-5 py-0 text-[10px] sm:pl-9 sm:pr-8 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
-          />
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
-            >
-              <X className="h-3 w-3 sm:h-4 sm:w-4" />
-            </button>
-          )}
+        {/* Local Search query box with adjacent ВЛАСНІ СПИСКИ button */}
+        <div className={`flex items-center gap-1.5 sm:gap-2 shrink-0 ${!isAdmin ? 'sm:ml-[232px]' : ''}`}>
+          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
+            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Фільтр..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                <X className="h-3 w-3 sm:h-4 sm:w-4" />
+              </button>
+            )}
+          </div>
+
+          <button
+            title="Перейти до генератора списків"
+            onClick={onOpenGenerator}
+            className="px-2 sm:px-3 h-[24px] sm:h-[32px] text-[8px] xs:text-[9px] sm:text-[10px] font-bold text-white transition-all bg-[#387d7a] hover:bg-[#2b5f5d] border border-[#1b3642] rounded shadow-sm tracking-wider uppercase flex items-center whitespace-nowrap cursor-pointer"
+          >
+            ВЛАСНІ СПИСКИ
+          </button>
         </div>
 
         {/* Toggle Rayon Column */}

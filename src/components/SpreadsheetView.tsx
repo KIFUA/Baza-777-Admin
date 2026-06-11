@@ -962,8 +962,15 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     </td>
 
                     {/* Dynamic spiritual parameters */}
-                    <td className="py-1.5 px-1 border-r border-[#8fba94] text-center">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${m.hsd ? "text-emerald-700 bg-emerald-50" : "text-slate-300"}`}>
+                    <td 
+                      className="py-1 px-1 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await onUpdateMember(m.id, { hsd: !m.hsd });
+                      }}
+                      title="Клацніть для швидкого перемикання статусу Хр. С.Д. (так/ні)"
+                    >
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] uppercase font-extrabold tracking-tight transition-all duration-150 ${m.hsd ? "text-emerald-850 bg-emerald-100/80 border border-emerald-300/60" : "text-slate-400 bg-slate-50 border border-slate-200"}`}>
                         {m.hsd ? "так" : "ні"}
                       </span>
                     </td>

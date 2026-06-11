@@ -254,9 +254,23 @@ function healDatabaseWithAnketa() {
     });
 
     let healedCount = 0;
+    let healedHsdCount = 0;
     members.forEach(member => {
       const row = anketaMap.get(member.id);
       if (row) {
+        // Heal hsd (Holy Spirit baptism)
+        if (row.hsd !== undefined) {
+          const rawHsd = row.hsd;
+          const computedHsd = (typeof rawHsd === "boolean")
+            ? rawHsd
+            : (String(rawHsd || "").trim().toLowerCase() === "так" || String(rawHsd || "").trim().toLowerCase() === "true");
+          
+          if (member.hsd !== computedHsd) {
+            member.hsd = computedHsd;
+            healedHsdCount++;
+          }
+        }
+
         const rawPrimitka = String(row.primitka || "").trim();
         if (rawPrimitka) {
           // If member has left and does not have a departure explanation, heal it!
@@ -272,7 +286,7 @@ function healDatabaseWithAnketa() {
         }
       }
     });
-    console.log(`Successfully healed and restored ${healedCount} notes/comments from anketa.xlsx.`);
+    console.log(`Successfully healed and restored ${healedCount} notes/comments, and ${healedHsdCount} "Хр. С.Д." values from anketa.xlsx.`);
   } catch (err: any) {
     console.error(`Error during database healing with anketa.xlsx: ${err.message}`);
   }
@@ -1748,6 +1762,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "d_kontaktiv": member.d_kontaktiv || "",
     "05_ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
     "04_STRUCTURA/3_san": member.di_admin || "",
+    "04_STRUCTURA/hsd": !!member.hsd,
     
     "05_ISTORIJA/1_slujinnya": slujList,
     "04_STRUCTURA/slujinnya": slujList,

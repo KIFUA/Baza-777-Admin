@@ -1745,6 +1745,8 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "04_STRUCTURA/9_prysutnist": member.prysutnist || "",
     "04_STRUCTURA/7_d_kontaktiv": member.d_kontaktiv || "",
     "04_STRUCTURA/d_kontaktiv": member.d_kontaktiv || "",
+    "d_kontaktiv": member.d_kontaktiv || "",
+    "05_ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
     "04_STRUCTURA/3_san": member.di_admin || "",
     
     "05_ISTORIJA/1_slujinnya": slujList,
@@ -2673,7 +2675,14 @@ async function syncDatabaseWithFirebase() {
           vidviduvanist: String(структура["8_vidviduvanist"] || "").trim(),
           prysutnist: String(структура["9_prysutnist"] || "").trim(),
           di_admin: String(структура["3_san"] || raw["di_admin"] || "").trim(),
-          d_kontaktiv: String(структура["7_d_kontaktiv"] || структура["d_kontaktiv"] || "").trim(),
+          d_kontaktiv: String(
+            raw["d_kontaktiv"] || 
+            (raw["05_ISTORIJA"] && raw["05_ISTORIJA"]["d_kontaktiv"]) || 
+            (raw["05_ISTORIJA"] && raw["05_ISTORIJA"]["7_d_kontaktiv"]) || 
+            структура["7_d_kontaktiv"] || 
+            структура["d_kontaktiv"] || 
+            ""
+          ).trim(),
 
           presviter: String(структура["4_opika"] || "").trim(),
           rayon2_ukr: String(структура["1_rayon"] || "").trim(),

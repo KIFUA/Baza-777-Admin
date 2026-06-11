@@ -115,33 +115,50 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
   // Calculate dynamic ПІБ column width based on the longest record
   const pibColumnWidth = useMemo(() => {
-    if (!filteredMembers || filteredMembers.length === 0) return 208;
+    if (!filteredMembers || filteredMembers.length === 0) return 180;
     
     try {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       if (ctx) {
-        ctx.font = "bold 12px Inter, system-ui, -apple-system, sans-serif";
         let maxWidth = 0;
         filteredMembers.forEach(m => {
-          const name = m.pib || "";
-          const w = ctx.measureText(name).width;
-          if (w > maxWidth) {
-            maxWidth = w;
+          const parts = (m.pib || "").trim().split(/\s+/);
+          if (parts.length <= 1) {
+            ctx.font = "800 12px Inter, system-ui, -apple-system, sans-serif";
+            const w1 = ctx.measureText(m.pib || "").width;
+            if (w1 > maxWidth) maxWidth = w1;
+          } else {
+            const lastName = parts[0];
+            const givenName = parts.slice(1).join(" ");
+            
+            ctx.font = "800 12px Inter, system-ui, -apple-system, sans-serif";
+            const w1 = ctx.measureText(lastName).width;
+            
+            ctx.font = "600 10px Inter, system-ui, -apple-system, sans-serif";
+            const w2 = ctx.measureText(givenName).width;
+            
+            const cellMax = Math.max(w1, w2);
+            if (cellMax > maxWidth) {
+              maxWidth = cellMax;
+            }
           }
         });
-        // Dots, button scale spacing and padding buffer
-        const finalWidth = maxWidth + 101;
-        return Math.max(208, Math.ceil(finalWidth));
+        // Scale/button/padding spacing buffer
+        const finalWidth = maxWidth + 72;
+        return Math.max(160, Math.ceil(finalWidth));
       }
     } catch (e) {}
 
     let maxCharLen = 0;
     filteredMembers.forEach(m => {
-      const len = (m.pib || "").length;
+      const parts = (m.pib || "").trim().split(/\s+/);
+      const lastName = parts[0] || "";
+      const givenName = parts.slice(1).join(" ") || "";
+      const len = Math.max(lastName.length, givenName.length * 0.85);
       if (len > maxCharLen) maxCharLen = len;
     });
-    return Math.max(208, maxCharLen * 7.5 + 105);
+    return Math.max(160, maxCharLen * 7.5 + 75);
   }, [filteredMembers]);
 
   const rayonColWidth = 90;
@@ -257,6 +274,84 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     }
 
     return trimmed;
+  };
+
+  // Helper to determine background color for contact dates
+  const getContactDateBgClass = (dKontaktiv?: string): string => {
+    if (!dKontaktiv) return 'bg-[#ffcfd3]';
+    const trimmed = dKontaktiv.trim();
+    if (!trimmed || trimmed === '—' || trimmed === 'н/д') return 'bg-[#ffcfd3]';
+
+    let latestDate: Date | null = null;
+
+    // 1. Check DD.MM.YYYY patterns
+    const dmYRegex = /(\d{1,2})\.(\d{1,2})\.(\d{4})/g;
+    let match;
+    while ((match = dmYRegex.exec(trimmed)) !== null) {
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const year = parseInt(match[3], 10);
+      const parsedDate = new Date(year, month, day);
+      if (!isNaN(parsedDate.getTime())) {
+        if (!latestDate || parsedDate > latestDate) {
+          latestDate = parsedDate;
+        }
+      }
+    }
+
+    // 2. Check YYYY-MM-DD patterns
+    const yMdRegex = /(\d{4})-(\d{1,2})-(\d{1,2})/g;
+    while ((match = yMdRegex.exec(trimmed)) !== null) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1;
+      const day = parseInt(match[3], 10);
+      const parsedDate = new Date(year, month, day);
+      if (!isNaN(parsedDate.getTime())) {
+        if (!latestDate || parsedDate > latestDate) {
+          latestDate = parsedDate;
+        }
+      }
+    }
+
+    // 3. Check DD.MM.YY patterns
+    if (!latestDate) {
+      const dmY2Regex = /(\b\d{1,2})\.(\d{1,2})\.(\d{2})\b/g;
+      while ((match = dmY2Regex.exec(trimmed)) !== null) {
+        const day = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1;
+        const yy = parseInt(match[3], 10);
+        const year = yy + (yy < 50 ? 2000 : 1900);
+        const parsedDate = new Date(year, month, day);
+        if (!isNaN(parsedDate.getTime())) {
+          if (!latestDate || parsedDate > latestDate) {
+            latestDate = parsedDate;
+          }
+        }
+      }
+    }
+
+    if (!latestDate) {
+      return 'bg-[#ffcfd3]';
+    }
+
+    const today = new Date();
+    if (latestDate > today) {
+      return 'bg-[#69DD90]';
+    }
+
+    const yearsDiff = today.getFullYear() - latestDate.getFullYear();
+    const monthsDiff = today.getMonth() - latestDate.getMonth() + (yearsDiff * 12);
+
+    if (monthsDiff < 2) {
+      return 'bg-[#69DD90]';
+    }
+    if (monthsDiff === 2) {
+      if (today.getDate() <= latestDate.getDate()) {
+        return 'bg-[#69DD90]';
+      }
+    }
+
+    return 'bg-[#ffcfd3]';
   };
 
   // Render water baptism check badge (leaving ONLY the formatted date based on Request 3)
@@ -467,34 +562,41 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     </td>
 
                     {/* Custom Editable Contact Dates (Request 2 & 4) */}
-                    <td className={`py-1 px-1 border-r border-[#8fba94] text-center w-[86px] min-w-[86px] max-w-[86px] relative group/cell ${!m.d_kontaktiv ? 'bg-[#ffcfd3]' : 'bg-emerald-50/40'}`}>
-                      {isEditing ? (
-                        <div className="flex items-center space-x-0.5" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="text"
-                            value={editingDates}
-                            onChange={(e) => setEditingDates(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSaveEdit(m.id);
-                              if (e.key === 'Escape') setEditingId(null);
-                            }}
-                            className="w-full bg-white border border-emerald-500 rounded px-1 py-0.5 text-[9px] font-bold font-mono focus:outline-none"
-                            placeholder="ДД.ММ.РРРР"
-                            autoFocus
-                          />
-                        </div>
-                      ) : (
-                        <div 
-                          className="flex items-center justify-between min-h-6"
-                          onClick={(e) => { e.stopPropagation(); handleStartEdit(m); }}
-                          title="Швидке редагування дати контакту"
-                        >
-                          <span className="font-bold text-emerald-800 font-mono tracking-tighter text-[9px] mx-auto">
-                             {formatDateToUA(m.d_kontaktiv)}
-                          </span>
-                        </div>
-                      )}
-                    </td>
+                    {(() => {
+                      const bgClass = getContactDateBgClass(m.d_kontaktiv);
+                      const isSalat = bgClass === 'bg-[#69DD90]';
+                      const textClass = isSalat ? 'text-[#06331a]' : 'text-rose-950';
+                      return (
+                        <td className={`py-1 px-1 border-r border-[#8fba94] text-center w-[86px] min-w-[86px] max-w-[86px] relative group/cell ${bgClass}`}>
+                          {isEditing ? (
+                            <div className="flex items-center space-x-0.5" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                value={editingDates}
+                                onChange={(e) => setEditingDates(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveEdit(m.id);
+                                  if (e.key === 'Escape') setEditingId(null);
+                                }}
+                                className="w-full bg-white border border-emerald-500 rounded px-1 py-0.5 text-[9px] font-bold font-mono focus:outline-none"
+                                placeholder="ДД.ММ.РРРР"
+                                autoFocus
+                              />
+                            </div>
+                          ) : (
+                            <div 
+                              className="flex items-center justify-between min-h-6"
+                              onClick={(e) => { e.stopPropagation(); handleStartEdit(m); }}
+                              title="Швидке редагування дати контакту"
+                            >
+                              <span className={`font-extrabold font-mono tracking-tighter text-[9px] mx-auto ${textClass}`}>
+                                 {formatDateToUA(m.d_kontaktiv)}
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                      );
+                    })()}
 
                     {/* Remarks */}
                     <td className="py-1.5 px-3 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 truncate max-w-sm italic font-medium">

@@ -370,6 +370,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     <td style="text-align: center; font-weight: 500; color: #64748b;">${idx + 1}</td>
                     ${displayColumns.map(col => {
                       let cellVal = m[col.key as keyof Member] || '—';
+                      let tdStyle = '';
                       if (col.key === 'd_narodjennya' && cellVal) {
                         try {
                           const parts = String(cellVal).split('-');
@@ -378,7 +379,20 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                           }
                         } catch(e){}
                       }
-                      return `<td>${cellVal}</td>`;
+                      
+                      if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
+                        const strVal = String(cellVal).trim();
+                        const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                        if (names.length > 2) {
+                          const groups = [];
+                          for (let i = 0; i < names.length; i += 2) {
+                            groups.push(names.slice(i, i + 2).join(', '));
+                          }
+                          cellVal = groups.join('<br />');
+                        }
+                        tdStyle = ' style="white-space: normal;"';
+                      }
+                      return `<td${tdStyle}>${cellVal}</td>`;
                     }).join('')}
                   </tr>
                 `).join('')}
@@ -745,6 +759,25 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                             }
                           } catch(e){}
                         }
+                        
+                        if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
+                          const strVal = String(cellVal).trim();
+                          const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                          if (names.length > 2) {
+                            const groups: string[] = [];
+                            for (let i = 0; i < names.length; i += 2) {
+                              groups.push(names.slice(i, i + 2).join(', '));
+                            }
+                            return (
+                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                                {groups.map((group, grpIdx) => (
+                                  <div key={grpIdx} className="whitespace-nowrap">{group}</div>
+                                ))}
+                              </td>
+                            );
+                          }
+                        }
+
                         return (
                           <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
                             {cellVal}

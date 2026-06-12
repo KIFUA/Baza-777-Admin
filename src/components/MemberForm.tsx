@@ -442,6 +442,19 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               <p className="text-[10px] text-slate-400">Швидкий вибір активних служінь для списку (синхронізується з колонкою "СЛУЖІННЯ" в таблиці та базою даних).</p>
             </div>
 
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-700">Дати контактів з пресвітером</label>
+              <input
+                type="text"
+                name="d_kontaktiv"
+                value={formData.d_kontaktiv || ''}
+                onChange={handleChange}
+                placeholder="напр. 25.03.26 / 17.10.25"
+                className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
+              />
+              <p className="text-[10px] text-slate-400">Дати духовних та опікунських бесіди з пресвітерами (відображається в таблиці та картках).</p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-700">Район структури</label>

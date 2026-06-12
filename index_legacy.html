@@ -659,25 +659,36 @@
                 </div>
                 <input type="hidden" id="group_name" />
               </div>
-              <div class="relative w-fit min-w-[130px]" id="ministryDropdownWrapper">
-                <div class="flex items-center justify-between gap-1 mb-1 cursor-pointer select-none" onclick="toggleMinistryDropdown()">
-                  <label class="block text-[11px] text-purple-400 font-bold cursor-pointer">Служіння</label>
-                  <span id="ministryArrow" class="text-[9px] text-purple-400/70">▼</span>
+              <div class="flex flex-wrap gap-2 items-end">
+                <div class="relative w-fit min-w-[130px]" id="ministryDropdownWrapper">
+                  <div class="flex items-center justify-between gap-1 mb-1 cursor-pointer select-none" onclick="toggleMinistryDropdown()">
+                    <label class="block text-[11px] text-purple-400 font-bold cursor-pointer">Служіння</label>
+                    <span id="ministryArrow" class="text-[9px] text-purple-400/70">▼</span>
+                  </div>
+                  <div
+                    id="ministrySelectedListContainer"
+                    onclick="toggleMinistryDropdown()"
+                    class="bg-inputBg border border-borderClr rounded text-white text-left p-1.5 text-xs flex flex-col gap-1 min-w-[130px] cursor-pointer focus-within:border-blue-500 outline-none select-none"
+                  >
+                    <span id="ministrySelectedText" class="text-gray-500 text-xs">н/д</span>
+                  </div>
+                  <div
+                    id="ministryDropdownContainer"
+                    class="absolute left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1 min-w-[220px] w-max"
+                  >
+                    <!-- Checkboxes populated dynamically -->
+                  </div>
+                  <input type="hidden" id="slujinnya" />
                 </div>
-                <div
-                  id="ministrySelectedListContainer"
-                  onclick="toggleMinistryDropdown()"
-                  class="bg-inputBg border border-borderClr rounded text-white text-left p-1.5 text-xs flex flex-col gap-1 min-w-[130px] cursor-pointer focus-within:border-blue-500 outline-none select-none"
-                >
-                  <span id="ministrySelectedText" class="text-gray-500 text-xs">н/д</span>
+
+                <div>
+                  <label class="block text-[11px] text-purple-400 font-bold select-none mb-1">Дати конт. з пресв.</label>
+                  <input
+                    type="text"
+                    id="d_kontaktiv"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-[170px] text-xs p-1.5"
+                  />
                 </div>
-                <div
-                  id="ministryDropdownContainer"
-                  class="absolute left-0 mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-56 overflow-y-auto z-50 hidden divide-y divide-zinc-700/50 shadow-2xl p-2 space-y-1 min-w-[220px] w-max"
-                >
-                  <!-- Checkboxes populated dynamically -->
-                </div>
-                <input type="hidden" id="slujinnya" />
               </div>
               <div class="flex flex-wrap gap-2">
                 <div>
@@ -1731,6 +1742,8 @@
           minWidth = 80;
         } else if (id === "d_shlyub_from" || id === "d_shlyub_end" || id === "d_nar" || id === "exit_date" || id === "d_vodnogo" || id === "d_vstupu") {
           minWidth = 85;
+        } else if (id === "d_kontaktiv") {
+          minWidth = 130;
         } else if (id === "addr_city") {
           minWidth = 120;
         } else if (id === "san") {
@@ -1930,7 +1943,8 @@
           "opika",
           "vidviduvanist",
           "prysutnist",
-          "exit_reason"
+          "exit_reason",
+          "d_kontaktiv"
         ];
         extraAutoInps.forEach(id => {
           const inp = document.getElementById(id);
@@ -2648,6 +2662,8 @@
         setAndStyleField("zvidky", structura["7_zvidky_primitka"]);
         setAndStyleField("vidviduvanist", structura["8_vidviduvanist"]);
         setAndStyleField("prysutnist", structura["9_prysutnist"]);
+        const contactDates = structura["7_d_kontaktiv"] || structura["d_kontaktiv"] || member["d_kontaktiv"] || "";
+        setAndStyleField("d_kontaktiv", contactDates);
         loadSelectedMinistries(member);
 
         document.getElementById("spouse_status").value = valOrEmpty(
@@ -3171,6 +3187,10 @@
         updates[`04_STRUCTURA/7_zvidky_primitka`] = getVal("zvidky");
         updates[`04_STRUCTURA/8_vidviduvanist`] = getVal("vidviduvanist");
         updates[`04_STRUCTURA/9_prysutnist`] = getVal("prysutnist");
+        const contactDatesVal = getVal("d_kontaktiv");
+        updates[`04_STRUCTURA/7_d_kontaktiv`] = contactDatesVal;
+        updates[`04_STRUCTURA/d_kontaktiv`] = contactDatesVal;
+        updates[`d_kontaktiv`] = contactDatesVal;
         try {
           updates[`05_ISTORIJA/1_slujinnya`] = JSON.parse(
             document.getElementById("slujinnya").value || "[]",

@@ -337,7 +337,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
               @page {
-                size: A4 landscape;
+                size: portrait;
                 margin: 12mm;
               }
               body {
@@ -407,7 +407,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 border: 1px solid #cbd5e1;
                 padding: 5px 8px;
                 color: #1e293b;
-                white-space: nowrap;
+                white-space: normal;
+                word-break: normal;
+                word-wrap: break-word;
                 vertical-align: top;
               }
               tr:nth-child(even) {
@@ -466,11 +468,44 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       }
                       
                       if (col.key === 'pib' && cellVal && cellVal !== '—') {
-                        const parts = String(cellVal).trim().split(/\s+/);
-                        if (parts.length > 1) {
-                          const lastName = parts[0];
-                          const givenName = parts.slice(1).join(" ");
-                          cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500;">${givenName}</div>`;
+                        cellVal = `<span style="font-weight: 700; color: #0f172a; white-space: normal;">${cellVal}</span>`;
+                        tdStyle = ' style="white-space: normal;"';
+                      }
+                      
+                      if (col.key === 'address' && cellVal && cellVal !== '—') {
+                        const strVal = String(cellVal).trim();
+                        const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
+                        if (hasRayon) {
+                          const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
+                          let splitIdx = -1;
+                          for (const m of markers) {
+                            const idx = strVal.toLowerCase().indexOf(m);
+                            if (idx !== -1) {
+                              splitIdx = idx;
+                              break;
+                            }
+                          }
+                          
+                          if (splitIdx !== -1) {
+                            const part1 = strVal.substring(0, splitIdx).trim();
+                            let part2 = strVal.substring(splitIdx).trim();
+                            if (part2.startsWith(',')) {
+                              part2 = part2.substring(1).trim();
+                            }
+                            cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
+                            tdStyle = ' style="white-space: normal;"';
+                          } else {
+                            const parts = strVal.split(',');
+                            if (parts.length >= 3) {
+                              const part1 = parts.slice(0, 2).join(',').trim();
+                              const part2 = parts.slice(2).join(',').trim();
+                              cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
+                              tdStyle = ' style="white-space: normal;"';
+                            } else {
+                              tdStyle = ' style="white-space: normal;"';
+                            }
+                          }
+                        } else {
                           tdStyle = ' style="white-space: normal;"';
                         }
                       }
@@ -856,17 +891,58 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                         }
                         
                         if (col.key === 'pib' && cellVal && cellVal !== '—') {
-                          const parts = String(cellVal).trim().split(/\s+/);
-                          if (parts.length > 1) {
-                            const lastName = parts[0];
-                            const givenName = parts.slice(1).join(" ");
-                            return (
-                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                                <span className="font-extrabold text-slate-100 block">{lastName}</span>
-                                <span className="text-[10px] text-slate-400 font-semibold block">{givenName}</span>
-                              </td>
-                            );
+                          return (
+                            <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                              <span className="font-extrabold text-slate-100">{cellVal}</span>
+                            </td>
+                          );
+                        }
+                        
+                        if (col.key === 'address' && cellVal && cellVal !== '—') {
+                          const strVal = String(cellVal).trim();
+                          const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
+                          if (hasRayon) {
+                            const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
+                            let splitIdx = -1;
+                            for (const m of markers) {
+                              const idx = strVal.toLowerCase().indexOf(m);
+                              if (idx !== -1) {
+                                splitIdx = idx;
+                                break;
+                              }
+                            }
+                            
+                            if (splitIdx !== -1) {
+                              const part1 = strVal.substring(0, splitIdx).trim();
+                              let part2 = strVal.substring(splitIdx).trim();
+                              if (part2.startsWith(',')) {
+                                part2 = part2.substring(1).trim();
+                              }
+                              return (
+                                <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                                  <div className="font-semibold text-slate-100">{part1}</div>
+                                  <div className="text-[10px] text-slate-400 mt-0.5">{part2}</div>
+                                </td>
+                              );
+                            } else {
+                              const parts = strVal.split(',');
+                              if (parts.length >= 3) {
+                                const part1 = parts.slice(0, 2).join(',').trim();
+                                const part2 = parts.slice(2).join(',').trim();
+                                return (
+                                  <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                                    <div className="font-semibold text-slate-100">{part1}</div>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">{part2}</div>
+                                  </td>
+                                );
+                              }
+                            }
                           }
+                          return (
+                            <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                              {cellVal}
+                            </td>
+                          );
                         }
                         
                         if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {

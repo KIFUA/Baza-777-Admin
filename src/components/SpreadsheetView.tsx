@@ -608,40 +608,40 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     <div id="spreadsheet_container" className="flex-1 flex flex-col bg-transparent overflow-hidden min-h-0">
       
       {/* Search & Mode filters rail */}
-      <div className="px-1.5 py-1.5 sm:px-4 sm:py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-row items-center justify-between gap-2 shrink-0 shadow-sm">
+      <div className="px-1.5 py-1.5 sm:px-4 sm:py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 shadow-sm">
         
-        {/* Status filtering widgets (Наявні / Вибулі / Всі) */}
-        {isAdmin && (
-          <div className="flex items-center shrink-0">
-            <div className="inline-flex rounded bg-[#1a3843] p-0.5 border border-[#1b3642] w-[140px] xs:w-[165px] sm:w-[216px] justify-between h-[24px] sm:h-[32px] items-center">
-              <button
-                id="filter_active_btn"
-                onClick={() => setFilterType('active')}
-                className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'active' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
-              >
-                Наявні
-              </button>
-              <button
-                id="filter_dismissed_btn"
-                onClick={() => setFilterType('dismissed')}
-                className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'dismissed' ? "bg-amber-600 text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
-              >
-                Вибулі
-              </button>
-              <button
-                id="filter_all_btn"
-                onClick={() => setFilterType('all')}
-                className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'all' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
-              >
-                Всі
-              </button>
+        {/* Row 1 / Main Row for mobile or left side for desktop */}
+        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+          {/* Status filtering widgets (Наявні / Вибулі / Всі) */}
+          {isAdmin && (
+            <div className="flex items-center shrink-0">
+              <div className="inline-flex rounded bg-[#1a3843] p-0.5 border border-[#1b3642] w-[140px] xs:w-[165px] sm:w-[216px] justify-between h-[24px] sm:h-[32px] items-center">
+                <button
+                  id="filter_active_btn"
+                  onClick={() => setFilterType('active')}
+                  className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'active' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+                >
+                  Наявні
+                </button>
+                <button
+                  id="filter_dismissed_btn"
+                  onClick={() => setFilterType('dismissed')}
+                  className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'dismissed' ? "bg-amber-600 text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+                >
+                  Вибулі
+                </button>
+                <button
+                  id="filter_all_btn"
+                  onClick={() => setFilterType('all')}
+                  className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'all' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
+                >
+                  Всі
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Local Search query box with adjacent ВЛАСНІ СПИСКИ button */}
-        <div className={`flex items-center gap-1.5 sm:gap-2 shrink-0 ${!isAdmin ? 'sm:ml-[232px]' : ''}`}>
-          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
+          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center ml-auto">
             <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
             <input
               type="text"
@@ -659,23 +659,23 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
               </button>
             )}
           </div>
+        </div>
 
+        {/* Row 2 on mobile or right side on desktop containing ВЛАСНІ СПИСКИ and РАЙОН У ТАБЛИЦІ */}
+        <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 w-full sm:w-auto sm:ml-auto">
           <button
             title="Перейти до генератора списків"
             onClick={onOpenGenerator}
-            className="px-2 sm:px-3 h-[24px] sm:h-[32px] text-[8px] xs:text-[9px] sm:text-[10px] font-bold text-white transition-all bg-[#387d7a] hover:bg-[#2b5f5d] border border-[#1b3642] rounded shadow-sm tracking-wider uppercase flex items-center whitespace-nowrap cursor-pointer"
+            className="flex-1 sm:flex-none justify-center px-2 sm:px-3 h-[24px] sm:h-[32px] text-[8px] xs:text-[9px] sm:text-[10px] font-bold text-white transition-all bg-[#387d7a] hover:bg-[#2b5f5d] border border-[#1b3642] rounded shadow-sm tracking-wider uppercase flex items-center whitespace-nowrap cursor-pointer"
           >
             ВЛАСНІ СПИСКИ
           </button>
-        </div>
 
-        {/* Toggle Rayon Column */}
-        <div className="hidden sm:flex items-center space-x-2 shrink-0 sm:ml-auto">
           <button
             id="toggle_rayon_col_btn"
             type="button"
             onClick={() => setShowRayonColumn(!showRayonColumn)}
-            className={`flex items-center space-x-1 px-1.5 py-1 sm:px-3 sm:py-1.5 rounded-md border text-[9px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none ${
+            className={`flex-1 sm:flex-none justify-center flex items-center space-x-1 px-1.5 py-1 sm:px-3 sm:py-1.5 h-[24px] sm:h-[32px] rounded border text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none ${
               showRayonColumn
                 ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm font-semibold"
                 : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"

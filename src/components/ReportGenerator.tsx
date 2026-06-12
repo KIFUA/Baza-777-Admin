@@ -317,6 +317,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 white-space: normal;
                 word-wrap: break-word;
                 word-break: break-all;
+                vertical-align: top;
               }
               td {
                 font-size: 11px;
@@ -324,6 +325,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 padding: 5px 8px;
                 color: #1e293b;
                 white-space: nowrap;
+                vertical-align: top;
               }
               tr:nth-child(even) {
                 background-color: #f8fafc;
@@ -378,6 +380,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                             cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
                           }
                         } catch(e){}
+                      }
+                      
+                      if (col.key === 'pib' && cellVal && cellVal !== '—') {
+                        const parts = String(cellVal).trim().split(/\s+/);
+                        if (parts.length > 1) {
+                          const lastName = parts[0];
+                          const givenName = parts.slice(1).join(" ");
+                          cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500;">${givenName}</div>`;
+                          tdStyle = ' style="white-space: normal;"';
+                        }
                       }
                       
                       if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
@@ -747,7 +759,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 </thead>
                 <tbody className="divide-y divide-[#1f424f]">
                   {filteredRecords.slice(0, 10).map((m, idx) => (
-                    <tr key={m.id} className="hover:bg-[#1a3843]/40 transition-colors">
+                    <tr key={m.id} className="hover:bg-[#1a3843]/40 transition-colors align-top">
                       <td className="py-2 px-3 text-center text-xs text-slate-400 font-mono font-bold whitespace-nowrap">{idx + 1}</td>
                       {AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key)).map(col => {
                         let cellVal = m[col.key as keyof Member] || '—';
@@ -758,6 +770,20 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                               cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
                             }
                           } catch(e){}
+                        }
+                        
+                        if (col.key === 'pib' && cellVal && cellVal !== '—') {
+                          const parts = String(cellVal).trim().split(/\s+/);
+                          if (parts.length > 1) {
+                            const lastName = parts[0];
+                            const givenName = parts.slice(1).join(" ");
+                            return (
+                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                                <span className="font-extrabold text-slate-100 block">{lastName}</span>
+                                <span className="text-[10px] text-slate-400 font-semibold block">{givenName}</span>
+                              </td>
+                            );
+                          }
                         }
                         
                         if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {

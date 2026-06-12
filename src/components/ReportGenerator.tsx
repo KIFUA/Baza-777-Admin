@@ -14,24 +14,24 @@ interface ColumnOption {
 }
 
 const AVAILABLE_COLUMNS: ColumnOption[] = [
+  { key: 'rayon2_ukr', label: 'Район', defaultChecked: false },
   { key: 'pib', label: 'ПІБ', defaultChecked: true },
-  { key: 'rayon2_ukr', label: 'Район', defaultChecked: true },
+  { key: 'd_kontaktiv', label: 'Дати контактів', defaultChecked: true },
   { key: 'presviter', label: 'Опікун', defaultChecked: true },
   { key: 's_slujinnya_spysok', label: 'Служіння', defaultChecked: false },
-  { key: 'tel_mob', label: 'Телефон', defaultChecked: true },
+  { key: 'vidviduvanist', label: 'Відвідування', defaultChecked: true },
+  { key: 'prysutnist', label: 'Прич. відсутності', defaultChecked: true },
+  { key: 'vik_rokiv1', label: 'Вік', defaultChecked: true },
   { key: 'address', label: 'Адреса', defaultChecked: false },
-  { key: 'vik_rokiv1', label: 'Вік', defaultChecked: false },
+  { key: 'tel_mob', label: 'Телефон', defaultChecked: true },
   { key: 'd_narodjennya', label: 'Д. народження', defaultChecked: false },
   { key: 'stat', label: 'Стать', defaultChecked: false },
   { key: 's_simeyniy_ukr', label: 'Сімейний стан', defaultChecked: false },
-  { key: 'vidviduvanist', label: 'Відвідування', defaultChecked: false },
-  { key: 'prysutnist', label: 'Прич. відсутності', defaultChecked: false },
-  { key: 'd_kontaktiv', label: 'Дати контактів', defaultChecked: false },
 ];
 
 export default function ReportGenerator({ members = [], lookups }: ReportGeneratorProps) {
   // Available filters configuration (expandable)
-  const [selectedStatus, setSelectedStatus] = useState<string>('Всі');
+  const [selectedStatus, setSelectedStatus] = useState<string>('Наявні');
   const [selectedVybuttyaId, setSelectedVybuttyaId] = useState<string>('');
   const [selectedRayon, setSelectedRayon] = useState<string>('');
   const [selectedPresviter, setSelectedPresviter] = useState<string>('');
@@ -51,7 +51,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
   // Reset all filters
   const handleReset = () => {
-    setSelectedStatus('Всі');
+    setSelectedStatus('Наявні');
     setSelectedVybuttyaId('');
     setSelectedRayon('');
     setSelectedPresviter('');
@@ -302,6 +302,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 10px;
+                table-layout: auto;
               }
               th {
                 background-color: #e2e8f0;
@@ -313,12 +314,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 text-align: left;
                 text-transform: uppercase;
                 letter-spacing: 0.3px;
+                white-space: normal;
+                word-wrap: break-word;
+                word-break: break-all;
               }
               td {
                 font-size: 11px;
                 border: 1px solid #cbd5e1;
                 padding: 5px 8px;
                 color: #1e293b;
+                white-space: nowrap;
               }
               tr:nth-child(even) {
                 background-color: #f8fafc;
@@ -410,7 +415,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <ListFilter className="h-5 w-5 text-teal-400" />
             <span>Конструктор звітів та формування списків</span>
           </h2>
-          <p className="text-xs text-slate-350 mt-0.5">
+          <p className="text-xs text-slate-300 font-medium mt-1">
             Відберіть осіб за необхідними критеріями, відзначте необхідні колонки та роздрукуйте PDF-документ.
           </p>
         </div>
@@ -714,13 +719,13 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               <p className="text-[10px] text-slate-400">Спробуйте послабити обмеження для результатів.</p>
             </div>
           ) : (
-            <div className="border border-[#1f424f] rounded-xl overflow-hidden shadow-sm max-h-[350px] overflow-y-auto">
-              <table className="w-full text-left border-collapse bg-[#11252d]">
-                <thead className="bg-[#1a3843] sticky top-0 border-b border-[#1f424f]">
+            <div className="border border-[#1f424f] rounded-xl overflow-hidden shadow-sm max-h-[350px] overflow-x-auto overflow-y-auto">
+              <table className="w-full text-left border-collapse bg-[#11252d] table-auto">
+                <thead className="bg-[#1a3843] sticky top-0 border-b border-[#1f424f] z-[10]">
                   <tr>
-                    <th className="py-2.5 px-3 text-center w-12 font-bold text-[11px] text-slate-300 tracking-wider">№</th>
+                    <th className="py-2.5 px-3 text-center w-12 font-bold text-[11px] text-slate-300 tracking-wider whitespace-nowrap">№</th>
                     {AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key)).map(col => (
-                      <th key={col.key} className="py-2.5 px-3 font-bold text-[11px] text-slate-300 tracking-wider">
+                      <th key={col.key} className="py-2.5 px-3 font-bold text-[11px] text-slate-300 tracking-wider whitespace-normal break-words leading-snug max-w-[110px]">
                         {col.label}
                       </th>
                     ))}
@@ -729,7 +734,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 <tbody className="divide-y divide-[#1f424f]">
                   {filteredRecords.slice(0, 10).map((m, idx) => (
                     <tr key={m.id} className="hover:bg-[#1a3843]/40 transition-colors">
-                      <td className="py-2 px-3 text-center text-xs text-slate-400 font-mono font-bold">{idx + 1}</td>
+                      <td className="py-2 px-3 text-center text-xs text-slate-400 font-mono font-bold whitespace-nowrap">{idx + 1}</td>
                       {AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key)).map(col => {
                         let cellVal = m[col.key as keyof Member] || '—';
                         if (col.key === 'd_narodjennya' && cellVal) {
@@ -741,7 +746,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                           } catch(e){}
                         }
                         return (
-                          <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium truncate max-w-[200px]">
+                          <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
                             {cellVal}
                           </td>
                         );

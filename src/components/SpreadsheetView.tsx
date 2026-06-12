@@ -40,6 +40,22 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   // Active contact tooltip state for single-click display
   const [activeContactTooltipId, setActiveContactTooltipId] = useState<number | null>(null);
 
+  // Close tooltip on global click
+  useEffect(() => {
+    if (activeContactTooltipId === null) return;
+    const handleGlobalClick = () => {
+      setActiveContactTooltipId(null);
+    };
+    // Use timeout to avoid handling the current click that opened the tooltip
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleGlobalClick);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [activeContactTooltipId]);
+
   // States for the contact dates multi-record modal
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [contactModalMember, setContactModalMember] = useState<Member | null>(null);
@@ -49,7 +65,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   // Helper to parse contact dates safely
   const parseContactDates = (dKontaktiv?: string): string[] => {
     if (!dKontaktiv) return [];
-    let tokens = dKontaktiv.split(/[,;\n]+/);
+    let tokens = dKontaktiv.split(/[\/,;\n]+/);
     let finalTokens: string[] = [];
     tokens.forEach(t => {
       const trimmed = t.trim();
@@ -159,7 +175,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     const joined = modalDates
       .map(d => d.trim())
       .filter(Boolean)
-      .join(', ');
+      .join(' / ');
       
     const ok = await onUpdateMember(contactModalMember.id, { d_kontaktiv: joined });
     if (ok) {
@@ -829,64 +845,23 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                           </div>
 
                           {isTooltipOpen && (
-                            <>
-                              {/* Backdrop */}
-                              <div 
-                                className="fixed inset-0 z-[240] cursor-default bg-transparent" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveContactTooltipId(null);
-                                }}
-                              />
-                              {/* Tooltip Popup container */}
-                              <div 
-                                className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 w-48 bg-[#092011] text-slate-100 border border-[#2b5e38] rounded-md shadow-2xl p-2.5 z-[250] text-left font-sans animate-in fade-in duration-100"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {/* Caret pointing up */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#092011]" />
-                                
-                                <div className="flex items-center justify-between border-b border-[#2b5e38] pb-1.5 mb-2">
-                                  <span className="text-[9.5px] font-black tracking-wide text-emerald-400 uppercase">Дати контактів</span>
-                                  <button 
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
-                                      setActiveContactTooltipId(null); 
-                                    }}
-                                    className="text-slate-400 hover:text-white font-bold text-[10px] px-1 hover:bg-[#12311b] rounded leading-none transition-all"
-                                  >
-                                    ✕
-                                  </button>
+                            <div 
+                              className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-max min-w-[85px] max-w-[125px] bg-[#091b10] text-[#a7f3d0] border border-[#2b5e38] rounded-md shadow-lg p-1 z-[250] text-center font-mono animate-in fade-in duration-75"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#091b10]" />
+                              {allDates.length > 0 ? (
+                                <div className="space-y-0.5 max-h-24 overflow-y-auto custom-scrollbar text-[8px] leading-tight font-black">
+                                  {allDates.map((dateStr, idx) => (
+                                    <div key={idx} className="py-0.5 border-b border-[#2b5e38]/20 last:border-0">
+                                      {dateStr}
+                                    </div>
+                                  ))}
                                 </div>
-
-                                {allDates.length > 0 ? (
-                                  <div className="max-h-28 overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar font-mono text-[9.5px]">
-                                    {allDates.map((dateStr, idx) => (
-                                      <div key={idx} className="flex items-center space-x-2 py-0.5 border-b border-[#12311b]/40 last:border-0">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0 shadow-sm" />
-                                        <span className="font-extrabold text-slate-200">{dateStr}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-[10px] text-slate-400 italic py-1 text-center font-bold">Немає записів</p>
-                                )}
-
-                                <div className="mt-2.5 pt-2 border-t border-[#2b5e38] flex justify-between items-center text-[8px] text-emerald-500 font-bold select-none">
-                                  <span>Кількість: {allDates.length}</span>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setActiveContactTooltipId(null);
-                                      handleOpenContactModal(m);
-                                    }}
-                                    className="px-1.5 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[8px] font-black uppercase tracking-wider transition-colors shadow-sm"
-                                  >
-                                    Редагувати
-                                  </button>
-                                </div>
-                              </div>
-                            </>
+                              ) : (
+                                <p className="text-[8px] text-slate-400 italic py-0.5">Немає дат</p>
+                              )}
+                            </div>
                           )}
                         </td>
                       );

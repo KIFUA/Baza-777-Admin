@@ -810,13 +810,45 @@ app.post("/api/sync-sheets", async (req, res) => {
   try {
     const GOOGLE_SHEET_ID = "1s_Wio5niYvq2HRoBYwH3bS9NEcbtsJsWXv5P7u5Zhw8";
     
-    // Fetch ДОВІДНИКИ
-    const dirUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("ДОВІДНИКИ")}`;
-    const dirResp = await fetch(dirUrl);
-    if (!dirResp.ok) throw new Error("Could not fetch ДОВІДНИКИ sheet");
-    const dirCsvText = await dirResp.text();
-    const dirRows = parseCSV(dirCsvText);
+    // Fetch direct XLSX export of Google Sheets to completely bypass server-side caching and fetch correct merged cell values
+    const xlsxUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/export?format=xlsx`;
+    const xlsxResp = await fetch(xlsxUrl);
+    if (!xlsxResp.ok) throw new Error("Could not fetch XLSX export from Google Sheets");
     
+    const arrayBuffer = await xlsxResp.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+
+    // Date/Number formatting helpers for XLSX parsing compatibility
+    const convertExcelSerialToDateString = (serialStr: string): string => {
+      const serial = Number(serialStr);
+      if (isNaN(serial) || serial <= 0) return String(serialStr);
+      const excelEpoch = new Date(1899, 11, 30);
+      const tempDate = new Date(excelEpoch.getTime() + Math.round(serial) * 86400000);
+      const dd = String(tempDate.getDate()).padStart(2, '0');
+      const mm = String(tempDate.getMonth() + 1).padStart(2, '0');
+      const yyyy = tempDate.getFullYear();
+      return `${dd}.${mm}.${yyyy}`;
+    };
+
+    const formatXlsxCell = (val: any): string => {
+      if (val === null || val === undefined) return "";
+      const str = String(val).trim();
+      if (!str) return "";
+      if (/^\d{5}$/.test(str)) {
+        return convertExcelSerialToDateString(str);
+      }
+      return str;
+    };
+
+    // 1. Process "ДОВІДНИКИ" sheet
+    const dirSheet = workbook.Sheets["ДОВІДНИКИ"];
+    if (!dirSheet) throw new Error("Sheet 'ДОВІДНИКИ' not found in spreadsheet");
+    const dirRowsRaw = XLSX.utils.sheet_to_json<any[]>(dirSheet, { header: 1, raw: false });
+    const dirRows = (dirRowsRaw || []).map(row => 
+      (row || []).map(cell => formatXlsxCell(cell))
+    );
+
     const freshOpika: string[] = [];
     const freshSlujinnya: string[] = [];
     const freshVidviduvanist: string[] = [];
@@ -826,6 +858,7 @@ app.post("/api/sync-sheets", async (req, res) => {
     // Skip row 0 (headers)
     for (let r = 1; r < dirRows.length; r++) {
       const cols = dirRows[r];
+      if (!cols) continue;
       if (cols[0]) freshOpika.push(cols[0]);
       if (cols[2]) freshSlujinnya.push(cols[2]);
       if (cols[4]) freshVidviduvanist.push(cols[4]);
@@ -842,17 +875,19 @@ app.post("/api/sync-sheets", async (req, res) => {
     if (freshPrysutnist.length > 0) directories_prysutnist = freshPrysutnist;
     if (freshDiAdmin.length > 0) directories_di_admin = freshDiAdmin;
 
-    // Fetch ДОСТУП
-    const accUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("ДОСТУП")}`;
-    const accResp = await fetch(accUrl);
-    if (!accResp.ok) throw new Error("Could not fetch ДОСТУП sheet");
-    const accCsvText = await accResp.text();
-    const accRows = parseCSV(accCsvText);
+    // 2. Process "ДОСТУП" sheet
+    const accSheet = workbook.Sheets["ДОСТУП"];
+    if (!accSheet) throw new Error("Sheet 'ДОСТУП' not found in spreadsheet");
+    const accRowsRaw = XLSX.utils.sheet_to_json<any[]>(accSheet, { header: 1, raw: false });
+    const accRows = (accRowsRaw || []).map(row => 
+      (row || []).map(cell => formatXlsxCell(cell))
+    );
     
     const freshDostup: any[] = [];
     // Skip row 0 (headers: РАЙОН, Користувач, Позиція, E-mail)
     for (let r = 1; r < accRows.length; r++) {
       const cols = accRows[r];
+      if (!cols) continue;
       if (cols[1]) { // user name must exist
         freshDostup.push({
           rayon: cols[0] || "",
@@ -868,17 +903,19 @@ app.post("/api/sync-sheets", async (req, res) => {
     // Write synchronized directories and access control lists to Firebase Realtime Database
     await syncDirectoriesToFirebase();
 
-    // Fetch and Sync members list "СПИСОК" from Google Sheets
+    // 3. Fetch and Sync members list "СПИСОК" from Google Sheets
     let syncedMembersCount = 0;
     let syncMemberDetailsMsg = "";
     try {
-      const listUrl = `https://docs.google.com/spreadsheets/d/${GOOGLE_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent("СПИСОК")}`;
-      const listResp = await fetch(listUrl);
-      if (listResp.ok) {
-        const listCsvText = await listResp.text();
-        const listRows = parseCSV(listCsvText);
-        if (listRows.length > 1) {
-          const headers = listRows[0];
+      const listSheet = workbook.Sheets["СПИСОК"];
+      if (!listSheet) throw new Error("Sheet 'СПИСОК' not found in spreadsheet");
+      const listRowsRaw = XLSX.utils.sheet_to_json<any[]>(listSheet, { header: 1, raw: false });
+      const listRows = (listRowsRaw || []).map(row => 
+        (row || []).map(cell => formatXlsxCell(cell))
+      );
+
+      if (listRows.length > 1) {
+        const headers = listRows[0];
           
           // Helper to normalize and match headers
           const normalizeString = (str: string): string => {
@@ -1248,8 +1285,7 @@ app.post("/api/sync-sheets", async (req, res) => {
             syncMemberDetailsMsg = `, розбіжностей у даних членів церкви не зафіксовано.`;
           }
         }
-      }
-    } catch (errMembers: any) {
+      } catch (errMembers: any) {
       console.error("Error syncing spreadsheet members list:", errMembers);
       syncMemberDetailsMsg = `, помилка при аналізі аркушу СПИСОК: ${errMembers.message}`;
     }

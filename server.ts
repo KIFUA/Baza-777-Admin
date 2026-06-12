@@ -106,7 +106,7 @@ const DEFAULT_DI_ADMIN = [
 ];
 
 const DEFAULT_RAYON2 = [
-  "ЦЕНТР", "КАСКАД", "АЕРОПОРТ", "ОБ'ЇЗНА"
+  "АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ЦЕНТР"
 ];
 
 // Google Sheets Tab: ДОСТУП - Default Fallback Constants
@@ -728,6 +728,18 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", numMembers: members.length });
 });
 
+function sortRayonsArray(rayons: string[]): string[] {
+  const customOrder = ["АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ЦЕНТР"];
+  return [...rayons].sort((a, b) => {
+    const idxA = customOrder.indexOf(a.toUpperCase());
+    const idxB = customOrder.indexOf(b.toUpperCase());
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
+
 // 2. Lookup Tables Catalog Access
 app.get("/api/lookups", async (req, res) => {
   await ensureDatabaseIsFresh();
@@ -749,8 +761,8 @@ app.get("/api/lookups", async (req, res) => {
       vidviduvanist: directories_vidviduvanist,
       prysutnist: directories_prysutnist,
       di_admin: directories_di_admin,
-      rayon2: directories_rayon2,
-      rayon: directories_rayon2
+      rayon2: sortRayonsArray(directories_rayon2),
+      rayon: sortRayonsArray(directories_rayon2)
     },
     access: access_dostup
   });

@@ -115,20 +115,32 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
   };
 
   // Pre-compiled list of standard church structural areas to clean up data entry
-  const STRUCTURAL_AREAS = lookups?.directories?.rayon2 || [
-    "ЦЕНТР",
-    "АЕРОПОРТ",
-    "КАСКАД",
-    "ПОЗИТРОН",
-    "БАМ",
-    "МИКИТИНЦІ",
-    "КРИХІВЦІ",
-    "ХРИПЛИН",
-    "УГОРНИКИ",
-    "ВОВЧИНЕЦЬ",
-    "ПАСІЧНА",
-    "ДІБРОВА"
-  ];
+  const STRUCTURAL_AREAS = (() => {
+    const rawAreas = lookups?.directories?.rayon2 || [
+      "ЦЕНТР",
+      "АЕРОПОРТ",
+      "КАСКАД",
+      "ОБ'ЇЗНА",
+      "ПОЗИТРОН",
+      "БАМ",
+      "МИКИТИНЦІ",
+      "КРИХІВЦІ",
+      "ХРИПЛИН",
+      "УГОРНИКИ",
+      "ВОВЧИНЕЦЬ",
+      "ПАСІЧНА",
+      "ДІБРОВА"
+    ];
+    const customOrder = ["АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ЦЕНТР"];
+    return [...rawAreas].sort((a, b) => {
+      const idxA = customOrder.indexOf(a.trim().toUpperCase());
+      const idxB = customOrder.indexOf(b.trim().toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  })();
 
   const caregiversList = lookups?.directories?.opika || [
     "Бевзюк В.", "Бурчак Ю.", "Галюк Б.", "Дмитраш М.", "Євстратов О.", 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Member } from '../types';
 import { Filter, Printer, CheckSquare, Square, ListFilter, Users, RefreshCw, Layers, Plus } from 'lucide-react';
 
@@ -63,17 +63,100 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   };
 
   // Extract unique dropdown selections from either lookups or databases dynamically
+  const RAYON_LIST_ORDER = ["АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ЦЕНТР"];
+  
+  const sortRayonsList = (list: any[]) => {
+    return [...list].sort((a, b) => {
+      const strA = String(a || "").trim();
+      const strB = String(b || "").trim();
+      const idxA = RAYON_LIST_ORDER.indexOf(strA.toUpperCase());
+      const idxB = RAYON_LIST_ORDER.indexOf(strB.toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return strA.localeCompare(strB);
+    });
+  };
+
   const uniqueRayons = useMemo(() => {
-    if (lookups?.directories?.rayon) return lookups.directories.rayon;
-    const set = new Set(members.map(m => m.rayon2_ukr).filter(Boolean));
-    return Array.from(set).sort();
+    const raw = lookups?.directories?.rayon || Array.from(new Set(members.map(m => m.rayon2_ukr).filter(Boolean)));
+    return sortRayonsList(raw);
   }, [lookups, members]);
 
   const uniquePresviters = useMemo(() => {
-    if (lookups?.directories?.opika) return lookups.directories.opika;
-    const set = new Set(members.map(m => m.presviter).filter(Boolean));
-    return Array.from(set).sort();
-  }, [lookups, members]);
+    // Obtain the base caregivers (opika)
+    const baseList = lookups?.directories?.opika || Array.from(new Set(members.map(m => m.presviter).filter(Boolean)));
+    const allPresviters = Array.from(new Set(baseList)).filter(Boolean);
+
+    // If no rayon is selected, show all caretakers
+    if (!selectedRayon) {
+      return (allPresviters as string[]).sort();
+    }
+
+    const targetRayonNorm = selectedRayon.trim().toUpperCase();
+
+    // Leaders map representing direct district leaders:
+    const leaderMap: Record<string, string> = {
+      "БЕВЗЮК В": "АЕРОПОРТ",
+      "СКІЦКО І": "КАСКАД",
+      "ЧЕРНЯК ВАС": "ОБ'ЇЗНА",
+      "ЧЕРНЯК ВАЛ": "ЦЕНТР"
+    };
+
+    return (allPresviters as string[]).filter(p => {
+      const pStr = String(p || "");
+      const pNorm = pStr.trim().toUpperCase().replace(/\./g, '').trim();
+      
+      // 1. Leader match
+      if (leaderMap[pNorm]) {
+        return leaderMap[pNorm] === targetRayonNorm;
+      }
+
+      // 2. Member match to locate caretaker's district
+      const foundMember = members.find(m => {
+        if (m.id_vybuttya > 0) return false; // active members only
+        if (!m.pib) return false;
+        
+        const mPibClean = m.pib.trim().toLowerCase();
+        const pClean = pStr.trim().toLowerCase();
+        
+        if (mPibClean === pClean) return true;
+        
+        const mParts = mPibClean.split(/\s+/).filter(Boolean);
+        const pParts = pClean.replace(/\./g, ' ').split(/\s+/).filter(Boolean);
+        
+        if (mParts.length === 0 || pParts.length === 0) return false;
+        
+        if (mParts[0] !== pParts[0]) return false;
+        if (pParts.length === 1) return true;
+        
+        const mFirst = mParts[1] || "";
+        const pFirst = pParts[1] || "";
+        if (mFirst && pFirst) {
+          if (mFirst.startsWith(pFirst) || pFirst.startsWith(mFirst)) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (foundMember) {
+        const memRayon = String(foundMember.rayon2_ukr || "").trim().toUpperCase();
+        return memRayon === targetRayonNorm;
+      }
+
+      return false;
+    }).sort();
+  }, [lookups, members, selectedRayon]);
+
+  // Adjust selected caretaker filter if it's no longer present among options for selected district
+  useEffect(() => {
+    if (selectedRayon && selectedPresviter) {
+      if (!uniquePresviters.includes(selectedPresviter)) {
+        setSelectedPresviter('');
+      }
+    }
+  }, [selectedRayon, selectedPresviter, uniquePresviters]);
 
   const uniqueSlujinnya = useMemo(() => {
     if (lookups?.directories?.slujinnya) {

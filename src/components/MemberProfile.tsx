@@ -29,9 +29,20 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     "Черняк Вікт.", "Шпарман Ю.", "Черняк Вас."
   ];
 
-  const rayonOptions = lookups?.directories?.rayon2 || [
-    "ЦЕНТР", "АЕРОПОРТ", "КАСКАД", "ПОЗИТРОН", "БАМ", "МИКИТИНЦІ", "КРИХІВЦІ", "ХРИПЛИН", "УГОРНИКИ", "ВОВЧИНЕЦЬ", "ПАСІЧНА", "ДІБРОВА"
-  ];
+  const rayonOptions = (() => {
+    const rawAreas = lookups?.directories?.rayon2 || [
+      "ЦЕНТР", "АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ПОЗИТРОН", "БАМ", "МИКИТИНЦІ", "КРИХІВЦІ", "ХРИПЛИН", "УГОРНИКИ", "ВОВЧИНЕЦЬ", "ПАСІЧНА", "ДІБРОВА"
+    ];
+    const customOrder = ["АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ЦЕНТР"];
+    return [...rawAreas].sort((a, b) => {
+      const idxA = customOrder.indexOf(a.trim().toUpperCase());
+      const idxB = customOrder.indexOf(b.trim().toUpperCase());
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  })();
 
   const vidviduvanistOptions = [
     "Постійно", "Періодично", "Рідко", "Ніколи"

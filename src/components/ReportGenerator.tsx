@@ -120,7 +120,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
   // Calculate filtered members with case-insensitivity, trim, and duplicate control
   const filteredRecords = useMemo(() => {
-    return members.filter(m => {
+    const list = members.filter(m => {
       // 0. Status Filter of Active / Inactive
       if (selectedStatus === 'Наявні') {
         if (m.id_vybuttya > 0) return false;
@@ -190,6 +190,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
       return true;
     });
+
+    return [...list].sort((a, b) => (a.pib || '').localeCompare(b.pib || '', 'uk-UA'));
   }, [members, selectedStatus, selectedVybuttyaId, selectedRayon, selectedPresviter, selectedSlujinnya, selectedVidviduvanist, selectedPrysutnist, selectedStat, internalSearch]);
 
   // Column Toggle handler

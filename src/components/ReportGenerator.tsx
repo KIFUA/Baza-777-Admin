@@ -337,7 +337,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
               @page {
-                size: portrait;
+                size: A4 landscape;
                 margin: 12mm;
               }
               body {

@@ -24,7 +24,7 @@ export default function App() {
   const [spreadsheetLoading, setSpreadsheetLoading] = useState(true);
   
   // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'generator' (ГЕНЕРАТОР) or 'settings' (НАЛАШТУВАННЯ)
-  const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'generator' | 'settings'>('spreadsheet');
+  const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'generator' | 'settings' | 'stats'>('spreadsheet');
   const [activeTab, setActiveTab] = useState<'members' | 'pastoral' | 'history' | 'stats'>('members');
 
   // Interactive local session simulator based on Google Sheet tab "ДОСТУП"
@@ -329,6 +329,22 @@ export default function App() {
               АНКЕТИ
             </button>
             <button
+              title="Аналітична статистика реєстру та зрізи за районами"
+              onClick={() => {
+                setMainMode('stats');
+                setSelectedMemberId(null);
+                setShowForm(false);
+                Promise.all([
+                  fetchAllMembers(),
+                  fetchMembers(),
+                  fetchLookupsAndStats()
+                ]).catch(err => console.error("Error updating tab data:", err));
+              }}
+              className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+            >
+              СТАТИСТИКА
+            </button>
+            <button
               title="Налаштування довідників та кольорів"
               onClick={() => {
                 setMainMode('settings');
@@ -338,11 +354,6 @@ export default function App() {
               className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
             >
               НАЛАШТУВАННЯ
-            </button>
-            <button
-              className="px-1.5 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold rounded-md tracking-wider uppercase bg-[#1a3843] text-slate-400 opacity-50 cursor-not-allowed"
-            >
-              СТАТ-КА
             </button>
           </nav>
         </div>
@@ -441,6 +452,14 @@ export default function App() {
                 members={allMembers}
                 lookups={lookups}
               />
+            ) : mainMode === 'stats' ? (
+              <div className="flex-1 overflow-y-auto min-h-0 pb-2">
+                <StatsDashboard
+                  stats={stats}
+                  members={allMembers}
+                  lookups={lookups}
+                />
+              </div>
             ) : mainMode === 'settings' ? (
               <div className="flex-1 overflow-y-auto min-h-0 pb-2">
                 <DirectoriesManager

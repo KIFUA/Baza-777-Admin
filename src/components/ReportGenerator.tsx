@@ -319,10 +319,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     const printIframe = document.createElement('iframe');
     printIframe.id = 'print-iframe-element';
     printIframe.style.position = 'fixed';
-    printIframe.style.right = '0';
-    printIframe.style.bottom = '0';
-    printIframe.style.width = '0';
-    printIframe.style.height = '0';
+    printIframe.style.left = '-9999px';
+    printIframe.style.top = '-9999px';
+    printIframe.style.width = '1120px';
+    printIframe.style.height = '792px';
+    printIframe.style.opacity = '0';
+    printIframe.style.pointerEvents = 'none';
     printIframe.style.border = '0';
     document.body.appendChild(printIframe);
 
@@ -468,7 +470,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       }
                       
                       if (col.key === 'pib' && cellVal && cellVal !== '—') {
-                        cellVal = `<span style="font-weight: 700; color: #0f172a; white-space: normal;">${cellVal}</span>`;
+                        const parts = String(cellVal).trim().split(/\s+/);
+                        if (parts.length > 1) {
+                          const lastName = parts[0];
+                          const givenAndPatronymic = parts.slice(1).join(" ");
+                          cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px; line-height: 1.2;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500; line-height: 1.2;">${givenAndPatronymic}</div>`;
+                        } else {
+                          cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.2;">${cellVal}</div>`;
+                        }
                         tdStyle = ' style="white-space: normal;"';
                       }
                       
@@ -891,6 +900,17 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                         }
                         
                         if (col.key === 'pib' && cellVal && cellVal !== '—') {
+                          const parts = String(cellVal).trim().split(/\s+/);
+                          if (parts.length > 1) {
+                            const lastName = parts[0];
+                            const givenAndPatronymic = parts.slice(1).join(" ");
+                            return (
+                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                                <span className="font-extrabold text-slate-100 block">{lastName}</span>
+                                <span className="text-[10px] text-slate-400 font-semibold block">{givenAndPatronymic}</span>
+                              </td>
+                            );
+                          }
                           return (
                             <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
                               <span className="font-extrabold text-slate-100">{cellVal}</span>

@@ -424,9 +424,36 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   const rayonColWidth = 90;
   const pibLeftSticky = showRayonColumn ? (indexColWidth + rayonColWidth) : indexColWidth;
 
+  const getCustomColor = (category: 'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist', value: string) => {
+    try {
+      const saved = localStorage.getItem('custom_colors_map');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed[category] && parsed[category][value]) {
+          const hex = parsed[category][value];
+          if (hex && hex.startsWith('#') && hex.length === 7) {
+            const r = parseInt(hex.substring(1, 3), 16);
+            const g = parseInt(hex.substring(3, 5), 16);
+            const b = parseInt(hex.substring(5, 7), 16);
+            const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            const text = luma > 150 ? '#0f172a' : '#ffffff';
+            const r_b = Math.max(0, r - 30);
+            const g_b = Math.max(0, g - 30);
+            const b_b = Math.max(0, b - 30);
+            const border = `#${r_b.toString(16).padStart(2, '0')}${g_b.toString(16).padStart(2, '0')}${b_b.toString(16).padStart(2, '0')}`;
+            return { bg: hex, text, border };
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  };
+
   // Style lookups matching Google Sheets exactly
   const getOpikaStyle = (val: string) => {
     const norm = val.trim();
+    const custom = getCustomColor('opika', norm);
+    if (custom) return custom;
     if (norm === "Бевзюк В.") {
       return { bg: "#F7CB4D", text: "#2c2205", border: "#deae21" };
     }
@@ -442,6 +469,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
   const getSlujStyle = (val: string) => {
     const norm = val.trim();
+    const custom = getCustomColor('slujinnya', norm);
+    if (custom) return custom;
     if (norm === "SUN SHINE") {
       return { bg: "#8989EB", text: "#FFFFFF", border: "#7373e6" };
     }
@@ -458,6 +487,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
   const getVidvidStyle = (val: string) => {
     const norm = val.trim();
+    const custom = getCustomColor('vidviduvanist', norm);
+    if (custom) return custom;
     if (norm === "Постійно") return { bg: "#BDBDBD", text: "#111827", border: "#a6a6a6" };
     if (norm === "Рідко") return { bg: "#F3F3F3", text: "#374151", border: "#e5e5e5" };
     if (norm === "Періодично") return { bg: "#FFFFFF", text: "#1e3a1e", border: "#8fba94" };
@@ -467,6 +498,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
   const getPrysutStyle = (val: string) => {
     const norm = val.trim();
+    const custom = getCustomColor('prysutnist', norm);
+    if (custom) return custom;
     if (norm === "За кордоном") return { bg: "#26A69A", text: "#FFFFFF", border: "#1f8c81" };
     if (norm === "Хворий") return { bg: "#DDF2F0", text: "#004D40", border: "#b2e3dd" };
     return { bg: "#FFFFFF", text: "#1F2937", border: "#CBD5E1" };
@@ -794,7 +827,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           <div className="flex items-center shrink-0 relative">
             <select
               id="filter_opika_select"
-              title="Виберіть опікуна"
+              title={!selectedRayonFilter ? "Спочатку виберіть спочатку" : undefined}
               value={selectedOpikaFilter}
               onChange={(e) => {
                 if (!selectedRayonFilter) {
@@ -829,7 +862,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                 className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
               >
                 <AlertTriangle className="h-3 w-3 shrink-0" />
-                <span>Вкажіть район</span>
+                <span>Спочатку виберіть спочатку</span>
               </div>
             )}
           </div>
@@ -839,7 +872,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
             <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Фільтр..."
+              placeholder="Пошук"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"

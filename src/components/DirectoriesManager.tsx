@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
-  CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock
+  CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette
 } from 'lucide-react';
 import { Member } from '../types';
 
@@ -20,8 +20,67 @@ export default function DirectoriesManager({
   onSetSessionUser,
   members
 }: DirectoriesManagerProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'birthdays' | 'dicts' | 'access' | 'sync'>('birthdays');
+  const [activeSubTab, setActiveSubTab] = useState<'birthdays' | 'dicts' | 'access' | 'sync' | 'colors'>('birthdays');
   
+  // Custom categories color state
+  const [colorsMap, setColorsMap] = useState<Record<string, Record<string, string>>>({});
+  const [selectedColorCat, setSelectedColorCat] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist'>('opika');
+  const [colorsSaveStatus, setColorsSaveStatus] = useState(false);
+
+  // Load custom colors from localStorage on load
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('custom_colors_map');
+      if (saved) {
+        setColorsMap(JSON.parse(saved));
+      }
+    } catch (_) {}
+  }, []);
+
+  const handleSaveColors = () => {
+    localStorage.setItem('custom_colors_map', JSON.stringify(colorsMap));
+    setColorsSaveStatus(true);
+    setTimeout(() => setColorsSaveStatus(false), 2000);
+  };
+
+  const handleSetColor = (category: string, value: string, color: string) => {
+    setColorsMap(prev => ({
+      ...prev,
+      [category]: {
+        ...(prev[category] || {}),
+        [value]: color
+      }
+    }));
+  };
+
+  const handleResetColor = (category: string, value: string) => {
+    setColorsMap(prev => {
+      const next = { ...prev };
+      if (next[category]) {
+        const cat = { ...next[category] };
+        delete cat[value];
+        next[category] = cat;
+      }
+      return next;
+    });
+  };
+
+  const getCategoryOptions = () => {
+    if (selectedColorCat === 'opika') {
+      return (lookups?.directories?.opika as string[]) || Array.from(new Set(members.map(m => m.presviter).filter(Boolean)));
+    }
+    if (selectedColorCat === 'slujinnya') {
+      return (lookups?.directories?.slujinnya as string[]) || ["АДМІНІСТРАТИВНЕ", "ГОСТИННОСТІ", "ДИЗАЙНЕРСЬКЕ", "ДИЯКОН", "Лідер ДГ", "Молитовне", "СОЦІАЛЬНЕ", "ПЕРЕКЛАДЧІ", "Підтр. мал. церков", "Проповідники", "Служіння Г/Н", "SUN SHINE"];
+    }
+    if (selectedColorCat === 'vidviduvanist') {
+      return ["Постійно", "Періодично", "Рідко", "Ніколи"];
+    }
+    if (selectedColorCat === 'prysutnist') {
+      return (lookups?.directories?.prysutnist as string[]) || ["За кордоном", "Хворий"];
+    }
+    return [];
+  };
+
   // Birthdays list state
   const [birthdayData, setBirthdayData] = useState<any>(null);
   const [bdayLoading, setBdayLoading] = useState(false);
@@ -183,6 +242,14 @@ export default function DirectoriesManager({
         >
           <Users className="h-4.5 w-4.5 text-blue-600 shrink-0" />
           <span>📚 Налаштування списків</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('colors')}
+          className={`flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'colors' ? "bg-violet-50 text-violet-800 scale-[1.02]" : "text-slate-600 hover:bg-slate-50"}`}
+        >
+          <Palette className="h-4.5 w-4.5 text-violet-600 shrink-0" />
+          <span>🎨 Налаштування кольорів</span>
         </button>
 
         <button
@@ -750,6 +817,106 @@ export default function DirectoriesManager({
                   <RefreshCw className="h-4 w-4" />
                 )}
                 <span>{syncLoading ? 'Йде завантаження...' : 'Розпочати хмарну синхронізацію'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* SUBTAB 5: COLOR MATRIX CONFIGURATION */}
+        {activeSubTab === 'colors' && (
+          <div className="space-y-6 animate-fade-in text-slate-900">
+            <div>
+              <h2 className="font-display text-xl font-bold text-slate-900 tracking-tight">🎨 Ручне визначення кольорів записів</h2>
+              <p className="text-xs text-slate-500">Дозволяє змінити візуальну колірну схему плашок та статусів у головній таблиці для обраного реєстру</p>
+            </div>
+
+            <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
+              {[
+                { id: 'opika', label: 'ОПІКА' },
+                { id: 'slujinnya', label: 'СЛУЖІННЯ' },
+                { id: 'vidviduvanist', label: 'ВІДВІДУВАННЯ' },
+                { id: 'prysutnist', label: 'ПРИЧИНА ВІДСУТНОСТІ' }
+              ].map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedColorCat(cat.id as any)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border outline-none ${selectedColorCat === cat.id ? "bg-violet-600 border-violet-600 text-white font-bold shadow-sm" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4 space-y-4 max-h-[400px] overflow-y-auto">
+              {getCategoryOptions().length === 0 ? (
+                <div className="text-center text-slate-400 py-12 text-xs font-semibold">Не знайдено елементів довідника для фарбування</div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {getCategoryOptions().map((opt: string) => {
+                    const currentColor = colorsMap[selectedColorCat]?.[opt] || "#FFFFFF";
+                    return (
+                      <div key={opt} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
+                        <div className="flex items-center space-x-2.5 truncate">
+                          <span 
+                            className="w-4 h-4 rounded-full border border-slate-300 shrink-0 shadow-xs"
+                            style={{ backgroundColor: currentColor }}
+                          />
+                          <span className="text-xs font-bold text-slate-800 truncate" title={opt}>{opt}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 shrink-0">
+                          {/* Beautiful Preset colors clickable */}
+                          <div className="hidden sm:flex items-center space-x-1">
+                            {["#FEF8E3", "#DDF2F0", "#E8E7FC", "#FEE2E2", "#E0F2FE", "#FFFFFF"].map(p => (
+                              <button
+                                key={p}
+                                type="button"
+                                onClick={() => handleSetColor(selectedColorCat, opt, p)}
+                                className={`w-4 h-4 rounded-full border border-slate-200 hover:scale-110 transition-transform ${currentColor.toUpperCase() === p.toUpperCase() ? "ring-2 ring-violet-500" : ""}`}
+                                style={{ backgroundColor: p }}
+                              />
+                            ))}
+                          </div>
+                          
+                          {/* Color Input */}
+                          <input 
+                            type="color"
+                            value={currentColor.startsWith('#') && currentColor.length === 7 ? currentColor : "#FFFFFF"}
+                            onChange={(e) => handleSetColor(selectedColorCat, opt, e.target.value)}
+                            className="w-10 h-7 border border-slate-300 rounded cursor-pointer shrink-0 opacity-90"
+                          />
+
+                          {/* Reset Button */}
+                          {colorsMap[selectedColorCat]?.[opt] && (
+                            <button
+                              onClick={() => handleResetColor(selectedColorCat, opt)}
+                              className="text-[10px] text-rose-600 hover:underline font-bold px-1"
+                              title="Скинути до початкового"
+                            >
+                              Скинути
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {colorsSaveStatus && (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-800 px-3 py-2 text-xs font-bold inline-flex items-center space-x-1.5 animate-bounce">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                <span>Зміни кольорів застосовано успішно!</span>
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2 border-t border-slate-100">
+              <button
+                onClick={handleSaveColors}
+                className="bg-violet-600 hover:bg-violet-700 text-white font-extrabold text-xs px-6 py-2.5 rounded-xl shadow-md transition-all outline-none flex items-center space-x-1.5"
+              >
+                <Check className="h-4 w-4" />
+                <span>Зберегти налаштування кольорів</span>
               </button>
             </div>
           </div>

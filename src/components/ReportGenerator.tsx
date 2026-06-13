@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member } from '../types';
 import { Filter, Printer, CheckSquare, Square, ListFilter, Users, RefreshCw, Layers, Plus } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface ReportGeneratorProps {
   members: Member[];
@@ -43,6 +45,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const [selectedStat, setSelectedStat] = useState<string>('');
   const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
   const [internalSearch, setInternalSearch] = useState<string>('');
+  const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
 
   // Column choices
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
@@ -287,275 +290,289 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   };
 
   // Print view report builder
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (filteredRecords.length === 0) {
       alert("Сформований список порожній. Будь ласка, змініть фільтри.");
       return;
     }
 
-    // Prepare active filters list description
-    const activeFiltersText: string[] = [];
-    if (selectedStatus && selectedStatus !== 'Всі') {
-      activeFiltersText.push(`Статус: ${selectedStatus}`);
-      if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
-        const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
-        if (found) {
-          activeFiltersText.push(`Причина вибуття: ${found.Value}`);
+    setPdfGenerating(true);
+
+    try {
+      // Prepare active filters list description
+      const activeFiltersText: string[] = [];
+      if (selectedStatus && selectedStatus !== 'Всі') {
+        activeFiltersText.push(`Статус: ${selectedStatus}`);
+        if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
+          const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
+          if (found) {
+            activeFiltersText.push(`Причина вибуття: ${found.Value}`);
+          }
         }
       }
-    }
-    if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
-    if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
-    if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
-    if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
-    if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
-    if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
+      if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
+      if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
+      if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
+      if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
+      if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
+      if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
 
-    const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
+      const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
 
-    // Get table columns labels
-    const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
+      // Get table columns labels
+      const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
 
-    const printIframe = document.createElement('iframe');
-    printIframe.id = 'print-iframe-element';
-    printIframe.style.position = 'fixed';
-    printIframe.style.left = '-9999px';
-    printIframe.style.top = '-9999px';
-    printIframe.style.width = '1120px';
-    printIframe.style.height = '792px';
-    printIframe.style.opacity = '0';
-    printIframe.style.pointerEvents = 'none';
-    printIframe.style.border = '0';
-    document.body.appendChild(printIframe);
+      // Create offscreen container
+      const container = document.createElement('div');
+      container.id = 'dynamic-pdf-render-container';
+      container.style.position = 'absolute';
+      container.style.left = '-9999px';
+      container.style.top = '0px';
+      container.style.width = '1120px';
+      container.style.background = '#ffffff';
+      container.style.color = '#000000';
 
-    const doc = printIframe.contentWindow?.document || printIframe.contentDocument;
-    if (doc) {
-      doc.open();
-      doc.write(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>Звіт — Сформований список</title>
-            <style>
-              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-              @page {
-                size: A4 landscape;
-                margin: 12mm;
-              }
-              body {
-                font-family: 'Inter', system-ui, -apple-system, sans-serif;
-                color: #0f172a;
-                background: #ffffff;
-                margin: 0;
-                padding: 0;
-                line-height: 1.4;
-              }
-              .header {
-                border-bottom: 2px solid #334155;
-                padding-bottom: 12px;
-                margin-bottom: 20px;
-              }
-              .title-row {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-              }
-              .title {
-                font-size: 20px;
-                font-weight: 700;
-                color: #1e293b;
-                margin: 0;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-              }
-              .date-info {
-                font-size: 10px;
-                font-family: monospace;
-                color: #64748b;
-              }
-              .filters-box {
-                margin-top: 8px;
-                font-size: 11px;
-                background-color: #f8fafc;
-                border: 1px solid #e2e8f0;
-                padding: 6px 10px;
-                border-radius: 4px;
-                color: #334155;
-                font-weight: 500;
-              }
-              table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-top: 10px;
-                table-layout: auto;
-              }
-              th {
-                background-color: #e2e8f0;
-                color: #0f172a;
-                font-weight: 600;
-                font-size: 11px;
-                border: 1px solid #94a3b8;
-                padding: 6px 8px;
-                text-align: left;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-                white-space: normal;
-                word-wrap: break-word;
-                word-break: break-all;
-                vertical-align: top;
-              }
-              td {
-                font-size: 11px;
-                border: 1px solid #cbd5e1;
-                padding: 5px 8px;
-                color: #1e293b;
-                white-space: normal;
-                word-break: normal;
-                word-wrap: break-word;
-                vertical-align: top;
-              }
-              tr:nth-child(even) {
-                background-color: #f8fafc;
-              }
-              .totals {
-                margin-top: 15px;
-                font-size: 11px;
-                font-weight: 600;
-                color: #334155;
-                display: flex;
-                justify-content: space-between;
-                border-top: 1px solid #cbd5e1;
-                padding-top: 8px;
-              }
-              @media print {
-                body {
-                  -webkit-print-color-adjust: exact;
-                  print-color-adjust: exact;
-                }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <div class="title-row">
-                <h1 class="title">Сформований список членів церкви</h1>
-                <div class="date-info">ДАТА: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA')}</div>
-              </div>
-              <div class="filters-box">
-                <strong>Параметри відбору:</strong> ${filterSpec}
-              </div>
+      const htmlContent = `
+        <div style="padding: 30px; background-color: #ffffff; color: #0f172a; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; width: 100%;">
+          <style>
+            .header {
+              border-bottom: 2px solid #334155;
+              padding-bottom: 12px;
+              margin-bottom: 20px;
+            }
+            .title-row {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+            }
+            .title {
+              font-size: 20px;
+              font-weight: 700;
+              color: #1e293b;
+              margin: 0;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .date-info {
+              font-size: 10px;
+              font-family: monospace;
+              color: #64748b;
+            }
+            .filters-box {
+              margin-top: 8px;
+              font-size: 11px;
+              background-color: #f8fafc;
+              border: 1px solid #e2e8f0;
+              padding: 6px 10px;
+              border-radius: 4px;
+              color: #334155;
+              font-weight: 500;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+              table-layout: auto;
+            }
+            th {
+              background-color: #e2e8f0;
+              color: #0f172a;
+              font-weight: 600;
+              font-size: 11px;
+              border: 1px solid #94a3b8;
+              padding: 6px 8px;
+              text-align: left;
+              text-transform: uppercase;
+              letter-spacing: 0.3px;
+              white-space: normal;
+              word-wrap: break-word;
+              word-break: break-all;
+              vertical-align: top;
+            }
+            td {
+              font-size: 11px;
+              border: 1px solid #cbd5e1;
+              padding: 5px 8px;
+              color: #1e293b;
+              white-space: normal;
+              word-break: normal;
+              word-wrap: break-word;
+              vertical-align: top;
+            }
+            tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+            .totals {
+              margin-top: 15px;
+              font-size: 11px;
+              font-weight: 600;
+              color: #334155;
+              display: flex;
+              justify-content: space-between;
+              border-top: 1px solid #cbd5e1;
+              padding-top: 8px;
+            }
+          </style>
+          <div class="header">
+            <div class="title-row">
+              <h1 class="title">Сформований список членів церкви</h1>
+              <div class="date-info">ДАТА: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA')}</div>
             </div>
-            
-            <table>
-              <thead>
+            <div class="filters-box">
+              <strong>Параметри відбору:</strong> ${filterSpec}
+            </div>
+          </div>
+          
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center;">№</th>
+                ${displayColumns.map(col => `<th>${col.label}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRecords.map((m, idx) => `
                 <tr>
-                  <th style="width: 40px; text-align: center;">№</th>
-                  ${displayColumns.map(col => `<th>${col.label}</th>`).join('')}
-                </tr>
-              </thead>
-              <tbody>
-                ${filteredRecords.map((m, idx) => `
-                  <tr>
-                    <td style="text-align: center; font-weight: 500; color: #64748b;">${idx + 1}</td>
-                    ${displayColumns.map(col => {
-                      let cellVal = m[col.key as keyof Member] || '—';
-                      let tdStyle = '';
-                      if (col.key === 'd_narodjennya' && cellVal) {
-                        try {
-                          const parts = String(cellVal).split('-');
-                          if (parts.length === 3) {
-                            cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
-                          }
-                        } catch(e){}
-                      }
-                      
-                      if (col.key === 'pib' && cellVal && cellVal !== '—') {
-                        const parts = String(cellVal).trim().split(/\s+/);
-                        if (parts.length > 1) {
-                          const lastName = parts[0];
-                          const givenAndPatronymic = parts.slice(1).join(" ");
-                          cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px; line-height: 1.2;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500; line-height: 1.2;">${givenAndPatronymic}</div>`;
-                        } else {
-                          cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.2;">${cellVal}</div>`;
+                  <td style="text-align: center; font-weight: 500; color: #64748b;">${idx + 1}</td>
+                  ${displayColumns.map(col => {
+                    let cellVal = m[col.key as keyof Member] || '—';
+                    let tdStyle = '';
+                    if (col.key === 'd_narodjennya' && cellVal) {
+                      try {
+                        const parts = String(cellVal).split('-');
+                        if (parts.length === 3) {
+                          cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
                         }
-                        tdStyle = ' style="white-space: normal;"';
+                      } catch(e){}
+                    }
+                    
+                    if (col.key === 'pib' && cellVal && cellVal !== '—') {
+                      const parts = String(cellVal).trim().split(/\s+/);
+                      if (parts.length > 1) {
+                        const lastName = parts[0];
+                        const givenAndPatronymic = parts.slice(1).join(" ");
+                        cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px; line-height: 1.2;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500; line-height: 1.2;">${givenAndPatronymic}</div>`;
+                      } else {
+                        cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.2;">${cellVal}</div>`;
                       }
-                      
-                      if (col.key === 'address' && cellVal && cellVal !== '—') {
-                        const strVal = String(cellVal).trim();
-                        const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
-                        if (hasRayon) {
-                          const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
-                          let splitIdx = -1;
-                          for (const m of markers) {
-                            const idx = strVal.toLowerCase().indexOf(m);
-                            if (idx !== -1) {
-                              splitIdx = idx;
-                              break;
-                            }
+                      tdStyle = ' style="white-space: normal;"';
+                    }
+                    
+                    if (col.key === 'address' && cellVal && cellVal !== '—') {
+                      const strVal = String(cellVal).trim();
+                      const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
+                      if (hasRayon) {
+                        const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
+                        let splitIdx = -1;
+                        for (const m of markers) {
+                          const idx = strVal.toLowerCase().indexOf(m);
+                          if (idx !== -1) {
+                            splitIdx = idx;
+                            break;
                           }
-                          
-                          if (splitIdx !== -1) {
-                            const part1 = strVal.substring(0, splitIdx).trim();
-                            let part2 = strVal.substring(splitIdx).trim();
-                            if (part2.startsWith(',')) {
-                              part2 = part2.substring(1).trim();
-                            }
+                        }
+                        
+                        if (splitIdx !== -1) {
+                          const part1 = strVal.substring(0, splitIdx).trim();
+                          let part2 = strVal.substring(splitIdx).trim();
+                          if (part2.startsWith(',')) {
+                            part2 = part2.substring(1).trim();
+                          }
+                          cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
+                          tdStyle = ' style="white-space: normal;"';
+                        } else {
+                          const parts = strVal.split(',');
+                          if (parts.length >= 3) {
+                            const part1 = parts.slice(0, 2).join(',').trim();
+                            const part2 = parts.slice(2).join(',').trim();
                             cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
                             tdStyle = ' style="white-space: normal;"';
                           } else {
-                            const parts = strVal.split(',');
-                            if (parts.length >= 3) {
-                              const part1 = parts.slice(0, 2).join(',').trim();
-                              const part2 = parts.slice(2).join(',').trim();
-                              cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
-                              tdStyle = ' style="white-space: normal;"';
-                            } else {
-                              tdStyle = ' style="white-space: normal;"';
-                            }
+                            tdStyle = ' style="white-space: normal;"';
                           }
-                        } else {
-                          tdStyle = ' style="white-space: normal;"';
                         }
-                      }
-                      
-                      if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
-                        const strVal = String(cellVal).trim();
-                        const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-                        if (names.length > 2) {
-                          const groups = [];
-                          for (let i = 0; i < names.length; i += 2) {
-                            groups.push(names.slice(i, i + 2).join(', '));
-                          }
-                          cellVal = groups.join('<br />');
-                        }
+                      } else {
                         tdStyle = ' style="white-space: normal;"';
                       }
-                      return `<td${tdStyle}>${cellVal}</td>`;
-                    }).join('')}
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            
-            <div class="totals">
-              <span>Всього у сформованому списку: ${filteredRecords.length} осіб</span>
-              <span>База даних Церкви</span>
-            </div>
-          </body>
-        </html>
-      `);
-      doc.close();
+                    }
+                    
+                    if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
+                      const strVal = String(cellVal).trim();
+                      const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                      if (names.length > 2) {
+                        const groups = [];
+                        for (let i = 0; i < names.length; i += 2) {
+                          groups.push(names.slice(i, i + 2).join(', '));
+                        }
+                        cellVal = groups.join('<br />');
+                      }
+                      tdStyle = ' style="white-space: normal;"';
+                    }
+                    return `<td${tdStyle}>${cellVal}</td>`;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <div class="totals">
+            <span>Всього у сформованому списку: ${filteredRecords.length} осіб</span>
+            <span>База даних Церкви</span>
+          </div>
+        </div>
+      `;
 
-      setTimeout(() => {
-        printIframe.contentWindow?.focus();
-        printIframe.contentWindow?.print();
-        
-        // Cleanup document iframe
-        setTimeout(() => {
-          document.body.removeChild(printIframe);
-        }, 2000);
-      }, 500);
+      container.innerHTML = htmlContent;
+      document.body.appendChild(container);
+
+      // Render offscreen container to canvas
+      const canvas = await html2canvas(container, {
+        scale: 1.5,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+
+      // Remove offscreen container
+      document.body.removeChild(container);
+
+      // Create PDF
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pdfWidth = 297;
+      const pdfHeight = 210;
+
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const imgData = canvas.toDataURL('image/png');
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pdfHeight;
+
+      // Add multi-page slice if height exceeds A4 height
+      while (heightLeft > 0) {
+        position = position - pdfHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pdfHeight;
+      }
+
+      const todayString = new Date().toISOString().slice(0, 10);
+      pdf.save(`Zvit_Chleniv_Tserkvy_${todayString}.pdf`);
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      alert("Виникла помилка під час формування PDF-файлу. Спробуйте ще раз.");
+    } finally {
+      setPdfGenerating(false);
     }
   };
 
@@ -585,11 +602,15 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           
           <button
             onClick={handlePrint}
-            disabled={filteredRecords.length === 0}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all ${filteredRecords.length > 0 ? 'bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer' : 'bg-slate-700 cursor-not-allowed opacity-50'}`}
+            disabled={filteredRecords.length === 0 || pdfGenerating}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all ${filteredRecords.length > 0 && !pdfGenerating ? 'bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer' : 'bg-slate-700 cursor-not-allowed opacity-50'}`}
           >
-            <Printer className="h-4 w-4" />
-            <span>ДРУК (PDF)</span>
+            {pdfGenerating ? (
+              <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
+            <span>{pdfGenerating ? 'ГЕНЕРАЦІЯ...' : 'ДРУК (PDF)'}</span>
           </button>
         </div>
       </div>

@@ -827,7 +827,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           <div className="flex items-center shrink-0 relative">
             <select
               id="filter_opika_select"
-              title={!selectedRayonFilter ? "Спочатку виберіть спочатку" : undefined}
+              title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
               value={selectedOpikaFilter}
               onChange={(e) => {
                 if (!selectedRayonFilter) {
@@ -862,7 +862,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                 className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
               >
                 <AlertTriangle className="h-3 w-3 shrink-0" />
-                <span>Спочатку виберіть спочатку</span>
+                <span>Спочатку виберіть район</span>
               </div>
             )}
           </div>

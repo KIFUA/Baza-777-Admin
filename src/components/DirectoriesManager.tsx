@@ -222,65 +222,65 @@ export default function DirectoriesManager({
   const UKR_DAYS = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
 
   return (
-    <div id="dir_manager_tab" className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col md:flex-row gap-6 min-h-[550px] animate-fade-in select-text">
+    <div id="dir_manager_tab" className="bg-[#f0f8f6] rounded-2xl border border-[#b2cfb6] shadow-md p-6 flex flex-col md:flex-row gap-6 min-h-[550px] animate-fade-in select-text">
       
       {/* Sidebar Sub Tab Controls */}
-      <div className="w-full md:w-64 shrink-0 flex flex-col space-y-1.5 border-r border-slate-100 pr-0 md:pr-4">
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">Навігація кабінету</h3>
+      <div className="w-full md:w-64 shrink-0 flex flex-col space-y-1.5 border-r border-[#b2cfb6]/50 pr-0 md:pr-4">
+        <h3 className="text-xs font-black text-[#113a31] uppercase tracking-widest px-3 mb-2">Навігація кабінету</h3>
         
         <button
           onClick={() => setActiveSubTab('birthdays')}
-          className={`flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'birthdays' ? "bg-amber-50 text-amber-800 scale-[1.02]" : "text-slate-600 hover:bg-slate-50"}`}
+          className={`flex items-center space-x-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'birthdays' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-[#1e584f]/80 hover:bg-[#b2cfb6]/20 hover:text-[#113a31]"}`}
         >
-          <Cake className="h-4.5 w-4.5 text-amber-600 shrink-0" />
+          <Cake className="h-4.5 w-4.5 text-amber-500 shrink-0" />
           <span>🎂 Іменинники тижня</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('dicts')}
-          className={`flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'dicts' ? "bg-blue-50 text-blue-800 scale-[1.02]" : "text-slate-600 hover:bg-slate-50"}`}
+          className={`flex items-center space-x-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'dicts' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-[#1e584f]/80 hover:bg-[#b2cfb6]/20 hover:text-[#113a31]"}`}
         >
-          <Users className="h-4.5 w-4.5 text-blue-600 shrink-0" />
+          <Users className="h-4.5 w-4.5 text-blue-500 shrink-0" />
           <span>📚 Налаштування списків</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('colors')}
-          className={`flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'colors' ? "bg-violet-50 text-violet-800 scale-[1.02]" : "text-slate-600 hover:bg-slate-50"}`}
+          className={`flex items-center space-x-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'colors' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-[#1e584f]/80 hover:bg-[#b2cfb6]/20 hover:text-[#113a31]"}`}
         >
-          <Palette className="h-4.5 w-4.5 text-violet-600 shrink-0" />
+          <Palette className="h-4.5 w-4.5 text-violet-500 shrink-0" />
           <span>🎨 Налаштування кольорів</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('access')}
-          className={`flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'access' ? "bg-emerald-50 text-emerald-800 scale-[1.02]" : "text-slate-600 hover:bg-slate-50"}`}
+          className={`flex items-center space-x-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'access' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-[#1e584f]/80 hover:bg-[#b2cfb6]/20 hover:text-[#113a31]"}`}
         >
-          <ShieldCheck className="h-4.5 w-4.5 text-emerald-600 shrink-0" />
+          <ShieldCheck className="h-4.5 w-4.5 text-emerald-500 shrink-0" />
           <span>🔑 Доступ за секторами</span>
         </button>
 
         <button
           onClick={() => setActiveSubTab('sync')}
-          className={`flex items-center space-x-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'sync' ? "bg-rose-50 text-rose-800 scale-[1.02]" : "text-slate-600 hover:bg-slate-50"}`}
+          className={`flex items-center space-x-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all outline-none text-left ${activeSubTab === 'sync' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-[#1e584f]/80 hover:bg-[#b2cfb6]/20 hover:text-[#113a31]"}`}
         >
-          <RefreshCw className="h-4.5 w-4.5 text-rose-600 shrink-0" />
+          <RefreshCw className="h-4.5 w-4.5 text-rose-500 shrink-0" />
           <span>🔄 Хмарна Синхронізація</span>
         </button>
 
         {currentSessionUser && (
-          <div className="mt-auto pt-6 border-t border-slate-100 flex flex-col space-y-3 px-3">
+          <div className="mt-auto pt-6 border-t border-[#b2cfb6]/50 flex flex-col space-y-3 px-3">
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">🔐 Активна сесія:</span>
+              <span className="text-[10px] font-bold text-[#113a31] uppercase tracking-wider block">🔐 Активна сесія:</span>
               <div className="text-xs font-bold text-slate-800 truncate">{currentSessionUser.user}</div>
               <div className="text-[11px] font-medium text-slate-500">{currentSessionUser.position || "Співслужбовець"}</div>
-              <div className="inline-block bg-slate-900 text-white rounded px-1.5 py-0.5 text-[9px] font-mono leading-none tracking-wider uppercase font-bold mt-1">
+              <div className="inline-block bg-[#1a3843] text-white rounded px-1.5 py-0.5 text-[9px] font-mono leading-none tracking-wider uppercase font-bold mt-1">
                 {currentSessionUser.rayon}
               </div>
             </div>
             <button
               onClick={() => onSetSessionUser(null)}
-              className="flex items-center justify-center space-x-1.5 rounded-lg border border-slate-200 hover:border-rose-200 hover:bg-rose-50 text-[10px] font-bold text-slate-600 hover:text-rose-700 py-1.5 transition-colors uppercase tracking-wider"
+              className="flex items-center justify-center space-x-1.5 rounded-lg border border-[#b2cfb6] hover:border-rose-300 hover:bg-rose-50 text-[10px] font-bold text-slate-600 hover:text-rose-700 py-1.5 transition-colors uppercase tracking-wider bg-white/50"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span>Скинути сесію</span>
@@ -824,13 +824,13 @@ export default function DirectoriesManager({
 
         {/* SUBTAB 5: COLOR MATRIX CONFIGURATION */}
         {activeSubTab === 'colors' && (
-          <div className="space-y-6 animate-fade-in text-slate-900">
+          <div className="space-y-6 animate-fade-in text-[#113a31]">
             <div>
-              <h2 className="font-display text-xl font-bold text-slate-900 tracking-tight">🎨 Ручне визначення кольорів записів</h2>
-              <p className="text-xs text-slate-500">Дозволяє змінити візуальну колірну схему плашок та статусів у головній таблиці для обраного реєстру</p>
+              <h2 className="font-display text-xl font-bold text-[#113a31] tracking-tight">🎨 Ручне визначення кольорів записів</h2>
+              <p className="text-xs text-[#1e584f]/80">Дозволяє змінити візуальну колірну схему плашок та статусів у головній таблиці для обраного реєстру</p>
             </div>
 
-            <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-3">
+            <div className="flex flex-wrap gap-2 border-b border-[#b2cfb6]/30 pb-3">
               {[
                 { id: 'opika', label: 'ОПІКА' },
                 { id: 'slujinnya', label: 'СЛУЖІННЯ' },
@@ -840,61 +840,65 @@ export default function DirectoriesManager({
                 <button
                   key={cat.id}
                   onClick={() => setSelectedColorCat(cat.id as any)}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all border outline-none ${selectedColorCat === cat.id ? "bg-violet-600 border-violet-600 text-white font-bold shadow-sm" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all border outline-none cursor-pointer ${selectedColorCat === cat.id ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm" : "bg-white border-[#cbdcd6] text-[#1e584f] hover:bg-slate-50/70"}`}
                 >
                   {cat.label}
                 </button>
               ))}
             </div>
 
-            <div className="rounded-xl border border-slate-100 bg-slate-50/30 p-4 space-y-4 max-h-[400px] overflow-y-auto">
+            <div className="rounded-xl border border-[#b2cfb6]/50 bg-[#e6ede9] p-4 space-y-4 max-h-[400px] overflow-y-auto">
               {getCategoryOptions().length === 0 ? (
                 <div className="text-center text-slate-400 py-12 text-xs font-semibold">Не знайдено елементів довідника для фарбування</div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-3">
                   {getCategoryOptions().map((opt: string) => {
                     const currentColor = colorsMap[selectedColorCat]?.[opt] || "#FFFFFF";
                     return (
-                      <div key={opt} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-xs">
-                        <div className="flex items-center space-x-2.5 truncate">
+                      <div key={opt} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-white border border-[#cbdcd6]/60 rounded-xl shadow-xs gap-3">
+                        <div className="flex items-center space-x-3 min-w-0 flex-1">
                           <span 
-                            className="w-4 h-4 rounded-full border border-slate-300 shrink-0 shadow-xs"
+                            className="w-5 h-5 rounded-full border border-slate-300 shrink-0 shadow-sm"
                             style={{ backgroundColor: currentColor }}
                           />
-                          <span className="text-xs font-bold text-slate-800 truncate" title={opt}>{opt}</span>
+                          <span className="text-sm font-bold text-slate-800 truncate" title={opt}>{opt}</span>
                         </div>
-                        <div className="flex items-center space-x-2 shrink-0">
+                        <div className="flex items-center justify-between sm:justify-end space-x-2 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
                           {/* Beautiful Preset colors clickable */}
-                          <div className="hidden sm:flex items-center space-x-1">
+                          <div className="flex items-center space-x-1.5">
                             {["#FEF8E3", "#DDF2F0", "#E8E7FC", "#FEE2E2", "#E0F2FE", "#FFFFFF"].map(p => (
                               <button
                                 key={p}
                                 type="button"
+                                title={`Обрати колір ${p}`}
                                 onClick={() => handleSetColor(selectedColorCat, opt, p)}
-                                className={`w-4 h-4 rounded-full border border-slate-200 hover:scale-110 transition-transform ${currentColor.toUpperCase() === p.toUpperCase() ? "ring-2 ring-violet-500" : ""}`}
+                                className={`w-5 h-5 rounded-full border border-slate-200 hover:scale-110 transition-all shadow-xs cursor-pointer ${currentColor.toUpperCase() === p.toUpperCase() ? "ring-2 ring-[#387d7a] ring-offset-1 scale-105" : ""}`}
                                 style={{ backgroundColor: p }}
                               />
                             ))}
                           </div>
                           
-                          {/* Color Input */}
-                          <input 
-                            type="color"
-                            value={currentColor.startsWith('#') && currentColor.length === 7 ? currentColor : "#FFFFFF"}
-                            onChange={(e) => handleSetColor(selectedColorCat, opt, e.target.value)}
-                            className="w-10 h-7 border border-slate-300 rounded cursor-pointer shrink-0 opacity-90"
-                          />
+                          <div className="flex items-center space-x-1.5 pl-1.5 border-l border-slate-200">
+                            {/* Color Input */}
+                            <input 
+                              type="color"
+                              title="Обрати довільний колір"
+                              value={currentColor.startsWith('#') && currentColor.length === 7 ? currentColor : "#FFFFFF"}
+                              onChange={(e) => handleSetColor(selectedColorCat, opt, e.target.value)}
+                              className="w-8 h-7 p-0 border border-slate-300 rounded cursor-pointer shrink-0 opacity-100 bg-transparent"
+                            />
 
-                          {/* Reset Button */}
-                          {colorsMap[selectedColorCat]?.[opt] && (
-                            <button
-                              onClick={() => handleResetColor(selectedColorCat, opt)}
-                              className="text-[10px] text-rose-600 hover:underline font-bold px-1"
-                              title="Скинути до початкового"
-                            >
-                              Скинути
-                            </button>
-                          )}
+                            {/* Reset Button */}
+                            {colorsMap[selectedColorCat]?.[opt] && (
+                              <button
+                                onClick={() => handleResetColor(selectedColorCat, opt)}
+                                className="text-[10px] text-rose-600 hover:text-rose-700 font-extrabold hover:underline px-1 shrink-0 cursor-pointer"
+                                title="Скинути до початкового"
+                              >
+                                Скинути
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
@@ -910,10 +914,10 @@ export default function DirectoriesManager({
               </div>
             )}
 
-            <div className="flex justify-end pt-2 border-t border-slate-100">
+            <div className="flex justify-end pt-2 border-t border-[#b2cfb6]/50">
               <button
                 onClick={handleSaveColors}
-                className="bg-violet-600 hover:bg-violet-700 text-white font-extrabold text-xs px-6 py-2.5 rounded-xl shadow-md transition-all outline-none flex items-center space-x-1.5"
+                className="bg-[#387d7a] hover:bg-[#2b5f5d] text-white font-extrabold text-xs px-6 py-2.5 rounded-xl shadow-md transition-all outline-none flex items-center space-x-1.5"
               >
                 <Check className="h-4 w-4" />
                 <span>Зберегти налаштування кольорів</span>

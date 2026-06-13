@@ -378,16 +378,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               background-color: #e2e8f0;
               color: #0f172a;
               font-weight: 600;
-              font-size: 11px;
+              font-size: 5.5px !important;
               border: 1px solid #94a3b8;
               padding: 6px 8px;
-              text-align: left;
+              text-align: center !important;
+              vertical-align: middle !important;
               text-transform: uppercase;
               letter-spacing: 0.3px;
               white-space: normal;
               word-wrap: break-word;
               word-break: break-all;
-              vertical-align: top;
             }
             td {
               font-size: 11px;
@@ -397,7 +397,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               white-space: normal;
               word-break: normal;
               word-wrap: break-word;
-              vertical-align: top;
+              vertical-align: middle !important;
             }
             tr:nth-child(even) {
               background-color: #f8fafc;

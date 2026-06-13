@@ -442,13 +442,15 @@ export default function App() {
                 lookups={lookups}
               />
             ) : mainMode === 'settings' ? (
-              <DirectoriesManager
-                lookups={lookups}
-                onRefreshLookups={fetchLookupsAndStats}
-                currentSessionUser={currentSessionUser}
-                onSetSessionUser={setCurrentSessionUser}
-                members={allMembers}
-              />
+              <div className="flex-1 overflow-y-auto min-h-0 pb-2">
+                <DirectoriesManager
+                  lookups={lookups}
+                  onRefreshLookups={fetchLookupsAndStats}
+                  currentSessionUser={currentSessionUser}
+                  onSetSessionUser={setCurrentSessionUser}
+                  members={allMembers}
+                />
+              </div>
             ) : null}
           </div>
         )}

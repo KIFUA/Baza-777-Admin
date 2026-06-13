@@ -757,10 +757,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     const yearsDiff = today.getFullYear() - latestDate.getFullYear();
     const monthsDiff = today.getMonth() - latestDate.getMonth() + (yearsDiff * 12);
 
-    if (monthsDiff < 2) {
+    if (monthsDiff < 6) {
       return 'bg-[#69DD90]';
     }
-    if (monthsDiff === 2) {
+    if (monthsDiff === 6) {
       if (today.getDate() <= latestDate.getDate()) {
         return 'bg-[#69DD90]';
       }

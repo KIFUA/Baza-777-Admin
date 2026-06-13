@@ -43,6 +43,13 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   // Active contact tooltip state for single-click display
   const [activeContactTooltipId, setActiveContactTooltipId] = useState<number | null>(null);
 
+  // Active remark tooltip state for mouse hover or touch single-tap (Request 2)
+  const [activeRemarkTooltipId, setActiveRemarkTooltipId] = useState<number | null>(null);
+
+  // Editing state for the primitka (remarks/comments) cell
+  const [editingRemarkId, setEditingRemarkId] = useState<number | null>(null);
+  const [editingRemarkValue, setEditingRemarkValue] = useState<string>('');
+
   // Close tooltip on global click
   useEffect(() => {
     if (activeContactTooltipId === null) return;
@@ -58,6 +65,21 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       document.removeEventListener('click', handleGlobalClick);
     };
   }, [activeContactTooltipId]);
+
+  // Close remark tooltip on global click
+  useEffect(() => {
+    if (activeRemarkTooltipId === null) return;
+    const handleGlobalClick = () => {
+      setActiveRemarkTooltipId(null);
+    };
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleGlobalClick);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [activeRemarkTooltipId]);
 
   // States for the contact dates multi-record modal
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -566,6 +588,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     return <span className="font-bold text-[#0d341d] text-[11px]">{cleaned}</span>;
   };
 
+
   // Dropdown inline cell renderer (Request 5 & 6)
   const renderDropdownCell = (
     m: Member, 
@@ -957,14 +980,16 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                 ПІБ
               </th>
               <th className="py-1 px-0.5 border border-[#8fba94] text-center text-[7.5px] sm:text-[10px] font-bold text-[#1e4620] bg-[#c3dfc7] w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] leading-[1.1] sm:leading-tight uppercase sm:normal-case">Дати контактів з пресв.</th>
-              <th className="py-2 px-3 border border-[#8fba94] text-left font-bold w-48 min-w-[192px] truncate bg-[#b2cfb6]">ПРИМІТКИ і ПОЯСНЕННЯ</th>
+              <th className="py-2 px-3 border border-[#8fba94] text-left font-bold w-36 min-w-[144px] max-w-[144px] truncate bg-[#b2cfb6]">ПРИМІТКИ і ПОЯСНЕННЯ</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6]">Дії</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6]">Опіка</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-48 min-w-[192px] max-w-[192px] bg-[#b2cfb6]">Служіння</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Відвідування</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-24 min-w-[96px] bg-[#b2cfb6]" title="Причина відсутності">Прич. відсутності</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6]">Вік</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-left font-bold min-w-44 bg-[#b2cfb6]">Адрес</th>
+              <th className="py-2 px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] min-w-[150px] whitespace-nowrap">
+                Адреса
+              </th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6]">Телефон</th>
               <th className="py-2 px-1 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">Дата народж.</th>
               <th className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Ос-та</th>
@@ -986,7 +1011,6 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                   <tr 
                     key={m.id} 
                     className="border-b border-[#8fba94] even:bg-[#d5e6d8] odd:bg-[#e4efe5] hover:bg-[#a8c7ab] cursor-pointer group transition-colors"
-                    onDoubleClick={() => onOpenProfile(m.id)}
                   >
                     {/* Sticky index cell */}
                     <td 
@@ -1017,7 +1041,11 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className="py-1 px-1.5 sm:px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden"
+                      className="py-1 px-1.5 sm:px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        onOpenProfile(m.id);
+                      }}
                     >
                       <div className="flex items-center justify-between space-x-1">
                         <div className="flex items-center space-x-1 truncate min-w-0 flex-1">
@@ -1102,10 +1130,78 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       );
                     })()}
 
-                    {/* Remarks */}
-                    <td className="py-1.5 px-3 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 truncate max-w-sm italic font-medium">
-                      {m.primitka || '—'}
-                    </td>
+                    {/* Remarks with Popup Tooltip on Hover or Tap (Request 2) */}
+                    {editingRemarkId === m.id ? (
+                      <td 
+                        className="py-1 px-1 border-r border-[#8fba94] bg-white w-36 min-w-[144px] max-w-[144px]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="text"
+                          value={editingRemarkValue}
+                          onChange={(e) => setEditingRemarkValue(e.target.value)}
+                          onBlur={async () => {
+                            const originalVal = m.primitka || '';
+                            if (editingRemarkValue !== originalVal) {
+                              await onUpdateMember(m.id, { primitka: editingRemarkValue });
+                            }
+                            setEditingRemarkId(null);
+                          }}
+                          onKeyDown={async (e) => {
+                            if (e.key === 'Enter') {
+                              const originalVal = m.primitka || '';
+                              if (editingRemarkValue !== originalVal) {
+                                await onUpdateMember(m.id, { primitka: editingRemarkValue });
+                              }
+                              setEditingRemarkId(null);
+                            } else if (e.key === 'Escape') {
+                              setEditingRemarkId(null);
+                            }
+                          }}
+                          autoFocus
+                          className="w-full bg-slate-50 border border-emerald-500 rounded px-1.5 py-0.5 text-[11px] font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </td>
+                    ) : (
+                      <td 
+                        className="py-1.5 px-2 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 italic font-medium relative cursor-pointer overflow-visible w-36 min-w-[144px] max-w-[144px]"
+                        onMouseEnter={(e) => {
+                          const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
+                          if (div && div.scrollWidth > div.clientWidth) {
+                            setActiveRemarkTooltipId(m.id);
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setActiveRemarkTooltipId(null);
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
+                          if (div && div.scrollWidth > div.clientWidth) {
+                            setActiveRemarkTooltipId(activeRemarkTooltipId === m.id ? null : m.id);
+                          }
+                        }}
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setEditingRemarkId(m.id);
+                          setEditingRemarkValue(m.primitka || '');
+                          setActiveRemarkTooltipId(null);
+                        }}
+                      >
+                        <div className="remark-text-div truncate max-w-[128px]">
+                          {m.primitka || '—'}
+                        </div>
+                        {activeRemarkTooltipId === m.id && m.primitka && (
+                          <div 
+                            className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-72 sm:w-96 bg-emerald-950 text-white border border-emerald-700 rounded-lg shadow-xl p-3 z-[300] text-left font-sans text-xs not-italic font-semibold whitespace-normal normal-case leading-relaxed animate-in fade-in zoom-in-95 duration-100"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-emerald-950" />
+                            {m.primitka}
+                          </div>
+                        )}
+                      </td>
+                    )}
 
                     {/* "Дії" (di_admin) Inline Dropdown (Request 5) */}
                     {renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-amber-800 bg-amber-50/50 rounded px-1')}
@@ -1236,8 +1332,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       {m.vik_rokiv1 ? `${m.vik_rokiv1}` : '—'}
                     </td>
 
-                    {/* Address & Tel */}
-                    <td className="py-1 px-2 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-normal max-w-xs" title={m.address}>
+                    {/* Address (Request 1) */}
+                    <td className="py-1 px-3 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap align-middle" title={m.address}>
                       {formatAddress(m.address)}
                     </td>
                     <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono font-bold text-slate-700 whitespace-nowrap">

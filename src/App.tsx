@@ -331,11 +331,6 @@ export default function App() {
             <button
               className="px-1.5 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold rounded-md tracking-wider uppercase bg-[#1a3843] text-slate-400 opacity-50 cursor-not-allowed"
             >
-              ОПІКА
-            </button>
-            <button
-              className="px-1.5 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold rounded-md tracking-wider uppercase bg-[#1a3843] text-slate-400 opacity-50 cursor-not-allowed"
-            >
               СТАТ-КА
             </button>
           </nav>

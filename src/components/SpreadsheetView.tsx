@@ -15,6 +15,9 @@ interface SpreadsheetViewProps {
 
 export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpdateMember, onOpenGenerator }: SpreadsheetViewProps) {
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
+  const [selectedRayonFilter, setSelectedRayonFilter] = useState<string>('');
+  const [selectedOpikaFilter, setSelectedOpikaFilter] = useState<string>('');
+  const [showRayonWarning, setShowRayonWarning] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showRayonColumn, setShowRayonColumn] = useState(false);
   
@@ -245,6 +248,90 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     return '—';
   };
 
+  // Dynamically computed list of unique Rayons
+  const rayonList = useMemo(() => {
+    const list = (lookups?.directories?.rayon2 as string[]) || [];
+    if (list.length > 0) return list.filter(Boolean);
+    const unique = Array.from(new Set(members.map(m => m.rayon2_ukr).filter(Boolean)));
+    return unique.sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  // Dynamically computed dependent list of unique caregivers (opikuvan) inside selected Rayon
+  const opikaList = useMemo(() => {
+    // Obtain the base caregivers (opika)
+    const baseList = (lookups?.directories?.opika as string[]) || Array.from(new Set(members.map(m => m.presviter).filter(Boolean)));
+    const allPresviters = Array.from(new Set(baseList)).filter(Boolean);
+
+    // If no rayon is selected, show all caretakers
+    if (!selectedRayonFilter) {
+      return (allPresviters as string[]).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+    }
+
+    const targetRayonNorm = selectedRayonFilter.trim().toUpperCase();
+
+    // Leaders map representing direct district leaders:
+    const leaderMap: Record<string, string> = {
+      "БЕВЗЮК В": "АЕРОПОРТ",
+      "СКІЦКО І": "КАСКАД",
+      "ЧЕРНЯК ВАС": "ОБ'ЇЗНА",
+      "ЧЕРНЯК ВАЛ": "ЦЕНТР"
+    };
+
+    return (allPresviters as string[]).filter(p => {
+      const pStr = String(p || "");
+      const pNorm = pStr.trim().toUpperCase().replace(/\./g, '').trim();
+      
+      // 1. Leader match
+      if (leaderMap[pNorm]) {
+        return leaderMap[pNorm] === targetRayonNorm;
+      }
+
+      // 2. Member match to locate caretaker's district
+      const foundMember = members.find(m => {
+        if (m.id_vybuttya > 0) return false; // active members only
+        if (!m.pib) return false;
+        
+        const mPibClean = m.pib.trim().toLowerCase();
+        const pClean = pStr.trim().toLowerCase();
+        
+        if (mPibClean === pClean) return true;
+        
+        const mParts = mPibClean.split(/\s+/).filter(Boolean);
+        const pParts = pClean.replace(/\./g, ' ').split(/\s+/).filter(Boolean);
+        
+        if (mParts.length === 0 || pParts.length === 0) return false;
+        
+        if (mParts[0] !== pParts[0]) return false;
+        if (pParts.length === 1) return true;
+        
+        const mFirst = mParts[1] || "";
+        const pFirst = pParts[1] || "";
+        if (mFirst && pFirst) {
+          if (mFirst.startsWith(pFirst) || pFirst.startsWith(mFirst)) {
+            return true;
+          }
+        }
+        return false;
+      });
+
+      if (foundMember) {
+        const memRayon = String(foundMember.rayon2_ukr || "").trim().toUpperCase();
+        return memRayon === targetRayonNorm;
+      }
+
+      return false;
+    }).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members, selectedRayonFilter]);
+
+  // Adjust selected caretaker filter if it's no longer present in the updated options
+  useEffect(() => {
+    if (selectedRayonFilter && selectedOpikaFilter) {
+      if (!opikaList.includes(selectedOpikaFilter)) {
+        setSelectedOpikaFilter('');
+      }
+    }
+  }, [selectedRayonFilter, selectedOpikaFilter, opikaList]);
+
   // Filter members list locally + sort alphabetically by PIB
   const filteredMembers = useMemo(() => {
     const list = members.filter(m => {
@@ -252,7 +339,13 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       if (filterType === 'active' && m.id_vybuttya > 0) return false;
       if (filterType === 'dismissed' && m.id_vybuttya === 0) return false;
 
-      // 2. Search query filter (pib, address, phone, presviter)
+      // 2. Rayon Filter
+      if (selectedRayonFilter && m.rayon2_ukr !== selectedRayonFilter) return false;
+
+      // 3. Opika Filter
+      if (selectedOpikaFilter && m.presviter !== selectedOpikaFilter) return false;
+
+      // 4. Search query filter (pib, address, phone, presviter)
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const pibMatch = m.pib?.toLowerCase().includes(q);
@@ -270,7 +363,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
     // Sort alphabetically by full name (pib)
     return [...list].sort((a, b) => (a.pib || '').localeCompare(b.pib || '', 'uk-UA'));
-  }, [members, filterType, searchQuery]);
+  }, [members, filterType, selectedRayonFilter, selectedOpikaFilter, searchQuery]);
 
   // Calculate dynamic ПІБ column width based on the longest record, optimized for mobile screens
   const pibColumnWidth = useMemo(() => {
@@ -386,6 +479,50 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     if (field === 'vidviduvanist') return getVidvidStyle(v);
     if (field === 'prysutnist') return getPrysutStyle(v);
     return null;
+  };
+
+  const formatAddress = (address: string | undefined | null) => {
+    if (!address || address === '—') return '—';
+    const strVal = String(address).trim();
+    const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
+    if (hasRayon) {
+      const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
+      let splitIdx = -1;
+      for (const m of markers) {
+        const idx = strVal.toLowerCase().indexOf(m);
+        if (idx !== -1) {
+          splitIdx = idx;
+          break;
+        }
+      }
+      
+      if (splitIdx !== -1) {
+        const part1 = strVal.substring(0, splitIdx).trim();
+        let part2 = strVal.substring(splitIdx).trim();
+        if (part2.startsWith(',')) {
+          part2 = part2.substring(1).trim();
+        }
+        return (
+          <div className="flex flex-col text-left leading-tight py-0.5">
+            <span className="font-extrabold text-[#0d341d] text-[11px] block">{part1}</span>
+            <span className="text-[10px] text-zinc-500 font-semibold block mt-0.5">{part2}</span>
+          </div>
+        );
+      } else {
+        const parts = strVal.split(',');
+        if (parts.length >= 3) {
+          const part1 = parts.slice(0, 2).join(',').trim();
+          const part2 = parts.slice(2).join(',').trim();
+          return (
+            <div className="flex flex-col text-left leading-tight py-0.5">
+              <span className="font-extrabold text-[#0d341d] text-[11px] block">{part1}</span>
+              <span className="text-[10px] text-zinc-500 font-semibold block mt-0.5">{part2}</span>
+            </div>
+          );
+        }
+      }
+    }
+    return <span className="font-bold text-[#0d341d] text-[11px]">{strVal}</span>;
   };
 
   // Dropdown inline cell renderer (Request 5 & 6)
@@ -611,37 +748,94 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       <div className="px-1.5 py-1.5 sm:px-4 sm:py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 shadow-sm">
         
         {/* Row 1 / Main Row for mobile or left side for desktop */}
-        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
-          {/* Status filtering widgets (Наявні / Вибулі / Всі) */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Status filtering select (Наявні / Вибулі / Всі) */}
           {isAdmin && (
             <div className="flex items-center shrink-0">
-              <div className="inline-flex rounded bg-[#1a3843] p-0.5 border border-[#1b3642] w-[140px] xs:w-[165px] sm:w-[216px] justify-between h-[24px] sm:h-[32px] items-center">
-                <button
-                  id="filter_active_btn"
-                  onClick={() => setFilterType('active')}
-                  className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'active' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
-                >
-                  Наявні
-                </button>
-                <button
-                  id="filter_dismissed_btn"
-                  onClick={() => setFilterType('dismissed')}
-                  className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'dismissed' ? "bg-amber-600 text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
-                >
-                  Вибулі
-                </button>
-                <button
-                  id="filter_all_btn"
-                  onClick={() => setFilterType('all')}
-                  className={`px-1 py-0 rounded text-[7.5px] xs:text-[8px] sm:text-[9.5px] font-normal uppercase transition-all flex items-center justify-center h-full ${filterType === 'all' ? "bg-[#387d7a] text-white shadow-sm font-semibold" : "text-slate-400 hover:text-white"}`}
-                >
-                  Всі
-                </button>
-              </div>
+              <select
+                id="filter_status_select"
+                title="Статус членства"
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value as 'active' | 'dismissed' | 'all')}
+                className="rounded border border-[#1b3642] px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] bg-[#1a3843] text-white focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm"
+              >
+                <option value="active" className="bg-[#1a3843]">Наявні</option>
+                <option value="dismissed" className="bg-[#1a3843]">Вибулі</option>
+                <option value="all" className="bg-[#1a3843]">Всі</option>
+              </select>
             </div>
           )}
 
-          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center ml-auto">
+          {/* District Select (РАЙОН) */}
+          <div className="flex items-center shrink-0">
+            <select
+              id="filter_rayon_select"
+              title="Виберіть район"
+              value={selectedRayonFilter}
+              onChange={(e) => {
+                const r = e.target.value;
+                setSelectedRayonFilter(r);
+                setSelectedOpikaFilter(''); // Reset dependent opika filter
+              }}
+              className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
+                selectedRayonFilter 
+                  ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
+                  : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
+              }`}
+            >
+              <option value="" className="bg-[#1a3843]">РАЙОН (ВСІ)</option>
+              {rayonList.map((r, i) => (
+                <option key={i} value={r} className="bg-[#1a3843]">{r}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Caretaker Select (ОПІКА) - Dependent list */}
+          <div className="flex items-center shrink-0 relative">
+            <select
+              id="filter_opika_select"
+              title="Виберіть опікуна"
+              value={selectedOpikaFilter}
+              onChange={(e) => {
+                if (!selectedRayonFilter) {
+                  setShowRayonWarning(true);
+                  setTimeout(() => setShowRayonWarning(false), 2500);
+                  return;
+                }
+                setSelectedOpikaFilter(e.target.value);
+              }}
+              onMouseDown={(e) => {
+                if (!selectedRayonFilter) {
+                  e.preventDefault();
+                  setShowRayonWarning(true);
+                  setTimeout(() => setShowRayonWarning(false), 2500);
+                }
+              }}
+              className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
+                selectedOpikaFilter 
+                  ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
+                  : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
+              } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
+            >
+              <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
+              {selectedRayonFilter && opikaList.map((o, i) => (
+                <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
+              ))}
+            </select>
+
+            {showRayonWarning && (
+              <div 
+                id="rayon_warning_tooltip"
+                className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
+              >
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span>Вкажіть район</span>
+              </div>
+            )}
+          </div>
+
+          {/* Filters (Фільтри) */}
+          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
             <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
             <input
               type="text"
@@ -1002,8 +1196,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     </td>
 
                     {/* Address & Tel */}
-                    <td className="py-1.5 px-2 border-r border-slate-300 text-[#0d341d] font-bold bg-[#edf7f0]/45 truncate max-w-xs" title={m.address}>
-                      {m.address || '—'}
+                    <td className="py-1 px-2 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-normal max-w-xs" title={m.address}>
+                      {formatAddress(m.address)}
                     </td>
                     <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono font-bold text-slate-700 whitespace-nowrap">
                       {m.tel_mob || '—'}

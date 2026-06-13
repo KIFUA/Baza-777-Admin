@@ -4,6 +4,35 @@ import { Filter, Printer, CheckSquare, Square, ListFilter, Users, RefreshCw, Lay
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
+const cleanAddress = (address: string | undefined | null): string => {
+  if (!address) return '';
+  let str = String(address).trim();
+  if (str === '—' || str === '-') return '—';
+
+  // Remove oblast (province) if present
+  str = str.replace(/[А-Яа-яЄєІіЇїҐґ']+\s*(?:обл|область)[а-я]*\.?/gi, '');
+
+  // Remove rayon (district) if present
+  str = str.replace(/[А-Яа-яЄєІіЇїҐґ']+(?:ськ)?[ийаяеіуоїі]?(?:\s+|-\s*)?(?:р-н|р\.н\.|р\sн|район)[а-я]*\.?/gi, '');
+  str = str.replace(/(?:р-н|р\.н\.|р\sн|район)\s+[А-Яа-яЄєІіЇїҐґ']+/gi, '');
+
+  // Remove Ivano-Frankivsk in all case variations, including prefix "м. "
+  str = str.replace(/(?:м\.\s*)?Івано-Франківськ[а-я']*/gi, '');
+
+  // Clean up punctuation and spacing
+  str = str.replace(/\s+/g, ' ');
+  str = str.replace(/,(\s*,)+/g, ',');
+  str = str.replace(/\s*,\s*,/g, ',');
+  str = str.replace(/^\s*[,.]\s*/, '');
+  str = str.replace(/\s*[,.]\s*$/, '');
+  str = str.trim();
+
+  if (!str || /^[,\s.-]+$/.test(str)) {
+    return '—';
+  }
+  return str;
+};
+
 interface ReportGeneratorProps {
   members: Member[];
   lookups: any;
@@ -378,11 +407,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               background-color: #e2e8f0;
               color: #0f172a;
               font-weight: 600;
-              font-size: 5.5px !important;
+              font-size: 6.875px !important;
               border: 1px solid #94a3b8;
               padding: 6px 8px;
               text-align: center !important;
-              vertical-align: middle !important;
+              vertical-align: top !important;
               text-transform: uppercase;
               letter-spacing: 0.3px;
               white-space: normal;
@@ -397,7 +426,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               white-space: normal;
               word-break: normal;
               word-wrap: break-word;
-              vertical-align: middle !important;
+              vertical-align: top !important;
             }
             tr:nth-child(even) {
               background-color: #f8fafc;
@@ -459,41 +488,21 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     }
                     
                     if (col.key === 'address' && cellVal && cellVal !== '—') {
-                      const strVal = String(cellVal).trim();
-                      const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
-                      if (hasRayon) {
-                        const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
-                        let splitIdx = -1;
-                        for (const m of markers) {
-                          const idx = strVal.toLowerCase().indexOf(m);
-                          if (idx !== -1) {
-                            splitIdx = idx;
-                            break;
-                          }
-                        }
-                        
-                        if (splitIdx !== -1) {
-                          const part1 = strVal.substring(0, splitIdx).trim();
-                          let part2 = strVal.substring(splitIdx).trim();
-                          if (part2.startsWith(',')) {
-                            part2 = part2.substring(1).trim();
-                          }
+                      const cleaned = cleanAddress(cellVal);
+                      const isLocality = /^(с\.|смт|с-ще|м\.)/i.test(cleaned);
+                      if (isLocality) {
+                        const commaIdx = cleaned.indexOf(',');
+                        if (commaIdx !== -1) {
+                          const part1 = cleaned.substring(0, commaIdx).trim();
+                          const part2 = cleaned.substring(commaIdx + 1).trim();
                           cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
-                          tdStyle = ' style="white-space: normal;"';
                         } else {
-                          const parts = strVal.split(',');
-                          if (parts.length >= 3) {
-                            const part1 = parts.slice(0, 2).join(',').trim();
-                            const part2 = parts.slice(2).join(',').trim();
-                            cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
-                            tdStyle = ' style="white-space: normal;"';
-                          } else {
-                            tdStyle = ' style="white-space: normal;"';
-                          }
+                          cellVal = `<div style="font-weight: 600; color: #1e293b;">${cleaned}</div>`;
                         }
                       } else {
-                        tdStyle = ' style="white-space: normal;"';
+                        cellVal = `<div style="font-weight: 600; color: #1e293b;">${cleaned}</div>`;
                       }
+                      tdStyle = ' style="white-space: normal;"';
                     }
                     
                     if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
@@ -940,48 +949,24 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                         }
                         
                         if (col.key === 'address' && cellVal && cellVal !== '—') {
-                          const strVal = String(cellVal).trim();
-                          const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
-                          if (hasRayon) {
-                            const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
-                            let splitIdx = -1;
-                            for (const m of markers) {
-                              const idx = strVal.toLowerCase().indexOf(m);
-                              if (idx !== -1) {
-                                splitIdx = idx;
-                                break;
-                              }
-                            }
-                            
-                            if (splitIdx !== -1) {
-                              const part1 = strVal.substring(0, splitIdx).trim();
-                              let part2 = strVal.substring(splitIdx).trim();
-                              if (part2.startsWith(',')) {
-                                part2 = part2.substring(1).trim();
-                              }
+                          const cleaned = cleanAddress(cellVal);
+                          const isLocality = /^(с\.|смт|с-ще|м\.)/i.test(cleaned);
+                          if (isLocality) {
+                            const commaIdx = cleaned.indexOf(',');
+                            if (commaIdx !== -1) {
+                              const part1 = cleaned.substring(0, commaIdx).trim();
+                              const part2 = cleaned.substring(commaIdx + 1).trim();
                               return (
                                 <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
                                   <div className="font-semibold text-slate-100">{part1}</div>
                                   <div className="text-[10px] text-slate-400 mt-0.5">{part2}</div>
                                 </td>
                               );
-                            } else {
-                              const parts = strVal.split(',');
-                              if (parts.length >= 3) {
-                                const part1 = parts.slice(0, 2).join(',').trim();
-                                const part2 = parts.slice(2).join(',').trim();
-                                return (
-                                  <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                                    <div className="font-semibold text-slate-100">{part1}</div>
-                                    <div className="text-[10px] text-slate-400 mt-0.5">{part2}</div>
-                                  </td>
-                                );
-                              }
                             }
                           }
                           return (
                             <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                              {cellVal}
+                              {cleaned}
                             </td>
                           );
                         }

@@ -853,15 +853,15 @@ export default function DirectoriesManager({
                   {getCategoryOptions().map((opt: string) => {
                     const currentColor = colorsMap[selectedColorCat]?.[opt] || "#FFFFFF";
                     return (
-                      <div key={opt} className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 bg-[#13282e]/85 border border-[#224853]/40 rounded-lg shadow-xs gap-2">
-                        <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+                      <div key={opt} className="flex flex-col sm:flex-row sm:items-center justify-start p-2.5 bg-[#13282e]/85 border border-[#224853]/40 rounded-lg shadow-xs gap-y-2 gap-x-4">
+                        <div className="flex items-center space-x-2.5 min-w-0 w-full sm:w-56 shrink-0">
                           <span 
                             className="w-4 h-4 rounded-full border border-slate-700 shrink-0 shadow-xs"
                             style={{ backgroundColor: currentColor }}
                           />
                           <span className="text-xs font-bold text-slate-100 truncate" title={opt}>{opt}</span>
                         </div>
-                        <div className="flex items-center justify-between sm:justify-end space-x-2 shrink-0 border-t sm:border-t-0 pt-1.5 sm:pt-0 border-[#224853]/30">
+                        <div className="flex items-center justify-start space-x-2 shrink-0 pt-0 sm:pt-0">
                           {/* Beautiful Preset colors clickable */}
                           <div className="flex items-center space-x-1">
                             {["#FEF8E3", "#DDF2F0", "#E8E7FC", "#FEE2E2", "#E0F2FE", "#FFFFFF"].map(p => (

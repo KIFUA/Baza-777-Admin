@@ -514,48 +514,56 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     return null;
   };
 
+  const cleanAddress = (address: string | undefined | null): string => {
+    if (!address) return '';
+    let str = String(address).trim();
+    if (str === '—' || str === '-') return '—';
+
+    // Remove oblast (province) if present
+    str = str.replace(/[А-Яа-яЄєІіЇїҐґ']+\s*(?:обл|область)[а-я]*\.?/gi, '');
+
+    // Remove rayon (district) if present
+    str = str.replace(/[А-Яа-яЄєІіЇїҐґ']+(?:ськ)?[ийаяеіуоїі]?(?:\s+|-\s*)?(?:р-н|р\.н\.|р\sн|район)[а-я]*\.?/gi, '');
+    str = str.replace(/(?:р-н|р\.н\.|р\sн|район)\s+[А-Яа-яЄєІіЇїҐґ']+/gi, '');
+
+    // Remove Ivano-Frankivsk in all case variations, including prefix "м. "
+    str = str.replace(/(?:м\.\s*)?Івано-Франківськ[а-я']*/gi, '');
+
+    // Clean up punctuation and spacing
+    str = str.replace(/\s+/g, ' ');
+    str = str.replace(/,(\s*,)+/g, ',');
+    str = str.replace(/\s*,\s*,/g, ',');
+    str = str.replace(/^\s*[,.]\s*/, '');
+    str = str.replace(/\s*[,.]\s*$/, '');
+    str = str.trim();
+
+    if (!str || /^[,\s.-]+$/.test(str)) {
+      return '—';
+    }
+    return str;
+  };
+
   const formatAddress = (address: string | undefined | null) => {
-    if (!address || address === '—') return '—';
-    const strVal = String(address).trim();
-    const hasRayon = strVal.toLowerCase().includes('р-н') || strVal.toLowerCase().includes('район');
-    if (hasRayon) {
-      const markers = [', вул.', ', пров.', ', просп.', ', пл.', ', бул.', ', кв.'];
-      let splitIdx = -1;
-      for (const m of markers) {
-        const idx = strVal.toLowerCase().indexOf(m);
-        if (idx !== -1) {
-          splitIdx = idx;
-          break;
-        }
-      }
-      
-      if (splitIdx !== -1) {
-        const part1 = strVal.substring(0, splitIdx).trim();
-        let part2 = strVal.substring(splitIdx).trim();
-        if (part2.startsWith(',')) {
-          part2 = part2.substring(1).trim();
-        }
+    const cleaned = cleanAddress(address);
+    if (cleaned === '—') return '—';
+
+    // Check if it starts with a locality prefix: "с. ", "смт ", "с-ще ", "м. "
+    const isLocality = /^(с\.|смт|с-ще|м\.)/i.test(cleaned);
+    if (isLocality) {
+      const commaIdx = cleaned.indexOf(',');
+      if (commaIdx !== -1) {
+        const part1 = cleaned.substring(0, commaIdx).trim();
+        const part2 = cleaned.substring(commaIdx + 1).trim();
         return (
           <div className="flex flex-col text-left leading-tight py-0.5">
             <span className="font-extrabold text-[#0d341d] text-[11px] block">{part1}</span>
             <span className="text-[10px] text-zinc-500 font-semibold block mt-0.5">{part2}</span>
           </div>
         );
-      } else {
-        const parts = strVal.split(',');
-        if (parts.length >= 3) {
-          const part1 = parts.slice(0, 2).join(',').trim();
-          const part2 = parts.slice(2).join(',').trim();
-          return (
-            <div className="flex flex-col text-left leading-tight py-0.5">
-              <span className="font-extrabold text-[#0d341d] text-[11px] block">{part1}</span>
-              <span className="text-[10px] text-zinc-500 font-semibold block mt-0.5">{part2}</span>
-            </div>
-          );
-        }
       }
     }
-    return <span className="font-bold text-[#0d341d] text-[11px]">{strVal}</span>;
+
+    return <span className="font-bold text-[#0d341d] text-[11px]">{cleaned}</span>;
   };
 
   // Dropdown inline cell renderer (Request 5 & 6)
@@ -757,10 +765,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     const yearsDiff = today.getFullYear() - latestDate.getFullYear();
     const monthsDiff = today.getMonth() - latestDate.getMonth() + (yearsDiff * 12);
 
-    if (monthsDiff < 6) {
+    if (monthsDiff < 3) {
       return 'bg-[#69DD90]';
     }
-    if (monthsDiff === 6) {
+    if (monthsDiff === 3) {
       if (today.getDate() <= latestDate.getDate()) {
         return 'bg-[#69DD90]';
       }

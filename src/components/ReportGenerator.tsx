@@ -360,89 +360,119 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       container.style.width = '1120px';
       container.style.background = '#ffffff';
       container.style.color = '#000000';
+      document.body.appendChild(container);
 
-      const htmlContent = `
-        <div style="padding: 30px; background-color: #ffffff; color: #0f172a; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; width: 100%;">
-          <style>
-            .header {
-              border-bottom: 2px solid #334155;
-              padding-bottom: 12px;
-              margin-bottom: 20px;
-            }
-            .title-row {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-end;
-            }
-            .title {
-              font-size: 20px;
-              font-weight: 700;
-              color: #1e293b;
-              margin: 0;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-            }
-            .date-info {
-              font-size: 10px;
-              font-family: monospace;
-              color: #64748b;
-            }
-            .filters-box {
-              margin-top: 8px;
-              font-size: 11px;
-              background-color: #f8fafc;
-              border: 1px solid #e2e8f0;
-              padding: 6px 10px;
-              border-radius: 4px;
-              color: #334155;
-              font-weight: 500;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 10px;
-              table-layout: auto;
-            }
-            th {
-              background-color: #e2e8f0;
-              color: #0f172a;
-              font-weight: 600;
-              font-size: 6.875px !important;
-              border: 1px solid #94a3b8;
-              padding: 6px 8px;
-              text-align: center !important;
-              vertical-align: top !important;
-              text-transform: uppercase;
-              letter-spacing: 0.3px;
-              white-space: normal;
-              word-wrap: break-word;
-              word-break: break-all;
-            }
-            td {
-              font-size: 11px;
-              border: 1px solid #cbd5e1;
-              padding: 5px 8px;
-              color: #1e293b;
-              white-space: normal;
-              word-break: normal;
-              word-wrap: break-word;
-              vertical-align: top !important;
-            }
-            tr:nth-child(even) {
-              background-color: #f8fafc;
-            }
-            .totals {
-              margin-top: 15px;
-              font-size: 11px;
-              font-weight: 600;
-              color: #334155;
-              display: flex;
-              justify-content: space-between;
-              border-top: 1px solid #cbd5e1;
-              padding-top: 8px;
-            }
-          </style>
-          <div class="header">
+      // Inject PDF styles
+      const styleEl = document.createElement('style');
+      styleEl.innerHTML = `
+        .pdf-page {
+          width: 1120px;
+          height: 792px;
+          box-sizing: border-box;
+          padding: 35px 40px;
+          position: relative;
+          background-color: #ffffff;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          font-family: 'Inter', system-ui, sans-serif;
+          color: #0f172a;
+          page-break-after: always;
+        }
+        .header {
+          border-bottom: 2px solid #334155;
+          padding-bottom: 12px;
+          margin-bottom: 12px;
+        }
+        .title-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+        }
+        .title {
+          font-size: 20px;
+          font-weight: 700;
+          color: #1e293b;
+          margin: 0;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+        .date-info {
+          font-size: 10px;
+          font-family: monospace;
+          color: #64748b;
+        }
+        .filters-box {
+          margin-top: 8px;
+          font-size: 11px;
+          background-color: #f8fafc;
+          border: 1px solid #e2e8f0;
+          padding: 6px 10px;
+          border-radius: 4px;
+          color: #334155;
+          font-weight: 500;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+          table-layout: auto;
+        }
+        th {
+          background-color: #e2e8f0;
+          color: #0f172a;
+          font-weight: 600;
+          font-size: 11px !important;
+          border: 1px solid #94a3b8;
+          padding: 6px 8px;
+          text-align: center !important;
+          vertical-align: top !important;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        td {
+          font-size: 11px;
+          border: 1px solid #cbd5e1;
+          padding: 5px 8px;
+          color: #1e293b;
+          white-space: normal;
+          word-break: normal;
+          word-wrap: break-word;
+          vertical-align: top !important;
+        }
+        tr:nth-child(even) {
+          background-color: #f8fafc;
+        }
+        .totals {
+          margin-top: auto;
+          font-size: 11px;
+          font-weight: 600;
+          color: #334155;
+          display: flex;
+          justify-content: space-between;
+          border-top: 1px solid #cbd5e1;
+          padding-top: 8px;
+        }
+      `;
+      container.appendChild(styleEl);
+
+      const pages: { pageDiv: HTMLDivElement; tbody: HTMLTableSectionElement; footerDiv: HTMLDivElement }[] = [];
+      let totalPagesCreated = 0;
+
+      const createPageElement = (pageNumPlaceholder: string) => {
+        totalPagesCreated++;
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'pdf-page';
+
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'content-wrapper';
+
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'header';
+
+        const isFirstPage = totalPagesCreated === 1;
+        if (isFirstPage) {
+          headerDiv.innerHTML = `
             <div class="title-row">
               <h1 class="title">Сформований список членів церкви</h1>
               <div class="date-info">ДАТА: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA')}</div>
@@ -450,101 +480,143 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <div class="filters-box">
               <strong>Параметри відбору:</strong> ${filterSpec}
             </div>
-          </div>
-          
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 40px; text-align: center;">№</th>
-                ${displayColumns.map(col => `<th>${col.label}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredRecords.map((m, idx) => `
-                <tr>
-                  <td style="text-align: center; font-weight: 500; color: #64748b;">${idx + 1}</td>
-                  ${displayColumns.map(col => {
-                    let cellVal = m[col.key as keyof Member] || '—';
-                    let tdStyle = '';
-                    if (col.key === 'd_narodjennya' && cellVal) {
-                      try {
-                        const parts = String(cellVal).split('-');
-                        if (parts.length === 3) {
-                          cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
-                        }
-                      } catch(e){}
-                    }
-                    
-                    if (col.key === 'pib' && cellVal && cellVal !== '—') {
-                      const parts = String(cellVal).trim().split(/\s+/);
-                      if (parts.length > 1) {
-                        const lastName = parts[0];
-                        const givenAndPatronymic = parts.slice(1).join(" ");
-                        cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px; line-height: 1.2;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500; line-height: 1.2;">${givenAndPatronymic}</div>`;
-                      } else {
-                        cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.2;">${cellVal}</div>`;
-                      }
-                      tdStyle = ' style="white-space: normal;"';
-                    }
-                    
-                    if (col.key === 'address' && cellVal && cellVal !== '—') {
-                      const cleaned = cleanAddress(cellVal);
-                      const isLocality = /^(с\.|смт|с-ще|м\.)/i.test(cleaned);
-                      if (isLocality) {
-                        const commaIdx = cleaned.indexOf(',');
-                        if (commaIdx !== -1) {
-                          const part1 = cleaned.substring(0, commaIdx).trim();
-                          const part2 = cleaned.substring(commaIdx + 1).trim();
-                          cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
-                        } else {
-                          cellVal = `<div style="font-weight: 600; color: #1e293b;">${cleaned}</div>`;
-                        }
-                      } else {
-                        cellVal = `<div style="font-weight: 600; color: #1e293b;">${cleaned}</div>`;
-                      }
-                      tdStyle = ' style="white-space: normal;"';
-                    }
-                    
-                    if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
-                      const strVal = String(cellVal).trim();
-                      const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-                      if (names.length > 2) {
-                        const groups = [];
-                        for (let i = 0; i < names.length; i += 2) {
-                          groups.push(names.slice(i, i + 2).join(', '));
-                        }
-                        cellVal = groups.join('<br />');
-                      }
-                      tdStyle = ' style="white-space: normal;"';
-                    }
-                    return `<td${tdStyle}>${cellVal}</td>`;
-                  }).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          
-          <div class="totals">
-            <span>Всього у сформованому списку: ${filteredRecords.length} осіб</span>
-            <span>База даних Церкви</span>
-          </div>
-        </div>
-      `;
+          `;
+        } else {
+          headerDiv.innerHTML = `
+            <div class="title-row">
+              <h1 class="title" style="font-size: 14px; margin: 0;">Сформований список членів церкви (продовження)</h1>
+              <div class="date-info">ДАТА: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA')}</div>
+            </div>
+          `;
+        }
+        contentWrapper.appendChild(headerDiv);
 
-      container.innerHTML = htmlContent;
-      document.body.appendChild(container);
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        thead.innerHTML = `
+          <tr>
+            <th style="width: 40px; text-align: center;">№</th>
+            ${displayColumns.map(col => `<th>${col.label}</th>`).join('')}
+          </tr>
+        `;
+        table.appendChild(thead);
 
-      // Render offscreen container to canvas
-      const canvas = await html2canvas(container, {
-        scale: 1.5,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false
+        const tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+        table.appendChild(tbody);
+
+        contentWrapper.appendChild(table);
+        pageDiv.appendChild(contentWrapper);
+
+        const footerDiv = document.createElement('div');
+        footerDiv.className = 'totals';
+        footerDiv.innerHTML = `
+          <span>Всього у сформованому списку: ${filteredRecords.length} осіб</span>
+          <span class="page-num-indicator">${pageNumPlaceholder}</span>
+          <span>База даних Церкви</span>
+        `;
+        pageDiv.appendChild(footerDiv);
+
+        container.appendChild(pageDiv);
+        return { pageDiv, tbody, footerDiv };
+      };
+
+      let current = createPageElement("PAGE_NUM");
+      pages.push(current);
+
+      for (let idx = 0; idx < filteredRecords.length; idx++) {
+        const m = filteredRecords[idx];
+        const tr = document.createElement('tr');
+
+        // Generate cells
+        const cellsHtml = displayColumns.map(col => {
+          let cellVal = m[col.key as keyof Member] || '—';
+          let tdStyle = '';
+          if (col.key === 'd_narodjennya' && cellVal) {
+            try {
+              const parts = String(cellVal).split('-');
+              if (parts.length === 3) {
+                cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
+              }
+            } catch (e) {}
+          }
+
+          if (col.key === 'pib' && cellVal && cellVal !== '—') {
+            const parts = String(cellVal).trim().split(/\s+/);
+            if (parts.length > 1) {
+              const lastName = parts[0];
+              const givenAndPatronymic = parts.slice(1).join(" ");
+              cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px; line-height: 1.2; text-align: left !important; vertical-align: top !important;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500; line-height: 1.2; text-align: left !important; vertical-align: top !important;">${givenAndPatronymic}</div>`;
+            } else {
+              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.2; text-align: left !important; vertical-align: top !important;">${cellVal}</div>`;
+            }
+            tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: top !important;"';
+          }
+
+          if (col.key === 'address' && cellVal && cellVal !== '—') {
+            const cleaned = cleanAddress(cellVal);
+            const isLocality = /^(с\.|смт|с-ще|м\.)/i.test(cleaned);
+            if (isLocality) {
+              const commaIdx = cleaned.indexOf(',');
+              if (commaIdx !== -1) {
+                const part1 = cleaned.substring(0, commaIdx).trim();
+                const part2 = cleaned.substring(commaIdx + 1).trim();
+                cellVal = `<div style="font-weight: 600; color: #1e293b;">${part1}</div><div style="font-size: 10px; color: #475569; margin-top: 1px;">${part2}</div>`;
+              } else {
+                cellVal = `<div style="font-weight: 600; color: #1e293b;">${cleaned}</div>`;
+              }
+            } else {
+              cellVal = `<div style="font-weight: 600; color: #1e293b;">${cleaned}</div>`;
+            }
+            tdStyle = ' style="white-space: normal;"';
+          }
+
+          if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
+            const strVal = String(cellVal).trim();
+            const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+            if (names.length > 2) {
+              const groups = [];
+              for (let i = 0; i < names.length; i += 2) {
+                groups.push(names.slice(i, i + 2).join(', '));
+              }
+              cellVal = groups.join('<br />');
+            }
+            tdStyle = ' style="white-space: normal;"';
+          }
+          return `<td${tdStyle}>${cellVal}</td>`;
+        }).join('');
+
+        tr.innerHTML = `
+          <td style="text-align: center; font-weight: 500; color: #64748b; vertical-align: top !important;">${idx + 1}</td>
+          ${cellsHtml}
+        `;
+
+        current.tbody.appendChild(tr);
+
+        // Check if current page is vertically over 740px
+        const currentHeight = current.pageDiv.offsetHeight;
+        if (currentHeight > 740) {
+          // Remove the row from current page
+          current.tbody.removeChild(tr);
+
+          // Create next page
+          current = createPageElement("PAGE_NUM");
+          pages.push(current);
+
+          // Re-evaluate current row on the new page
+          idx--;
+        }
+      }
+
+      // Finalize page numbering across indicators
+      const totalPagesNum = pages.length;
+      pages.forEach((p, index) => {
+        const pageNum = index + 1;
+        const pageNumIndicator = p.pageDiv.querySelector('.page-num-indicator');
+        if (pageNumIndicator) {
+          pageNumIndicator.textContent = `Сторінка ${pageNum} з ${totalPagesNum}`;
+        }
       });
-
-      // Remove offscreen container
-      document.body.removeChild(container);
 
       // Create PDF
       const pdf = new jsPDF({
@@ -553,27 +625,25 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         format: 'a4'
       });
 
-      const pdfWidth = 297;
-      const pdfHeight = 210;
+      // Render each page individually for exact pagination splits
+      for (let i = 0; i < pages.length; i++) {
+        const pageEl = pages[i].pageDiv;
+        const canvas = await html2canvas(pageEl, {
+          scale: 2.0, // High density premium render
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
 
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL('image/png');
-
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-      heightLeft -= pdfHeight;
-
-      // Add multi-page slice if height exceeds A4 height
-      while (heightLeft > 0) {
-        position = position - pdfHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight, undefined, 'FAST');
-        heightLeft -= pdfHeight;
+        const imgData = canvas.toDataURL('image/png');
+        if (i > 0) {
+          pdf.addPage();
+        }
+        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
       }
+
+      document.body.removeChild(container);
 
       const todayString = new Date().toISOString().slice(0, 10);
       pdf.save(`Zvit_Chleniv_Tserkvy_${todayString}.pdf`);

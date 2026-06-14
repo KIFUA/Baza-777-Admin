@@ -81,6 +81,100 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     AVAILABLE_COLUMNS.filter(c => c.defaultChecked).map(c => c.key)
   );
 
+  const getCustomColor = (category: 'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist', value: string) => {
+    try {
+      const saved = localStorage.getItem('custom_colors_map');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed[category] && parsed[category][value]) {
+          const hex = parsed[category][value];
+          if (hex && hex.startsWith('#') && hex.length === 7) {
+            const r = parseInt(hex.substring(1, 3), 16);
+            const g = parseInt(hex.substring(3, 5), 16);
+            const b = parseInt(hex.substring(5, 7), 16);
+            const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            const text = luma > 150 ? '#0f172a' : '#ffffff';
+            const r_b = Math.max(0, r - 30);
+            const g_b = Math.max(0, g - 30);
+            const b_b = Math.max(0, b - 30);
+            const border = `#${r_b.toString(16).padStart(2, '0')}${g_b.toString(16).padStart(2, '0')}${b_b.toString(16).padStart(2, '0')}`;
+            return { bg: hex, text, border };
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  };
+
+  const getOpikaStyle = (val: string) => {
+    const norm = val.trim();
+    if (!norm || norm === '—') return null;
+    const custom = getCustomColor('opika', norm);
+    if (custom) return custom;
+    if (norm === "Бевзюк В.") {
+      return { bg: "#F7CB4D", text: "#2c2205", border: "#deae21" };
+    }
+    const creamShepherds = [
+      "Галюк Б.", "Євстратов О.", "Луцак М.", "Мельничук В.", "Прохніцький Б.", 
+      "Самелюк О.", "Скриник М.", "Стафіїв М.", "Факас О.", "Черняк Вікт.", "Шпарман Ю."
+    ];
+    if (creamShepherds.includes(norm)) {
+      return { bg: "#FEF8E3", text: "#4a3c10", border: "#ebdcb1" };
+    }
+    return null;
+  };
+
+  const getSlujStyle = (val: string) => {
+    const norm = val.trim();
+    if (!norm || norm === '—') return null;
+    const custom = getCustomColor('slujinnya', norm);
+    if (custom) return custom;
+    if (norm === "SUN SHINE") {
+      return { bg: "#8989EB", text: "#FFFFFF", border: "#7373e6" };
+    }
+    const lavenderList = [
+      "АДМІНІСТРАТИВНЕ", "ГОСТИННОСТІ", "ДИЗАЙНЕРСЬКЕ", "ДИЯКОН", "Лідер ДГ", 
+      "Молитовне", "СОЦІАЛЬНЕ", "ПЕРЕКЛАДЧІ", "Підтр. мал. церков", "Проповідники", 
+      "Служіння Г/Н"
+    ];
+    if (lavenderList.includes(norm)) {
+      return { bg: "#E8E7FC", text: "#2d1663", border: "#caccfa" };
+    }
+    return null;
+  };
+
+  const getVidvidStyle = (val: string) => {
+    const norm = val.trim();
+    if (!norm || norm === '—') return null;
+    const custom = getCustomColor('vidviduvanist', norm);
+    if (custom) return custom;
+    if (norm === "Постійно") return { bg: "#BDBDBD", text: "#111827", border: "#a6a6a6" };
+    if (norm === "Рідко") return { bg: "#F3F3F3", text: "#374151", border: "#e5e5e5" };
+    if (norm === "Періодично") return { bg: "#FFFFFF", text: "#1e3a1e", border: "#8fba94" };
+    if (norm === "Ніколи") return { bg: "#FFFFFF", text: "#991b1b", border: "#dc2626" };
+    return null;
+  };
+
+  const getPrysutStyle = (val: string) => {
+    const norm = val.trim();
+    if (!norm || norm === '—') return null;
+    const custom = getCustomColor('prysutnist', norm);
+    if (custom) return custom;
+    if (norm === "За кордоном") return { bg: "#26A69A", text: "#FFFFFF", border: "#1f8c81" };
+    if (norm === "Хворий") return { bg: "#DDF2F0", text: "#004D40", border: "#b2e3dd" };
+    return null;
+  };
+
+  const getCellStyling = (field: string, val: string) => {
+    const v = String(val || "").trim();
+    if (!v || v === '—') return null;
+    if (field === 'presviter') return getOpikaStyle(v);
+    if (field === 's_slujinnya_spysok') return getSlujStyle(v);
+    if (field === 'vidviduvanist') return getVidvidStyle(v);
+    if (field === 'prysutnist') return getPrysutStyle(v);
+    return null;
+  };
+
   // Reset all filters
   const handleReset = () => {
     setSelectedStatus('Наявні');
@@ -570,16 +664,38 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             tdStyle = ' style="white-space: normal;"';
           }
 
+          if (col.key === 'presviter' && cellVal && cellVal !== '—') {
+            const style = getCellStyling('presviter', String(cellVal));
+            if (style) {
+              cellVal = `<span style="display: inline-block; padding: 2.5px 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+            }
+          }
+
+          if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
+            const style = getCellStyling('vidviduvanist', String(cellVal));
+            if (style) {
+              cellVal = `<span style="display: inline-block; padding: 2.5px 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+            }
+          }
+
+          if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
+            const style = getCellStyling('prysutnist', String(cellVal));
+            if (style) {
+              cellVal = `<span style="display: inline-block; padding: 2.5px 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+            }
+          }
+
           if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
             const strVal = String(cellVal).trim();
             const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-            if (names.length > 2) {
-              const groups = [];
-              for (let i = 0; i < names.length; i += 2) {
-                groups.push(names.slice(i, i + 2).join(', '));
+            const badgeHtmls = names.map(name => {
+              const style = getCellStyling('s_slujinnya_spysok', name);
+              if (style) {
+                return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; margin: 1px; white-space: nowrap;">${name}</span>`;
               }
-              cellVal = groups.join('<br />');
-            }
+              return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; margin: 1px; white-space: nowrap;">${name}</span>`;
+            });
+            cellVal = `<div style="display: flex; flex-wrap: wrap; gap: 2px; align-items: center; justify-content: flex-start;">${badgeHtmls.join('')}</div>`;
             tdStyle = ' style="white-space: normal;"';
           }
           return `<td${tdStyle}>${cellVal}</td>`;
@@ -1041,22 +1157,85 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                           );
                         }
                         
-                        if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
-                          const strVal = String(cellVal).trim();
-                          const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-                          if (names.length > 2) {
-                            const groups: string[] = [];
-                            for (let i = 0; i < names.length; i += 2) {
-                              groups.push(names.slice(i, i + 2).join(', '));
-                            }
+                        if (col.key === 'presviter' && cellVal && cellVal !== '—') {
+                          const style = getCellStyling('presviter', String(cellVal));
+                          if (style) {
                             return (
-                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                                {groups.map((group, grpIdx) => (
-                                  <div key={grpIdx} className="whitespace-nowrap">{group}</div>
-                                ))}
+                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
+                                <span
+                                  className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
+                                  style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
+                                >
+                                  {String(cellVal)}
+                                </span>
                               </td>
                             );
                           }
+                        }
+
+                        if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
+                          const style = getCellStyling('vidviduvanist', String(cellVal));
+                          if (style) {
+                            return (
+                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
+                                <span
+                                  className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
+                                  style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
+                                >
+                                  {String(cellVal)}
+                                </span>
+                              </td>
+                            );
+                          }
+                        }
+
+                        if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
+                          const style = getCellStyling('prysutnist', String(cellVal));
+                          if (style) {
+                            return (
+                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
+                                <span
+                                  className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
+                                  style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
+                                >
+                                  {String(cellVal)}
+                                </span>
+                              </td>
+                            );
+                          }
+                        }
+
+                        if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
+                          const strVal = String(cellVal).trim();
+                          const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                          return (
+                            <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
+                              <div className="flex flex-wrap gap-1 items-center">
+                                {names.map((name, nameIdx) => {
+                                  const style = getCellStyling('s_slujinnya_spysok', name);
+                                  if (style) {
+                                    return (
+                                      <span
+                                        key={nameIdx}
+                                        className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0"
+                                        style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
+                                      >
+                                        {name}
+                                      </span>
+                                    );
+                                  }
+                                  return (
+                                    <span
+                                      key={nameIdx}
+                                      className="inline-block px-2 py-0.5 rounded-full text-[9px] font-medium border bg-[#1a3843] border-[#1f424f] text-slate-300 shrink-0"
+                                    >
+                                      {name}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </td>
+                          );
                         }
 
                         return (

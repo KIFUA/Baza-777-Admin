@@ -640,9 +640,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (parts.length > 1) {
               const lastName = parts[0];
               const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<div style="text-align: left; line-height: 1.25;"><span style="font-weight: 700; color: #0f172a; display: block; margin-bottom: 2px;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
+              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.25; width: 100%;"><span style="font-weight: 700; color: #0f172a; display: block; margin-bottom: 2px;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
             } else {
-              cellVal = `<div style="text-align: left; font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
+              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 700; color: #0f172a; line-height: 1.25; width: 100%;">${cellVal}</div>`;
             }
             tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
           }
@@ -654,12 +654,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               if (commaIdx !== -1) {
                 const part1 = cleaned.substring(0, commaIdx).trim();
                 const part2 = cleaned.substring(commaIdx + 1).trim();
-                cellVal = `<div style="text-align: left; line-height: 1.24;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></div>`;
+                cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.24; width: 100%;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></div>`;
               } else {
-                cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
+                cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</div>`;
               }
             } else {
-              cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
+              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</div>`;
             }
             tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
           }
@@ -667,19 +667,19 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (col.key === 'presviter' && cellVal && cellVal !== '—') {
               const style = getCellStyling('presviter', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 18px; line-height: 1; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('vidviduvanist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 18px; line-height: 1; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('prysutnist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 18px; line-height: 1; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
@@ -688,11 +688,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               const badgeHtmls = names.map(name => {
                 const style = getCellStyling('s_slujinnya_spysok', name);
                 if (style) {
-                  return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
+                  return `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 16px; line-height: 1; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
                 }
-                return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
+                return `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 16px; line-height: 1; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
               });
-              cellVal = `<div style="text-align: left; line-height: 1.2; vertical-align: middle;">${badgeHtmls.join('')}</div>`;
+              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.2; width: 100%;">${badgeHtmls.join('')}</div>`;
               tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
             } else {
               const isCenterVal = ['d_narodjennya', 'telefoni_spysok', 'vik', 'stat', 'status_nazva'].includes(col.key);

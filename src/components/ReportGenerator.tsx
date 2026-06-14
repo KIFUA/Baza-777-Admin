@@ -693,19 +693,19 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (col.key === 'presviter' && cellVal && cellVal !== '—') {
               const style = getCellStyling('presviter', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 3px 8px; line-height: 1; white-space: nowrap; margin: 1px; box-sizing: border-box;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('vidviduvanist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 3px 8px; line-height: 1; white-space: nowrap; margin: 1px; box-sizing: border-box;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('prysutnist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 3px 8px; line-height: 1; white-space: nowrap; margin: 1px; box-sizing: border-box;">${cellVal}</span>`;
               }
             }
             else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
@@ -714,9 +714,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               const badgeHtmls = names.map(name => {
                 const style = getCellStyling('s_slujinnya_spysok', name);
                 if (style) {
-                  return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
+                  return `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 2.5px 6px; line-height: 1; white-space: nowrap; margin: 2px; box-sizing: border-box;">${name}</span>`;
                 }
-                return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
+                return `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 2.5px 6px; line-height: 1; white-space: nowrap; margin: 2px; box-sizing: border-box;">${name}</span>`;
               });
               cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.2; width: 100%;">${badgeHtmls.join('')}</div>`;
               tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';

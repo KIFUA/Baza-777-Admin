@@ -527,12 +527,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         td {
           font-size: 11px;
           border: 1px solid #cbd5e1;
-          padding: 0 !important;
+          padding: 6px 8px !important;
           color: #1e293b;
           white-space: normal;
           word-break: normal;
           word-wrap: break-word;
-          height: 1px;
+          vertical-align: middle !important;
         }
         tr:nth-child(even) {
           background-color: #f8fafc;
@@ -624,7 +624,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         // Generate cells
         const cellsHtml = displayColumns.map(col => {
           let cellVal = m[col.key as keyof Member] || '—';
-          let tdStyle = ' style="white-space: normal;"';
+          let tdStyle = ' style="white-space: normal; vertical-align: middle !important;"';
           
           if (col.key === 'd_narodjennya' && cellVal) {
             try {
@@ -640,10 +640,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (parts.length > 1) {
               const lastName = parts[0];
               const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box; text-align: left; line-height: 1.3;"><span style="font-weight: 700; color: #0f172a;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; margin-top: 2px;">${givenAndPatronymic}</span></div>`;
+              cellVal = `<div style="text-align: left; line-height: 1.25;"><span style="font-weight: 700; color: #0f172a; display: block; margin-bottom: 2px;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
             } else {
-              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box; text-align: left; line-height: 1.3;"><span style="font-weight: 700; color: #0f172a;">${cellVal}</span></div>`;
+              cellVal = `<div style="text-align: left; font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
             }
+            tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
           }
           else if (col.key === 'address' && cellVal && cellVal !== '—') {
             const cleaned = cleanAddress(cellVal);
@@ -653,31 +654,32 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               if (commaIdx !== -1) {
                 const part1 = cleaned.substring(0, commaIdx).trim();
                 const part2 = cleaned.substring(commaIdx + 1).trim();
-                cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box; text-align: left; line-height: 1.2;"><span style="font-weight: 600; color: #1e293b;">${part1}</span><span style="font-size: 10px; color: #475569; margin-top: 2px;">${part2}</span></div>`;
+                cellVal = `<div style="text-align: left; line-height: 1.24;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></div>`;
               } else {
-                cellVal = `<div style="display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box; text-align: left; line-height: 1.2;"><span style="font-weight: 600; color: #1e293b;">${cleaned}</span></div>`;
+                cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
               }
             } else {
-              cellVal = `<div style="display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box; text-align: left; line-height: 1.2;"><span style="font-weight: 600; color: #1e293b;">${cleaned}</span></div>`;
+              cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
             }
+            tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
           }
           else {
             if (col.key === 'presviter' && cellVal && cellVal !== '—') {
               const style = getCellStyling('presviter', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; height: 18px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('vidviduvanist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; height: 18px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('prysutnist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; height: 18px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
@@ -686,18 +688,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               const badgeHtmls = names.map(name => {
                 const style = getCellStyling('s_slujinnya_spysok', name);
                 if (style) {
-                  return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; height: 16px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; margin: 1px; white-space: nowrap;">${name}</span>`;
+                  return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
                 }
-                return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; height: 16px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; margin: 1px; white-space: nowrap;">${name}</span>`;
+                return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
               });
-              cellVal = `<div style="display: flex; flex-wrap: wrap; gap: 2px; align-items: center; justify-content: flex-start; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box;">${badgeHtmls.join('')}</div>`;
-            }
-
-            if (!cellVal.includes('box-sizing: border-box')) {
-              const isLeftVal = col.key === 's_slujinnya_spysok';
-              const justify = isLeftVal ? 'flex-start' : 'center';
-              const align = isLeftVal ? 'left' : 'center';
-              cellVal = `<div style="display: flex; align-items: center; justify-content: ${justify}; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box; text-align: ${align};">${cellVal}</div>`;
+              cellVal = `<div style="text-align: left; line-height: 1.2; vertical-align: middle;">${badgeHtmls.join('')}</div>`;
+              tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
+            } else {
+              const isCenterVal = ['d_narodjennya', 'telefoni_spysok', 'vik', 'stat', 'status_nazva'].includes(col.key);
+              const textAlign = isCenterVal ? 'center' : 'left';
+              tdStyle = ` style="white-space: normal; text-align: ${textAlign} !important; vertical-align: middle !important;"`;
             }
           }
 
@@ -705,7 +705,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }).join('');
 
         tr.innerHTML = `
-          <td style="height: 1px; padding: 0 !important;"><div style="display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 6px 8px; box-sizing: border-box; text-align: center; font-weight: 500; color: #64748b;">${idx + 1}</div></td>
+          <td style="text-align: center !important; font-weight: 500; color: #64748b; vertical-align: middle !important;">${idx + 1}</td>
           ${cellsHtml}
         `;
 

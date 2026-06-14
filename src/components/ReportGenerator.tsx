@@ -456,7 +456,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       `;
       container.appendChild(styleEl);
 
-      const pages: { pageDiv: HTMLDivElement; tbody: HTMLTableSectionElement; footerDiv: HTMLDivElement }[] = [];
+      const pages: { pageDiv: HTMLDivElement; tbody: HTMLTableSectionElement; footerDiv: HTMLDivElement; contentWrapper: HTMLDivElement }[] = [];
       let totalPagesCreated = 0;
 
       const createPageElement = (pageNumPlaceholder: string) => {
@@ -503,7 +503,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
         const tbody = document.createElement('tbody');
         table.appendChild(tbody);
-        table.appendChild(tbody);
 
         contentWrapper.appendChild(table);
         pageDiv.appendChild(contentWrapper);
@@ -518,7 +517,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         pageDiv.appendChild(footerDiv);
 
         container.appendChild(pageDiv);
-        return { pageDiv, tbody, footerDiv };
+        return { pageDiv, tbody, footerDiv, contentWrapper };
       };
 
       let current = createPageElement("PAGE_NUM");
@@ -593,9 +592,10 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
         current.tbody.appendChild(tr);
 
-        // Check if current page is vertically over 740px
-        const currentHeight = current.pageDiv.offsetHeight;
-        if (currentHeight > 740) {
+        // Check if content height inside wrapper exceeds landscape A4 space
+        const currentHeight = current.contentWrapper.offsetHeight;
+        const rowCount = current.tbody.children.length;
+        if (currentHeight > 670 && rowCount > 1) {
           // Remove the row from current page
           current.tbody.removeChild(tr);
 

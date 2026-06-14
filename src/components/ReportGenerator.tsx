@@ -532,7 +532,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           white-space: normal;
           word-break: normal;
           word-wrap: break-word;
-          vertical-align: top !important;
+          vertical-align: middle !important;
         }
         tr:nth-child(even) {
           background-color: #f8fafc;
@@ -639,11 +639,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (parts.length > 1) {
               const lastName = parts[0];
               const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px; line-height: 1.2; text-align: left !important; vertical-align: top !important;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500; line-height: 1.2; text-align: left !important; vertical-align: top !important;">${givenAndPatronymic}</div>`;
+              cellVal = `<div style="font-weight: 700; color: #0f172a; margin-bottom: 2px; line-height: 1.2; text-align: left !important;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500; line-height: 1.2; text-align: left !important;">${givenAndPatronymic}</div>`;
             } else {
-              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.2; text-align: left !important; vertical-align: top !important;">${cellVal}</div>`;
+              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.2; text-align: left !important;">${cellVal}</div>`;
             }
-            tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: top !important;"';
+            tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
           }
 
           if (col.key === 'address' && cellVal && cellVal !== '—') {
@@ -667,21 +667,21 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           if (col.key === 'presviter' && cellVal && cellVal !== '—') {
             const style = getCellStyling('presviter', String(cellVal));
             if (style) {
-              cellVal = `<span style="display: inline-block; padding: 2.5px 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+              cellVal = `<span style="display: inline-block; text-align: center; vertical-align: middle; line-height: 18px; height: 18px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
             }
           }
 
           if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
             const style = getCellStyling('vidviduvanist', String(cellVal));
             if (style) {
-              cellVal = `<span style="display: inline-block; padding: 2.5px 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+              cellVal = `<span style="display: inline-block; text-align: center; vertical-align: middle; line-height: 18px; height: 18px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
             }
           }
 
           if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
             const style = getCellStyling('prysutnist', String(cellVal));
             if (style) {
-              cellVal = `<span style="display: inline-block; padding: 2.5px 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
+              cellVal = `<span style="display: inline-block; text-align: center; vertical-align: middle; line-height: 18px; height: 18px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; white-space: nowrap;">${cellVal}</span>`;
             }
           }
 
@@ -691,9 +691,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             const badgeHtmls = names.map(name => {
               const style = getCellStyling('s_slujinnya_spysok', name);
               if (style) {
-                return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; margin: 1px; white-space: nowrap;">${name}</span>`;
+                return `<span style="display: inline-block; text-align: center; vertical-align: middle; line-height: 16px; height: 16px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; margin: 1px; white-space: nowrap;">${name}</span>`;
               }
-              return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; margin: 1px; white-space: nowrap;">${name}</span>`;
+              return `<span style="display: inline-block; text-align: center; vertical-align: middle; line-height: 16px; height: 16px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; margin: 1px; white-space: nowrap;">${name}</span>`;
             });
             cellVal = `<div style="display: flex; flex-wrap: wrap; gap: 2px; align-items: center; justify-content: flex-start;">${badgeHtmls.join('')}</div>`;
             tdStyle = ' style="white-space: normal;"';
@@ -702,7 +702,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }).join('');
 
         tr.innerHTML = `
-          <td style="text-align: center; font-weight: 500; color: #64748b; vertical-align: top !important;">${idx + 1}</td>
+          <td style="text-align: center; font-weight: 500; color: #64748b; vertical-align: middle !important;">${idx + 1}</td>
           ${cellsHtml}
         `;
 

@@ -27,18 +27,46 @@ export default function DirectoriesManager({
   const [selectedColorCat, setSelectedColorCat] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist'>('opika');
   const [colorsSaveStatus, setColorsSaveStatus] = useState(false);
 
-  // Load custom colors from localStorage on load
+  // Load custom colors from server/local on load
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('custom_colors_map');
-      if (saved) {
-        setColorsMap(JSON.parse(saved));
+    const fetchColors = async () => {
+      try {
+        const res = await fetch('/api/custom-colors');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Object.keys(data).length > 0) {
+            setColorsMap(data);
+            localStorage.setItem('custom_colors_map', JSON.stringify(data));
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load custom colors from server:", err);
       }
-    } catch (_) {}
+      try {
+        const saved = localStorage.getItem('custom_colors_map');
+        if (saved) {
+          setColorsMap(JSON.parse(saved));
+        }
+      } catch (_) {}
+    };
+    fetchColors();
   }, []);
 
-  const handleSaveColors = () => {
+  const handleSaveColors = async () => {
     localStorage.setItem('custom_colors_map', JSON.stringify(colorsMap));
+    
+    try {
+      const res = await fetch('/api/custom-colors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(colorsMap)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.error("Failed to save custom colors to server:", err);
+    }
+
     setColorsSaveStatus(true);
     setTimeout(() => setColorsSaveStatus(false), 2000);
   };

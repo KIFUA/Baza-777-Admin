@@ -75,31 +75,54 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
   const [internalSearch, setInternalSearch] = useState<string>('');
   const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
+  
+  // Custom print layout parameters
+  const [printColors, setPrintColors] = useState<boolean>(true);
+  const [customColorsMap, setCustomColorsMap] = useState<any>({});
 
   // Column choices
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
     AVAILABLE_COLUMNS.filter(c => c.defaultChecked).map(c => c.key)
   );
 
+  useEffect(() => {
+    const fetchColors = async () => {
+      try {
+        const res = await fetch('/api/custom-colors');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Object.keys(data).length > 0) {
+            setCustomColorsMap(data);
+            localStorage.setItem('custom_colors_map', JSON.stringify(data));
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch colors from server in ReportGenerator:", err);
+      }
+      try {
+        const saved = localStorage.getItem('custom_colors_map');
+        if (saved) setCustomColorsMap(JSON.parse(saved));
+      } catch (_) {}
+    };
+    fetchColors();
+  }, []);
+
   const getCustomColor = (category: 'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist', value: string) => {
     try {
-      const saved = localStorage.getItem('custom_colors_map');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed[category] && parsed[category][value]) {
-          const hex = parsed[category][value];
-          if (hex && hex.startsWith('#') && hex.length === 7) {
-            const r = parseInt(hex.substring(1, 3), 16);
-            const g = parseInt(hex.substring(3, 5), 16);
-            const b = parseInt(hex.substring(5, 7), 16);
-            const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            const text = luma > 150 ? '#0f172a' : '#ffffff';
-            const r_b = Math.max(0, r - 30);
-            const g_b = Math.max(0, g - 30);
-            const b_b = Math.max(0, b - 30);
-            const border = `#${r_b.toString(16).padStart(2, '0')}${g_b.toString(16).padStart(2, '0')}${b_b.toString(16).padStart(2, '0')}`;
-            return { bg: hex, text, border };
-          }
+      if (customColorsMap && customColorsMap[category] && customColorsMap[category][value]) {
+        const hex = customColorsMap[category][value];
+        if (hex && hex.startsWith('#') && hex.length === 7) {
+          const r = parseInt(hex.substring(1, 3), 16);
+          const g = parseInt(hex.substring(3, 5), 16);
+          const b = parseInt(hex.substring(5, 7), 16);
+          const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          const text = luma > 150 ? '#0f172a' : '#ffffff';
+          const r_b = Math.max(0, r - 30);
+          const g_b = Math.max(0, g - 30);
+          const b_b = Math.max(0, b - 30);
+          const border = `#${r_b.toString(16).padStart(2, '0')}${g_b.toString(16).padStart(2, '0')}${b_b.toString(16).padStart(2, '0')}`;
+          return { bg: hex, text, border };
         }
       }
     } catch (_) {}
@@ -168,6 +191,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const getCellStyling = (field: string, val: string) => {
     const v = String(val || "").trim();
     if (!v || v === '—') return null;
+    if (!printColors) {
+      return { bg: "#ffffff", text: "#1e293b", border: "#94a3b8" };
+    }
     if (field === 'presviter') return getOpikaStyle(v);
     if (field === 's_slujinnya_spysok') return getSlujStyle(v);
     if (field === 'vidviduvanist') return getVidvidStyle(v);
@@ -667,19 +693,19 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (col.key === 'presviter' && cellVal && cellVal !== '—') {
               const style = getCellStyling('presviter', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 18px; line-height: 1; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('vidviduvanist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 18px; line-height: 1; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('prysutnist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 18px; line-height: 1; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 18px; line-height: 16px; padding: 0 8px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; white-space: nowrap;">${cellVal}</span>`;
               }
             }
             else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
@@ -688,9 +714,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               const badgeHtmls = names.map(name => {
                 const style = getCellStyling('s_slujinnya_spysok', name);
                 if (style) {
-                  return `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 16px; line-height: 1; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
+                  return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
                 }
-                return `<span style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle; height: 16px; line-height: 1; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
+                return `<span style="display: inline-block; vertical-align: middle; text-align: center; height: 16px; line-height: 14px; padding: 0 6px; border-radius: 9999px; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; box-sizing: border-box; margin: 2px; white-space: nowrap;">${name}</span>`;
               });
               cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.2; width: 100%;">${badgeHtmls.join('')}</div>`;
               tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
@@ -1045,12 +1071,23 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
         {/* Multiple Column Selection List */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between border-b border-[#1f424f] pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#1f424f] pb-2 gap-2">
             <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
               <Layers className="h-4 w-4 text-teal-400" />
               <span>Вибір колонок для включення в таблицю</span>
             </h3>
-            <span className="text-[10px] text-slate-400">Відзначте колонки, які будуть присутні в фінальному документі</span>
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-teal-300 transition-colors select-none font-bold">
+                <input
+                  type="checkbox"
+                  checked={printColors}
+                  onChange={(e) => setPrintColors(e.target.checked)}
+                  className="rounded text-[#387d7a] focus:ring-teal-500 bg-[#16303a] border-[#1f424f] h-4 w-4 cursor-pointer"
+                />
+                <span>Друк кольорових плашок</span>
+              </label>
+              <span className="text-[10px] text-slate-400">Відзначте колонки для фінального документу</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">

@@ -238,6 +238,30 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
   }, [lookups, fallbackMinistries]);
 
   const [isAdmin, setIsAdmin] = useState(false);
+  const [customColorsMap, setCustomColorsMap] = useState<any>({});
+
+  useEffect(() => {
+    const fetchColors = async () => {
+      try {
+        const res = await fetch('/api/custom-colors');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Object.keys(data).length > 0) {
+            setCustomColorsMap(data);
+            localStorage.setItem('custom_colors_map', JSON.stringify(data));
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch colors from server in SpreadsheetView:", err);
+      }
+      try {
+        const saved = localStorage.getItem('custom_colors_map');
+        if (saved) setCustomColorsMap(JSON.parse(saved));
+      } catch (_) {}
+    };
+    fetchColors();
+  }, []);
 
   useEffect(() => {
     const checkAdmin = () => {
@@ -448,23 +472,19 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
   const getCustomColor = (category: 'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist', value: string) => {
     try {
-      const saved = localStorage.getItem('custom_colors_map');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed[category] && parsed[category][value]) {
-          const hex = parsed[category][value];
-          if (hex && hex.startsWith('#') && hex.length === 7) {
-            const r = parseInt(hex.substring(1, 3), 16);
-            const g = parseInt(hex.substring(3, 5), 16);
-            const b = parseInt(hex.substring(5, 7), 16);
-            const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-            const text = luma > 150 ? '#0f172a' : '#ffffff';
-            const r_b = Math.max(0, r - 30);
-            const g_b = Math.max(0, g - 30);
-            const b_b = Math.max(0, b - 30);
-            const border = `#${r_b.toString(16).padStart(2, '0')}${g_b.toString(16).padStart(2, '0')}${b_b.toString(16).padStart(2, '0')}`;
-            return { bg: hex, text, border };
-          }
+      if (customColorsMap && customColorsMap[category] && customColorsMap[category][value]) {
+        const hex = customColorsMap[category][value];
+        if (hex && hex.startsWith('#') && hex.length === 7) {
+          const r = parseInt(hex.substring(1, 3), 16);
+          const g = parseInt(hex.substring(3, 5), 16);
+          const b = parseInt(hex.substring(5, 7), 16);
+          const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          const text = luma > 150 ? '#0f172a' : '#ffffff';
+          const r_b = Math.max(0, r - 30);
+          const g_b = Math.max(0, g - 30);
+          const b_b = Math.max(0, b - 30);
+          const border = `#${r_b.toString(16).padStart(2, '0')}${g_b.toString(16).padStart(2, '0')}${b_b.toString(16).padStart(2, '0')}`;
+          return { bg: hex, text, border };
         }
       }
     } catch (_) {}

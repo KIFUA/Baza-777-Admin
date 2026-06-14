@@ -768,6 +768,23 @@ app.get("/api/lookups", async (req, res) => {
   });
 });
 
+app.get("/api/custom-colors", async (req, res) => {
+  if (cachedCustomColorsMap === null) {
+    await fetchCustomColorsFromFirebase().catch(() => {});
+  }
+  res.json(cachedCustomColorsMap || {});
+});
+
+app.post("/api/custom-colors", async (req, res) => {
+  try {
+    const colorsMap = req.body;
+    await saveCustomColorsToFirebase(colorsMap);
+    res.json({ success: true, custom_colors_map: cachedCustomColorsMap });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Parse Google Sheet CSV (Simple quote-aware parser)
 function parseCSV(text: string): string[][] {
   const results: string[][] = [];
@@ -2299,6 +2316,41 @@ app.post("/api/members", async (req, res) => {
 // Seed Database State
 loadDatabase();
 
+let cachedCustomColorsMap: any = null;
+
+async function fetchCustomColorsFromFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/custom_colors_map.json?auth=${DB_SECRET}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    cachedCustomColorsMap = data || {};
+    console.log("[Firebase Custom Colors] Loaded custom colors from Firebase RTDB.");
+  } catch (err: any) {
+    console.error("[Firebase Custom Colors] Failed to load custom colors from Firebase:", err.message);
+    if (cachedCustomColorsMap === null) cachedCustomColorsMap = {};
+  }
+}
+
+async function saveCustomColorsToFirebase(colorsMap: any) {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/custom_colors_map.json?auth=${DB_SECRET}`;
+  try {
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(colorsMap)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    cachedCustomColorsMap = colorsMap;
+    console.log("[Firebase Custom Colors] Colors successfully saved to Firebase RTDB.");
+  } catch (err: any) {
+    console.error("[Firebase Custom Colors] Failed to save custom colors to Firebase:", err.message);
+    throw err;
+  }
+}
+
 async function syncDirectoriesToFirebase() {
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
   const url = `${FIREBASE_URL}/directories.json?auth=${DB_SECRET}`;
@@ -2524,6 +2576,9 @@ async function syncDatabaseWithFirebase() {
   
   // Load specialized lookup directories from Firebase RTDB
   await syncDirectoriesFromFirebase();
+  
+  // Load custom colors configuration from Firebase RTDB
+  await fetchCustomColorsFromFirebase().catch(() => {});
 
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
   const url = `${FIREBASE_URL}/members.json?auth=${DB_SECRET}`;

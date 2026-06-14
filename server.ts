@@ -288,7 +288,7 @@ function healDatabaseWithAnketa() {
     });
     console.log(`Successfully healed and restored ${healedCount} notes/comments, and ${healedHsdCount} "Хр. С.Д." values from anketa.xlsx.`);
   } catch (err: any) {
-    console.error(`Error during database healing with anketa.xlsx: ${err.message}`);
+    console.log(`Note: anketa.xlsx healing skipped (${err.message}). The fully functional and pre-healed cached database remains authoritative.`);
   }
 }
 

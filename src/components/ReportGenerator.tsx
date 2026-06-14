@@ -1,7 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member } from '../types';
-import { Filter, Printer, CheckSquare, Square, ListFilter, Users, RefreshCw, Layers, Plus } from 'lucide-react';
-import { jsPDF } from 'jspdf';
+import { 
+  Filter, 
+  Printer, 
+  CheckSquare, 
+  Square, 
+  ListFilter, 
+  RefreshCw, 
+  Plus, 
+  ChevronDown 
+} from 'lucide-react';
+import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const cleanAddress = (address: string | undefined | null): string => {
@@ -9,17 +18,11 @@ const cleanAddress = (address: string | undefined | null): string => {
   let str = String(address).trim();
   if (str === '—' || str === '-') return '—';
 
-  // Remove oblast (province) if present
   str = str.replace(/[А-Яа-яЄєІіЇїҐґ']+\s*(?:обл|область)[а-я]*\.?/gi, '');
-
-  // Remove rayon (district) if present
   str = str.replace(/[А-Яа-яЄєІіЇїҐґ']+(?:ськ)?[ийаяеіуоїі]?(?:\s+|-\s*)?(?:р-н|р\.н\.|р\sн|район)[а-я]*\.?/gi, '');
   str = str.replace(/(?:р-н|р\.н\.|р\sн|район)\s+[А-Яа-яЄєІіЇїҐґ']+/gi, '');
-
-  // Remove Ivano-Frankivsk in all case variations, including prefix "м. "
   str = str.replace(/(?:м\.\s*)?Івано-Франківськ[а-я']*/gi, '');
 
-  // Clean up punctuation and spacing
   str = str.replace(/\s+/g, ' ');
   str = str.replace(/,(\s*,)+/g, ',');
   str = str.replace(/\s*,\s*,/g, ',');
@@ -33,67 +36,68 @@ const cleanAddress = (address: string | undefined | null): string => {
   return str;
 };
 
-interface ReportGeneratorProps {
-  members: Member[];
-  lookups: any;
-}
-
-interface ColumnOption {
+interface AvailableColumn {
   key: string;
   label: string;
   defaultChecked: boolean;
 }
 
-const AVAILABLE_COLUMNS: ColumnOption[] = [
-  { key: 'rayon2_ukr', label: 'Район', defaultChecked: false },
-  { key: 'pib', label: 'ПІБ', defaultChecked: true },
-  { key: 'd_kontaktiv', label: 'Дати контактів', defaultChecked: true },
-  { key: 'presviter', label: 'Опікун', defaultChecked: true },
-  { key: 's_slujinnya_spysok', label: 'Служіння', defaultChecked: false },
-  { key: 'vidviduvanist', label: 'Відвідування', defaultChecked: true },
-  { key: 'prysutnist', label: 'Прич. відсутності', defaultChecked: true },
-  { key: 'vik_rokiv1', label: 'Вік', defaultChecked: true },
-  { key: 'address', label: 'Адреса', defaultChecked: false },
-  { key: 'tel_mob', label: 'Телефон', defaultChecked: true },
-  { key: 'd_narodjennya', label: 'Д. народження', defaultChecked: false },
-  { key: 'stat', label: 'Стать', defaultChecked: false },
-  { key: 's_simeyniy_ukr', label: 'Сімейний стан', defaultChecked: false },
+const AVAILABLE_COLUMNS: AvailableColumn[] = [
+  { key: "rayon2_ukr", label: "Район", defaultChecked: false },
+  { key: "pib", label: "ПІБ", defaultChecked: true },
+  { key: "d_kontaktiv", label: "Дати контактів", defaultChecked: true },
+  { key: "presviter", label: "Опікун", defaultChecked: true },
+  { key: "s_slujinnya_spysok", label: "Служіння", defaultChecked: false },
+  { key: "vidviduvanist", label: "Відвідування", defaultChecked: true },
+  { key: "prysutnist", label: "Прич. відсутності", defaultChecked: true },
+  { key: "vik_rokiv1", label: "Вік", defaultChecked: true },
+  { key: "address", label: "Адреса", defaultChecked: false },
+  { key: "tel_mob", label: "Телефон", defaultChecked: true },
+  { key: "d_narodjennya", label: "Д. народження", defaultChecked: false },
+  { key: "stat", label: "Стать", defaultChecked: false },
+  { key: "s_simeyniy_ukr", label: "Сімейний стан", defaultChecked: false }
 ];
 
-export default function ReportGenerator({ members = [], lookups }: ReportGeneratorProps) {
-  // Available filters configuration (expandable)
-  const [selectedStatus, setSelectedStatus] = useState<string>('Наявні');
-  const [selectedVybuttyaId, setSelectedVybuttyaId] = useState<string>('');
-  const [selectedRayon, setSelectedRayon] = useState<string>('');
-  const [selectedPresviter, setSelectedPresviter] = useState<string>('');
-  const [selectedSlujinnya, setSelectedSlujinnya] = useState<string>('');
-  
-  // Extra filters
-  const [selectedVidviduvanist, setSelectedVidviduvanist] = useState<string>('');
-  const [selectedPrysutnist, setSelectedPrysutnist] = useState<string>('');
-  const [selectedStat, setSelectedStat] = useState<string>('');
-  const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
-  const [internalSearch, setInternalSearch] = useState<string>('');
-  const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
-  
-  // Custom print layout parameters
-  const [printColors, setPrintColors] = useState<boolean>(true);
-  const [customColorsMap, setCustomColorsMap] = useState<any>({});
+interface ReportGeneratorProps {
+  members: Member[];
+  lookups?: {
+    directories?: {
+      rayon?: string[];
+      opika?: string[];
+      slujinnya?: string[];
+      prysutnist?: string[];
+    };
+    vybuv?: { ID: any; Value: string }[];
+  };
+}
 
-  // Column choices
+export default function ReportGenerator({ members = [], lookups }: ReportGeneratorProps) {
+  const [selectedStatus, setSelectedStatus] = useState<string>("Наявні");
+  const [selectedVybuttyaId, setSelectedVybuttyaId] = useState<string>("");
+  const [selectedRayon, setSelectedRayon] = useState<string>("");
+  const [selectedPresviter, setSelectedPresviter] = useState<string>("");
+  const [selectedSlujinnya, setSelectedSlujinnya] = useState<string>("");
+  const [selectedVidviduvanist, setSelectedVidviduvanist] = useState<string>("");
+  const [selectedPrysutnist, setSelectedPrysutnist] = useState<string>("");
+  const [selectedStat, setSelectedStat] = useState<string>("");
+  const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
+  const [internalSearch, setInternalSearch] = useState<string>("");
+  const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
+  const [printColors, setPrintColors] = useState<boolean>(true);
+  const [customColorsMap, setCustomColorsMap] = useState<Record<string, Record<string, string>>>({});
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
-    AVAILABLE_COLUMNS.filter(c => c.defaultChecked).map(c => c.key)
+    AVAILABLE_COLUMNS.filter(col => col.defaultChecked).map(col => col.key)
   );
 
   useEffect(() => {
     const fetchColors = async () => {
       try {
-        const res = await fetch('/api/custom-colors');
+        const res = await fetch("/api/custom-colors");
         if (res.ok) {
           const data = await res.json();
           if (data && Object.keys(data).length > 0) {
             setCustomColorsMap(data);
-            localStorage.setItem('custom_colors_map', JSON.stringify(data));
+            localStorage.setItem("custom_colors_map", JSON.stringify(data));
             return;
           }
         }
@@ -101,14 +105,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         console.error("Failed to fetch colors from server in ReportGenerator:", err);
       }
       try {
-        const saved = localStorage.getItem('custom_colors_map');
-        if (saved) setCustomColorsMap(JSON.parse(saved));
-      } catch (_) {}
+        const saved = localStorage.getItem("custom_colors_map");
+        if (saved) {
+          setCustomColorsMap(JSON.parse(saved));
+        }
+      } catch {}
     };
     fetchColors();
   }, []);
 
-  const getCustomColor = (category: 'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist', value: string) => {
+  const getCustomColor = (category: string, value: string) => {
     try {
       if (customColorsMap && customColorsMap[category] && customColorsMap[category][value]) {
         const hex = customColorsMap[category][value];
@@ -117,7 +123,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           const g = parseInt(hex.substring(3, 5), 16);
           const b = parseInt(hex.substring(5, 7), 16);
           const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-          const text = luma > 150 ? '#0f172a' : '#ffffff';
+          const text = luma > 150 ? "#0f172a" : "#ffffff";
           const r_b = Math.max(0, r - 30);
           const g_b = Math.max(0, g - 30);
           const b_b = Math.max(0, b - 30);
@@ -125,14 +131,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           return { bg: hex, text, border };
         }
       }
-    } catch (_) {}
+    } catch {}
     return null;
   };
 
   const getOpikaStyle = (val: string) => {
     const norm = val.trim();
     if (!norm || norm === '—') return null;
-    const custom = getCustomColor('opika', norm);
+    const custom = getCustomColor("opika", norm);
     if (custom) return custom;
     if (norm === "Бевзюк В.") {
       return { bg: "#F7CB4D", text: "#2c2205", border: "#deae21" };
@@ -150,7 +156,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const getSlujStyle = (val: string) => {
     const norm = val.trim();
     if (!norm || norm === '—') return null;
-    const custom = getCustomColor('slujinnya', norm);
+    const custom = getCustomColor("slujinnya", norm);
     if (custom) return custom;
     if (norm === "SUN SHINE") {
       return { bg: "#8989EB", text: "#FFFFFF", border: "#7373e6" };
@@ -169,19 +175,19 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const getVidvidStyle = (val: string) => {
     const norm = val.trim();
     if (!norm || norm === '—') return null;
-    const custom = getCustomColor('vidviduvanist', norm);
+    const custom = getCustomColor("vidviduvanist", norm);
     if (custom) return custom;
     if (norm === "Постійно") return { bg: "#BDBDBD", text: "#111827", border: "#a6a6a6" };
     if (norm === "Рідко") return { bg: "#F3F3F3", text: "#374151", border: "#e5e5e5" };
     if (norm === "Періодично") return { bg: "#FFFFFF", text: "#1e3a1e", border: "#8fba94" };
-    if (norm === "Ніколи") return { bg: "#FFFFFF", text: "#991b1b", border: "#dc2626" };
+    if (norm === "Нікови" || norm === "Ніколи") return { bg: "#FFFFFF", text: "#991b1b", border: "#dc2626" };
     return null;
   };
 
   const getPrysutStyle = (val: string) => {
     const norm = val.trim();
     if (!norm || norm === '—') return null;
-    const custom = getCustomColor('prysutnist', norm);
+    const custom = getCustomColor("prysutnist", norm);
     if (custom) return custom;
     if (norm === "За кордоном") return { bg: "#26A69A", text: "#FFFFFF", border: "#1f8c81" };
     if (norm === "Хворий") return { bg: "#DDF2F0", text: "#004D40", border: "#b2e3dd" };
@@ -201,23 +207,21 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     return null;
   };
 
-  // Reset all filters
-  const handleReset = () => {
-    setSelectedStatus('Наявні');
-    setSelectedVybuttyaId('');
-    setSelectedRayon('');
-    setSelectedPresviter('');
-    setSelectedSlujinnya('');
-    setSelectedVidviduvanist('');
-    setSelectedPrysutnist('');
-    setSelectedStat('');
-    setInternalSearch('');
+  const handleResetFilters = () => {
+    setSelectedStatus("Наявні");
+    setSelectedVybuttyaId("");
+    setSelectedRayon("");
+    setSelectedPresviter("");
+    setSelectedSlujinnya("");
+    setSelectedVidviduvanist("");
+    setSelectedPrysutnist("");
+    setSelectedStat("");
+    setInternalSearch("");
   };
 
-  // Extract unique dropdown selections from either lookups or databases dynamically
   const RAYON_LIST_ORDER = ["АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ЦЕНТР"];
-  
-  const sortRayonsList = (list: any[]) => {
+
+  const sortRayonsList = (list: string[]) => {
     return [...list].sort((a, b) => {
       const strA = String(a || "").trim();
       const strB = String(b || "").trim();
@@ -236,18 +240,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   }, [lookups, members]);
 
   const uniquePresviters = useMemo(() => {
-    // Obtain the base caregivers (opika)
     const baseList = lookups?.directories?.opika || Array.from(new Set(members.map(m => m.presviter).filter(Boolean)));
     const allPresviters = Array.from(new Set(baseList)).filter(Boolean);
 
-    // If no rayon is selected, show all caretakers
     if (!selectedRayon) {
       return (allPresviters as string[]).sort();
     }
 
     const targetRayonNorm = selectedRayon.trim().toUpperCase();
-
-    // Leaders map representing direct district leaders:
     const leaderMap: Record<string, string> = {
       "БЕВЗЮК В": "АЕРОПОРТ",
       "СКІЦКО І": "КАСКАД",
@@ -257,31 +257,24 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
     return (allPresviters as string[]).filter(p => {
       const pStr = String(p || "");
-      const pNorm = pStr.trim().toUpperCase().replace(/\./g, '').trim();
-      
-      // 1. Leader match
+      const pNorm = pStr.trim().toUpperCase().replace(/\./g, "").trim();
       if (leaderMap[pNorm]) {
         return leaderMap[pNorm] === targetRayonNorm;
       }
 
-      // 2. Member match to locate caretaker's district
       const foundMember = members.find(m => {
-        if (m.id_vybuttya > 0) return false; // active members only
+        if (m.id_vybuttya > 0) return false;
         if (!m.pib) return false;
-        
         const mPibClean = m.pib.trim().toLowerCase();
         const pClean = pStr.trim().toLowerCase();
-        
         if (mPibClean === pClean) return true;
-        
+
         const mParts = mPibClean.split(/\s+/).filter(Boolean);
-        const pParts = pClean.replace(/\./g, ' ').split(/\s+/).filter(Boolean);
-        
+        const pParts = pClean.replace(/\./g, " ").split(/\s+/).filter(Boolean);
         if (mParts.length === 0 || pParts.length === 0) return false;
-        
         if (mParts[0] !== pParts[0]) return false;
         if (pParts.length === 1) return true;
-        
+
         const mFirst = mParts[1] || "";
         const pFirst = pParts[1] || "";
         if (mFirst && pFirst) {
@@ -293,19 +286,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       });
 
       if (foundMember) {
-        const memRayon = String(foundMember.rayon2_ukr || "").trim().toUpperCase();
-        return memRayon === targetRayonNorm;
+        return String(foundMember.rayon2_ukr || "").trim().toUpperCase() === targetRayonNorm;
       }
-
       return false;
     }).sort();
   }, [lookups, members, selectedRayon]);
 
-  // Adjust selected caretaker filter if it's no longer present among options for selected district
   useEffect(() => {
     if (selectedRayon && selectedPresviter) {
       if (!uniquePresviters.includes(selectedPresviter)) {
-        setSelectedPresviter('');
+        setSelectedPresviter("");
       }
     }
   }, [selectedRayon, selectedPresviter, uniquePresviters]);
@@ -317,7 +307,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     const set = new Set<string>();
     members.forEach(m => {
       if (m.s_slujinnya_spysok) {
-        m.s_slujinnya_spysok.split(',').forEach(s => {
+        m.s_slujinnya_spysok.split(",").forEach(s => {
           const trimmed = s.trim();
           if (trimmed) set.add(trimmed);
         });
@@ -326,9 +316,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     return Array.from(set).sort();
   }, [lookups, members]);
 
-  const uniqueVidvid = useMemo(() => {
-    return ["Постійно", "Періодично", "Рідко", "Ніколи"];
-  }, []);
+  const uniqueVidvid = useMemo(() => ["Постійно", "Періодично", "Рідко", "Ніколи"], []);
 
   const uniquePrysut = useMemo(() => {
     if (lookups?.directories?.prysutnist) return lookups.directories.prysutnist;
@@ -336,109 +324,72 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     return Array.from(set).sort();
   }, [lookups, members]);
 
-  // Helper code to deduplicate profile records
   const isMergedProfile = (m: Member, list: Member[]) => {
     const pibSelf = String(m.pib || "").trim().toLowerCase();
     if (!pibSelf) return false;
-    
     const selfId = Number(m.id);
     return list.some(other => {
       const otherId = Number(other.id);
       if (otherId <= selfId) return false;
-      
       const otherPib = String(other.pib || "").trim().toLowerCase();
       if (otherPib !== pibSelf) return false;
-      
       return other.id_vybuttya === 0;
     });
   };
 
-  // Calculate filtered members with case-insensitivity, trim, and duplicate control
   const filteredRecords = useMemo(() => {
     const list = members.filter(m => {
-      // 0. Status Filter of Active / Inactive
-      if (selectedStatus === 'Наявні') {
-        if (m.id_vybuttya > 0) return false;
-        if (isMergedProfile(m, members)) return false;
-      } else if (selectedStatus === 'Вибулі') {
-        if (m.id_vybuttya === 0) return false;
-        if (isMergedProfile(m, members)) return false;
+      if (selectedStatus === "Наявні") {
+        if (m.id_vybuttya > 0 || isMergedProfile(m, members)) return false;
+      } else if (selectedStatus === "Вибулі") {
+        if (m.id_vybuttya === 0 || isMergedProfile(m, members)) return false;
         if (selectedVybuttyaId && String(m.id_vybuttya) !== selectedVybuttyaId) return false;
       } else {
-        // "Всі" members: still deduplicate to match standard active lists
         if (isMergedProfile(m, members)) return false;
       }
 
-      // 1. Rayon Filter
       if (selectedRayon) {
-        const memRayon = String(m.rayon2_ukr || '').trim().toLowerCase();
-        const selRayon = String(selectedRayon).trim().toLowerCase();
-        if (memRayon !== selRayon) return false;
+        if (String(m.rayon2_ukr || "").trim().toLowerCase() !== selectedRayon.trim().toLowerCase()) return false;
       }
-
-      // 2. Presviter Filter
       if (selectedPresviter) {
-        const memCaretaker = String(m.presviter || '').trim().toLowerCase();
-        const selCaretaker = String(selectedPresviter).trim().toLowerCase();
-        if (memCaretaker !== selCaretaker) return false;
+        if (String(m.presviter || "").trim().toLowerCase() !== selectedPresviter.trim().toLowerCase()) return false;
       }
-
-      // 3. Slujinnya Filter
       if (selectedSlujinnya) {
         if (!m.s_slujinnya_spysok) return false;
-        const normS = m.s_slujinnya_spysok.toLowerCase();
-        const normTarget = selectedSlujinnya.toLowerCase();
-        if (!normS.includes(normTarget)) return false;
+        if (!m.s_slujinnya_spysok.toLowerCase().includes(selectedSlujinnya.toLowerCase())) return false;
       }
-
-      // 4. Vidviduvanist Filter
       if (selectedVidviduvanist) {
-        const memVidvid = String(m.vidviduvanist || '').trim().toLowerCase();
-        const selVidvid = String(selectedVidviduvanist).trim().toLowerCase();
-        if (memVidvid !== selVidvid) return false;
+        if (String(m.vidviduvanist || "").trim().toLowerCase() !== selectedVidviduvanist.trim().toLowerCase()) return false;
       }
-
-      // 5. Prysutnist Filter
       if (selectedPrysutnist) {
-        const memPrysut = String(m.prysutnist || '').trim().toLowerCase();
-        const selPrysut = String(selectedPrysutnist).trim().toLowerCase();
-        if (memPrysut !== selPrysut) return false;
+        if (String(m.prysutnist || "").trim().toLowerCase() !== selectedPrysutnist.trim().toLowerCase()) return false;
       }
-
-      // 6. Gender Filter
       if (selectedStat) {
-        const memGender = String(m.stat || '').trim().toLowerCase();
-        const selGender = String(selectedStat).trim().toLowerCase();
-        if (memGender !== selGender) return false;
+        if (String(m.stat || "").trim().toLowerCase() !== selectedStat.trim().toLowerCase()) return false;
       }
 
-      // 7. Text Search query filter
       if (internalSearch) {
         const q = internalSearch.toLowerCase().trim();
-        const pibMatch = String(m.pib || '').toLowerCase().includes(q);
-        const telMatch = String(m.tel_mob || '').toLowerCase().includes(q);
-        const addMatch = String(m.address || '').toLowerCase().includes(q);
-        const caretMatch = String(m.presviter || '').toLowerCase().includes(q);
-        const rayonMatch = String(m.rayon2_ukr || '').toLowerCase().includes(q);
+        const pibMatch = String(m.pib || "").toLowerCase().includes(q);
+        const telMatch = String(m.tel_mob || "").toLowerCase().includes(q);
+        const addMatch = String(m.address || "").toLowerCase().includes(q);
+        const caretMatch = String(m.presviter || "").toLowerCase().includes(q);
+        const rayonMatch = String(m.rayon2_ukr || "").toLowerCase().includes(q);
         if (!pibMatch && !telMatch && !addMatch && !caretMatch && !rayonMatch) return false;
       }
 
       return true;
     });
 
-    return [...list].sort((a, b) => (a.pib || '').localeCompare(b.pib || '', 'uk-UA'));
+    return [...list].sort((a, b) => (a.pib || "").localeCompare(b.pib || "", "uk-UA"));
   }, [members, selectedStatus, selectedVybuttyaId, selectedRayon, selectedPresviter, selectedSlujinnya, selectedVidviduvanist, selectedPrysutnist, selectedStat, internalSearch]);
 
-  // Column Toggle handler
   const handleToggleColumn = (colKey: string) => {
     setSelectedColumns(prev => 
-      prev.includes(colKey)
-        ? prev.filter(k => k !== colKey)
-        : [...prev, colKey]
+      prev.includes(colKey) ? prev.filter(k => k !== colKey) : [...prev, colKey]
     );
   };
 
-  // Print view report builder
   const handlePrint = async () => {
     if (filteredRecords.length === 0) {
       alert("Сформований список порожній. Будь ласка, змініть фільтри.");
@@ -448,7 +399,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     setPdfGenerating(true);
 
     try {
-      // Prepare active filters list description
       const activeFiltersText: string[] = [];
       if (selectedStatus && selectedStatus !== 'Всі') {
         activeFiltersText.push(`Статус: ${selectedStatus}`);
@@ -467,11 +417,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
 
       const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
-
-      // Get table columns labels
       const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
 
-      // Create offscreen container
       const container = document.createElement('div');
       container.id = 'dynamic-pdf-render-container';
       container.style.position = 'absolute';
@@ -482,7 +429,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       container.style.color = '#000000';
       document.body.appendChild(container);
 
-      // Inject PDF styles
       const styleEl = document.createElement('style');
       styleEl.innerHTML = `
         .pdf-page {
@@ -650,7 +596,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         // Generate cells
         const cellsHtml = displayColumns.map(col => {
           let cellVal = m[col.key as keyof Member] || '—';
-          let tdStyle = ' style="white-space: normal; vertical-align: middle !important;"';
           
           if (col.key === 'd_narodjennya' && cellVal) {
             try {
@@ -666,11 +611,10 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (parts.length > 1) {
               const lastName = parts[0];
               const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.25; width: 100%;"><span style="font-weight: 700; color: #0f172a; display: block; margin-bottom: 2px;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
+              cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.25; width: 100%; white-space: nowrap;"><span style="font-weight: 700; color: #0f172a; margin-right: 6px;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500;">${givenAndPatronymic}</span></span>`;
             } else {
-              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 700; color: #0f172a; line-height: 1.25; width: 100%;">${cellVal}</div>`;
+              cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 700; color: #0f172a; line-height: 1.25; width: 100%; white-space: nowrap;">${cellVal}</span>`;
             }
-            tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
           }
           else if (col.key === 'address' && cellVal && cellVal !== '—') {
             const cleaned = cleanAddress(cellVal);
@@ -680,80 +624,174 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               if (commaIdx !== -1) {
                 const part1 = cleaned.substring(0, commaIdx).trim();
                 const part2 = cleaned.substring(commaIdx + 1).trim();
-                cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.24; width: 100%;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></div>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.24; width: 100%;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></span>`;
               } else {
-                cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</div>`;
+                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
               }
             } else {
-              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</div>`;
+              cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
             }
-            tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
           }
           else {
             if (col.key === 'presviter' && cellVal && cellVal !== '—') {
               const style = getCellStyling('presviter', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 3px 8px; line-height: 1; white-space: nowrap; margin: 1px; box-sizing: border-box;">${cellVal}</span>`;
+                cellVal = `
+                  <div style="
+                    display: inline-block;
+                    line-height: 1.3;
+                    vertical-align: middle;
+                    border-radius: 9999px;
+                    background-color: ${style.bg};
+                    border: 1px solid ${style.border};
+                    box-sizing: border-box;
+                    padding: 2px 8px;
+                    margin: 2px;
+                    font-size: 8.5px;
+                    font-weight: 700;
+                    color: ${style.text};
+                    text-align: center;
+                    white-space: nowrap;
+                  ">
+                    ${cellVal}
+                  </div>`;
               }
             }
             else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('vidviduvanist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 3px 8px; line-height: 1; white-space: nowrap; margin: 1px; box-sizing: border-box;">${cellVal}</span>`;
+                cellVal = `
+                  <div style="
+                    display: inline-block;
+                    line-height: 1.3;
+                    vertical-align: middle;
+                    border-radius: 9999px;
+                    background-color: ${style.bg};
+                    border: 1px solid ${style.border};
+                    box-sizing: border-box;
+                    padding: 2px 8px;
+                    margin: 2px;
+                    font-size: 8.5px;
+                    font-weight: 700;
+                    color: ${style.text};
+                    text-align: center;
+                    white-space: nowrap;
+                  ">
+                    ${cellVal}
+                  </div>`;
               }
             }
             else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('prysutnist', String(cellVal));
               if (style) {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 3px 8px; line-height: 1; white-space: nowrap; margin: 1px; box-sizing: border-box;">${cellVal}</span>`;
+                cellVal = `
+                  <div style="
+                    display: inline-block;
+                    line-height: 1.3;
+                    vertical-align: middle;
+                    border-radius: 9999px;
+                    background-color: ${style.bg};
+                    border: 1px solid ${style.border};
+                    box-sizing: border-box;
+                    padding: 2px 8px;
+                    margin: 2px;
+                    font-size: 8.5px;
+                    font-weight: 700;
+                    color: ${style.text};
+                    text-align: center;
+                    white-space: nowrap;
+                  ">
+                    ${cellVal}
+                  </div>`;
               }
             }
             else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
               const strVal = String(cellVal).trim();
               const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+              
               const badgeHtmls = names.map(name => {
                 const style = getCellStyling('s_slujinnya_spysok', name);
                 if (style) {
-                  return `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8px; font-weight: 700; background-color: ${style.bg}; color: ${style.text}; border: 1px solid ${style.border}; border-radius: 9999px; padding: 2.5px 6px; line-height: 1; white-space: nowrap; margin: 2px; box-sizing: border-box;">${name}</span>`;
+                  return `
+                    <div style="
+                      display: inline-block;
+                      line-height: 1.3;
+                      vertical-align: middle;
+                      border-radius: 9999px;
+                      background-color: ${style.bg};
+                      border: 1px solid ${style.border};
+                      box-sizing: border-box;
+                      padding: 2px 6px;
+                      margin: 2px;
+                      font-size: 8px;
+                      font-weight: 700;
+                      color: ${style.text};
+                      text-align: center;
+                      white-space: nowrap;
+                    ">
+                      ${name}
+                    </div>`;
                 }
-                return `<span style="display: inline-block; vertical-align: middle; text-align: center; font-family: 'Inter', sans-serif; font-size: 8px; font-weight: 500; background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 2.5px 6px; line-height: 1; white-space: nowrap; margin: 2px; box-sizing: border-box;">${name}</span>`;
+                return `
+                  <div style="
+                    display: inline-block;
+                    line-height: 1.3;
+                    vertical-align: middle;
+                    border-radius: 9999px;
+                    background-color: #f1f5f9;
+                    border: 1px solid #cbd5e1;
+                    box-sizing: border-box;
+                    padding: 2px 6px;
+                    margin: 2px;
+                    font-size: 8px;
+                    font-weight: 500;
+                    color: #1e293b;
+                    text-align: center;
+                    white-space: nowrap;
+                  ">
+                    ${name}
+                  </div>`;
               });
-              cellVal = `<div style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.2; width: 100%;">${badgeHtmls.join('')}</div>`;
-              tdStyle = ' style="white-space: normal; text-align: left !important; vertical-align: middle !important;"';
-            } else {
-              const isCenterVal = ['d_narodjennya', 'telefoni_spysok', 'vik', 'stat', 'status_nazva'].includes(col.key);
-              const textAlign = isCenterVal ? 'center' : 'left';
-              tdStyle = ` style="white-space: normal; text-align: ${textAlign} !important; vertical-align: middle !important;"`;
+
+              cellVal = `
+                <span style="
+                  display: inline-block;
+                  width: 100%;
+                  text-align: left;
+                  line-height: 1.2;
+                  vertical-align: middle;
+                ">
+                  ${badgeHtmls.join('')}
+                </span>`;
             }
           }
 
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+          const textAlign = isCenterVal ? 'center' : 'left';
+
+          const tdStyle = ` style="text-align: ${textAlign} !important; vertical-align: middle !important; white-space: normal; padding: 6px 8px !important;"`;
           return `<td${tdStyle}>${cellVal}</td>`;
         }).join('');
 
         tr.innerHTML = `
-          <td style="text-align: center !important; font-weight: 500; color: #64748b; vertical-align: middle !important;">${idx + 1}</td>
+          <td style="text-align: center !important; vertical-align: middle !important; font-weight: 500; color: #64748b; padding: 6px 8px !important;">
+            ${idx + 1}
+          </td>
           ${cellsHtml}
         `;
 
         current.tbody.appendChild(tr);
 
-        // Check if content height inside wrapper exceeds landscape A4 space
         const currentHeight = current.contentWrapper.offsetHeight;
         const rowCount = current.tbody.children.length;
         if (currentHeight > 670 && rowCount > 1) {
-          // Remove the row from current page
           current.tbody.removeChild(tr);
-
-          // Create next page
           current = createPageElement("PAGE_NUM");
           pages.push(current);
-
-          // Re-evaluate current row on the new page
           idx--;
         }
       }
 
-      // Finalize page numbering across indicators
       const totalPagesNum = pages.length;
       pages.forEach((p, index) => {
         const pageNum = index + 1;
@@ -763,18 +801,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
       });
 
-      // Create PDF
       const pdf = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
         format: 'a4'
       });
 
-      // Render each page individually for exact pagination splits
       for (let i = 0; i < pages.length; i++) {
         const pageEl = pages[i].pageDiv;
         const canvas = await html2canvas(pageEl, {
-          scale: 2.0, // High density premium render
+          scale: 2.0,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
@@ -802,7 +838,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#0e2128] rounded-2xl border border-[#1f424f] shadow-lg overflow-hidden animate-fade-in" id="reportGeneratorPanel">
-      {/* Header Panel */}
       <div className="bg-[#16303a] border-b border-[#1f424f] px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h2 className="font-display text-lg font-bold text-teal-400 tracking-tight flex items-center gap-2">
@@ -813,50 +848,50 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             Відберіть осіб за необхідними критеріями, відзначте необхідні колонки та роздрукуйте PDF-документ.
           </p>
         </div>
-        
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer"
+          <button 
+            type="button" 
+            onClick={handleResetFilters}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer outline-none focus:outline-none"
             title="Очистити всі фільтри"
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Скинути</span>
           </button>
-          
-          <button
+          <button 
+            type="button" 
             onClick={handlePrint}
             disabled={filteredRecords.length === 0 || pdfGenerating}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all ${filteredRecords.length > 0 && !pdfGenerating ? 'bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer' : 'bg-slate-700 cursor-not-allowed opacity-50'}`}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0 && !pdfGenerating
+                ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
           >
             {pdfGenerating ? (
               <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
             ) : (
               <Printer className="h-4 w-4" />
             )}
-            <span>{pdfGenerating ? 'ГЕНЕРАЦІЯ...' : 'ДРУК (PDF)'}</span>
+            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : "ДРУК (PDF)"}</span>
           </button>
         </div>
       </div>
 
-      {/* Main Body */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Dynamic Filters Area */}
         <div className="bg-[#11252d] rounded-xl border border-[#1f424f] p-4">
-          <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-3">Вибір встановлених фільтрів</h3>
+          <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-3">
+            Вибір встановлених фільтрів
+          </h3>
           <div className="flex flex-wrap gap-4 items-end">
-            
-            {/* Filter: СТАТУС */}
             <div className="flex flex-col space-y-1 w-full md:w-[130px] shrink-0">
               <label className="text-xs font-bold text-slate-350">Статус</label>
-              <select
-                value={selectedStatus}
+              <select 
+                value={selectedStatus} 
                 onChange={e => {
                   const val = e.target.value;
                   setSelectedStatus(val);
-                  if (val !== 'Вибулі') {
-                    setSelectedVybuttyaId('');
-                  }
+                  if (val !== "Вибулі") setSelectedVybuttyaId("");
                 }}
                 className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
               >
@@ -866,196 +901,238 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               </select>
             </div>
 
-            {/* Filter: ПРИЧИНА ВИБУТТЯ */}
-            {selectedStatus === 'Вибулі' && (
+            {selectedStatus === "Вибулі" && (
               <div className="flex flex-col space-y-1 w-full md:w-[230px] shrink-0 animate-fade-in">
                 <label className="text-xs font-bold text-slate-350 text-amber-400">Причина вибуття</label>
-                <select
-                  value={selectedVybuttyaId}
+                <select 
+                  value={selectedVybuttyaId} 
                   onChange={e => setSelectedVybuttyaId(e.target.value)}
                   className="w-full rounded-lg border border-amber-500/50 p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
                 >
                   <option value="">-- Всі причини --</option>
-                  {lookups?.vybuv?.map((v: any) => (
+                  {lookups?.vybuv?.map(v => (
                     <option key={v.ID} value={String(v.ID)}>{v.Value}</option>
                   ))}
                 </select>
               </div>
             )}
 
-            {/* Filter: РАЙОН */}
             <div className="flex flex-col space-y-1 w-full md:w-[150px] shrink-0">
               <label className="text-xs font-bold text-slate-350">Район громади</label>
-              <select
-                value={selectedRayon}
+              <select 
+                value={selectedRayon} 
                 onChange={e => setSelectedRayon(e.target.value)}
                 className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
               >
                 <option value="">-- Всі райони --</option>
-                {uniqueRayons.map((r: string) => (
+                {uniqueRayons.map(r => (
                   <option key={r} value={r}>{r}</option>
                 ))}
               </select>
             </div>
 
-            {/* Filter: ОПІКУН */}
             <div className="flex flex-col space-y-1 w-full md:w-[220px] shrink-0">
               <label className="text-xs font-bold text-slate-350">Пастор відповідальний / Опікун</label>
-              <select
-                value={selectedPresviter}
+              <select 
+                value={selectedPresviter} 
                 onChange={e => setSelectedPresviter(e.target.value)}
                 className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
               >
                 <option value="">-- Всі опікуни --</option>
-                {uniquePresviters.map((p: string) => (
+                {uniquePresviters.map(p => (
                   <option key={p} value={p}>{p}</option>
                 ))}
               </select>
             </div>
 
-            {/* Filter: СЛУЖІННЯ */}
             <div className="flex flex-col space-y-1 w-full md:w-[250px] shrink-0">
               <label className="text-xs font-bold text-slate-350">Задіяне християнське служіння</label>
-              <select
-                value={selectedSlujinnya}
+              <select 
+                value={selectedSlujinnya} 
                 onChange={e => setSelectedSlujinnya(e.target.value)}
                 className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
               >
                 <option value="">-- Всі види служінь --</option>
-                {uniqueSlujinnya.map((s: string) => (
+                {uniqueSlujinnya.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
 
-            {/* Filter: ШВИДКИЙ ПОШУК (Name/Phone) */}
             <div className="flex flex-col space-y-1 w-full md:w-[180px] shrink-0">
               <label className="text-xs font-bold text-teal-400">Пошук ім'я / тел.</label>
-              <input
-                type="text"
-                value={internalSearch}
+              <input 
+                type="text" 
+                value={internalSearch} 
                 onChange={e => setInternalSearch(e.target.value)}
                 placeholder="Фільтр результатів..."
                 className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200 placeholder-slate-400"
               />
             </div>
-
           </div>
 
-          {/* Active Filter Chips Area */}
           {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || internalSearch) && (
             <div className="mt-4 pt-3 border-t border-[#1f424f]/60 flex flex-wrap items-center gap-2">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Активні фільтри:</span>
               {selectedStatus && selectedStatus !== 'Всі' && (
                 <span className="inline-flex items-center gap-1 bg-teal-950/40 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35">
                   <span>Статус: {selectedStatus}</span>
-                  <button onClick={() => setSelectedStatus('Всі')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedStatus("Всі")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {selectedVybuttyaId && (
                 <span className="inline-flex items-center gap-1 bg-amber-950/40 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/35">
                   <span>Причина вибуття</span>
-                  <button onClick={() => setSelectedVybuttyaId('')} className="hover:text-red-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedVybuttyaId("")}
+                    className="hover:text-red-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {selectedRayon && (
                 <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
                   <span>Район: {selectedRayon}</span>
-                  <button onClick={() => setSelectedRayon('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedRayon("")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {selectedPresviter && (
                 <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
                   <span>Опікун: {selectedPresviter}</span>
-                  <button onClick={() => setSelectedPresviter('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedPresviter("")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {selectedSlujinnya && (
                 <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
                   <span>Служіння: {selectedSlujinnya}</span>
-                  <button onClick={() => setSelectedSlujinnya('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedSlujinnya("")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {selectedVidviduvanist && (
                 <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
                   <span>Відвідування: {selectedVidviduvanist}</span>
-                  <button onClick={() => setSelectedVidviduvanist('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedVidviduvanist("")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {selectedPrysutnist && (
                 <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
                   <span>Причина відсутності: {selectedPrysutnist}</span>
-                  <button onClick={() => setSelectedPrysutnist('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedPrysutnist("")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {selectedStat && (
                 <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
                   <span>Стать: {selectedStat}</span>
-                  <button onClick={() => setSelectedStat('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setSelectedStat("")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
               {internalSearch && (
                 <span className="inline-flex items-center gap-1 bg-slate-900 border border-slate-700/80 text-teal-200 text-[10px] font-semibold px-2 py-0.5 rounded animate-fade-in">
                   <span>Пошук: "{internalSearch}"</span>
-                  <button onClick={() => setInternalSearch('')} className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold">×</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setInternalSearch("")}
+                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
+                  >
+                    ×
+                  </button>
                 </span>
               )}
             </div>
           )}
 
-          {/* Toggle for Expandable Extra Filters */}
           <div className="mt-3.5 border-t border-[#1f424f] pt-3 flex justify-between items-center">
-            <button
+            <button 
+              type="button" 
               onClick={() => setShowExtraFilters(!showExtraFilters)}
-              className="group flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-teal-300 transition-colors cursor-pointer"
+              className="group flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-teal-300 transition-colors cursor-pointer outline-none"
             >
-              <Plus className={`h-3 w-3 transition-transform ${showExtraFilters ? 'rotate-45 text-teal-400' : 'text-slate-400'}`} />
-              <span>{showExtraFilters ? 'Сховати додаткові критерії' : 'Показати більше фільтрів...'}</span>
+              <Plus className={`h-3 w-3 transition-transform ${showExtraFilters ? "rotate-45 text-teal-400" : "text-slate-400"}`} />
+              <span>{showExtraFilters ? "Сховати додаткові критерії" : "Показати більше фільтрів..."}</span>
             </button>
             <span className="text-[10px] font-mono text-slate-400">
               Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong> із <strong className="text-slate-300">{members.length}</strong>
             </span>
           </div>
 
-          {/* Expanded extra filters block */}
           {showExtraFilters && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 mt-3 border-t border-[#1f424f] ease-in duration-150">
-              
-              {/* Extra Filter: ВІДВІДУВАНІСТЬ */}
               <div className="flex flex-col space-y-1">
                 <label className="text-xs font-bold text-slate-350">Регулярність відвідування</label>
-                <select
-                  value={selectedVidviduvanist}
+                <select 
+                  value={selectedVidviduvanist} 
                   onChange={e => setSelectedVidviduvanist(e.target.value)}
                   className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
                 >
                   <option value="">-- Будь-яка --</option>
-                  {uniqueVidvid.map((v: string) => (
+                  {uniqueVidvid.map(v => (
                     <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Extra Filter: ПРИЧИНА ВІДСУТНОСТІ */}
               <div className="flex flex-col space-y-1">
                 <label className="text-xs font-bold text-slate-350">Причина відсутності</label>
-                <select
-                  value={selectedPrysutnist}
+                <select 
+                  value={selectedPrysutnist} 
                   onChange={e => setSelectedPrysutnist(e.target.value)}
                   className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
                 >
                   <option value="">-- Без обмежень --</option>
-                  {uniquePrysut.map((p: string) => (
-                    <option key={p} value={p}>{p}</option>
+                  {uniquePrysut.map(v => (
+                    <option key={v} value={v}>{v}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Extra Filter: СТАТЬ */}
               <div className="flex flex-col space-y-1">
                 <label className="text-xs font-bold text-slate-350">Стать</label>
-                <select
-                  value={selectedStat}
+                <select 
+                  value={selectedStat} 
                   onChange={e => setSelectedStat(e.target.value)}
                   className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
                 >
@@ -1064,24 +1141,22 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   <option value="сестра">сестра</option>
                 </select>
               </div>
-
             </div>
           )}
         </div>
 
-        {/* Multiple Column Selection List */}
         <div className="space-y-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#1f424f] pb-2 gap-2">
             <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="h-4 w-4 text-teal-400" />
+              <Filter className="h-4 w-4 text-teal-400" />
               <span>Вибір колонок для включення в таблицю</span>
             </h3>
             <div className="flex items-center gap-4">
               <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-teal-300 transition-colors select-none font-bold">
-                <input
-                  type="checkbox"
-                  checked={printColors}
-                  onChange={(e) => setPrintColors(e.target.checked)}
+                <input 
+                  type="checkbox" 
+                  checked={printColors} 
+                  onChange={e => setPrintColors(e.target.checked)}
                   className="rounded text-[#387d7a] focus:ring-teal-500 bg-[#16303a] border-[#1f424f] h-4 w-4 cursor-pointer"
                 />
                 <span>Друк кольорових плашок</span>
@@ -1092,15 +1167,19 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {AVAILABLE_COLUMNS.map(col => {
-              const checked = selectedColumns.includes(col.key);
+              const isSelected = selectedColumns.includes(col.key);
               return (
-                <button
-                  key={col.key}
-                  type="button"
+                <button 
+                  type="button" 
+                  key={col.key} 
                   onClick={() => handleToggleColumn(col.key)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-left transition-all cursor-pointer ${checked ? 'bg-[#387d7a]/20 border-teal-500 text-teal-300 font-semibold' : 'border-[#1f424f] hover:border-[#387d7a] bg-[#16303a] text-slate-300'}`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-left transition-all cursor-pointer ${
+                    isSelected 
+                      ? "bg-[#387d7a]/20 border-teal-500 text-teal-300 font-semibold" 
+                      : "border-[#1f424f] hover:border-[#387d7a] bg-[#16303a] text-slate-300"
+                  }`}
                 >
-                  {checked ? (
+                  {isSelected ? (
                     <CheckSquare className="h-4 w-4 text-teal-400 shrink-0" />
                   ) : (
                     <Square className="h-4 w-4 text-slate-500 shrink-0" />
@@ -1112,175 +1191,89 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           </div>
         </div>
 
-        {/* Live Preview Pane */}
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Попередній перегляд сформованого списку ({filteredRecords.length})</h3>
-            {filteredRecords.length > 0 && (
-              <span className="text-[11px] text-slate-400">Показано перші 10 записів</span>
-            )}
+          <div className="flex justify-between items-center border-b border-[#1f424f] pb-2">
+            <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider">
+              Перегляд результатів відбору ({filteredRecords.length} записів)
+            </h3>
           </div>
 
           {filteredRecords.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 border border-dashed border-[#1f424f] rounded-xl bg-[#132c35]/20 text-center">
-              <Users className="h-8 w-8 text-slate-500 mb-2" />
-              <p className="text-xs text-slate-300 font-bold">Немає осіб, які задовольняють встановленим фільтрам.</p>
-              <p className="text-[10px] text-slate-400">Спробуйте послабити обмеження для результатів.</p>
+            <div className="text-center text-slate-450 py-12 bg-[#11252d] rounded-xl border border-[#1f424f] text-xs font-semibold">
+              Жодного запису не знайдено за вказаними критеріями відбору
             </div>
           ) : (
-            <div className="border border-[#1f424f] rounded-xl overflow-hidden shadow-sm max-h-[350px] overflow-x-auto overflow-y-auto">
-              <table className="w-full text-left border-collapse bg-[#11252d] table-auto">
-                <thead className="bg-[#1a3843] sticky top-0 border-b border-[#1f424f] z-[10]">
-                  <tr>
-                    <th className="py-2.5 px-3 text-center w-12 font-bold text-[11px] text-slate-300 tracking-wider whitespace-nowrap">№</th>
-                    {AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key)).map(col => (
-                      <th key={col.key} className="py-2.5 px-3 font-bold text-[11px] text-slate-300 tracking-wider whitespace-normal break-words leading-snug max-w-[110px]">
-                        {col.label}
-                      </th>
+            <div className="overflow-x-auto rounded-xl border border-[#1f424f] bg-[#11252d]">
+              <table className="w-full border-collapse text-left text-xs text-slate-300">
+                <thead>
+                  <tr className="bg-[#16303a] border-b border-[#1f424f]">
+                    <th className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">#</th>
+                    {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => (
+                      <th key={col.key} className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">{col.label}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1f424f]">
-                  {filteredRecords.slice(0, 10).map((m, idx) => (
-                    <tr key={m.id} className="hover:bg-[#1a3843]/40 transition-colors align-middle">
-                      <td className="py-2 px-3 text-center text-xs text-slate-400 font-mono font-bold whitespace-nowrap">{idx + 1}</td>
-                      {AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key)).map(col => {
-                        let cellVal = m[col.key as keyof Member] || '—';
-                        if (col.key === 'd_narodjennya' && cellVal) {
+                <tbody>
+                  {filteredRecords.slice(0, 100).map((m, index) => (
+                    <tr key={m.id} className="border-b border-[#1f424f]/65 hover:bg-[#16323c]/45 transition-colors">
+                      <td className="py-2 px-4 border-r border-[#1f424f]/40 font-semibold text-slate-400">{index + 1}</td>
+                      {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
+                        let val = m[col.key as keyof Member];
+                        if (col.key === 'd_narodjennya' && val) {
                           try {
-                            const parts = String(cellVal).split('-');
-                            if (parts.length === 3) {
-                              cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
-                            }
-                          } catch(e){}
+                            const p = String(val).split('-');
+                            if (p.length === 3) val = `${p[2]}.${p[1]}.${p[0]}`;
+                          } catch {}
                         }
-                        
-                        if (col.key === 'pib' && cellVal && cellVal !== '—') {
-                          const parts = String(cellVal).trim().split(/\s+/);
-                          if (parts.length > 1) {
-                            const lastName = parts[0];
-                            const givenAndPatronymic = parts.slice(1).join(" ");
-                            return (
-                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                                <span className="font-extrabold text-slate-100 block">{lastName}</span>
-                                <span className="text-[10px] text-slate-400 font-semibold block">{givenAndPatronymic}</span>
-                              </td>
-                            );
-                          }
-                          return (
-                            <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                              <span className="font-extrabold text-slate-100">{cellVal}</span>
-                            </td>
-                          );
-                        }
-                        
-                        if (col.key === 'address' && cellVal && cellVal !== '—') {
-                          const cleaned = cleanAddress(cellVal);
-                          const isLocality = /^(с\.|смт|с-ще|м\.)/i.test(cleaned);
-                          if (isLocality) {
-                            const commaIdx = cleaned.indexOf(',');
-                            if (commaIdx !== -1) {
-                              const part1 = cleaned.substring(0, commaIdx).trim();
-                              const part2 = cleaned.substring(commaIdx + 1).trim();
-                              return (
-                                <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                                  <div className="font-semibold text-slate-100">{part1}</div>
-                                  <div className="text-[10px] text-slate-400 mt-0.5">{part2}</div>
-                                </td>
-                              );
-                            }
-                          }
-                          return (
-                            <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                              {cleaned}
-                            </td>
-                          );
-                        }
-                        
-                        if (col.key === 'presviter' && cellVal && cellVal !== '—') {
-                          const style = getCellStyling('presviter', String(cellVal));
-                          if (style) {
-                            return (
-                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
-                                <span
-                                  className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
-                                  style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
-                                >
-                                  {String(cellVal)}
-                                </span>
-                              </td>
-                            );
-                          }
-                        }
-
-                        if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
-                          const style = getCellStyling('vidviduvanist', String(cellVal));
-                          if (style) {
-                            return (
-                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
-                                <span
-                                  className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
-                                  style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
-                                >
-                                  {String(cellVal)}
-                                </span>
-                              </td>
-                            );
-                          }
-                        }
-
-                        if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
-                          const style = getCellStyling('prysutnist', String(cellVal));
-                          if (style) {
-                            return (
-                              <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
-                                <span
-                                  className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border shrink-0"
-                                  style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
-                                >
-                                  {String(cellVal)}
-                                </span>
-                              </td>
-                            );
-                          }
-                        }
-
-                        if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
-                          const strVal = String(cellVal).trim();
-                           const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-                          return (
-                            <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-normal">
-                              <div className="flex flex-wrap gap-1 items-center">
-                                {names.map((name, nameIdx) => {
-                                  const style = getCellStyling('s_slujinnya_spysok', name);
-                                  if (style) {
-                                    return (
-                                      <span
-                                        key={nameIdx}
-                                        className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-bold border shrink-0"
-                                        style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
-                                      >
-                                        {name}
-                                      </span>
-                                    );
-                                  }
-                                  return (
-                                    <span
-                                      key={nameIdx}
-                                      className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[9px] font-medium border bg-[#1a3843] border-[#1f424f] text-slate-300 shrink-0"
-                                    >
-                                      {name}
+                        return (
+                          <td key={col.key} className="py-2 px-4 border-r border-[#1f424f]/40">
+                            {col.key === 'presviter' && val && val !== '—' ? (
+                              (() => {
+                                const st = getCellStyling('presviter', String(val));
+                                return st ? (
+                                  <span className="inline-flex items-center justify-center rounded-full text-[10px] font-bold px-2 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                    {String(val)}
+                                  </span>
+                                ) : String(val);
+                              })()
+                            ) : col.key === 'vidviduvanist' && val && val !== '—' ? (
+                              (() => {
+                                const st = getCellStyling('vidviduvanist', String(val));
+                                return st ? (
+                                  <span className="inline-flex items-center justify-center rounded-full text-[10px] font-bold px-2 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                    {String(val)}
+                                  </span>
+                                ) : String(val);
+                              })()
+                            ) : col.key === 'prysutnist' && val && val !== '—' ? (
+                              (() => {
+                                const st = getCellStyling('prysutnist', String(val));
+                                return st ? (
+                                  <span className="inline-flex items-center justify-center rounded-full text-[10px] font-bold px-2 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                    {String(val)}
+                                  </span>
+                                ) : String(val);
+                              })()
+                            ) : col.key === 's_slujinnya_spysok' && val && val !== '—' ? (
+                              <div className="flex flex-wrap gap-1">
+                                {String(val).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map((n, i) => {
+                                  const st = getCellStyling('s_slujinnya_spysok', n);
+                                  return st ? (
+                                    <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {n}
+                                    </span>
+                                  ) : (
+                                    <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-medium px-1.5 py-0.5 bg-slate-700/60 border border-slate-600 text-slate-300">
+                                      {n}
                                     </span>
                                   );
                                 })}
                               </div>
-                            </td>
-                          );
-                        }
-
-                        return (
-                          <td key={col.key} className="py-2 px-3 text-xs text-slate-200 font-medium whitespace-nowrap">
-                            {cellVal}
+                            ) : col.key === 'address' ? (
+                              cleanAddress(String(val || ""))
+                            ) : (
+                              String(val || '—')
+                            )}
                           </td>
                         );
                       })}
@@ -1288,11 +1281,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   ))}
                 </tbody>
               </table>
-              {filteredRecords.length > 10 && (
-                <div className="bg-[#16303a]/50 text-center py-2 border-t border-[#1f424f]">
-                  <span className="text-[10px] text-slate-400 font-bold tracking-wider">
-                    ... І ще {filteredRecords.length - 10} осіб не показані в попередньому перегляді (будуть присутні на друці) ...
-                  </span>
+              {filteredRecords.length > 100 && (
+                <div className="py-3 px-4 bg-[#142d36] text-center text-[11px] text-slate-400 font-medium">
+                  Показано перші 100 результатів пошуку. Повний список із {filteredRecords.length} записів буде експортовано до файлу PDF.
                 </div>
               )}
             </div>

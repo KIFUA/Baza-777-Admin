@@ -651,23 +651,23 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
         @page {
             size: A4 landscape;
-            margin: 0;
+            margin: 12mm 15mm;
         }
         @media print {
             @page {
                 size: A4 landscape;
-                margin: 0;
+                margin: 12mm 15mm;
             }
             body {
                 background-color: #ffffff;
-                padding: 0;
-                margin: 0;
+                padding: 0 !important;
+                margin: 0 !important;
                 color: #000000;
             }
             .container {
-                box-shadow: none;
-                border: none;
-                padding: 12mm 15mm 12mm 15mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 10mm 15mm !important;
                 margin: 0 !important;
                 width: 100% !important;
                 max-width: 100% !important;
@@ -730,10 +730,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     </div>
     ${autoPrint ? `
     <script>
+        document.title = "${fileTitle}";
         window.addEventListener('DOMContentLoaded', () => {
+            document.title = "${fileTitle}";
             setTimeout(() => {
                 window.print();
-            }, 300);
+            }, 800);
         });
     </script>
     ` : ''}
@@ -775,13 +777,26 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     setPdfGenerating(true);
 
     try {
-      const { htmlContent } = getReportHtmlContent(true);
+      const { htmlContent, fileTitle } = getReportHtmlContent(true);
       
-      const printWindow = window.open('', '_blank');
+      const originalTitle = document.title;
+      document.title = fileTitle;
+
+      // Use a Blob URL to present the print page. 
+      // This grants the print dialog a proper filesystem reference, forcing Chrome 
+      // to resolve stylesheets (@page size: A4 landscape) and use document.title as the filename.
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const printWindow = window.open(blobUrl, '_blank');
       if (printWindow) {
-        printWindow.document.write(htmlContent);
-        printWindow.document.close();
+        // Keep parent's title updated during generation, and revoke the blob URL safely after 2 minutes
+        setTimeout(() => {
+          document.title = originalTitle;
+          URL.revokeObjectURL(blobUrl);
+        }, 120000);
       } else {
+        URL.revokeObjectURL(blobUrl);
         alert("Помилка: Браузер заблокував спливаюче вікно. Дозвольте спливаючі вікна для цього сайту, щоб відкрити панель друку.");
       }
     } catch (err) {

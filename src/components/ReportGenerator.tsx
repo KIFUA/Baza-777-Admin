@@ -499,7 +499,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         td {
           font-size: 11px;
           border: 1px solid #cbd5e1;
-          padding: 6px 8px !important;
+          padding: 0 !important;
           color: #1e293b;
           white-space: normal;
           word-break: normal;
@@ -769,13 +769,21 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
           const textAlign = isCenterVal ? 'center' : 'left';
 
-          const tdStyle = ` style="text-align: ${textAlign} !important; vertical-align: middle !important; white-space: normal; padding: 6px 8px !important;"`;
-          return `<td${tdStyle}>${cellVal}</td>`;
+          const justify = isCenterVal ? 'center' : 'flex-start';
+          const finalCellValHtml = `
+            <div style="display: flex; align-items: center; justify-content: ${justify}; min-height: 28px; width: 100%; box-sizing: border-box; padding: 6px 8px; text-align: ${textAlign};">
+              ${cellVal}
+            </div>
+          `;
+          const tdStyle = ` style="padding: 0 !important; vertical-align: middle !important; white-space: normal;"`;
+          return `<td${tdStyle}>${finalCellValHtml}</td>`;
         }).join('');
 
         tr.innerHTML = `
-          <td style="text-align: center !important; vertical-align: middle !important; font-weight: 500; color: #64748b; padding: 6px 8px !important;">
-            ${idx + 1}
+          <td style="padding: 0 !important; vertical-align: middle !important;">
+            <div style="display: flex; align-items: center; justify-content: center; min-height: 28px; width: 100%; box-sizing: border-box; padding: 6px 8px; font-weight: 500; color: #64748b;">
+              ${idx + 1}
+            </div>
           </td>
           ${cellsHtml}
         `;

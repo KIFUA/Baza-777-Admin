@@ -527,16 +527,27 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
         .header {
             border-bottom: 2px solid #e2e8f0;
-            padding-bottom: 16px;
+            padding-bottom: 12px;
             margin-bottom: 20px;
+            text-align: center;
+        }
+        .header-sub {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            text-align: center;
         }
         h1 {
-            font-size: 22px;
-            font-weight: 800;
+            font-size: 20px;
+            font-weight: 850;
             color: #0f172a;
-            margin: 0 0 8px 0;
+            margin: 0;
             text-transform: uppercase;
-            letter-spacing: -0.5px;
+            letter-spacing: 0.5px;
+            text-align: center;
         }
         .meta-info {
             display: flex;
@@ -639,23 +650,29 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             color: white;
         }
         @page {
-            size: landscape;
-            margin: 15mm 12mm 15mm 12mm;
+            size: A4 landscape;
+            margin: 0;
         }
         @media print {
+            @page {
+                size: A4 landscape;
+                margin: 0;
+            }
             body {
                 background-color: #ffffff;
-                padding: 6mm 8mm 6mm 8mm;
+                padding: 0;
                 margin: 0;
                 color: #000000;
             }
             .container {
                 box-shadow: none;
                 border: none;
-                padding: 0;
-                margin: 0;
-                width: 100%;
-                max-width: 100%;
+                padding: 12mm 15mm 12mm 15mm !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                box-sizing: border-box !important;
+                background-color: #ffffff !important;
             }
             .no-print-btn-container {
                 display: none;
@@ -683,17 +700,21 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         </div>
 
         <div class="header">
+            <div class="header-sub">Українська Церква Християн Віри Євангельської м. Івано-Франківська</div>
             <h1>Сформований список членів церкви</h1>
-            <div class="meta-info">
-                <span>Івано-Франківська Церква ХВЄ</span>
-                <span style="font-size: 13px; font-weight: 700; color: #0f766e;">Всього у списку: ${filteredRecords.length} ${recordsWord}</span>
-                <span>Дата: ${todayString}</span>
-            </div>
         </div>
 
         <div class="filters-panel">
-            <div class="filters-title">Параметри відбору</div>
-            <div class="filters-spec">${filterSpec}</div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
+                <div>
+                    <div class="filters-title">Параметри відбору</div>
+                    <div class="filters-spec">${filterSpec}</div>
+                </div>
+                <div style="text-align: right; white-space: nowrap; font-size: 11px; color: #475569; border-left: 1.5px solid #cbd5e1; padding-left: 15px; margin-left: 15px; display: flex; flex-direction: column; gap: 4px;">
+                    <div><span style="font-weight: 700; color: #0f766e;">Всього у списку:</span> ${filteredRecords.length} ${recordsWord}</div>
+                    <div><span style="font-weight: 700; color: #0f766e;">Дата:</span> ${todayString}</div>
+                </div>
+            </div>
         </div>
 
         <table>

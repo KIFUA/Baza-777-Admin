@@ -391,119 +391,116 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     );
   };
 
-  const handleExportHtml = () => {
-    if (filteredRecords.length === 0) {
-      alert("Сформований список порожній. Будь ласка, змініть фільтри.");
-      return;
-    }
-
-    try {
-      const activeFiltersText: string[] = [];
-      if (selectedStatus && selectedStatus !== 'Всі') {
-        activeFiltersText.push(`Статус: ${selectedStatus}`);
-        if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
-          const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
-          if (found) {
-            activeFiltersText.push(`Причина вибуття: ${found.Value}`);
-          }
+  const getReportHtmlContent = (autoPrint: boolean = false) => {
+    const activeFiltersText: string[] = [];
+    if (selectedStatus && selectedStatus !== 'Всі') {
+      activeFiltersText.push(`Статус: ${selectedStatus}`);
+      if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
+        const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
+        if (found) {
+          activeFiltersText.push(`Причина вибуття: ${found.Value}`);
         }
       }
-      if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
-      if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
-      if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
-      if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
-      if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
-      if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
+    }
+    if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
+    if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
+    if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
+    if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
+    if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
+    if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
 
-      const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
-      const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
-      const todayString = new Date().toLocaleDateString('uk-UA') + " " + new Date().toLocaleTimeString('uk-UA');
+    const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
+    const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
+    const todayString = new Date().toLocaleDateString('uk-UA') + " " + new Date().toLocaleTimeString('uk-UA');
 
-      let tableHeadersHtml = `<th style="width: 45px; text-align: center;">№</th>`;
+    let tableHeadersHtml = `<th style="width: 45px; text-align: center;">№</th>`;
+    displayColumns.forEach(col => {
+      tableHeadersHtml += `<th style="text-align: ${['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key) ? 'center' : 'left'};">${col.label}</th>`;
+    });
+
+    let tableRowsHtml = "";
+    filteredRecords.forEach((m, idx) => {
+      let cellsHtml = "";
       displayColumns.forEach(col => {
-        tableHeadersHtml += `<th style="text-align: ${['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key) ? 'center' : 'left'};">${col.label}</th>`;
-      });
+        let cellVal = m[col.key as keyof Member];
+        if (cellVal === undefined || cellVal === null || cellVal === '') {
+          cellVal = '—';
+        }
 
-      let tableRowsHtml = "";
-      filteredRecords.forEach((m, idx) => {
-        let cellsHtml = "";
-        displayColumns.forEach(col => {
-          let cellVal = m[col.key as keyof Member];
-          if (cellVal === undefined || cellVal === null || cellVal === '') {
-            cellVal = '—';
-          }
-
-          if (col.key === 'd_narodjennya' && cellVal !== '—') {
-            try {
-              const parts = String(cellVal).split('-');
-              if (parts.length === 3) {
-                cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
-              }
-            } catch {}
-          }
-
-          // Special rendering matching report generator exactly
-          if (col.key === 'pib' && cellVal !== '—') {
-            const parts = String(cellVal).trim().split(/\s+/);
-            if (parts.length > 1) {
-              const lastName = parts[0];
-              const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.25;"><span style="font-weight: 700; color: #0f172a; display: block;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
-            } else {
-              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
+        if (col.key === 'd_narodjennya' && cellVal !== '—') {
+          try {
+            const parts = String(cellVal).split('-');
+            if (parts.length === 3) {
+              cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
             }
+          } catch {}
+        }
+
+        // Special rendering matching report generator exactly
+        if (col.key === 'pib' && cellVal !== '—') {
+          const parts = String(cellVal).trim().split(/\s+/);
+          if (parts.length > 1) {
+            const lastName = parts[0];
+            const givenAndPatronymic = parts.slice(1).join(" ");
+            cellVal = `<div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.25;"><span style="font-weight: 700; color: #0f172a; display: block;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
+          } else {
+            cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
           }
-          else if (col.key === 'address' && cellVal !== '—') {
-            const cleaned = cleanAddress(String(cellVal));
-            const commaIdx = cleaned.indexOf(',');
-            if (commaIdx !== -1) {
-              const part1 = cleaned.substring(0, commaIdx).trim();
-              const part2 = cleaned.substring(commaIdx + 1).trim();
-              cellVal = `<span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span>`;
-            } else {
-              cellVal = `<span style="font-weight: 600; color: #1e293b;">${cleaned}</span>`;
-            }
+        }
+        else if (col.key === 'address' && cellVal !== '—') {
+          const cleaned = cleanAddress(String(cellVal));
+          const commaIdx = cleaned.indexOf(',');
+          if (commaIdx !== -1) {
+            const part1 = cleaned.substring(0, commaIdx).trim();
+            const part2 = cleaned.substring(commaIdx + 1).trim();
+            cellVal = `<span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span>`;
+          } else {
+            cellVal = `<span style="font-weight: 600; color: #1e293b;">${cleaned}</span>`;
           }
-          else if (['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal !== '—') {
-            const style = getCellStyling(col.key, String(cellVal));
+        }
+        else if (['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal !== '—') {
+          const style = getCellStyling(col.key, String(cellVal));
+          if (style) {
+            cellVal = `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; vertical-align: middle; margin: 2px 0; box-sizing: border-box;">${cellVal}</span>`;
+          }
+        }
+        else if (col.key === 's_slujinnya_spysok' && cellVal !== '—') {
+          const badges = String(cellVal).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(n => {
+            const style = getCellStyling('s_slujinnya_spysok', n);
             if (style) {
-              cellVal = `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; vertical-align: middle; margin: 2px 0; box-sizing: border-box;">${cellVal}</span>`;
+              return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; margin-right: 4px; margin-bottom: 4px; line-height: 1; vertical-align: middle; box-sizing: border-box;">${n}</span>`;
             }
-          }
-          else if (col.key === 's_slujinnya_spysok' && cellVal !== '—') {
-            const badges = String(cellVal).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(n => {
-              const style = getCellStyling('s_slujinnya_spysok', n);
-              if (style) {
-                return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; margin-right: 4px; margin-bottom: 4px; line-height: 1; vertical-align: middle; box-sizing: border-box;">${n}</span>`;
-              }
-              return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: 500; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; margin-right: 4px; margin-bottom: 4px; line-height: 1; vertical-align: middle; box-sizing: border-box;">${n}</span>`;
-            });
-            cellVal = `<div style="line-height: 1.2;">${badges.join('')}</div>`;
-          }
+            return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: 500; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; margin-right: 4px; margin-bottom: 4px; line-height: 1; vertical-align: middle; box-sizing: border-box;">${n}</span>`;
+          });
+          cellVal = `<div style="line-height: 1.2;">${badges.join('')}</div>`;
+        }
 
-          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
-          const textAlign = isCenterVal ? 'center' : 'left';
-          cellsHtml += `<td style="text-align: ${textAlign};">${cellVal}</td>`;
-        });
-
-        const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
-        tableRowsHtml += `
-          <tr style="background-color: ${rowBg};">
-            <td style="text-align: center; color: #64748b; font-weight: 500;">${idx + 1}</td>
-            ${cellsHtml}
-          </tr>
-        `;
+        const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+        const textAlign = isCenterVal ? 'center' : 'left';
+        cellsHtml += `<td style="text-align: ${textAlign};">${cellVal}</td>`;
       });
 
-      const recordsWord = filteredRecords.length % 10 === 1 && filteredRecords.length % 100 !== 11
-        ? 'особа'
-        : [2, 3, 4].includes(filteredRecords.length % 10) && ![12, 13, 14].includes(filteredRecords.length % 100)
-          ? 'особи'
-          : 'осіб';
+      const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
+      tableRowsHtml += `
+        <tr style="background-color: ${rowBg};">
+          <td style="text-align: center; color: #64748b; font-weight: 500;">${idx + 1}</td>
+          ${cellsHtml}
+        </tr>
+      `;
+    });
 
-      const fileTitle = `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}`;
+    const recordsWord = filteredRecords.length % 10 === 1 && filteredRecords.length % 100 !== 11
+      ? 'особа'
+      : [2, 3, 4].includes(filteredRecords.length % 10) && ![12, 13, 14].includes(filteredRecords.length % 100)
+        ? 'особи'
+        : 'осіб';
 
-      const htmlContent = `<!DOCTYPE html>
+    const rClean = (selectedRayon || "Всі_райони").trim().replace(/[\s/\\:*?"<>|]/g, "_");
+    const oClean = (selectedPresviter || "Всі_опікуни").trim().replace(/[\s/\\:*?"<>|]/g, "_");
+    const datePart = new Date().toISOString().slice(0, 10);
+    const fileTitle = `${rClean}_${oClean}_${datePart}`;
+
+    const htmlContent = `<!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
@@ -641,14 +638,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             background-color: #0f766e;
             color: white;
         }
+        @page {
+            size: landscape;
+            margin: 15mm 12mm 15mm 12mm;
+        }
         @media print {
-            @page {
-                size: landscape;
-                margin: 15mm 12mm 15mm 12mm;
-            }
             body {
                 background-color: #ffffff;
-                padding: 0;
+                padding: 6mm 8mm 6mm 8mm;
                 margin: 0;
                 color: #000000;
             }
@@ -689,6 +686,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <h1>Сформований список членів церкви</h1>
             <div class="meta-info">
                 <span>Івано-Франківська Церква ХВЄ</span>
+                <span style="font-size: 13px; font-weight: 700; color: #0f766e;">Всього у списку: ${filteredRecords.length} ${recordsWord}</span>
                 <span>Дата: ${todayString}</span>
             </div>
         </div>
@@ -708,15 +706,30 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 ${tableRowsHtml}
             </tbody>
         </table>
-
-        <div class="totals">
-            <span>Всього у списку: ${filteredRecords.length} ${recordsWord}</span>
-            <span>Підпис відповідального: ___________________</span>
-        </div>
     </div>
+    ${autoPrint ? `
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                window.print();
+            }, 300);
+        });
+    </script>
+    ` : ''}
 </body>
 </html>`;
 
+    return { htmlContent, fileTitle };
+  };
+
+  const handleExportHtml = () => {
+    if (filteredRecords.length === 0) {
+      alert("Сформований список порожній. Будь ласка, змініть фільтри.");
+      return;
+    }
+
+    try {
+      const { htmlContent, fileTitle } = getReportHtmlContent(false);
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -733,6 +746,32 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   };
 
   const handlePrint = async () => {
+    if (filteredRecords.length === 0) {
+      alert("Сформований список порожній. Будь ласка, змініть фільтри.");
+      return;
+    }
+
+    setPdfGenerating(true);
+
+    try {
+      const { htmlContent } = getReportHtmlContent(true);
+      
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+      } else {
+        alert("Помилка: Браузер заблокував спливаюче вікно. Дозвольте спливаючі вікна для цього сайту, щоб відкрити панель друку.");
+      }
+    } catch (err) {
+      console.error("Error launching window.print:", err);
+      alert("Виникла помилка під час формування сторінки друку. Спробуйте ще раз.");
+    } finally {
+      setPdfGenerating(false);
+    }
+  };
+
+  const handlePrintOldUnused = async () => {
     if (filteredRecords.length === 0) {
       alert("Сформований список порожній. Будь ласка, змініть фільтри.");
       return;

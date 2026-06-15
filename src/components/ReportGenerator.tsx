@@ -8,7 +8,8 @@ import {
   ListFilter, 
   RefreshCw, 
   Plus, 
-  ChevronDown 
+  ChevronDown,
+  Download
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -390,6 +391,332 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     );
   };
 
+  const handleExportHtml = () => {
+    if (filteredRecords.length === 0) {
+      alert("Сформований список порожній. Будь ласка, змініть фільтри.");
+      return;
+    }
+
+    try {
+      const activeFiltersText: string[] = [];
+      if (selectedStatus && selectedStatus !== 'Всі') {
+        activeFiltersText.push(`Статус: ${selectedStatus}`);
+        if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
+          const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
+          if (found) {
+            activeFiltersText.push(`Причина вибуття: ${found.Value}`);
+          }
+        }
+      }
+      if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
+      if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
+      if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
+      if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
+      if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
+      if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
+
+      const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
+      const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
+      const todayString = new Date().toLocaleDateString('uk-UA') + " " + new Date().toLocaleTimeString('uk-UA');
+
+      let tableHeadersHtml = `<th style="width: 45px; text-align: center;">№</th>`;
+      displayColumns.forEach(col => {
+        tableHeadersHtml += `<th style="text-align: ${['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key) ? 'center' : 'left'};">${col.label}</th>`;
+      });
+
+      let tableRowsHtml = "";
+      filteredRecords.forEach((m, idx) => {
+        let cellsHtml = "";
+        displayColumns.forEach(col => {
+          let cellVal = m[col.key as keyof Member];
+          if (cellVal === undefined || cellVal === null || cellVal === '') {
+            cellVal = '—';
+          }
+
+          if (col.key === 'd_narodjennya' && cellVal !== '—') {
+            try {
+              const parts = String(cellVal).split('-');
+              if (parts.length === 3) {
+                cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
+              }
+            } catch {}
+          }
+
+          // Special rendering matching report generator exactly
+          if (col.key === 'pib' && cellVal !== '—') {
+            const parts = String(cellVal).trim().split(/\s+/);
+            if (parts.length > 1) {
+              const lastName = parts[0];
+              const givenAndPatronymic = parts.slice(1).join(" ");
+              cellVal = `<div style="line-height: 1.25;"><div style="font-weight: 700; color: #0f172a;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500;">${givenAndPatronymic}</div></div>`;
+            } else {
+              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
+            }
+          }
+          else if (col.key === 'address' && cellVal !== '—') {
+            const cleaned = cleanAddress(String(cellVal));
+            const commaIdx = cleaned.indexOf(',');
+            if (commaIdx !== -1) {
+              const part1 = cleaned.substring(0, commaIdx).trim();
+              const part2 = cleaned.substring(commaIdx + 1).trim();
+              cellVal = `<span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span>`;
+            } else {
+              cellVal = `<span style="font-weight: 600; color: #1e293b;">${cleaned}</span>`;
+            }
+          }
+          else if (['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal !== '—') {
+            const style = getCellStyling(col.key, String(cellVal));
+            if (style) {
+              cellVal = `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap;">${cellVal}</span>`;
+            }
+          }
+          else if (col.key === 's_slujinnya_spysok' && cellVal !== '—') {
+            const badges = String(cellVal).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(n => {
+              const style = getCellStyling('s_slujinnya_spysok', n);
+              if (style) {
+                return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; margin-right: 4px; margin-bottom: 4px;">${n}</span>`;
+              }
+              return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: 500; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; margin-right: 4px; margin-bottom: 4px;">${n}</span>`;
+            });
+            cellVal = `<div style="line-height: 1.2;">${badges.join('')}</div>`;
+          }
+
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+          const textAlign = isCenterVal ? 'center' : 'left';
+          cellsHtml += `<td style="text-align: ${textAlign};">${cellVal}</td>`;
+        });
+
+        const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
+        tableRowsHtml += `
+          <tr style="background-color: ${rowBg};">
+            <td style="text-align: center; color: #64748b; font-weight: 500;">${idx + 1}</td>
+            ${cellsHtml}
+          </tr>
+        `;
+      });
+
+      const recordsWord = filteredRecords.length % 10 === 1 && filteredRecords.length % 100 !== 11
+        ? 'особа'
+        : [2, 3, 4].includes(filteredRecords.length % 10) && ![12, 13, 14].includes(filteredRecords.length % 100)
+          ? 'особи'
+          : 'осіб';
+
+      const fileTitle = `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}`;
+
+      const htmlContent = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${fileTitle}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            margin: 0;
+            padding: 30px 15px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+            padding: 24px;
+            border: 1px solid #e2e8f0;
+        }
+        .header {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 22px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: -0.5px;
+        }
+        .meta-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 500;
+        }
+        .filters-panel {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-left: 4px solid #0f766e;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+        .filters-title {
+            font-weight: 700;
+            color: #0f766e;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .filters-spec {
+            color: #334155;
+            font-weight: 500;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #e2e8f0;
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            border: 1px solid #94a3b8;
+            padding: 10px 8px;
+            vertical-align: middle;
+        }
+        td {
+            border: 1px solid #cbd5e1;
+            padding: 8px;
+            color: #1e293b;
+            vertical-align: middle;
+            line-height: 1.4;
+        }
+        tr:nth-child(even) th {
+            background-color: #cbd5e1;
+        }
+        .totals {
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #475569;
+            font-weight: 600;
+        }
+        .no-print-btn-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: flex-end;
+        }
+        .btn {
+            background-color: #0f766e;
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 700;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            font-family: inherit;
+        }
+        .btn:hover {
+            background-color: #0d5c56;
+        }
+        .btn-outline {
+            background-color: transparent;
+            color: #0f766e;
+            border: 1px solid #0f766e;
+        }
+        .btn-outline:hover {
+            background-color: #0f766e;
+            color: white;
+        }
+        @media print {
+            body {
+                background-color: #ffffff;
+                padding: 15mm 0 5mm 0;
+                color: #000000;
+            }
+            .container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+            }
+            .no-print-btn-container {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-print-btn-container">
+            <button class="btn" onclick="window.print()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8" rx="2" ry="2"></rect><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5"></path></svg>
+                Друкувати через браузер
+            </button>
+            <button class="btn btn-outline" onclick="window.close();">
+                Закрити
+            </button>
+        </div>
+
+        <div class="header">
+            <h1>Сформований список членів церкви</h1>
+            <div class="meta-info">
+                <span>Івано-Франківська Церква ХВЄ</span>
+                <span>Дата: ${todayString}</span>
+            </div>
+        </div>
+
+        <div class="filters-panel">
+            <div class="filters-title">Параметри відбору</div>
+            <div class="filters-spec">${filterSpec}</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    ${tableHeadersHtml}
+                </tr>
+            </thead>
+            <tbody>
+                ${tableRowsHtml}
+            </tbody>
+        </table>
+
+        <div class="totals">
+            <span>Всього у списку: ${filteredRecords.length} ${recordsWord}</span>
+            <span>Підпис відповідального: ___________________</span>
+        </div>
+    </div>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${fileTitle}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error generating HTML export:", err);
+      alert("Виникла помилка під час експорту таблиці у HTML. Спробуйте ще раз.");
+    }
+  };
+
   const handlePrint = async () => {
     if (filteredRecords.length === 0) {
       alert("Сформований список порожній. Будь ласка, змініть фільтри.");
@@ -428,6 +755,22 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       container.style.background = '#ffffff';
       container.style.color = '#000000';
       document.body.appendChild(container);
+
+      const COL_WIDTHS: Record<string, string> = {
+        rayon2_ukr: "flex: 1.1; min-width: 0;",
+        pib: "flex: 2.5; min-width: 0;",
+        d_kontaktiv: "flex: 1.2; min-width: 0;",
+        presviter: "flex: 1.2; min-width: 0;",
+        s_slujinnya_spysok: "flex: 1.5; min-width: 0;",
+        vidviduvanist: "flex: 1.1; min-width: 0;",
+        prysutnist: "flex: 1.2; min-width: 0;",
+        vik_rokiv1: "flex: 0.5; min-width: 0;",
+        address: "flex: 2.0; min-width: 0;",
+        tel_mob: "flex: 1.3; min-width: 0;",
+        d_narodjennya: "flex: 1.1; min-width: 0;",
+        stat: "flex: 0.5; min-width: 0;",
+        s_simeyniy_ukr: "flex: 1.2; min-width: 0;",
+      };
 
       const styleEl = document.createElement('style');
       styleEl.innerHTML = `
@@ -478,36 +821,58 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           color: #334155;
           font-weight: 500;
         }
-        table {
+        .table-container {
           width: 100%;
-          border-collapse: collapse;
           margin-top: 10px;
-          table-layout: auto;
+          border-top: 1px solid #cbd5e1;
+          border-left: 1px solid #cbd5e1;
+          border-right: 1px solid #cbd5e1;
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
         }
-        th {
+        .table-row {
+          display: flex;
+          flex-direction: row;
+          align-items: stretch;
+          border-bottom: 1px solid #cbd5e1;
+          box-sizing: border-box;
+          background-color: #ffffff;
+        }
+        .table-row:nth-child(even) {
+          background-color: #f8fafc;
+        }
+        .table-row.header-row {
           background-color: #e2e8f0;
+          border-bottom: 1px solid #94a3b8;
+        }
+        .header-cell {
           color: #0f172a;
           font-weight: 600;
-          font-size: 11px !important;
-          border: 1px solid #94a3b8;
-          padding: 6px 8px;
-          text-align: center !important;
-          vertical-align: top !important;
+          font-size: 10.5px;
+          padding: 8px;
           text-transform: uppercase;
           letter-spacing: 0.3px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          box-sizing: border-box;
         }
-        td {
+        .header-cell:not(:last-child) {
+          border-right: 1px solid #94a3b8;
+        }
+        .table-cell {
           font-size: 11px;
-          border: 1px solid #cbd5e1;
-          padding: 0 !important;
           color: #1e293b;
-          white-space: normal;
-          word-break: normal;
-          word-wrap: break-word;
-          vertical-align: middle !important;
+          padding: 8px;
+          display: flex;
+          align-items: center;
+          box-sizing: border-box;
+          min-height: 38px;
         }
-        tr:nth-child(even) {
-          background-color: #f8fafc;
+        .table-cell:not(:last-child) {
+          border-right: 1px solid #cbd5e1;
         }
         .totals {
           margin-top: auto;
@@ -522,7 +887,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       `;
       container.appendChild(styleEl);
 
-      const pages: { pageDiv: HTMLDivElement; tbody: HTMLTableSectionElement; footerDiv: HTMLDivElement; contentWrapper: HTMLDivElement }[] = [];
+      const pages: { pageDiv: HTMLDivElement; tbody: HTMLDivElement; footerDiv: HTMLDivElement; contentWrapper: HTMLDivElement }[] = [];
       let totalPagesCreated = 0;
 
       const createPageElement = (pageNumPlaceholder: string) => {
@@ -557,20 +922,28 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
         contentWrapper.appendChild(headerDiv);
 
-        const table = document.createElement('table');
-        const thead = document.createElement('thead');
-        thead.innerHTML = `
-          <tr>
-            <th style="width: 40px; text-align: center;">№</th>
-            ${displayColumns.map(col => `<th>${col.label}</th>`).join('')}
-          </tr>
+        const tableContainer = document.createElement('div');
+        tableContainer.className = 'table-container';
+
+        const headerRow = document.createElement('div');
+        headerRow.className = 'table-row header-row';
+        
+        let headerHtml = `
+          <div class="header-cell" style="width: 40px; flex: 0 0 40px;">№</div>
         `;
-        table.appendChild(thead);
+        headerHtml += displayColumns.map(col => {
+          const colStyle = COL_WIDTHS[col.key] || "flex: 1;";
+          return `<div class="header-cell" style="${colStyle}">${col.label}</div>`;
+        }).join('');
+        
+        headerRow.innerHTML = headerHtml;
+        tableContainer.appendChild(headerRow);
 
-        const tbody = document.createElement('tbody');
-        table.appendChild(tbody);
+        const tbody = document.createElement('div');
+        tbody.className = 'tbody-container';
+        tableContainer.appendChild(tbody);
 
-        contentWrapper.appendChild(table);
+        contentWrapper.appendChild(tableContainer);
         pageDiv.appendChild(contentWrapper);
 
         const footerDiv = document.createElement('div');
@@ -591,7 +964,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
       for (let idx = 0; idx < filteredRecords.length; idx++) {
         const m = filteredRecords[idx];
-        const tr = document.createElement('tr');
+        const tr = document.createElement('div');
+        tr.className = 'table-row';
 
         // Generate cells
         const cellsHtml = displayColumns.map(col => {
@@ -611,9 +985,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (parts.length > 1) {
               const lastName = parts[0];
               const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.25; width: 100%; white-space: nowrap;"><span style="font-weight: 700; color: #0f172a; margin-right: 6px;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500;">${givenAndPatronymic}</span></span>`;
+              cellVal = `<div style="line-height: 1.25;"><div style="font-weight: 700; color: #0f172a;">${lastName}</div><div style="font-size: 10px; color: #475569; font-weight: 500;">${givenAndPatronymic}</div></div>`;
             } else {
-              cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 700; color: #0f172a; line-height: 1.25; width: 100%; white-space: nowrap;">${cellVal}</span>`;
+              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
             }
           }
           else if (col.key === 'address' && cellVal && cellVal !== '—') {
@@ -624,12 +998,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               if (commaIdx !== -1) {
                 const part1 = cleaned.substring(0, commaIdx).trim();
                 const part2 = cleaned.substring(commaIdx + 1).trim();
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; line-height: 1.24; width: 100%;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></span>`;
+                cellVal = `<span style="text-align: left; line-height: 1.24; width: 100%;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></span>`;
               } else {
-                cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
+                cellVal = `<span style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
               }
             } else {
-              cellVal = `<span style="display: inline-block; vertical-align: middle; text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
+              cellVal = `<span style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
             }
           }
           else {
@@ -640,14 +1014,13 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   <div style="
                     display: inline-block;
                     line-height: 1.3;
-                    vertical-align: middle;
                     border-radius: 9999px;
                     background-color: ${style.bg};
                     border: 1px solid ${style.border};
                     box-sizing: border-box;
-                    padding: 2px 8px;
+                    padding: 2px 6px;
                     margin: 2px;
-                    font-size: 8.5px;
+                    font-size: 8px;
                     font-weight: 700;
                     color: ${style.text};
                     text-align: center;
@@ -664,14 +1037,13 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   <div style="
                     display: inline-block;
                     line-height: 1.3;
-                    vertical-align: middle;
                     border-radius: 9999px;
                     background-color: ${style.bg};
                     border: 1px solid ${style.border};
                     box-sizing: border-box;
-                    padding: 2px 8px;
+                    padding: 2px 6px;
                     margin: 2px;
-                    font-size: 8.5px;
+                    font-size: 8px;
                     font-weight: 700;
                     color: ${style.text};
                     text-align: center;
@@ -688,14 +1060,13 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   <div style="
                     display: inline-block;
                     line-height: 1.3;
-                    vertical-align: middle;
                     border-radius: 9999px;
                     background-color: ${style.bg};
                     border: 1px solid ${style.border};
                     box-sizing: border-box;
-                    padding: 2px 8px;
+                    padding: 2px 6px;
                     margin: 2px;
-                    font-size: 8.5px;
+                    font-size: 8px;
                     font-weight: 700;
                     color: ${style.text};
                     text-align: center;
@@ -716,7 +1087,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     <div style="
                       display: inline-block;
                       line-height: 1.3;
-                      vertical-align: middle;
                       border-radius: 9999px;
                       background-color: ${style.bg};
                       border: 1px solid ${style.border};
@@ -736,7 +1106,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   <div style="
                     display: inline-block;
                     line-height: 1.3;
-                    vertical-align: middle;
                     border-radius: 9999px;
                     background-color: #f1f5f9;
                     border: 1px solid #cbd5e1;
@@ -759,7 +1128,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   width: 100%;
                   text-align: left;
                   line-height: 1.2;
-                  vertical-align: middle;
                 ">
                   ${badgeHtmls.join('')}
                 </span>`;
@@ -768,23 +1136,20 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
           const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
           const textAlign = isCenterVal ? 'center' : 'left';
-
           const justify = isCenterVal ? 'center' : 'flex-start';
-          const finalCellValHtml = `
-            <div style="display: flex; align-items: center; justify-content: ${justify}; min-height: 28px; width: 100%; box-sizing: border-box; padding: 6px 8px; text-align: ${textAlign};">
+
+          const colStyle = COL_WIDTHS[col.key] || "flex: 1;";
+          return `
+            <div class="table-cell" style="${colStyle} justify-content: ${justify}; text-align: ${textAlign};">
               ${cellVal}
             </div>
           `;
-          const tdStyle = ` style="padding: 0 !important; vertical-align: middle !important; white-space: normal;"`;
-          return `<td${tdStyle}>${finalCellValHtml}</td>`;
         }).join('');
 
         tr.innerHTML = `
-          <td style="padding: 0 !important; vertical-align: middle !important;">
-            <div style="display: flex; align-items: center; justify-content: center; min-height: 28px; width: 100%; box-sizing: border-box; padding: 6px 8px; font-weight: 500; color: #64748b;">
-              ${idx + 1}
-            </div>
-          </td>
+          <div class="table-cell" style="width: 40px; flex: 0 0 40px; justify-content: center; font-weight: 500; color: #64748b;">
+            ${idx + 1}
+          </div>
           ${cellsHtml}
         `;
 
@@ -853,7 +1218,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <span>Конструктор звітів та формування списків</span>
           </h2>
           <p className="text-xs text-slate-300 font-medium mt-1">
-            Відберіть осіб за необхідними критеріями, відзначте необхідні колонки та роздрукуйте PDF-документ.
+            Відберіть осіб за критеріями, відзначте необхідні колонки, завантажте HTML-таблицю або сформуйте PDF-документ.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -865,6 +1230,20 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           >
             <RefreshCw className="h-3.5 w-3.5" />
             <span>Скинути</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={handleExportHtml}
+            disabled={filteredRecords.length === 0}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0
+                ? "bg-[#10b981] hover:bg-[#059669] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Зберегти як автономну HTML-сторінку для друку або збереження"
+          >
+            <Download className="h-4 w-4" />
+            <span>В HTML</span>
           </button>
           <button 
             type="button" 

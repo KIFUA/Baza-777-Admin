@@ -512,12 +512,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             background-color: #f1f5f9;
             color: #1e293b;
             margin: 0;
-            padding: 30px 15px;
+            padding: 10mm;
+            min-width: 297mm;
+            overflow-x: auto;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
         .container {
-            max-width: 1200px;
+            width: 277mm;
+            max-width: 277mm;
+            min-width: 277mm;
             margin: 0 auto;
             background-color: #ffffff;
             border-radius: 12px;
@@ -650,12 +654,23 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             color: white;
         }
         @page {
-            size: A4 landscape;
+            size: 297mm 210mm;
             margin: 10mm;
         }
         @media print {
+            html,
+            body {
+                width: 297mm;
+                height: 210mm;
+            }
+
+            .container {
+                width: 277mm !important;
+                max-width: 277mm !important;
+                min-width: 277mm !important;
+            }
             @page {
-                size: A4 landscape;
+                size: 297mm 210mm;
                 margin: 10mm;
             }
             body {
@@ -669,8 +684,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 border: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                width: 100% !important;
-                max-width: 100% !important;
+                width: 277mm !important;
+                max-width: 277mm !important;
+                min-width: 277mm !important;
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
             }
@@ -692,7 +708,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         <div class="no-print-btn-container">
             <button class="btn" onclick="window.print()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8" rx="2" ry="2"></rect><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5"></path></svg>
-                Друкувати через браузер
+                Друкувати (оберіть «Альбомна» орієнтація)
             </button>
             <button class="btn btn-outline" onclick="window.close();">
                 Закрити
@@ -781,42 +797,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     setPdfGenerating(true);
 
     try {
-      const { htmlContent, fileTitle } = getReportHtmlContent(true);
-      
-      const originalTitle = document.title;
-      document.title = fileTitle;
-
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-      const blobUrl = URL.createObjectURL(blob);
-
-      const printWindow = window.open(blobUrl, '_blank');
-      if (printWindow) {
-        // Keep parent's title updated during generation, and revoke the blob URL safely after 2 minutes
-        setTimeout(() => {
-          document.title = originalTitle;
-          URL.revokeObjectURL(blobUrl);
-        }, 120000);
-      } else {
-        URL.revokeObjectURL(blobUrl);
-        alert("Помилка: Браузер заблокував спливаюче вікно. Дозвольте спливаючі вікна для цього сайту, щоб відкрити панель друку.");
-      }
-    } catch (err) {
-      console.error("Error launching window.print:", err);
-      alert("Виникла помилка під час формування сторінки друку. Спробуйте ще раз.");
-    } finally {
-      setPdfGenerating(false);
-    }
-  };
-
-  const handlePrintOldUnused = async () => {
-    if (filteredRecords.length === 0) {
-      alert("Сформований список порожній. Будь ласка, змініть фільтри.");
-      return;
-    }
-
-    setPdfGenerating(true);
-
-    try {
       const activeFiltersText: string[] = [];
       if (selectedStatus && selectedStatus !== 'Всі') {
         activeFiltersText.push(`Статус: ${selectedStatus}`);
@@ -847,24 +827,40 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       container.style.color = '#000000';
       document.body.appendChild(container);
 
-      const COL_WIDTHS: Record<string, string> = {
-        rayon2_ukr: "flex: 1.1; min-width: 0;",
-        pib: "flex: 2.5; min-width: 0;",
-        d_kontaktiv: "flex: 1.2; min-width: 0;",
-        presviter: "flex: 1.2; min-width: 0;",
-        s_slujinnya_spysok: "flex: 1.5; min-width: 0;",
-        vidviduvanist: "flex: 1.1; min-width: 0;",
-        prysutnist: "flex: 1.2; min-width: 0;",
-        vik_rokiv1: "flex: 0.5; min-width: 0;",
-        address: "flex: 2.0; min-width: 0;",
-        tel_mob: "flex: 1.3; min-width: 0;",
-        d_narodjennya: "flex: 1.1; min-width: 0;",
-        stat: "flex: 0.5; min-width: 0;",
-        s_simeyniy_ukr: "flex: 1.2; min-width: 0;",
+      const flexWeights: Record<string, number> = {
+        rayon2_ukr: 1.1,
+        pib: 2.5,
+        d_kontaktiv: 1.2,
+        presviter: 1.2,
+        s_slujinnya_spysok: 1.5,
+        vidviduvanist: 1.1,
+        prysutnist: 1.2,
+        vik_rokiv1: 0.5,
+        address: 2.0,
+        tel_mob: 1.3,
+        d_narodjennya: 1.1,
+        stat: 0.5,
+        s_simeyniy_ukr: 1.2,
       };
+
+      let totalWeight = 0;
+      displayColumns.forEach(col => {
+        totalWeight += flexWeights[col.key] || 1.0;
+      });
+
+      const totalTableWidth = 1040; // 1120px - 80px (padding)
+      const indexColWidth = 45;
+      const remainingWidth = totalTableWidth - indexColWidth;
+
+      const colWidthsPx: Record<string, number> = {};
+      displayColumns.forEach(col => {
+        const weight = flexWeights[col.key] || 1.0;
+        colWidthsPx[col.key] = Math.floor((weight / totalWeight) * remainingWidth);
+      });
 
       const styleEl = document.createElement('style');
       styleEl.innerHTML = `
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         .pdf-page {
           width: 1120px;
           height: 792px;
@@ -913,7 +909,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           font-weight: 500;
         }
         .table-container {
-          width: 100%;
+          width: 1040px;
           margin-top: 10px;
           border-top: 1px solid #cbd5e1;
           border-left: 1px solid #cbd5e1;
@@ -929,41 +925,47 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           border-bottom: 1px solid #cbd5e1;
           box-sizing: border-box;
           background-color: #ffffff;
-        }
-        .table-row:nth-child(even) {
-          background-color: #f8fafc;
+          width: 1040px;
         }
         .table-row.header-row {
-          background-color: #e2e8f0;
-          border-bottom: 1px solid #94a3b8;
+          background-color: #f1f5f9;
+          border-bottom: 2px solid #cbd5e1;
         }
         .header-cell {
           color: #0f172a;
           font-weight: 600;
-          font-size: 10.5px;
-          padding: 8px;
+          font-size: 10px;
+          padding: 6px 8px;
           text-transform: uppercase;
           letter-spacing: 0.3px;
           display: flex;
           align-items: center;
-          justify-content: center;
-          text-align: center;
           box-sizing: border-box;
+          height: 34px;
         }
         .header-cell:not(:last-child) {
-          border-right: 1px solid #94a3b8;
+          border-right: 1px solid #cbd5e1;
         }
         .table-cell {
-          font-size: 11px;
+          font-size: 10.5px;
           color: #1e293b;
-          padding: 8px;
+          padding: 6px 8px;
           display: flex;
           align-items: center;
+          justify-content: flex-start;
+          align-self: stretch;
           box-sizing: border-box;
           min-height: 38px;
+          height: 100%;
+          overflow: hidden;
         }
         .table-cell:not(:last-child) {
           border-right: 1px solid #cbd5e1;
+        }
+        .tbody-container {
+          display: flex;
+          flex-direction: column;
+          box-sizing: border-box;
         }
         .totals {
           margin-top: auto;
@@ -1020,12 +1022,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         headerRow.className = 'table-row header-row';
         
         let headerHtml = `
-          <div class="header-cell" style="width: 40px; flex: 0 0 40px;">№</div>
+          <div class="header-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; text-align: center;">№</div>
         `;
-        headerHtml += displayColumns.map(col => {
-          const colStyle = COL_WIDTHS[col.key] || "flex: 1;";
-          return `<div class="header-cell" style="${colStyle}">${col.label}</div>`;
-        }).join('');
+        displayColumns.forEach(col => {
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+          const justify = isCenterVal ? 'center' : 'flex-start';
+          const textAlign = isCenterVal ? 'center' : 'left';
+          headerHtml += `<div class="header-cell" style="width: ${colWidthsPx[col.key]}px; flex: 0 0 ${colWidthsPx[col.key]}px; justify-content: ${justify}; text-align: ${textAlign};">${col.label}</div>`;
+        });
         
         headerRow.innerHTML = headerHtml;
         tableContainer.appendChild(headerRow);
@@ -1057,9 +1061,19 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         const m = filteredRecords[idx];
         const tr = document.createElement('div');
         tr.className = 'table-row';
+        tr.style.backgroundColor = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
 
-        // Generate cells
-        const cellsHtml = displayColumns.map(col => {
+        let cellsHtml = `
+          <div class="table-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; text-align: center; color: #64748b; font-weight: 500;">
+            ${idx + 1}
+          </div>
+        `;
+
+        cellsHtml += displayColumns.map(col => {
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+          const justify = isCenterVal ? 'center' : 'flex-start';
+          const textAlign = isCenterVal ? 'center' : 'left';
+          
           let cellVal = m[col.key as keyof Member] || '—';
           
           if (col.key === 'd_narodjennya' && cellVal) {
@@ -1076,9 +1090,20 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (parts.length > 1) {
               const lastName = parts[0];
               const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.25; width: 100%;"><span style="font-weight: 700; color: #0f172a; display: block;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
+              cellVal = `
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  align-items: flex-start;
+                  justify-content: center;
+                  height: 100%;
+                  line-height: 1.25;
+                ">
+                  <span style="font-weight: 700; color: #0f172a; display: block;">${lastName}</span>
+                  <span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span>
+                </div>`;
             } else {
-              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25; width: 100%;">${cellVal}</div>`;
+              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
             }
           }
           else if (col.key === 'address' && cellVal && cellVal !== '—') {
@@ -1089,12 +1114,23 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               if (commaIdx !== -1) {
                 const part1 = cleaned.substring(0, commaIdx).trim();
                 const part2 = cleaned.substring(commaIdx + 1).trim();
-                cellVal = `<span style="text-align: left; line-height: 1.24; width: 100%;"><span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span></span>`;
+                cellVal = `
+                  <div style="
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    height: 100%;
+                    text-align: left;
+                    line-height: 1.25;
+                  ">
+                    <span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span>
+                    <span style="font-size: 10px; color: #475569; display: block;">${part2}</span>
+                  </div>`;
               } else {
-                cellVal = `<span style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
+                cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
               }
             } else {
-              cellVal = `<span style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25; width: 100%;">${cleaned}</span>`;
+              cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
             }
           }
           else {
@@ -1102,72 +1138,78 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               const style = getCellStyling('presviter', String(cellVal));
               if (style) {
                 cellVal = `
-                  <div style="
-                    display: inline-block;
-                    line-height: 1;
+                  <span style="
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 2.5px 7px;
                     border-radius: 9999px;
-                    background-color: ${style.bg};
-                    border: 1px solid ${style.border};
-                    box-sizing: border-box;
-                    padding: 2.5px 6px;
-                    margin: 2px;
-                    font-size: 8px;
+                    font-size: 8.5px;
                     font-weight: 700;
+                    border: 1px solid ${style.border};
+                    background-color: ${style.bg};
                     color: ${style.text};
-                    text-align: center;
                     white-space: nowrap;
+                    line-height: 1;
+                    text-align: center;
                     vertical-align: middle;
+                    margin: 1.5px;
+                    box-sizing: border-box;
                   ">
                     ${cellVal}
-                  </div>`;
+                  </span>`;
               }
             }
             else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('vidviduvanist', String(cellVal));
               if (style) {
                 cellVal = `
-                  <div style="
-                    display: inline-block;
-                    line-height: 1;
+                  <span style="
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 2.5px 7px;
                     border-radius: 9999px;
-                    background-color: ${style.bg};
-                    border: 1px solid ${style.border};
-                    box-sizing: border-box;
-                    padding: 2.5px 6px;
-                    margin: 2px;
-                    font-size: 8px;
+                    font-size: 8.5px;
                     font-weight: 700;
+                    border: 1px solid ${style.border};
+                    background-color: ${style.bg};
                     color: ${style.text};
-                    text-align: center;
                     white-space: nowrap;
+                    line-height: 1;
+                    text-align: center;
                     vertical-align: middle;
+                    margin: 1.5px;
+                    box-sizing: border-box;
                   ">
                     ${cellVal}
-                  </div>`;
+                  </span>`;
               }
             }
             else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('prysutnist', String(cellVal));
               if (style) {
                 cellVal = `
-                  <div style="
-                    display: inline-block;
-                    line-height: 1;
+                  <span style="
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 2.5px 7px;
                     border-radius: 9999px;
-                    background-color: ${style.bg};
-                    border: 1px solid ${style.border};
-                    box-sizing: border-box;
-                    padding: 2.5px 6px;
-                    margin: 2px;
-                    font-size: 8px;
+                    font-size: 8.5px;
                     font-weight: 700;
+                    border: 1px solid ${style.border};
+                    background-color: ${style.bg};
                     color: ${style.text};
-                    text-align: center;
                     white-space: nowrap;
+                    line-height: 1;
+                    text-align: center;
                     vertical-align: middle;
+                    margin: 1.5px;
+                    box-sizing: border-box;
                   ">
                     ${cellVal}
-                  </div>`;
+                  </span>`;
               }
             }
             else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
@@ -1178,82 +1220,82 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 const style = getCellStyling('s_slujinnya_spysok', name);
                 if (style) {
                   return `
-                    <div style="
-                      display: inline-block;
-                      line-height: 1;
+                    <span style="
+                      display: inline-flex;
+                      align-items: center;
+                      justify-content: center;
+                      padding: 2.5px 6.5px;
                       border-radius: 9999px;
-                      background-color: ${style.bg};
-                      border: 1px solid ${style.border};
-                      box-sizing: border-box;
-                      padding: 2.5px 6px;
-                      margin: 2px;
-                      font-size: 8px;
+                      font-size: 8.5px;
                       font-weight: 700;
+                      border: 1px solid ${style.border};
+                      background-color: ${style.bg};
                       color: ${style.text};
-                      text-align: center;
                       white-space: nowrap;
+                      line-height: 1;
+                      text-align: center;
                       vertical-align: middle;
+                      margin: 1.5px;
+                      box-sizing: border-box;
                     ">
                       ${name}
-                    </div>`;
+                    </span>`;
                 }
                 return `
-                  <div style="
-                    display: inline-block;
-                    line-height: 1;
+                  <span style="
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 2.5px 6.5px;
                     border-radius: 9999px;
-                    background-color: #f1f5f9;
-                    border: 1px solid #cbd5e1;
-                    box-sizing: border-box;
-                    padding: 2.5px 6px;
-                    margin: 2px;
-                    font-size: 8px;
+                    font-size: 8.5px;
                     font-weight: 700;
-                    color: #1e293b;
-                    text-align: center;
+                    border: 1px solid #cbd5e1;
+                    background-color: #f1f5f9;
+                    color: #475569;
                     white-space: nowrap;
+                    line-height: 1;
+                    text-align: center;
                     vertical-align: middle;
+                    margin: 1.5px;
+                    box-sizing: border-box;
                   ">
                     ${name}
-                  </div>`;
+                  </span>`;
               });
 
               cellVal = `
-                <span style="
-                  display: inline-block;
-                  width: 100%;
-                  text-align: left;
+                <div style="
                   line-height: 1.2;
+                  text-align: left;
+                  display: flex;
+                  flex-wrap: wrap;
+                  align-items: center;
                 ">
                   ${badgeHtmls.join('')}
-                </span>`;
+                </div>`;
             }
           }
 
-          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
-          const textAlign = isCenterVal ? 'center' : 'left';
-          const justify = isCenterVal ? 'center' : 'flex-start';
-
-          const colStyle = COL_WIDTHS[col.key] || "flex: 1;";
           return `
-            <div class="table-cell" style="${colStyle} justify-content: ${justify}; text-align: ${textAlign};">
+            <div class="table-cell" style="
+              width: ${colWidthsPx[col.key]}px;
+              flex: 0 0 ${colWidthsPx[col.key]}px;
+              justify-content: ${justify};
+              align-items: center;
+              text-align: ${textAlign};
+            ">
               ${cellVal}
             </div>
           `;
         }).join('');
 
-        tr.innerHTML = `
-          <div class="table-cell" style="width: 40px; flex: 0 0 40px; justify-content: center; font-weight: 500; color: #64748b;">
-            ${idx + 1}
-          </div>
-          ${cellsHtml}
-        `;
-
+        tr.innerHTML = cellsHtml;
         current.tbody.appendChild(tr);
 
         const currentHeight = current.contentWrapper.offsetHeight;
         const rowCount = current.tbody.children.length;
-        if (currentHeight > 670 && rowCount > 1) {
+        if (currentHeight > 660 && rowCount > 1) {
           current.tbody.removeChild(tr);
           current = createPageElement("PAGE_NUM");
           pages.push(current);
@@ -1269,6 +1311,18 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           pageNumIndicator.textContent = `Сторінка ${pageNum} з ${totalPagesNum}`;
         }
       });
+
+      // Ensure all custom fonts are completely ready before rendering
+      try {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+      } catch (fErr) {
+        console.warn("Fonts ready promise error:", fErr);
+      }
+
+      // Small tick for stable font rendering/layout engine settle
+      await new Promise(resolve => setTimeout(resolve, 150));
 
       const pdf = new jsPDF({
         orientation: 'landscape',

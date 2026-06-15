@@ -651,12 +651,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
         @page {
             size: A4 landscape;
-            margin: 12mm 15mm;
+            margin: 10mm;
         }
         @media print {
             @page {
                 size: A4 landscape;
-                margin: 12mm 15mm;
+                margin: 10mm;
             }
             body {
                 background-color: #ffffff;
@@ -667,7 +667,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             .container {
                 box-shadow: none !important;
                 border: none !important;
-                padding: 10mm 15mm !important;
+                padding: 0 !important;
                 margin: 0 !important;
                 width: 100% !important;
                 max-width: 100% !important;
@@ -730,13 +730,17 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     </div>
     ${autoPrint ? `
     <script>
-        document.title = "${fileTitle}";
-        window.addEventListener('DOMContentLoaded', () => {
-            document.title = "${fileTitle}";
+        function triggerPrint() {
             setTimeout(() => {
                 window.print();
-            }, 800);
-        });
+            }, 1000);
+        }
+        document.title = "${fileTitle}";
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            triggerPrint();
+        } else {
+            window.addEventListener('DOMContentLoaded', triggerPrint);
+        }
     </script>
     ` : ''}
 </body>
@@ -782,9 +786,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       const originalTitle = document.title;
       document.title = fileTitle;
 
-      // Use a Blob URL to present the print page. 
-      // This grants the print dialog a proper filesystem reference, forcing Chrome 
-      // to resolve stylesheets (@page size: A4 landscape) and use document.title as the filename.
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
       const blobUrl = URL.createObjectURL(blob);
 

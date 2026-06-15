@@ -642,18 +642,33 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             color: white;
         }
         @media print {
+            @page {
+                size: landscape;
+                margin: 15mm 12mm 15mm 12mm;
+            }
             body {
                 background-color: #ffffff;
-                padding: 15mm 0 5mm 0;
+                padding: 0;
+                margin: 0;
                 color: #000000;
             }
             .container {
                 box-shadow: none;
                 border: none;
                 padding: 0;
+                margin: 0;
+                width: 100%;
+                max-width: 100%;
             }
             .no-print-btn-container {
                 display: none;
+            }
+            tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            thead {
+                display: table-header-group;
             }
         }
     </style>

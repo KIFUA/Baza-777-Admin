@@ -1635,281 +1635,334 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <div className="bg-[#11252d] rounded-xl border border-[#1f424f] p-4">
-          <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-3">
-            Вибір встановлених фільтрів
-          </h3>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex flex-col space-y-1 w-full md:w-[130px] shrink-0">
-              <label className="text-xs font-bold text-slate-350">Статус</label>
-              <select 
-                value={selectedStatus} 
-                onChange={e => {
-                  const val = e.target.value;
-                  setSelectedStatus(val);
-                  if (val !== "Вибулі") setSelectedVybuttyaId("");
-                }}
-                className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-              >
-                <option value="Всі">Всі члени</option>
-                <option value="Наявні">Наявні</option>
-                <option value="Вибулі">Вибулі</option>
-              </select>
-            </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          {/* Блок Фільтрації (Column 1) */}
+          <div className="bg-[#11252d] rounded-xl border border-[#1f424f] p-4 flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider mb-3">
+                Вибір встановлених фільтрів
+              </h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400">Статус</label>
+                  <select 
+                    value={selectedStatus} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setSelectedStatus(val);
+                      if (val !== "Вибулі") setSelectedVybuttyaId("");
+                    }}
+                    className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                  >
+                    <option value="Всі">Всі члени</option>
+                    <option value="Наявні">Наявні</option>
+                    <option value="Вибулі">Вибулі</option>
+                  </select>
+                </div>
 
-            {selectedStatus === "Вибулі" && (
-              <div className="flex flex-col space-y-1 w-full md:w-[230px] shrink-0 animate-fade-in">
-                <label className="text-xs font-bold text-slate-350 text-amber-400">Причина вибуття</label>
-                <select 
-                  value={selectedVybuttyaId} 
-                  onChange={e => setSelectedVybuttyaId(e.target.value)}
-                  className="w-full rounded-lg border border-amber-500/50 p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-                >
-                  <option value="">-- Всі причини --</option>
-                  {lookups?.vybuv?.map(v => (
-                    <option key={v.ID} value={String(v.ID)}>{v.Value}</option>
-                  ))}
-                </select>
+                {selectedStatus === "Вибулі" ? (
+                  <div className="flex flex-col space-y-1 animate-fade-in">
+                    <label className="text-[10px] font-bold text-slate-400 text-amber-400">Причина вибуття</label>
+                    <select 
+                      value={selectedVybuttyaId} 
+                      onChange={e => setSelectedVybuttyaId(e.target.value)}
+                      className="w-full rounded-lg border border-amber-500/50 p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                    >
+                      <option value="">-- Всі причини --</option>
+                      {lookups?.vybuv?.map(v => (
+                        <option key={v.ID} value={String(v.ID)}>{v.Value}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400">Район громади</label>
+                    <select 
+                      value={selectedRayon} 
+                      onChange={e => setSelectedRayon(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                    >
+                      <option value="">-- Всі райони --</option>
+                      {uniqueRayons.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {selectedStatus === "Вибулі" && (
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400">Район громади</label>
+                    <select 
+                      value={selectedRayon} 
+                      onChange={e => setSelectedRayon(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                    >
+                      <option value="">-- Всі райони --</option>
+                      {uniqueRayons.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400">Пастор відповідальний / Опікун</label>
+                  <select 
+                    value={selectedPresviter} 
+                    onChange={e => setSelectedPresviter(e.target.value)}
+                    className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                  >
+                    <option value="">-- Всі опікуни --</option>
+                    {uniquePresviters.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col space-y-1 col-span-1 sm:col-span-2">
+                  <label className="text-[10px] font-bold text-slate-400">Задіяне християнське служіння</label>
+                  <select 
+                    value={selectedSlujinnya} 
+                    onChange={e => setSelectedSlujinnya(e.target.value)}
+                    className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                  >
+                    <option value="">-- Всі види служінь --</option>
+                    {uniqueSlujinnya.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col space-y-1 col-span-1 sm:col-span-2">
+                  <label className="text-[10px] font-bold text-teal-400">Пошук ім'я / тел.</label>
+                  <input 
+                    type="text" 
+                    value={internalSearch} 
+                    onChange={e => setInternalSearch(e.target.value)}
+                    placeholder="Почніть писати ім'я або телефон..."
+                    className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200 placeholder-slate-400"
+                  />
+                </div>
               </div>
-            )}
 
-            <div className="flex flex-col space-y-1 w-full md:w-[150px] shrink-0">
-              <label className="text-xs font-bold text-slate-350">Район громади</label>
-              <select 
-                value={selectedRayon} 
-                onChange={e => setSelectedRayon(e.target.value)}
-                className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-              >
-                <option value="">-- Всі райони --</option>
-                {uniqueRayons.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
+              {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || internalSearch) && (
+                <div className="mt-3 pt-2.5 border-t border-[#1f424f]/60 flex flex-wrap items-center gap-1.5">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Активні:</span>
+                  {selectedStatus && selectedStatus !== 'Всі' && (
+                    <span className="inline-flex items-center gap-1 bg-teal-950/40 text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Статус: {selectedStatus}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedStatus("Всі")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedVybuttyaId && (
+                    <span className="inline-flex items-center gap-1 bg-amber-950/40 text-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-amber-500/35">
+                      <span>Причина вибуття</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedVybuttyaId("")}
+                        className="hover:text-red-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedRayon && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Район: {selectedRayon}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedRayon("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedPresviter && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Опікун: {selectedPresviter}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedPresviter("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedSlujinnya && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Служіння: {selectedSlujinnya}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedSlujinnya("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedVidviduvanist && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Відвідування: {selectedVidviduvanist}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedVidviduvanist("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedPrysutnist && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Немає: {selectedPrysutnist}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedPrysutnist("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedStat && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Стать: {selectedStat}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedStat("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {internalSearch && (
+                    <span className="inline-flex items-center gap-1 bg-slate-900 border border-slate-700/80 text-teal-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
+                      <span>Пошук: "{internalSearch}"</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setInternalSearch("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-col space-y-1 w-full md:w-[220px] shrink-0">
-              <label className="text-xs font-bold text-slate-350">Пастор відповідальний / Опікун</label>
-              <select 
-                value={selectedPresviter} 
-                onChange={e => setSelectedPresviter(e.target.value)}
-                className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-              >
-                <option value="">-- Всі опікуни --</option>
-                {uniquePresviters.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
+            <div className="mt-3.5 border-t border-[#1f424f] pt-3">
+              <div className="flex justify-between items-center">
+                <button 
+                  type="button" 
+                  onClick={() => setShowExtraFilters(!showExtraFilters)}
+                  className="group flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-teal-300 transition-colors cursor-pointer outline-none"
+                >
+                  <Plus className={`h-3 w-3 transition-transform ${showExtraFilters ? "rotate-45 text-teal-400" : "text-slate-400"}`} />
+                  <span>{showExtraFilters ? "Сховати фільтри" : "Показати більше фільтрів..."}</span>
+                </button>
+                <span className="text-[10px] font-mono text-slate-405">
+                  Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong> із <strong className="text-slate-300">{members.length}</strong>
+                </span>
+              </div>
 
-            <div className="flex flex-col space-y-1 w-full md:w-[250px] shrink-0">
-              <label className="text-xs font-bold text-slate-350">Задіяне християнське служіння</label>
-              <select 
-                value={selectedSlujinnya} 
-                onChange={e => setSelectedSlujinnya(e.target.value)}
-                className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-              >
-                <option value="">-- Всі види служінь --</option>
-                {uniqueSlujinnya.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
+              {showExtraFilters && (
+                <div className="grid grid-cols-3 gap-2 pt-3 mt-2 border-t border-[#1f424f]/60 animate-fade-in">
+                  <div className="flex flex-col space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400">Відвідування</label>
+                    <select 
+                      value={selectedVidviduvanist} 
+                      onChange={e => setSelectedVidviduvanist(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none"
+                    >
+                      <option value="">- Будь-яка -</option>
+                      {uniqueVidvid.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
 
-            <div className="flex flex-col space-y-1 w-full md:w-[180px] shrink-0">
-              <label className="text-xs font-bold text-teal-400">Пошук ім'я / тел.</label>
-              <input 
-                type="text" 
-                value={internalSearch} 
-                onChange={e => setInternalSearch(e.target.value)}
-                placeholder="Фільтр результатів..."
-                className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200 placeholder-slate-400"
-              />
+                  <div className="flex flex-col space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400">Прич. відсутності</label>
+                    <select 
+                      value={selectedPrysutnist} 
+                      onChange={e => setSelectedPrysutnist(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniquePrysut.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col space-y-0.5">
+                    <label className="text-[9px] font-bold text-slate-400">Стать</label>
+                    <select 
+                      value={selectedStat} 
+                      onChange={e => setSelectedStat(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none"
+                    >
+                      <option value="">- Всі -</option>
+                      <option value="брат">брат</option>
+                      <option value="сестра">сестра</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || internalSearch) && (
-            <div className="mt-4 pt-3 border-t border-[#1f424f]/60 flex flex-wrap items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Активні фільтри:</span>
-              {selectedStatus && selectedStatus !== 'Всі' && (
-                <span className="inline-flex items-center gap-1 bg-teal-950/40 text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35">
-                  <span>Статус: {selectedStatus}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedStatus("Всі")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedVybuttyaId && (
-                <span className="inline-flex items-center gap-1 bg-amber-950/40 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-500/35">
-                  <span>Причина вибуття</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedVybuttyaId("")}
-                    className="hover:text-red-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedRayon && (
-                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
-                  <span>Район: {selectedRayon}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedRayon("")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedPresviter && (
-                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
-                  <span>Опікун: {selectedPresviter}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedPresviter("")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedSlujinnya && (
-                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
-                  <span>Служіння: {selectedSlujinnya}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedSlujinnya("")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedVidviduvanist && (
-                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
-                  <span>Відвідування: {selectedVidviduvanist}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedVidviduvanist("")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedPrysutnist && (
-                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
-                  <span>Причина відсутності: {selectedPrysutnist}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedPrysutnist("")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {selectedStat && (
-                <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded border border-teal-500/35 animate-fade-in">
-                  <span>Стать: {selectedStat}</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setSelectedStat("")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-              {internalSearch && (
-                <span className="inline-flex items-center gap-1 bg-slate-900 border border-slate-700/80 text-teal-200 text-[10px] font-semibold px-2 py-0.5 rounded animate-fade-in">
-                  <span>Пошук: "{internalSearch}"</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setInternalSearch("")}
-                    className="hover:text-amber-400 text-slate-400 cursor-pointer text-[12px] ml-0.5 font-semibold"
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
-            </div>
-          )}
-
-          <div className="mt-3.5 border-t border-[#1f424f] pt-3 flex justify-between items-center">
-            <button 
-              type="button" 
-              onClick={() => setShowExtraFilters(!showExtraFilters)}
-              className="group flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-teal-300 transition-colors cursor-pointer outline-none"
-            >
-              <Plus className={`h-3 w-3 transition-transform ${showExtraFilters ? "rotate-45 text-teal-400" : "text-slate-400"}`} />
-              <span>{showExtraFilters ? "Сховати додаткові критерії" : "Показати більше фільтрів..."}</span>
-            </button>
-            <span className="text-[10px] font-mono text-slate-400">
-              Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong> із <strong className="text-slate-300">{members.length}</strong>
-            </span>
-          </div>
-
-          {showExtraFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 mt-3 border-t border-[#1f424f] ease-in duration-150">
-              <div className="flex flex-col space-y-1">
-                <label className="text-xs font-bold text-slate-350">Регулярність відвідування</label>
-                <select 
-                  value={selectedVidviduvanist} 
-                  onChange={e => setSelectedVidviduvanist(e.target.value)}
-                  className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-                >
-                  <option value="">-- Будь-яка --</option>
-                  {uniqueVidvid.map(v => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
+          {/* Блок Вибору стовпців таблиці (Column 2) */}
+          <div className="bg-[#11252d] rounded-xl border border-[#1f424f] p-4 flex flex-col justify-between h-full">
+            <div>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#1f424f] pb-2 gap-2">
+                <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Filter className="h-4 w-4 text-teal-400" />
+                  <span>Вибір колонок для включення в таблицю</span>
+                </h3>
               </div>
 
-              <div className="flex flex-col space-y-1">
-                <label className="text-xs font-bold text-slate-350">Причина відсутності</label>
-                <select 
-                  value={selectedPrysutnist} 
-                  onChange={e => setSelectedPrysutnist(e.target.value)}
-                  className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-                >
-                  <option value="">-- Без обмежень --</option>
-                  {uniquePrysut.map(v => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col space-y-1">
-                <label className="text-xs font-bold text-slate-350">Стать</label>
-                <select 
-                  value={selectedStat} 
-                  onChange={e => setSelectedStat(e.target.value)}
-                  className="w-full rounded-lg border border-[#1f424f] p-2 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-                >
-                  <option value="">-- Будь-яка --</option>
-                  <option value="брат">брат</option>
-                  <option value="сестра">сестра</option>
-                </select>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 mt-3">
+                {AVAILABLE_COLUMNS.map(col => {
+                  const isSelected = selectedColumns.includes(col.key);
+                  return (
+                    <button 
+                      type="button" 
+                      key={col.key} 
+                      onClick={() => handleToggleColumn(col.key)}
+                      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer ${
+                        isSelected 
+                          ? "bg-[#387d7a]/20 border-teal-500 text-teal-300 font-bold" 
+                          : "border-[#1f424f] hover:border-[#387d7a] bg-[#16303a] text-slate-300"
+                      }`}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="h-4.5 w-4.5 text-teal-400 shrink-0" />
+                      ) : (
+                        <Square className="h-4.5 w-4.5 text-slate-500 shrink-0" />
+                      )}
+                      <span className="text-[11px] block truncate">{col.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          )}
-        </div>
 
-        <div className="space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#1f424f] pb-2 gap-2">
-            <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Filter className="h-4 w-4 text-teal-400" />
-              <span>Вибір колонок для включення в таблицю</span>
-            </h3>
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300 hover:text-teal-300 transition-colors select-none font-bold">
+            <div className="mt-3 pt-3 border-t border-[#1f424f] flex flex-wrap items-center justify-between gap-2">
+              <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-300 hover:text-teal-300 transition-colors select-none font-bold">
                 <input 
                   type="checkbox" 
                   checked={printColors} 
@@ -1918,35 +1971,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 />
                 <span>Друк кольорових плашок</span>
               </label>
-              <span className="text-[10px] text-slate-400">Відзначте колонки для фінального документу</span>
+              <span className="text-[10px] text-slate-400 text-right">Позначте колонки для фінального виводу</span>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
-            {AVAILABLE_COLUMNS.map(col => {
-              const isSelected = selectedColumns.includes(col.key);
-              return (
-                <button 
-                  type="button" 
-                  key={col.key} 
-                  onClick={() => handleToggleColumn(col.key)}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-left transition-all cursor-pointer ${
-                    isSelected 
-                      ? "bg-[#387d7a]/20 border-teal-500 text-teal-300 font-semibold" 
-                      : "border-[#1f424f] hover:border-[#387d7a] bg-[#16303a] text-slate-300"
-                  }`}
-                >
-                  {isSelected ? (
-                    <CheckSquare className="h-4 w-4 text-teal-400 shrink-0" />
-                  ) : (
-                    <Square className="h-4 w-4 text-slate-500 shrink-0" />
-                  )}
-                  <span className="text-xs block truncate">{col.label}</span>
-                </button>
-              );
-            })}
-          </div>
         </div>
+
 
         <div className="space-y-3">
           <div className="flex justify-between items-center border-b border-[#1f424f] pb-2">

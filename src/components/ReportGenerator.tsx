@@ -1591,7 +1591,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             Відберіть осіб за критеріями, відзначте необхідні колонки, завантажте HTML-таблицю або сформуйте PDF-документ.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 scale-interface-down-33 origin-right">
           <button 
             type="button" 
             onClick={handleResetFilters}
@@ -1644,8 +1644,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 Вибір встановлених фільтрів
               </h3>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <div className="flex flex-col space-y-1">
+              <div className="flex flex-wrap gap-2.5 items-end">
+                <div className="flex flex-col space-y-1 w-[120px] shrink-0">
                   <label className="text-[10px] font-bold text-slate-400">Статус</label>
                   <select 
                     value={selectedStatus} 
@@ -1663,7 +1663,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 </div>
 
                 {selectedStatus === "Вибулі" ? (
-                  <div className="flex flex-col space-y-1 animate-fade-in">
+                  <div className="flex flex-col space-y-1 w-[180px] shrink-0 animate-fade-in">
                     <label className="text-[10px] font-bold text-slate-400 text-amber-400">Причина вибуття</label>
                     <select 
                       value={selectedVybuttyaId} 
@@ -1677,8 +1677,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     </select>
                   </div>
                 ) : (
-                  <div className="flex flex-col space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400">Район громади</label>
+                  <div className="flex flex-col space-y-1 w-[140px] shrink-0">
+                    <label className="text-[10px] font-bold text-slate-400">Район</label>
                     <select 
                       value={selectedRayon} 
                       onChange={e => setSelectedRayon(e.target.value)}
@@ -1693,8 +1693,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 )}
 
                 {selectedStatus === "Вибулі" && (
-                  <div className="flex flex-col space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400">Район громади</label>
+                  <div className="flex flex-col space-y-1 w-[140px] shrink-0">
+                    <label className="text-[10px] font-bold text-slate-400">Район</label>
                     <select 
                       value={selectedRayon} 
                       onChange={e => setSelectedRayon(e.target.value)}
@@ -1708,8 +1708,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   </div>
                 )}
 
-                <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] font-bold text-slate-400">Пастор відповідальний / Опікун</label>
+                <div className="flex flex-col space-y-1 w-[150px] shrink-0">
+                  <label className="text-[10px] font-bold text-slate-400">Опікун</label>
                   <select 
                     value={selectedPresviter} 
                     onChange={e => setSelectedPresviter(e.target.value)}
@@ -1722,7 +1722,18 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   </select>
                 </div>
 
-                <div className="flex flex-col space-y-1 col-span-1 sm:col-span-2">
+                <div className="flex flex-col space-y-1 w-[170px] shrink-0">
+                  <label className="text-[10px] font-bold text-teal-400">Пошук ім'я / тел.</label>
+                  <input 
+                    type="text" 
+                    value={internalSearch} 
+                    onChange={e => setInternalSearch(e.target.value)}
+                    placeholder="Введіть пошук..."
+                    className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200 placeholder-slate-400"
+                  />
+                </div>
+
+                <div className="flex flex-col space-y-1 w-[200px] shrink-0">
                   <label className="text-[10px] font-bold text-slate-400">Задіяне християнське служіння</label>
                   <select 
                     value={selectedSlujinnya} 
@@ -1734,17 +1745,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
-                </div>
-
-                <div className="flex flex-col space-y-1 col-span-1 sm:col-span-2">
-                  <label className="text-[10px] font-bold text-teal-400">Пошук ім'я / тел.</label>
-                  <input 
-                    type="text" 
-                    value={internalSearch} 
-                    onChange={e => setInternalSearch(e.target.value)}
-                    placeholder="Почніть писати ім'я або телефон..."
-                    className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200 placeholder-slate-400"
-                  />
                 </div>
               </div>
 
@@ -1874,18 +1874,18 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   <span>{showExtraFilters ? "Сховати фільтри" : "Показати більше фільтрів..."}</span>
                 </button>
                 <span className="text-[10px] font-mono text-slate-405">
-                  Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong> із <strong className="text-slate-300">{members.length}</strong>
+                  Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong>
                 </span>
               </div>
 
               {showExtraFilters && (
-                <div className="grid grid-cols-3 gap-2 pt-3 mt-2 border-t border-[#1f424f]/60 animate-fade-in">
-                  <div className="flex flex-col space-y-0.5">
+                <div className="flex flex-wrap gap-2 pt-3 mt-2 border-t border-[#1f424f]/60 animate-fade-in items-end">
+                  <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
                     <label className="text-[9px] font-bold text-slate-400">Відвідування</label>
                     <select 
                       value={selectedVidviduvanist} 
                       onChange={e => setSelectedVidviduvanist(e.target.value)}
-                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none"
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
                     >
                       <option value="">- Будь-яка -</option>
                       {uniqueVidvid.map(v => (
@@ -1894,12 +1894,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     </select>
                   </div>
 
-                  <div className="flex flex-col space-y-0.5">
+                  <div className="flex flex-col space-y-0.5 w-[120px] shrink-0">
                     <label className="text-[9px] font-bold text-slate-400">Прич. відсутності</label>
                     <select 
                       value={selectedPrysutnist} 
                       onChange={e => setSelectedPrysutnist(e.target.value)}
-                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none"
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
                     >
                       <option value="">- Всі -</option>
                       {uniquePrysut.map(v => (
@@ -1908,12 +1908,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     </select>
                   </div>
 
-                  <div className="flex flex-col space-y-0.5">
+                  <div className="flex flex-col space-y-0.5 w-[80px] shrink-0">
                     <label className="text-[9px] font-bold text-slate-400">Стать</label>
                     <select 
                       value={selectedStat} 
                       onChange={e => setSelectedStat(e.target.value)}
-                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none"
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
                     >
                       <option value="">- Всі -</option>
                       <option value="брат">брат</option>
@@ -1935,7 +1935,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 </h3>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 mt-3">
+              <div className="flex flex-wrap gap-1.5 mt-3">
                 {AVAILABLE_COLUMNS.map(col => {
                   const isSelected = selectedColumns.includes(col.key);
                   return (
@@ -1943,18 +1943,18 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       type="button" 
                       key={col.key} 
                       onClick={() => handleToggleColumn(col.key)}
-                      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer ${
+                      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                         isSelected 
                           ? "bg-[#387d7a]/20 border-teal-500 text-teal-300 font-bold" 
                           : "border-[#1f424f] hover:border-[#387d7a] bg-[#16303a] text-slate-300"
                       }`}
                     >
                       {isSelected ? (
-                        <CheckSquare className="h-4.5 w-4.5 text-teal-400 shrink-0" />
+                        <CheckSquare className="h-4 w-4 text-teal-400 shrink-0" />
                       ) : (
-                        <Square className="h-4.5 w-4.5 text-slate-500 shrink-0" />
+                        <Square className="h-4 w-4 text-slate-500 shrink-0" />
                       )}
-                      <span className="text-[11px] block truncate">{col.label}</span>
+                      <span className="text-[11px] select-none font-medium">{col.label}</span>
                     </button>
                   );
                 })}
@@ -1971,7 +1971,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 />
                 <span>Друк кольорових плашок</span>
               </label>
-              <span className="text-[10px] text-slate-400 text-right">Позначте колонки для фінального виводу</span>
             </div>
           </div>
         </div>

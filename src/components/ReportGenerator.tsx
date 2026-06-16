@@ -37,6 +37,15 @@ const cleanAddress = (address: string | undefined | null): string => {
   return str;
 };
 
+const formatMaritalStatus = (val: any): string => {
+  if (!val) return '—';
+  const str = String(val).trim();
+  if (/^неодружен(ий|а|і|о)?$/i.test(str)) {
+    return 'неодр.';
+  }
+  return str;
+};
+
 interface AvailableColumn {
   key: string;
   label: string;
@@ -55,8 +64,7 @@ const AVAILABLE_COLUMNS: AvailableColumn[] = [
   { key: "address", label: "Адреса", defaultChecked: false },
   { key: "tel_mob", label: "Телефон", defaultChecked: true },
   { key: "d_narodjennya", label: "Д. народження", defaultChecked: false },
-  { key: "stat", label: "Стать", defaultChecked: false },
-  { key: "s_simeyniy_ukr", label: "Сімейний стан", defaultChecked: false }
+  { key: "s_simeyniy_ukr", label: "Сім. стан", defaultChecked: false }
 ];
 
 interface ReportGeneratorProps {
@@ -413,9 +421,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
     const todayString = new Date().toLocaleDateString('uk-UA') + " " + new Date().toLocaleTimeString('uk-UA');
 
-    let tableHeadersHtml = `<th style="width: 45px; text-align: center;">№</th>`;
+    let tableHeadersHtml = `<th style="width: 1%; white-space: nowrap; text-align: center;">№</th>`;
     displayColumns.forEach(col => {
-      tableHeadersHtml += `<th style="text-align: ${['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key) ? 'center' : 'left'};">${col.label}</th>`;
+      let label = col.label;
+      if (col.key === 'd_narodjennya') {
+        label = 'ДАТА<br/>НАРОДЖ.';
+      } else if (label.includes(' ')) {
+        label = label.replace(/\s+/g, '<br/>');
+      }
+      const textAlign = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key) ? 'center' : 'left';
+      tableHeadersHtml += `<th style="text-align: ${textAlign}; width: 1%; white-space: nowrap;">${label}</th>`;
     });
 
     let tableRowsHtml = "";
@@ -425,6 +440,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         let cellVal = m[col.key as keyof Member];
         if (cellVal === undefined || cellVal === null || cellVal === '') {
           cellVal = '—';
+        } else if (col.key === 's_simeyniy_ukr') {
+          cellVal = formatMaritalStatus(cellVal);
         }
 
         if (col.key === 'd_narodjennya' && cellVal !== '—') {
@@ -442,48 +459,130 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           if (parts.length > 1) {
             const lastName = parts[0];
             const givenAndPatronymic = parts.slice(1).join(" ");
-            cellVal = `<div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; line-height: 1.25;"><span style="font-weight: 700; color: #0f172a; display: block;">${lastName}</span><span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span></div>`;
+            cellVal = `
+              <div style="
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: center;
+                height: 100%;
+                line-height: 1.25;
+              ">
+                <span style="font-weight: 700; color: #0f172a; display: block; white-space: nowrap;">${lastName}</span>
+                <span style="font-size: 10px; color: #475569; font-weight: 500; display: block; white-space: nowrap;">${givenAndPatronymic}</span>
+              </div>`;
           } else {
-            cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
+            cellVal = `
+              <div style="
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                height: 100%;
+                font-weight: 700;
+                color: #0f172a;
+                line-height: 1.25;
+                white-space: nowrap;
+              ">${cellVal}</div>`;
           }
         }
         else if (col.key === 'address' && cellVal !== '—') {
           const cleaned = cleanAddress(String(cellVal));
           const commaIdx = cleaned.indexOf(',');
-          if (commaIdx !== -1) {
+          const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+          if (commaIdx !== -1 && !startsWithStreet) {
             const part1 = cleaned.substring(0, commaIdx).trim();
             const part2 = cleaned.substring(commaIdx + 1).trim();
-            cellVal = `<span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span><span style="font-size: 10px; color: #475569; display: block;">${part2}</span>`;
+            cellVal = `
+              <div style="
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                height: 100%;
+                text-align: left;
+                line-height: 1.25;
+              ">
+                <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 2px; white-space: nowrap;">${part1}</span>
+                <span style="font-weight: 400; color: #1e293b; display: block; white-space: nowrap;">${part2}</span>
+              </div>`;
           } else {
-            cellVal = `<span style="font-weight: 600; color: #1e293b;">${cleaned}</span>`;
+            cellVal = `
+              <div style="
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                height: 100%;
+                text-align: left;
+                line-height: 1.25;
+                white-space: nowrap;
+              ">
+                <span style="font-weight: 400; color: #1e293b; white-space: nowrap;">${cleaned}</span>
+              </div>`;
+          }
+        }
+        else if (col.key === 'tel_mob' && cellVal !== '—') {
+          const strVal = String(cellVal).trim();
+          if (strVal.includes(' / ')) {
+            cellVal = strVal.split(/\s*\/\s*/).map(num => `<span style="white-space: nowrap;">${num}</span>`).join('<br/>');
+          } else {
+            cellVal = `<span style="white-space: nowrap;">${strVal}</span>`;
           }
         }
         else if (['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal !== '—') {
           const style = getCellStyling(col.key, String(cellVal));
           if (style) {
-            cellVal = `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; vertical-align: middle; margin: 2px 0; box-sizing: border-box;">${cellVal}</span>`;
+            cellVal = `
+              <div style="
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+              ">
+                <span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${cellVal}</span>
+              </div>`;
           }
         }
         else if (col.key === 's_slujinnya_spysok' && cellVal !== '—') {
           const badges = String(cellVal).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(n => {
             const style = getCellStyling('s_slujinnya_spysok', n);
             if (style) {
-              return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: bold; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; margin-right: 4px; margin-bottom: 4px; line-height: 1; vertical-align: middle; box-sizing: border-box;">${n}</span>`;
+              return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${n}</span>`;
             }
-            return `<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 9px; font-weight: 500; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; margin-right: 4px; margin-bottom: 4px; line-height: 1; vertical-align: middle; box-sizing: border-box;">${n}</span>`;
+            return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 600; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${n}</span>`;
           });
-          cellVal = `<div style="line-height: 1.2;">${badges.join('')}</div>`;
+
+          const badgeRows: string[] = [];
+          for (let i = 0; i < badges.length; i += 2) {
+            const pair = badges.slice(i, i + 2).join('');
+            badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 2px;">${pair}</div>`);
+          }
+
+          cellVal = `
+            <div style="
+              line-height: 1.2;
+              text-align: left;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              gap: 2px;
+              height: 100%;
+            ">
+              ${badgeRows.join('')}
+            </div>`;
         }
 
-        const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+        const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
         const textAlign = isCenterVal ? 'center' : 'left';
-        cellsHtml += `<td style="text-align: ${textAlign};">${cellVal}</td>`;
+        if (col.key === 'pib' || col.key === 'address' || col.key === 'tel_mob') {
+          cellsHtml += `<td style="text-align: ${textAlign};">${cellVal}</td>`;
+        } else {
+          cellsHtml += `<td style="text-align: ${textAlign}; white-space: nowrap;">${cellVal}</td>`;
+        }
       });
 
       const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
       tableRowsHtml += `
         <tr style="background-color: ${rowBg};">
-          <td style="text-align: center; color: #64748b; font-weight: 500;">${idx + 1}</td>
+          <td style="text-align: center; color: #64748b; font-weight: 500; white-space: nowrap;">${idx + 1}</td>
           ${cellsHtml}
         </tr>
       `;
@@ -596,15 +695,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             text-transform: uppercase;
             letter-spacing: 0.3px;
             border: 1px solid #94a3b8;
-            padding: 10px 8px;
+            padding: 3.5px 5px;
             vertical-align: middle;
+            line-height: 1.25;
         }
         td {
             border: 1px solid #cbd5e1;
-            padding: 8px;
+            padding: 3.5px 5px;
             color: #1e293b;
             vertical-align: middle;
-            line-height: 1.4;
+            line-height: 1.25;
         }
         tr:nth-child(even) th {
             background-color: #cbd5e1;
@@ -655,38 +755,40 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
         @page {
             size: 297mm 210mm;
-            margin: 10mm;
+            margin: 10mm 15mm;
         }
         @media print {
             html,
             body {
-                width: 297mm;
-                height: 210mm;
+                width: auto;
+                height: auto !important;
+                background-color: #ffffff;
             }
 
             .container {
-                width: 277mm !important;
-                max-width: 277mm !important;
-                min-width: 277mm !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 100% !important;
             }
             @page {
                 size: 297mm 210mm;
-                margin: 10mm;
+                margin: 10mm 15mm;
             }
             body {
                 background-color: #ffffff;
                 padding: 0 !important;
                 margin: 0 !important;
                 color: #000000;
+                box-sizing: border-box;
             }
             .container {
                 box-shadow: none !important;
                 border: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
-                width: 277mm !important;
-                max-width: 277mm !important;
-                min-width: 277mm !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 100% !important;
                 box-sizing: border-box !important;
                 background-color: #ffffff !important;
             }
@@ -705,14 +807,20 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 </head>
 <body>
     <div class="container">
-        <div class="no-print-btn-container">
-            <button class="btn" onclick="window.print()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8" rx="2" ry="2"></rect><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5"></path></svg>
-                Друкувати (оберіть «Альбомна» орієнтація)
-            </button>
-            <button class="btn btn-outline" onclick="window.close();">
-                Закрити
-            </button>
+        <div class="no-print-btn-container" style="flex-direction: column; align-items: flex-end; gap: 8px;">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" onclick="window.print()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8" rx="2" ry="2"></rect><path d="M6 9V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5"></path></svg>
+                    Друкувати (оберіть «Альбомна» орієнтація)
+                </button>
+                <button class="btn btn-outline" onclick="window.close();">
+                    Закрити
+                </button>
+            </div>
+            <div style="font-size: 11.5px; color: #0f766e; background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 12px; border-radius: 6px; text-align: right; max-width: 600px; line-height: 1.4;">
+                💡 <b>Для ідеального друку:</b> натисніть <b>Ctrl + Shift + P</b> (системне вікно друку), виберіть <b>Настроювання → Альбомна</b>.<br/>
+                Або у вікні друку браузера виберіть <b>Альбомна</b> та зніміть прапорець <i>«Верхні та нижні колонтитули»</i>.
+            </div>
         </div>
 
         <div class="header">
@@ -827,35 +935,100 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       container.style.color = '#000000';
       document.body.appendChild(container);
 
-      const flexWeights: Record<string, number> = {
-        rayon2_ukr: 1.1,
-        pib: 2.5,
-        d_kontaktiv: 1.2,
-        presviter: 1.2,
-        s_slujinnya_spysok: 1.5,
-        vidviduvanist: 1.1,
-        prysutnist: 1.2,
-        vik_rokiv1: 0.5,
-        address: 2.0,
-        tel_mob: 1.3,
-        d_narodjennya: 1.1,
-        stat: 0.5,
-        s_simeyniy_ukr: 1.2,
-      };
+      // Estimate adaptive column widths based on content lengths
+      const estimatedWidths: Record<string, number> = {};
+      let totalEstimatedOthers = 0;
 
-      let totalWeight = 0;
       displayColumns.forEach(col => {
-        totalWeight += flexWeights[col.key] || 1.0;
+        if (col.key === 'pib') return;
+
+        let maxLength = col.label.replace('<br/>', '').length;
+
+        filteredRecords.forEach(m => {
+          let val = m[col.key as keyof Member];
+          if (val !== undefined && val !== null && val !== '') {
+            let strVal = String(val).trim();
+            if (col.key === 'd_narodjennya') {
+              strVal = '21.05.1947';
+            } else if (col.key === 'tel_mob') {
+              if (strVal.includes(' / ')) {
+                const parts = strVal.split(/\s*\/\s*/);
+                strVal = parts.reduce((max, cur) => cur.length > max.length ? cur : max, '');
+              }
+            } else if (col.key === 's_slujinnya_spysok') {
+              const badges = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+              if (badges.length > 1) {
+                strVal = badges[0] + " " + (badges[1] || "");
+              } else {
+                strVal = badges[0] || "";
+              }
+            } else if (col.key === 'address') {
+              const cleaned = cleanAddress(strVal);
+              const commaIdx = cleaned.indexOf(',');
+              const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+              if (commaIdx !== -1 && !startsWithStreet) {
+                const part1 = cleaned.substring(0, commaIdx).trim();
+                const part2 = cleaned.substring(commaIdx + 1).trim();
+                strVal = part1.length > part2.length ? part1 : part2;
+              } else {
+                strVal = cleaned;
+              }
+            }
+            if (strVal.length > maxLength) {
+              maxLength = strVal.length;
+            }
+          }
+        });
+
+        let charWidth = 6.2;
+        if (['vidviduvanist', 'prysutnist', 'presviter'].includes(col.key)) {
+          charWidth = 7.5;
+        }
+        let estWidth = Math.max(50, Math.floor(maxLength * charWidth) + 16);
+
+        if (col.key === 'vik_rokiv1' || col.key === 'stat') {
+          estWidth = 38;
+        } else if (col.key === 'd_narodjennya') {
+          estWidth = 70;
+        } else if (col.key === 'tel_mob') {
+          estWidth = 90;
+        } else if (col.key === 'address') {
+          estWidth = Math.min(220, Math.max(120, estWidth));
+        }
+
+        estimatedWidths[col.key] = estWidth;
+        totalEstimatedOthers += estWidth;
       });
+
+      let maxPibLength = 10;
+      filteredRecords.forEach(m => {
+        let val = m.pib;
+        if (val) {
+          const parts = String(val).trim().split(/\s+/);
+          const lastName = parts[0] || '';
+          const givenAndPatronymic = parts.slice(1).join(" ") || '';
+          const maxLine = lastName.length > givenAndPatronymic.length ? lastName.length : givenAndPatronymic.length;
+          if (maxLine > maxPibLength) {
+            maxPibLength = maxLine;
+          }
+        }
+      });
+      const pibEstimatedWidth = Math.max(120, Math.floor(maxPibLength * 7) + 20);
 
       const totalTableWidth = 1040; // 1120px - 80px (padding)
       const indexColWidth = 45;
       const remainingWidth = totalTableWidth - indexColWidth;
 
+      const sumAllEstimated = totalEstimatedOthers + (displayColumns.some(c => c.key === 'pib') ? pibEstimatedWidth : 0);
+
       const colWidthsPx: Record<string, number> = {};
       displayColumns.forEach(col => {
-        const weight = flexWeights[col.key] || 1.0;
-        colWidthsPx[col.key] = Math.floor((weight / totalWeight) * remainingWidth);
+        if (col.key === 'pib') {
+          colWidthsPx[col.key] = Math.floor((pibEstimatedWidth / sumAllEstimated) * remainingWidth);
+        } else {
+          const est = estimatedWidths[col.key];
+          colWidthsPx[col.key] = Math.floor((est / sumAllEstimated) * remainingWidth);
+        }
       });
 
       const styleEl = document.createElement('style');
@@ -865,7 +1038,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           width: 1120px;
           height: 792px;
           box-sizing: border-box;
-          padding: 35px 40px;
+          padding: 38px 40px;
           position: relative;
           background-color: #ffffff;
           display: flex;
@@ -935,27 +1108,29 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           color: #0f172a;
           font-weight: 600;
           font-size: 10px;
-          padding: 6px 8px;
+          padding: 4px 6px;
           text-transform: uppercase;
           letter-spacing: 0.3px;
           display: flex;
           align-items: center;
           box-sizing: border-box;
-          height: 34px;
+          min-height: 30px;
+          height: auto;
+          line-height: 1.1;
         }
         .header-cell:not(:last-child) {
           border-right: 1px solid #cbd5e1;
         }
         .table-cell {
-          font-size: 10.5px;
+          font-size: 10px;
           color: #1e293b;
-          padding: 6px 8px;
+          padding: 3px 6px;
           display: flex;
           align-items: center;
           justify-content: flex-start;
           align-self: stretch;
           box-sizing: border-box;
-          min-height: 38px;
+          min-height: 26px;
           height: 100%;
           overflow: hidden;
         }
@@ -1025,10 +1200,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           <div class="header-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; text-align: center;">№</div>
         `;
         displayColumns.forEach(col => {
-          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
           const justify = isCenterVal ? 'center' : 'flex-start';
           const textAlign = isCenterVal ? 'center' : 'left';
-          headerHtml += `<div class="header-cell" style="width: ${colWidthsPx[col.key]}px; flex: 0 0 ${colWidthsPx[col.key]}px; justify-content: ${justify}; text-align: ${textAlign};">${col.label}</div>`;
+          let label = col.label;
+          if (col.key === 'd_narodjennya') {
+            label = 'ДАТА<br/>НАРОДЖ.';
+          } else if (label.includes(' ')) {
+            label = label.replace(/\s+/g, '<br/>');
+          }
+          headerHtml += `<div class="header-cell" style="width: ${colWidthsPx[col.key]}px; flex: 0 0 ${colWidthsPx[col.key]}px; justify-content: ${justify}; text-align: ${textAlign};">${label}</div>`;
         });
         
         headerRow.innerHTML = headerHtml;
@@ -1070,11 +1251,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         `;
 
         cellsHtml += displayColumns.map(col => {
-          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist'].includes(col.key);
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
           const justify = isCenterVal ? 'center' : 'flex-start';
           const textAlign = isCenterVal ? 'center' : 'left';
           
           let cellVal = m[col.key as keyof Member] || '—';
+          if (col.key === 's_simeyniy_ukr' && cellVal !== '—') {
+            cellVal = formatMaritalStatus(cellVal);
+          }
           
           if (col.key === 'd_narodjennya' && cellVal) {
             try {
@@ -1103,34 +1287,49 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   <span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span>
                 </div>`;
             } else {
-              cellVal = `<div style="font-weight: 700; color: #0f172a; line-height: 1.25;">${cellVal}</div>`;
+              cellVal = `
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  height: 100%;
+                  font-weight: 700;
+                  color: #0f172a;
+                  line-height: 1.25;
+                ">${cellVal}</div>`;
             }
           }
           else if (col.key === 'address' && cellVal && cellVal !== '—') {
             const cleaned = cleanAddress(cellVal);
-            const isLocality = /^(с\.|смт|с-ще|м\.)/i.test(cleaned);
-            if (isLocality) {
-              const commaIdx = cleaned.indexOf(',');
-              if (commaIdx !== -1) {
-                const part1 = cleaned.substring(0, commaIdx).trim();
-                const part2 = cleaned.substring(commaIdx + 1).trim();
-                cellVal = `
-                  <div style="
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    height: 100%;
-                    text-align: left;
-                    line-height: 1.25;
-                  ">
-                    <span style="font-weight: 600; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span>
-                    <span style="font-size: 10px; color: #475569; display: block;">${part2}</span>
-                  </div>`;
-              } else {
-                cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
-              }
+            const commaIdx = cleaned.indexOf(',');
+            const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+            if (commaIdx !== -1 && !startsWithStreet) {
+              const part1 = cleaned.substring(0, commaIdx).trim();
+              const part2 = cleaned.substring(commaIdx + 1).trim();
+              cellVal = `
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  height: 100%;
+                  text-align: left;
+                  line-height: 1.25;
+                ">
+                  <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span>
+                  <span style="font-weight: 400; color: #1e293b; display: block;">${part2}</span>
+                </div>`;
             } else {
-              cellVal = `<div style="text-align: left; font-weight: 600; color: #1e293b; line-height: 1.25;">${cleaned}</div>`;
+              cellVal = `
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  height: 100%;
+                  text-align: left;
+                  font-weight: 400;
+                  color: #1e293b;
+                  line-height: 1.25;
+                ">${cleaned}</div>`;
             }
           }
           else {
@@ -1212,21 +1411,34 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   </span>`;
               }
             }
+            else if (col.key === 'tel_mob' && cellVal && cellVal !== '—') {
+              const strVal = String(cellVal).trim();
+              if (strVal.includes(' / ')) {
+                cellVal = `
+                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.25;">
+                    ${strVal.split(/\s*\/\s*/).map(p => `<span style="white-space: nowrap;">${p}</span>`).join('')}
+                  </div>`;
+              } else {
+                cellVal = `<span style="white-space: nowrap;">${strVal}</span>`;
+              }
+            }
             else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
               const strVal = String(cellVal).trim();
               const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
               
               const badgeHtmls = names.map(name => {
                 const style = getCellStyling('s_slujinnya_spysok', name);
+                const paddingStyle = "padding: 1.5px 5px;";
+                const fontSizeStyle = "font-size: 8px;";
                 if (style) {
                   return `
                     <span style="
                       display: inline-flex;
                       align-items: center;
                       justify-content: center;
-                      padding: 2.5px 6.5px;
+                      ${paddingStyle}
                       border-radius: 9999px;
-                      font-size: 8.5px;
+                      ${fontSizeStyle}
                       font-weight: 700;
                       border: 1px solid ${style.border};
                       background-color: ${style.bg};
@@ -1235,7 +1447,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       line-height: 1;
                       text-align: center;
                       vertical-align: middle;
-                      margin: 1.5px;
+                      margin: 0.5px;
                       box-sizing: border-box;
                     ">
                       ${name}
@@ -1246,9 +1458,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     display: inline-flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 2.5px 6.5px;
+                    ${paddingStyle}
                     border-radius: 9999px;
-                    font-size: 8.5px;
+                    ${fontSizeStyle}
                     font-weight: 700;
                     border: 1px solid #cbd5e1;
                     background-color: #f1f5f9;
@@ -1257,22 +1469,30 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     line-height: 1;
                     text-align: center;
                     vertical-align: middle;
-                    margin: 1.5px;
+                    margin: 0.5px;
                     box-sizing: border-box;
                   ">
                     ${name}
                   </span>`;
               });
 
+              const badgeRows: string[] = [];
+              for (let i = 0; i < badgeHtmls.length; i += 2) {
+                const pair = badgeHtmls.slice(i, i + 2).join('');
+                badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 2px;">${pair}</div>`);
+              }
+
               cellVal = `
                 <div style="
                   line-height: 1.2;
                   text-align: left;
                   display: flex;
-                  flex-wrap: wrap;
-                  align-items: center;
+                  flex-direction: column;
+                  justify-content: center;
+                  gap: 2px;
+                  height: 100%;
                 ">
-                  ${badgeHtmls.join('')}
+                  ${badgeRows.join('')}
                 </div>`;
             }
           }
@@ -1295,7 +1515,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
         const currentHeight = current.contentWrapper.offsetHeight;
         const rowCount = current.tbody.children.length;
-        if (currentHeight > 660 && rowCount > 1) {
+        if (currentHeight > 625 && rowCount > 1) {
           current.tbody.removeChild(tr);
           current = createPageElement("PAGE_NUM");
           pages.push(current);
@@ -1745,9 +1965,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 <thead>
                   <tr className="bg-[#16303a] border-b border-[#1f424f]">
                     <th className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">#</th>
-                    {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => (
-                      <th key={col.key} className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">{col.label}</th>
-                    ))}
+                    {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
+                      const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+                      return (
+                        <th key={col.key} className={`py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200 ${isCenter ? 'text-center' : 'text-left'}`}>{col.label}</th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -1762,8 +1985,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                             if (p.length === 3) val = `${p[2]}.${p[1]}.${p[0]}`;
                           } catch {}
                         }
+                        if (col.key === 's_simeyniy_ukr' && val) {
+                          val = formatMaritalStatus(val);
+                        }
+                        const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
                         return (
-                          <td key={col.key} className="py-2 px-4 border-r border-[#1f424f]/40">
+                          <td key={col.key} className={`py-2 px-4 border-r border-[#1f424f]/40 ${isCenter ? 'text-center' : ''}`}>
                             {col.key === 'presviter' && val && val !== '—' ? (
                               (() => {
                                 const st = getCellStyling('presviter', String(val));

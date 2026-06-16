@@ -1382,7 +1382,9 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       </span>
                     </td>
                     <td className="py-1.5 px-1.5 border-r border-slate-300 text-center text-slate-600 max-w-20 truncate">
-                      {m.s_simeyniy_ukr || '—'}
+                      {m.s_simeyniy_ukr ? (
+                        /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
+                      ) : '—'}
                     </td>
                     <td className="py-1.5 px-1.5 border-r border-slate-300 text-center text-slate-600">
                       {m.s_socialniy_ukr || '—'}

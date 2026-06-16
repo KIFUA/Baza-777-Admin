@@ -280,7 +280,7 @@ export default function App() {
       
       <div className="w-full max-w-[1100px] mx-auto flex flex-col h-full min-h-0 px-4">
         {/* SLIM TOP BAR (MIMICKING PHOTO 1) */}
-        <div className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0">
+        <div className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0 scale-interface-down-33">
           <div className="flex gap-1.5 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
             <div className="text-[8px] sm:text-[10px] font-bold text-slate-300 leading-tight shrink-0">
               СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>

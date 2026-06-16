@@ -829,7 +829,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     <div id="spreadsheet_container" className="flex-1 flex flex-col bg-transparent overflow-hidden min-h-0">
       
       {/* Search & Mode filters rail */}
-      <div className="px-1.5 py-1.5 sm:px-4 sm:py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 shadow-sm">
+      <div className="px-1.5 py-1.5 sm:px-4 sm:py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 shadow-sm scale-interface-down-33">
         
         {/* Row 1 / Main Row for mobile or left side for desktop */}
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -970,7 +970,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       </div>
 
       {/* Spreadsheet grid scroll core */}
-      <div className="flex-1 overflow-auto bg-[#cde0cf] min-h-[220px] max-h-full w-full border border-[#8fba94] rounded-md shadow-inner">
+      <div className="flex-1 overflow-auto spreadsheet-scroll-container bg-[#cde0cf] min-h-[220px] max-h-full w-full border border-[#8fba94] rounded-md shadow-inner">
         <table className="w-full border-collapse border border-[#8fba94] text-[11px] bg-[#cde0cf] select-text">
           <thead className="sticky top-0 z-[100] shadow-[0_1px_2px_rgba(0,0,0,0.1)] outline outline-1 outline-[#8fba94]">
             <tr className="bg-[#b2cfb6] text-[#0d341d]">

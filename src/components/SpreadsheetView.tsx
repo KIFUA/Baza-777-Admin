@@ -622,13 +622,13 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     const value = m[field] || '';
 
     const tdStyle = extraTdProps.style;
-    const tdClassName = extraTdProps.className || "py-1 px-1.5 border-r border-slate-300 text-center cursor-pointer hover:bg-slate-200/50 min-h-[28px] transition-colors";
+    const tdClassName = extraTdProps.className || "py-0.5 px-1 border-r border-slate-300 text-center cursor-pointer hover:bg-slate-200/50 min-h-[22px] transition-colors";
 
     if (isEditingCell) {
       return (
         <td 
           style={tdStyle}
-          className={`${extraTdProps.className || ""} py-1 px-1 border-r border-slate-300 bg-white`}
+          className={`${extraTdProps.className || ""} py-0.5 px-0.5 border-r border-slate-300 bg-white`}
           onClick={(e) => e.stopPropagation()}
         >
           <select
@@ -829,143 +829,136 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     <div id="spreadsheet_container" className="flex-1 flex flex-col bg-transparent overflow-hidden min-h-0">
       
       {/* Search & Mode filters rail */}
-      <div className="px-1.5 py-1.5 sm:px-4 sm:py-2 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0 shadow-sm scale-interface-down-33">
-        
-        {/* Row 1 / Main Row for mobile or left side for desktop */}
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* Status filtering select (Наявні / Вибулі / Всі) */}
-          {isAdmin && (
-            <div className="flex items-center shrink-0">
-              <select
-                id="filter_status_select"
-                title="Статус членства"
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value as 'active' | 'dismissed' | 'all')}
-                className="rounded border border-[#1b3642] px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] bg-[#1a3843] text-white focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm"
-              >
-                <option value="active" className="bg-[#1a3843]">Наявні</option>
-                <option value="dismissed" className="bg-[#1a3843]">Вибулі</option>
-                <option value="all" className="bg-[#1a3843]">Всі</option>
-              </select>
-            </div>
-          )}
-
-          {/* District Select (РАЙОН) */}
+      <div className="px-1.5 py-1 sm:px-3 sm:py-1.5 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-row flex-wrap items-center justify-start gap-1.5 sm:gap-2 shrink-0 shadow-sm scale-interface-down-33 font-semibold pb-1 pb-1">
+        {/* Status filtering select (Наявні / Вибулі / Всі) */}
+        {isAdmin && (
           <div className="flex items-center shrink-0">
             <select
-              id="filter_rayon_select"
-              title="Виберіть район"
-              value={selectedRayonFilter}
-              onChange={(e) => {
-                const r = e.target.value;
-                setSelectedRayonFilter(r);
-                setSelectedOpikaFilter(''); // Reset dependent opika filter
-              }}
-              className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
-                selectedRayonFilter 
-                  ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
-                  : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
-              }`}
+              id="filter_status_select"
+              title="Статус членства"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as 'active' | 'dismissed' | 'all')}
+              className="rounded border border-[#1b3642] px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] bg-[#1a3843] text-white focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm"
             >
-              <option value="" className="bg-[#1a3843]">РАЙОН (ВСІ)</option>
-              {rayonList.map((r, i) => (
-                <option key={i} value={r} className="bg-[#1a3843]">{r}</option>
-              ))}
+              <option value="active" className="bg-[#1a3843]">Наявні</option>
+              <option value="dismissed" className="bg-[#1a3843]">Вибулі</option>
+              <option value="all" className="bg-[#1a3843]">Всі</option>
             </select>
           </div>
+        )}
 
-          {/* Caretaker Select (ОПІКА) - Dependent list */}
-          <div className="flex items-center shrink-0 relative">
-            <select
-              id="filter_opika_select"
-              title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
-              value={selectedOpikaFilter}
-              onChange={(e) => {
-                if (!selectedRayonFilter) {
-                  setShowRayonWarning(true);
-                  setTimeout(() => setShowRayonWarning(false), 2500);
-                  return;
-                }
-                setSelectedOpikaFilter(e.target.value);
-              }}
-              onMouseDown={(e) => {
-                if (!selectedRayonFilter) {
-                  e.preventDefault();
-                  setShowRayonWarning(true);
-                  setTimeout(() => setShowRayonWarning(false), 2500);
-                }
-              }}
-              className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
-                selectedOpikaFilter 
-                  ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
-                  : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
-              } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
-            >
-              <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
-              {selectedRayonFilter && opikaList.map((o, i) => (
-                <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
-              ))}
-            </select>
-
-            {showRayonWarning && (
-              <div 
-                id="rayon_warning_tooltip"
-                className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
-              >
-                <AlertTriangle className="h-3 w-3 shrink-0" />
-                <span>Спочатку виберіть район</span>
-              </div>
-            )}
-          </div>
-
-          {/* Filters (Фільтри) */}
-          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
-            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Пошук"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
-              >
-                <X className="h-3 w-3 sm:h-4 sm:w-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Row 2 on mobile or right side on desktop containing ВЛАСНІ СПИСКИ and РАЙОН У ТАБЛИЦІ */}
-        <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 w-full sm:w-auto sm:ml-auto">
-          <button
-            title="Перейти до генератора списків"
-            onClick={onOpenGenerator}
-            className="flex-1 sm:flex-none justify-center px-2 sm:px-3 h-[24px] sm:h-[32px] text-[8px] xs:text-[9px] sm:text-[10px] font-bold text-white transition-all bg-[#387d7a] hover:bg-[#2b5f5d] border border-[#1b3642] rounded shadow-sm tracking-wider uppercase flex items-center whitespace-nowrap cursor-pointer"
-          >
-            ВЛАСНІ СПИСКИ
-          </button>
-
-          <button
-            id="toggle_rayon_col_btn"
-            type="button"
-            onClick={() => setShowRayonColumn(!showRayonColumn)}
-            className={`flex-1 sm:flex-none justify-center flex items-center space-x-1 px-1.5 py-1 sm:px-3 sm:py-1.5 h-[24px] sm:h-[32px] rounded border text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none ${
-              showRayonColumn
-                ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm font-semibold"
+        {/* District Select (РАЙОН) */}
+        <div className="flex items-center shrink-0">
+          <select
+            id="filter_rayon_select"
+            title="Виберіть район"
+            value={selectedRayonFilter}
+            onChange={(e) => {
+              const r = e.target.value;
+              setSelectedRayonFilter(r);
+              setSelectedOpikaFilter(''); // Reset dependent opika filter
+            }}
+            className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
+              selectedRayonFilter 
+                ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
                 : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
             }`}
           >
-            <span className="hidden sm:inline">Район у таблиці 🧭</span>
-            <span className="sm:hidden">Район 🧭</span>
-            <span className="opacity-85 text-[8px] sm:text-[10px] ml-0.5">
-              {showRayonColumn ? "(Так)" : "(Ні)"}
-            </span>
-          </button>
+            <option value="" className="bg-[#1a3843]">РАЙОН (ВСІ)</option>
+            {rayonList.map((r, i) => (
+              <option key={i} value={r} className="bg-[#1a3843]">{r}</option>
+            ))}
+          </select>
         </div>
+
+        {/* Caretaker Select (ОПІКА) - Dependent list */}
+        <div className="flex items-center shrink-0 relative">
+          <select
+            id="filter_opika_select"
+            title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
+            value={selectedOpikaFilter}
+            onChange={(e) => {
+              if (!selectedRayonFilter) {
+                setShowRayonWarning(true);
+                setTimeout(() => setShowRayonWarning(false), 2500);
+                return;
+              }
+              setSelectedOpikaFilter(e.target.value);
+            }}
+            onMouseDown={(e) => {
+              if (!selectedRayonFilter) {
+                e.preventDefault();
+                setShowRayonWarning(true);
+                setTimeout(() => setShowRayonWarning(false), 2500);
+              }
+            }}
+            className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
+              selectedOpikaFilter 
+                ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
+                : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
+            } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
+          >
+            <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
+            {selectedRayonFilter && opikaList.map((o, i) => (
+              <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
+            ))}
+          </select>
+
+          {showRayonWarning && (
+            <div 
+              id="rayon_warning_tooltip"
+              className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
+            >
+              <AlertTriangle className="h-3 w-3 shrink-0" />
+              <span>Спочатку виберіть район</span>
+            </div>
+          )}
+        </div>
+
+        {/* Filters (Фільтри) */}
+        <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
+          <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Пошук"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+            >
+              <X className="h-3 w-3 sm:h-4 sm:w-4" />
+            </button>
+          )}
+        </div>
+
+        <button
+          title="Перейти до генератора списків"
+          onClick={onOpenGenerator}
+          className="justify-center px-1.5 py-1 sm:px-3 h-[24px] sm:h-[32px] text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold text-white transition-all bg-[#387d7a] hover:bg-[#2b5f5d] border border-[#1b3642] rounded shadow-sm tracking-widest uppercase flex items-center whitespace-nowrap cursor-pointer shrink-0"
+        >
+          ВЛАСНІ СПИСКИ
+        </button>
+
+        <button
+          id="toggle_rayon_col_btn"
+          type="button"
+          onClick={() => setShowRayonColumn(!showRayonColumn)}
+          className={`justify-center flex items-center space-x-1 px-1.5 py-1 sm:px-3 sm:py-1.5 h-[24px] sm:h-[32px] rounded border text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none shrink-0 ${
+            showRayonColumn
+              ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm font-semibold"
+              : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
+          }`}
+        >
+          <span className="hidden sm:inline">Район у таблиці 🧭</span>
+          <span className="sm:hidden">Район 🧭</span>
+          <span className="opacity-85 text-[8px] sm:text-[10px] ml-0.5">
+            {showRayonColumn ? "(Так)" : "(Ні)"}
+          </span>
+        </button>
 
       </div>
 
@@ -976,14 +969,14 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
             <tr className="bg-[#b2cfb6] text-[#0d341d]">
               <th 
                 style={{ width: `${indexColWidth}px`, minWidth: `${indexColWidth}px`, maxWidth: `${indexColWidth}px`, left: '0px' }}
-                className="py-1.5 px-0.5 border border-[#8fba94] text-center font-black bg-[#b2cfb6] sticky z-[120] text-[9.5px] sm:text-[11px]"
+                className="py-0.5 px-0.5 border border-[#8fba94] text-center font-black bg-[#b2cfb6] sticky z-[120] text-[9.5px] sm:text-[11px]"
               >
                 №
               </th>
               {showRayonColumn && (
                 <th 
                   style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: `${indexColWidth}px` }}
-                  className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[115] shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate"
+                  className="py-0.5 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[115] shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate"
                 >
                   РАЙОН
                 </th>
@@ -995,30 +988,30 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                   maxWidth: `${pibColumnWidth}px`,
                   left: `${pibLeftSticky}px` 
                 }}
-                className="py-2 px-1.5 sm:px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] sticky z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
+                className="py-0.5 px-1 sm:px-2 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] sticky z-[110] shadow-[2px_0_5px_rgba(0,0,0,0.05)] truncate"
               >
                 ПІБ
               </th>
-              <th className="py-1 px-0.5 border border-[#8fba94] text-center text-[7.5px] sm:text-[10px] font-bold text-[#1e4620] bg-[#c3dfc7] w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] leading-[1.1] sm:leading-tight uppercase sm:normal-case">Дати контактів з пресв.</th>
-              <th className="py-2 px-3 border border-[#8fba94] text-left font-bold w-36 min-w-[144px] max-w-[144px] truncate bg-[#b2cfb6]">ПРИМІТКИ і ПОЯСНЕННЯ</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6]">Дії</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6]">Опіка</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-48 min-w-[192px] max-w-[192px] bg-[#b2cfb6]">Служіння</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Відвідування</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold w-24 min-w-[96px] bg-[#b2cfb6]" title="Причина відсутності">Прич. відсутності</th>
-              <th className="py-2 px-1 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6]">Вік</th>
-              <th className="py-2 px-3 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] min-w-[150px] whitespace-nowrap">
+              <th className="py-0.5 px-0.5 border border-[#8fba94] text-center text-[7.5px] sm:text-[10px] font-bold text-[#1e4620] bg-[#c3dfc7] w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] leading-[1.1] sm:leading-tight uppercase sm:normal-case">Дати контактів з пресв.</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-left font-bold w-36 min-w-[144px] max-w-[144px] truncate bg-[#b2cfb6]">ПРИМІТКИ і ПОЯСНЕННЯ</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6]">Дії</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6]">Опіка</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold w-48 min-w-[192px] max-w-[192px] bg-[#b2cfb6]">Служіння</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6]">Відвідування</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold w-24 min-w-[96px] bg-[#b2cfb6]" title="Причина відсутності">Прич. відсутності</th>
+              <th className="py-0.5 px-0.5 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6]">Вік</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] min-w-[150px] whitespace-nowrap">
                 Адреса
               </th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6]">Телефон</th>
-              <th className="py-2 px-1 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">Дата народж.</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Ос-та</th>
-              <th className="py-2 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Хр. С.Д.</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Сім. Стан</th>
-              <th className="py-2 px-2 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Соц. Стан</th>
-              <th className="py-2 px-1 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">В.Х.</th>
-              <th className="py-2 px-1 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">В_церкві_з</th>
-              <th className="py-2 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Років в ц.</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6]">Телефон</th>
+              <th className="py-0.5 px-0.5 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">Дата народж.</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Ос-та</th>
+              <th className="py-0.5 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Хр. С.Д.</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Сім. Стан</th>
+              <th className="py-0.5 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Соц. Стан</th>
+              <th className="py-0.5 px-0.5 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">В.Х.</th>
+              <th className="py-0.5 px-0.5 border border-[#8fba94] text-center text-[10px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-tight">В_церкві_з</th>
+              <th className="py-0.5 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6]">Років в ц.</th>
             </tr>
           </thead>
           <tbody className="font-medium text-[#113a21]">
@@ -1035,7 +1028,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     {/* Sticky index cell */}
                     <td 
                       style={{ width: `${indexColWidth}px`, minWidth: `${indexColWidth}px`, maxWidth: `${indexColWidth}px`, left: '0px' }}
-                      className="py-1 px-0.5 border border-[#8fba94] text-center bg-[#b2cfb6] group-hover:bg-[#a8c7ab] font-bold sticky z-20 shadow-[1px_0_2px_rgba(0,0,0,0.05)] text-slate-800 text-[8.5px] sm:text-[10px]"
+                      className="py-0.5 px-0.5 border border-[#8fba94] text-center bg-[#b2cfb6] group-hover:bg-[#a8c7ab] font-bold sticky z-20 shadow-[1px_0_2px_rgba(0,0,0,0.05)] text-slate-800 text-[8.5px] sm:text-[10px]"
                     >
                       {idx + 1}
                     </td>
@@ -1049,7 +1042,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       'text-[#0a2f16] font-extrabold text-[10px]',
                       {
                         style: { width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: `${indexColWidth}px` },
-                        className: "py-1.5 px-2 border border-[#8fba94] text-center bg-[#c3dfc7]/80 group-hover:bg-[#a8c7ab] sticky z-15 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate text-[10px]"
+                        className: "py-0.5 px-1 border border-[#8fba94] text-center bg-[#c3dfc7]/80 group-hover:bg-[#a8c7ab] sticky z-15 shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate text-[10px]"
                       }
                     )}
 
@@ -1061,7 +1054,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className="py-1 px-1.5 sm:px-3 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer"
+                      className="py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer"
                       onDoubleClick={(e) => {
                         e.stopPropagation();
                         onOpenProfile(m.id);
@@ -1110,7 +1103,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       const isTooltipOpen = activeContactTooltipId === m.id;
                       return (
                         <td 
-                          className={`py-1 px-1 border-r border-[#8fba94] text-center w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] relative cursor-pointer select-none hover:brightness-95 transition-all ${bgClass}`}
+                          className={`py-0.5 px-0.5 border-r border-[#8fba94] text-center w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] relative cursor-pointer select-none hover:brightness-95 transition-all ${bgClass}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveContactTooltipId(isTooltipOpen ? null : m.id);
@@ -1153,7 +1146,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     {/* Remarks with Popup Tooltip on Hover or Tap (Request 2) */}
                     {editingRemarkId === m.id ? (
                       <td 
-                        className="py-1 px-1 border-r border-[#8fba94] bg-white w-36 min-w-[144px] max-w-[144px]"
+                        className="py-0.5 px-0.5 border-r border-[#8fba94] bg-white w-36 min-w-[144px] max-w-[144px]"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <input
@@ -1184,7 +1177,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       </td>
                     ) : (
                       <td 
-                        className="py-1.5 px-2 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 italic font-medium relative cursor-pointer overflow-visible w-36 min-w-[144px] max-w-[144px]"
+                        className="py-0.5 px-1 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 italic font-medium relative cursor-pointer overflow-visible w-36 min-w-[144px] max-w-[144px]"
                         onMouseEnter={(e) => {
                           const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
                           if (div && div.scrollWidth > div.clientWidth) {
@@ -1231,7 +1224,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
                     {/* "Служіння" Column (Ministry) with multiple choice popup */}
                     <td 
-                      className="py-1 px-1.5 border-r border-[#8fba94] text-center w-48 min-w-[192px] max-w-[192px] relative cursor-pointer hover:bg-emerald-800/10 transition-colors select-none"
+                      className="py-0.5 px-1 border-r border-[#8fba94] text-center w-48 min-w-[192px] max-w-[192px] relative cursor-pointer hover:bg-emerald-800/10 transition-colors select-none"
                       onClick={(e) => {
                         e.stopPropagation();
                         setEditingCell({ id: m.id, field: 's_slujinnya_spysok' });
@@ -1348,56 +1341,56 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     {renderDropdownCell(m, 'prysutnist', lookups?.directories?.prysutnist || [], 'н/д', 'text-blue-700 bg-blue-50 rounded-full px-1.5 py-0.5')}
 
                     {/* Demographics */}
-                    <td className="py-1.5 px-1 border-r border-slate-300 text-center font-semibold font-mono">
+                    <td className="py-0.5 px-1 border-r border-slate-300 text-center font-semibold text-xs font-mono">
                       {m.vik_rokiv1 ? `${m.vik_rokiv1}` : '—'}
                     </td>
 
                     {/* Address (Request 1) */}
-                    <td className="py-1 px-3 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap align-middle" title={m.address}>
+                    <td className="py-0.5 px-1.5 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap text-xs align-middle" title={m.address}>
                       {formatAddress(m.address)}
                     </td>
-                    <td className="py-1.5 px-2 border-r border-slate-300 text-center font-mono font-bold text-slate-700 whitespace-nowrap">
+                    <td className="py-0.5 px-1 border-r border-slate-300 text-center font-mono font-bold text-xs text-slate-700 whitespace-nowrap">
                       {m.tel_mob || '—'}
                     </td>
 
                     {/* Dates birth & Edu */}
-                    <td className="py-1 px-1 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
+                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
                       {formatDateToUA(m.d_narodjennya)}
                     </td>
-                    <td className="py-1.5 px-2 border-r border-slate-300 text-center text-slate-600">
+                    <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-xs">
                       {m.s_osvita_ukr || '—'}
                     </td>
 
                     {/* Dynamic spiritual parameters */}
                     <td 
-                      className="py-1 px-1 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors"
+                      className="py-0.5 px-0.5 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors"
                       onClick={async (e) => {
                         e.stopPropagation();
                         await onUpdateMember(m.id, { hsd: !m.hsd });
                       }}
                       title="Клацніть для швидкого перемикання статусу Хр. С.Д. (так/ні)"
                     >
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] uppercase font-extrabold tracking-tight transition-all duration-150 ${m.hsd ? "text-emerald-850 bg-emerald-100/80 border border-emerald-300/60" : "text-slate-400 bg-slate-50 border border-slate-200"}`}>
+                      <span className={`inline-block px-1 py-0.5 rounded text-[10px] uppercase font-extrabold tracking-tight transition-all duration-150 ${m.hsd ? "text-emerald-850 bg-emerald-100/80 border border-emerald-300/60" : "text-slate-400 bg-slate-50 border border-slate-200"}`}>
                         {m.hsd ? "так" : "ні"}
                       </span>
                     </td>
-                    <td className="py-1.5 px-1.5 border-r border-slate-300 text-center text-slate-600 max-w-20 truncate">
+                    <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-xs max-w-20 truncate">
                       {m.s_simeyniy_ukr ? (
                         /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
                       ) : '—'}
                     </td>
-                    <td className="py-1.5 px-1.5 border-r border-slate-300 text-center text-slate-600">
+                    <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-650 text-xs">
                       {m.s_socialniy_ukr || '—'}
                     </td>
 
                     {/* Baptisms dates & years inside church */}
-                    <td className="py-1 px-1 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
+                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
                       {renderWaterBaptism(m.d_vodnogo)}
                     </td>
-                    <td className="py-1 px-1 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
+                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
                       {formatDateToUA(m.d_vstupu)}
                     </td>
-                    <td className="py-1.5 px-1 border-r border-slate-300 text-center font-bold font-mono text-[#1e4620] bg-[#c3dfc7] group-hover:bg-[#9dbb9f]">
+                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-bold text-xs font-mono text-[#1e4620] bg-[#c3dfc7] group-hover:bg-[#9dbb9f]">
                       {yearsInChurch}
                     </td>
 

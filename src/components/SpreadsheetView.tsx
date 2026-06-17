@@ -467,7 +467,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
   const isMobile = windowWidth < 640;
   const indexColWidth = isMobile ? 22 : 40;
-  const rayonColWidth = 90;
+  const rayonColWidth = 241;
   const pibLeftSticky = showRayonColumn ? (indexColWidth + rayonColWidth) : indexColWidth;
 
   const getCustomColor = (category: 'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist', value: string) => {
@@ -675,12 +675,34 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       );
     }
 
-    const customStyle = getCellStyling(field, value);
-    const badgeStyle = customStyle ? { 
+    let displayText = value || fallbackText;
+    let customStyle = getCellStyling(field, value);
+    let spanClassName = customStyle 
+      ? "inline-block text-[10px] font-extrabold px-1.5 py-0.5 rounded border text-center truncate max-w-full font-sans tracking-tight shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
+      : `inline-block text-[10px] font-bold ${colorClasses}`;
+    let spanStyle = customStyle ? { 
       backgroundColor: customStyle.bg, 
       color: customStyle.text, 
       borderColor: customStyle.border 
     } : undefined;
+
+    if (field === 'prysutnist') {
+      const vidvidVal = (m.vidviduvanist || '').trim();
+      if (vidvidVal === 'Постійно') {
+        displayText = '';
+        spanClassName = '';
+        spanStyle = undefined;
+      } else if (!value) {
+        displayText = 'н/д';
+        spanClassName = "text-slate-400 font-bold text-[10px]";
+        spanStyle = undefined;
+      }
+    } else if (field === 'vidviduvanist') {
+      if (displayText.trim() === 'н/д') {
+        spanClassName = "text-slate-400 font-bold text-[10px]";
+        spanStyle = undefined;
+      }
+    }
 
     return (
       <td 
@@ -690,12 +712,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         title="Клацніть для швидкої зміни значення"
       >
         <span 
-          style={badgeStyle}
-          className={customStyle 
-            ? "inline-block text-[10px] font-extrabold px-1.5 py-0.5 rounded border text-center truncate max-w-full font-sans tracking-tight shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
-            : `inline-block text-[10px] font-bold ${colorClasses}`}
+          style={spanStyle}
+          className={spanClassName}
         >
-          {value || fallbackText}
+          {displayText}
         </span>
       </td>
     );
@@ -981,16 +1001,16 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       <div className="flex-1 overflow-auto spreadsheet-scroll-container bg-[#cde0cf] min-h-[220px] max-h-full w-full border border-[#8fba94] rounded-md shadow-inner">
         <table className="w-full border-collapse border border-[#8fba94] text-[11px] bg-[#cde0cf] select-text">
           <thead className="sticky top-0 z-[100] shadow-[0_1px_2px_rgba(0,0,0,0.1)] outline outline-1 outline-[#8fba94]">
-            <tr className="bg-[#b2cfb6] text-[#0d341d]">
+            <tr style={{ height: '22px' }} className="bg-[#b2cfb6] text-[#0d341d]">
               <th 
                 style={{ width: `${indexColWidth}px`, minWidth: `${indexColWidth}px`, maxWidth: `${indexColWidth}px`, left: '0px' }}
-                className="py-0 px-0.5 border border-[#8fba94] text-center font-black bg-[#b2cfb6] sticky z-[120] text-[5px] sm:text-[6px] uppercase leading-none"
+                className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[120] text-[5.5px] sm:text-[6.5px] uppercase leading-none"
               >
                 №
               </th>
               {showRayonColumn && (
                 <th 
-                  style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: `${indexColWidth}px` }}
+                  style={{ width: `${rayonColWidth}px`, minWidth: `${rayonColWidth}px`, maxWidth: `${rayonColWidth}px`, left: `${indexColWidth}px`, height: '22px' }}
                   className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] sticky z-[115] shadow-[1px_0_3px_rgba(0,0,0,0.05)] truncate text-[5.5px] sm:text-[6.5px] uppercase leading-none"
                 >
                   РАЙОН
@@ -1007,9 +1027,9 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
               >
                 ПІБ
               </th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[4.5px] sm:text-[5.5px] font-bold text-[#1e4620] bg-[#c3dfc7] w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] leading-none uppercase">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>
+              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] leading-none uppercase">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>
               <th className="py-0 px-1 border border-[#8fba94] text-left font-bold w-36 min-w-[144px] max-w-[144px] truncate bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6] text-[5px] sm:text-[6px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>
+              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>
               <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОПІКА</th>
               <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-48 min-w-[192px] max-w-[192px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СЛУЖІННЯ</th>
               <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІДВІДУВАННЯ</th>
@@ -1019,13 +1039,13 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                 АДРЕСА
               </th>
               <th className="py-0 px-1 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ТЕЛЕФОН</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">ДАТА НАРОДЖ.</th>
+              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">ДАТА НАРОДЖ.</th>
               <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОС-ТА</th>
               <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ХР. С.Д.</th>
               <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СІМ. СТАН</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СОЦ. СТАН</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В.Х.</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В_ЦЕРКВІ_З</th>
+              <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold w-14 min-w-[56px] max-w-[56px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СОЦ.<br/>СТАН</th>
+              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В.Х.</th>
+              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В_ЦЕРКВІ_З</th>
               <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">РОКІВ В Ц.</th>
             </tr>
           </thead>
@@ -1378,23 +1398,24 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
                     {/* Dynamic spiritual parameters */}
                     <td 
-                      className="py-0.5 px-0.5 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors"
+                      className="py-0.5 px-0.5 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors text-slate-600 text-[10px]"
                       onClick={async (e) => {
                         e.stopPropagation();
                         await onUpdateMember(m.id, { hsd: !m.hsd });
                       }}
                       title="Клацніть для швидкого перемикання статусу Хр. С.Д. (так/ні)"
                     >
-                      <span className={`inline-block px-1 py-0.5 rounded text-[10px] uppercase font-extrabold tracking-tight transition-all duration-150 ${m.hsd ? "text-emerald-850 bg-emerald-100/80 border border-emerald-300/60" : "text-slate-400 bg-slate-50 border border-slate-200"}`}>
-                        {m.hsd ? "так" : "ні"}
-                      </span>
+                      {m.hsd ? "так" : "ні"}
                     </td>
                     <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px] max-w-20 truncate">
                       {m.s_simeyniy_ukr ? (
                         /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
                       ) : '—'}
                     </td>
-                    <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-650 text-[10px]">
+                    <td 
+                      className="py-0.5 px-0.5 border-r border-slate-300 text-center text-slate-650 text-[10px] w-14 min-w-[56px] max-w-[56px] truncate"
+                      title={m.s_socialniy_ukr || '—'}
+                    >
                       {m.s_socialniy_ukr || '—'}
                     </td>
 

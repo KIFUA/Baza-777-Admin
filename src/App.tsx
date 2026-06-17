@@ -280,82 +280,129 @@ export default function App() {
       
       <div className="w-full max-w-[1100px] mx-auto flex flex-col h-full min-h-0 px-4">
         {/* SLIM TOP BAR (MIMICKING PHOTO 1) */}
-        <div className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0 scale-interface-down-33">
+        <div 
+          style={{ fontSize: '16px' }}
+          className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0 scale-interface-down-33"
+        >
           <div className="flex gap-1.5 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
-            <div className="text-[8px] sm:text-[10px] font-bold text-slate-300 leading-tight shrink-0">
+            <div 
+              style={{ fontWeight: 'normal', fontStyle: 'italic' }}
+              className="text-[8px] sm:text-[10px] font-bold text-slate-300 leading-tight shrink-0"
+            >
               СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
               ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
             </div>
             
-            <div className="bg-[#1a3843] border border-[#142d36] rounded px-1 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap">
-              <span className="hidden sm:inline mr-2">ВСЬОГО ЧЛЕНІВ ЦЕРКВИ</span>
+            <div 
+              style={{ height: '30px', width: '245px' }}
+              className="bg-[#1a3843] border border-[#142d36] rounded px-1 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap"
+            >
+              <span 
+                style={{ fontSize: '12px', lineHeight: '18px' }}
+                className="hidden sm:inline mr-2"
+              >
+                ВСЬОГО ЧЛЕНІВ ЦЕРКВИ
+              </span>
               <span className="sm:hidden mr-1">ВСЬОГО</span>
-              <span className="font-black text-[10px] sm:text-sm text-white">{members.length}</span>
+              <span 
+                style={{ fontSize: '13px', fontWeight: 'bold', color: '#00cb4c' }}
+                className="font-black text-[10px] sm:text-sm text-white"
+              >
+                {members.length}
+              </span>
             </div>
-          </div>
 
-          <nav className="flex space-x-1 sm:space-x-2 shrink-0 w-full sm:w-auto justify-center sm:justify-end">
-            <button
-              onClick={() => { 
-                setMainMode('spreadsheet'); 
-                setSelectedMemberId(null); 
-                setShowForm(false); 
-                // Instant load using cache, reload synced changes in background in parallel
-                Promise.all([
-                  fetchAllMembers(),
-                  fetchMembers(),
-                  fetchLookupsAndStats()
-                ]).catch(err => console.error("Error updating tab data:", err));
-              }}
-              className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-            >
-              СПИСОК
-            </button>
-            <button
-              title="Перейти до анкет"
-              onClick={() => { 
-                setMainMode('questionnaire'); 
-                setSelectedMemberId(null); 
-                setShowForm(false); 
-                // Instant load using cache, reload synced changes in background in parallel
-                Promise.all([
-                  fetchAllMembers(),
-                  fetchMembers(),
-                  fetchLookupsAndStats()
-                ]).catch(err => console.error("Error updating tab data:", err));
-              }}
-              className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-            >
-              АНКЕТИ
-            </button>
-            <button
-              title="Аналітична статистика реєстру та зрізи за районами"
-              onClick={() => {
-                setMainMode('stats');
-                setSelectedMemberId(null);
-                setShowForm(false);
-                Promise.all([
-                  fetchAllMembers(),
-                  fetchMembers(),
-                  fetchLookupsAndStats()
-                ]).catch(err => console.error("Error updating tab data:", err));
-              }}
-              className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-            >
-              СТАТИСТИКА
-            </button>
-            <button
-              title="Налаштування довідників та кольорів"
-              onClick={() => {
-                setMainMode('settings');
-                setSelectedMemberId(null);
-                setShowForm(false);
-              }}
-              className={`px-2 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-            >
-              НАЛАШТУВАННЯ
-            </button>
-          </nav>
+            <nav className="flex space-x-1 sm:space-x-2 shrink-0 ml-2">
+              <button
+                style={{
+                  fontSize: '12px',
+                  height: '30px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                onClick={() => { 
+                  setMainMode('spreadsheet'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                  // Instant load using cache, reload synced changes in background in parallel
+                  Promise.all([
+                    fetchAllMembers(),
+                    fetchMembers(),
+                    fetchLookupsAndStats()
+                  ]).catch(err => console.error("Error updating tab data:", err));
+                }}
+                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+              >
+                СПИСОК
+              </button>
+              <button
+                style={{
+                  fontSize: '12px',
+                  height: '30px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Перейти до анкет"
+                onClick={() => { 
+                  setMainMode('questionnaire'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                  // Instant load using cache, reload synced changes in background in parallel
+                  Promise.all([
+                    fetchAllMembers(),
+                    fetchMembers(),
+                    fetchLookupsAndStats()
+                  ]).catch(err => console.error("Error updating tab data:", err));
+                }}
+                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+              >
+                АНКЕТИ
+              </button>
+              <button
+                style={{
+                  fontSize: '12px',
+                  height: '30px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Аналітична статистика реєстру та зрізи за районами"
+                onClick={() => {
+                  setMainMode('stats');
+                  setSelectedMemberId(null);
+                  setShowForm(false);
+                  Promise.all([
+                    fetchAllMembers(),
+                    fetchMembers(),
+                    fetchLookupsAndStats()
+                  ]).catch(err => console.error("Error updating tab data:", err));
+                }}
+                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+              >
+                СТАТИСТИКА
+              </button>
+              <button
+                style={{
+                  fontSize: '12px',
+                  height: '30px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title="Налаштування довідників та кольорів"
+                onClick={() => {
+                  setMainMode('settings');
+                  setSelectedMemberId(null);
+                  setShowForm(false);
+                }}
+                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+              >
+                НАЛАШТУВАННЯ
+              </button>
+            </nav>
+          </div>
         </div>
 
         {/* 2. MAIN HUB CANVAS CONTENT */}

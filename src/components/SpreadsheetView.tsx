@@ -1137,20 +1137,20 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
 
                           {isTooltipOpen && (
                             <div 
-                              className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-max min-w-[85px] max-w-[125px] bg-[#091b10] text-[#a7f3d0] border border-[#2b5e38] rounded-md shadow-lg p-1 z-[250] text-center font-mono animate-in fade-in duration-75"
+                              className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-max min-w-[85px] max-w-[125px] bg-[#232323] text-white border border-[#444444] rounded shadow-md p-1.5 z-[250] text-center font-sans animate-in fade-in duration-75"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#091b10]" />
+                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#232323]" />
                               {allDates.length > 0 ? (
-                                <div className="space-y-0.5 max-h-24 overflow-y-auto custom-scrollbar text-[8px] leading-tight font-black">
+                                <div className="space-y-0.5 max-h-24 overflow-y-auto custom-scrollbar text-[11px] leading-tight font-medium">
                                   {allDates.map((dateStr, idx) => (
-                                    <div key={idx} className="py-0.5 border-b border-[#2b5e38]/20 last:border-0">
+                                    <div key={idx} className="py-0.5 border-b border-[#444444]/40 last:border-0">
                                       {dateStr}
                                     </div>
                                   ))}
                                 </div>
                               ) : (
-                                <p className="text-[8px] text-slate-400 italic py-0.5">Немає дат</p>
+                                <p className="text-[11px] text-zinc-400 italic py-0.5">Немає дат</p>
                               )}
                             </div>
                           )}

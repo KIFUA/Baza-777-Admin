@@ -598,14 +598,14 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         const part2 = cleaned.substring(commaIdx + 1).trim();
         return (
           <div className="flex flex-col text-left leading-tight py-0.5">
-            <span className="font-extrabold text-[#0d341d] text-[11px] block">{part1}</span>
-            <span className="text-[10px] text-zinc-500 font-semibold block mt-0.5">{part2}</span>
+            <span className="font-semibold text-[#0d341d] text-[11px] block">{part1}</span>
+            <span className="text-[11px] text-zinc-500 font-medium block mt-0.5">{part2}</span>
           </div>
         );
       }
     }
 
-    return <span className="font-bold text-[#0d341d] text-[11px]">{cleaned}</span>;
+    return <span className="font-medium text-[#0d341d] text-[11px]">{cleaned}</span>;
   };
 
   const formatPhoneNumber = (tel: string | undefined | null) => {
@@ -1361,7 +1361,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     </td>
 
                     {/* Address (Request 1) */}
-                    <td className="py-0.5 px-1.5 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap text-[10px] align-middle" title={m.address}>
+                    <td className="py-0.5 px-1.5 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap text-[11px] align-middle" title={m.address}>
                       {formatAddress(m.address)}
                     </td>
                     <td className="py-0.5 px-1 border-r border-slate-300 text-center font-mono font-bold text-[10px] text-slate-700">

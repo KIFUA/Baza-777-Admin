@@ -66,6 +66,44 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
     };
   }, [activeContactTooltipId]);
 
+  // Auto-close contact tooltip after 3 seconds of no mouse activity
+  useEffect(() => {
+    if (activeContactTooltipId === null) return;
+
+    let timeoutId: any = setTimeout(() => {
+      setActiveContactTooltipId(null);
+    }, 3000);
+
+    let enabled = false;
+    const enableTimer = setTimeout(() => {
+      enabled = true;
+    }, 150);
+
+    const handleMouseActivity = () => {
+      if (!enabled) return;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseActivity);
+    window.addEventListener('mousedown', handleMouseActivity);
+    window.addEventListener('click', handleMouseActivity);
+    window.addEventListener('wheel', handleMouseActivity);
+
+    return () => {
+      clearTimeout(enableTimer);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      window.removeEventListener('mousemove', handleMouseActivity);
+      window.removeEventListener('mousedown', handleMouseActivity);
+      window.removeEventListener('click', handleMouseActivity);
+      window.removeEventListener('wheel', handleMouseActivity);
+    };
+  }, [activeContactTooltipId]);
+
   // Close remark tooltip on global click
   useEffect(() => {
     if (activeRemarkTooltipId === null) return;
@@ -424,17 +462,17 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         filteredMembers.forEach(m => {
           const parts = (m.pib || "").trim().split(/\s+/);
           if (parts.length <= 1) {
-            ctx.font = isMobile ? "800 9px Inter, sans-serif" : "800 12px Inter, sans-serif";
+            ctx.font = isMobile ? "800 11px Inter, sans-serif" : "800 13.5px Inter, sans-serif";
             const w1 = ctx.measureText(m.pib || "").width;
             if (w1 > maxWidth) maxWidth = w1;
           } else {
             const lastName = parts[0];
             const givenName = parts.slice(1).join(" ");
             
-            ctx.font = isMobile ? "800 9px Inter, sans-serif" : "800 12px Inter, sans-serif";
+            ctx.font = isMobile ? "800 11px Inter, sans-serif" : "800 13.5px Inter, sans-serif";
             const w1 = ctx.measureText(lastName).width;
             
-            ctx.font = isMobile ? "600 8px Inter, sans-serif" : "600 10px Inter, sans-serif";
+            ctx.font = isMobile ? "600 9px Inter, sans-serif" : "600 10.5px Inter, sans-serif";
             const w2 = ctx.measureText(givenName).width;
             
             const cellMax = Math.max(w1, w2);
@@ -444,10 +482,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           }
         });
         // Scale/button/padding spacing buffer
-        const finalWidth = maxWidth + (isMobile ? 10 : 64);
-        const minWidth = isMobile ? 80 : 155;
+        const finalWidth = maxWidth + (isMobile ? 24 : 44);
+        const minWidth = isMobile ? 85 : 155;
         const calculatedWidth = Math.max(minWidth, Math.ceil(finalWidth));
-        return isMobile ? Math.min(100, calculatedWidth) : calculatedWidth;
+        return isMobile ? Math.min(160, calculatedWidth) : Math.min(350, calculatedWidth);
       }
     } catch (e) {}
 
@@ -459,10 +497,10 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       const len = Math.max(lastName.length, givenName.length * 0.85);
       if (len > maxCharLen) maxCharLen = len;
     });
-    const finalFallbackWidth = maxCharLen * (isMobile ? 5.5 : 7.5) + (isMobile ? 12 : 68);
-    const minFallbackWidth = isMobile ? 80 : 155;
+    const finalFallbackWidth = maxCharLen * (isMobile ? 6.5 : 8.5) + (isMobile ? 20 : 48);
+    const minFallbackWidth = isMobile ? 85 : 155;
     const calculatedFallback = Math.max(minFallbackWidth, finalFallbackWidth);
-    return isMobile ? Math.min(100, calculatedFallback) : calculatedFallback;
+    return isMobile ? Math.min(160, calculatedFallback) : Math.min(350, calculatedFallback);
   }, [filteredMembers, windowWidth]);
 
   const isMobile = windowWidth < 640;

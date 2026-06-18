@@ -381,7 +381,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
           <span className={`truncate ${isNA ? "text-slate-400 font-normal italic" : ""}`}>{labelToDisplay}</span>
           <span className="text-slate-350">{value} ({pct}%)</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800/50">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/50">
           <div className={`h-full rounded-full transition-all duration-500 ${colorClass}`} style={{ width: `${pct}%` }}></div>
         </div>
       </div>
@@ -389,151 +389,142 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
   };
 
   return (
-    <div id="stats_dashboard" className="space-y-8 animate-fade-in text-slate-100">
+    <div id="stats_dashboard" className="space-y-6 animate-fade-in text-slate-100">
       {/* Visual Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/10 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-white/10 pb-3">
         <div>
-          <h2 className="font-display text-2xl font-bold tracking-tight text-white animate-fade-in">Аналітична статистика реєстру</h2>
-          <p className="text-sm text-slate-300">Авторизований зріз по структурі за активними членами громади</p>
-        </div>
-
-        {/* District selector */}
-        <div className="flex items-center space-x-2 shrink-0 bg-[#1a3843] border border-[#142d36] rounded-xl p-2.5 shadow-sm max-w-sm">
-          <MapPin className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">Звіт по району:</span>
-          <select
-            value={selectedRayon}
-            onChange={(e) => setSelectedRayon(e.target.value)}
-            className="bg-[#244b5a] border border-[#2c5869] text-white text-xs font-bold rounded-lg py-1 px-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-          >
-            {uniqueRayons.length === 0 && (
-              <option value="">Не знайдено районів</option>
-            )}
-            {uniqueRayons.map(rayon => (
-              <option key={rayon} value={rayon} className="bg-[#1a3843] text-white text-xs">
-                {rayon}
-              </option>
-            ))}
-          </select>
+          <h2 className="font-display text-xl font-bold tracking-tight text-white animate-fade-in">Аналітична статистика реєстру</h2>
+          <p className="text-xs text-slate-300">Авторизований зріз по структурі за активними членами громади</p>
         </div>
       </div>
 
       {/* COMPACT PER-DISTRICT INDEPENDENT REPORT */}
       {selectedRayon && (
-        <div className="bg-gradient-to-br from-emerald-950/20 to-teal-950/20 border border-emerald-500/20 rounded-2xl p-4 sm:p-6 space-y-6 animate-in fade-in slide-in-from-top-2 duration-200 shadow-lg">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <div className="flex items-center space-x-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <h3 className="text-sm sm:text-base font-bold text-slate-100 flex items-center gap-1.5 uppercase tracking-wide">
-                📍 Районний аналітичний зріз: <span className="text-emerald-400 font-extrabold">{selectedRayon}</span>
+        <div className="bg-gradient-to-br from-emerald-950/20 to-teal-950/20 border border-emerald-500/20 rounded-xl p-3 sm:p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-lg">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <div className="flex items-center space-x-1.5">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <h3 className="text-xs sm:text-xs font-bold text-slate-100 flex items-center gap-1.5 uppercase tracking-wide">
+                📍 Районний аналітичний зріз:
+                <select
+                  value={selectedRayon}
+                  onChange={(e) => setSelectedRayon(e.target.value)}
+                  className="bg-[#244b5a]/40 border border-[#2c5869] text-emerald-400 font-extrabold rounded-md py-0.5 px-2 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer text-[10px] sm:text-[11px] uppercase tracking-wider transition-colors outline-none"
+                >
+                  {uniqueRayons.map(rayon => (
+                    <option key={rayon} value={rayon} className="bg-[#1a3843] text-emerald-300 font-bold text-xs uppercase">
+                      {rayon}
+                    </option>
+                  ))}
+                </select>
               </h3>
             </div>
             <div className="flex items-center space-x-3 shrink-0">
               <button
                 onClick={handleDownloadPDF}
                 disabled={isPdfGenerating}
-                className="flex items-center gap-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-slate-850 disabled:text-slate-500 text-white px-3.5 py-1.5 rounded-xl border border-blue-500/30 cursor-pointer shadow-md transition-colors"
+                className="flex items-center gap-1 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-slate-850 disabled:text-slate-500 text-white px-2.5 py-1 rounded-lg border border-blue-500/30 cursor-pointer shadow-sm transition-colors"
               >
-                <FileDown className="h-3.5 w-3.5 shrink-0" />
-                {isPdfGenerating ? 'Формування PDF...' : 'Завантажити PDF'}
+                <FileDown className="h-3 w-3 shrink-0" />
+                {isPdfGenerating ? 'PDF...' : 'Завантажити PDF'}
               </button>
-              <span className="text-[10px] font-black bg-emerald-900 border border-emerald-700 text-emerald-200 px-3 py-1.5 rounded-full uppercase tracking-wider">
-                {rayonStats.total} активних членів
+              <span className="text-[9px] font-black bg-emerald-900 border border-emerald-700 text-emerald-200 px-2 py-1 rounded-full uppercase tracking-wider">
+                {rayonStats.total} активних
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {/* 1. General counts (загальна к-ть: всіх, братів, сестер) */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-xl p-4 shadow-sm flex flex-col justify-between">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {/* 1. General counts */}
+            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm flex flex-col justify-between">
               <div>
-                <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest block mb-3">
+                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block mb-1">
                   Загальна кількість членів
                 </span>
-                <div className="flex items-baseline space-x-2 mb-4">
-                  <span className="text-3xl font-black text-white">{rayonStats.total}</span>
-                  <span className="text-xs font-semibold text-slate-300">всього в районі</span>
+                <div className="flex items-baseline space-x-1.5 mb-2">
+                  <span className="text-xl sm:text-xl font-black text-white">{rayonStats.total}</span>
+                  <span className="text-[9px] font-semibold text-slate-300">всього в районі</span>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-white/10">
-                <div className="bg-[#244b5a]/60 rounded-lg p-2.5 border border-[#2c5869]/40">
-                  <div className="text-[10px] uppercase font-bold text-sky-300 flex items-center gap-1">
-                    <User className="h-3 w-3 text-sky-400" /> Брати
+              <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-white/5">
+                <div className="bg-[#244b5a]/60 rounded p-1.5 border border-[#2c5869]/40">
+                  <div className="text-[9px] uppercase font-bold text-sky-300 flex items-center gap-0.5">
+                    <User className="h-2.5 w-2.5 text-sky-400" /> Брати
                   </div>
-                  <div className="text-xl font-black text-sky-100">{rayonStats.brothers}</div>
-                  <div className="text-[10px] text-sky-300 font-medium mt-0.5">
+                  <div className="text-sm font-black text-sky-100">{rayonStats.brothers}</div>
+                  <div className="text-[9px] text-sky-300 font-medium mt-0.5">
                     {rayonStats.total > 0 ? Math.round((rayonStats.brothers / rayonStats.total) * 100) : 0}%
                   </div>
                 </div>
-                <div className="bg-[#2a4454]/60 rounded-lg p-2.5 border border-[#355468]/40">
-                  <div className="text-[10px] uppercase font-bold text-rose-300 flex items-center gap-1">
-                    <User className="h-3 w-3 text-rose-400" /> Сестри
+                <div className="bg-[#2a4454]/60 rounded p-1.5 border border-[#355468]/40">
+                  <div className="text-[9px] uppercase font-bold text-rose-300 flex items-center gap-0.5">
+                    <User className="h-2.5 w-2.5 text-rose-400" /> Сестри
                   </div>
-                  <div className="text-xl font-black text-rose-100">{rayonStats.sisters}</div>
-                  <div className="text-[10px] text-rose-300 font-medium mt-0.5">
+                  <div className="text-sm font-black text-rose-100">{rayonStats.sisters}</div>
+                  <div className="text-[9px] text-rose-300 font-medium mt-0.5">
                     {rayonStats.total > 0 ? Math.round((rayonStats.sisters / rayonStats.total) * 100) : 0}%
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 2. Marital Status (Сімейний стан: неодр., одр., розлуч., вдво., н/д) */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-xl p-4 shadow-sm space-y-4">
-              <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest block">
+            {/* 2. Marital Status */}
+            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
+              <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block">
                 Сімейний Стан («Сім. стан»)
               </span>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1.5 border border-[#2c5869]/30">
-                  <span className="text-slate-200 font-medium">💍 одр.</span>
+              <div className="grid grid-cols-2 gap-1 px-0.5 text-[10px]">
+                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
+                  <span className="text-slate-200">одр.</span>
                   <span className="font-bold text-white">{rayonStats.marital.married}</span>
                 </div>
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1.5 border border-[#2c5869]/30">
-                  <span className="text-slate-200 font-medium">🤍 неодр.</span>
+                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
+                  <span className="text-slate-200">неодр.</span>
                   <span className="font-bold text-white">{rayonStats.marital.single}</span>
                 </div>
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1.5 border border-[#2c5869]/30">
-                  <span className="text-slate-200 font-medium">⚡ розлуч.</span>
+                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
+                  <span className="text-slate-200 font-medium">розлуч.</span>
                   <span className="font-bold text-white">{rayonStats.marital.divorced}</span>
                 </div>
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1.5 border border-[#2c5869]/30">
-                  <span className="text-slate-200 font-medium">🕯️ вдво.</span>
+                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
+                  <span className="text-slate-200 font-medium">вдво.</span>
                   <span className="font-bold text-white">{rayonStats.marital.widowed}</span>
                 </div>
-                <div className="col-span-2 flex justify-between items-center bg-[#244b5a]/30 rounded py-1 px-2 border border-dashed border-[#2c5869]/40">
+                <div className="col-span-2 flex justify-between items-center bg-[#244b5a]/30 rounded py-0.5 px-1.5 border border-dashed border-[#2c5869]/40 text-[9px]">
                   <span className="text-slate-400 italic">не вказано (н/д)</span>
                   <span className="font-bold text-slate-300">{rayonStats.marital.nd}</span>
                 </div>
               </div>
             </div>
 
-            {/* 3. Caregivers list (список опікунів з кількістю всіх членів району) */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-xl p-4 shadow-sm space-y-3 lg:row-span-2 flex flex-col">
-              <div className="border-b border-white/10 pb-2">
-                <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest block">
+            {/* 3. Caregivers list */}
+            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 lg:row-span-2 flex flex-col">
+              <div className="border-b border-white/5 pb-1">
+                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block">
                   Список Опікунів Району
                 </span>
-                <span className="text-[10px] text-slate-400">Розподіл пастирської опіки («Опікун»)</span>
+                <span className="text-[8px] text-slate-400 block">Пастирська опіка («Опікун»)</span>
               </div>
-              <div className="flex-1 overflow-y-auto max-h-[196px] pr-1 space-y-2">
+              <div className="flex-1 overflow-y-auto max-h-[125px] pr-0.5 space-y-1">
                 {rayonStats.caregivers.map(([name, count]) => {
                   const pct = rayonStats.total > 0 ? Math.round((count / rayonStats.total) * 100) : 0;
                   return (
-                    <div key={name} className="flex items-center justify-between text-xs bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-2 rounded-lg border border-[#2c5869]/30 transition-colors">
-                      <div className="flex items-center space-x-2 min-w-0">
-                        <User className="h-3 w-3 text-emerald-400 shrink-0" />
+                    <div key={name} className="flex items-center justify-between text-[10px] bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-1 rounded border border-[#2c5869]/30 transition-colors">
+                      <div className="flex items-center space-x-1 min-w-0">
+                        <User className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
                         <span className="font-semibold text-slate-100 truncate">{name}</span>
                       </div>
-                      <div className="flex items-center space-x-1.5">
-                        <span className="bg-emerald-900 border border-emerald-700 text-emerald-200 font-extrabold text-[10px] px-1.5 py-0.5 rounded-full">
+                      <div className="flex items-center space-x-1 shrink-0">
+                        <span className="bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-extrabold text-[9px] px-1 py-0.2 rounded">
                           {count}
                         </span>
-                        <span className="text-[9px] text-slate-350 font-medium">({pct}%)</span>
+                        <span className="text-[8px] text-slate-350">({pct}%)</span>
                       </div>
                     </div>
                   );
                 })}
                 {rayonStats.caregivers.length === 0 && (
-                  <div className="py-6 text-center text-xs text-slate-400 font-medium italic">
+                  <div className="py-4 text-center text-[10px] text-slate-400 italic">
                     Немає призначених опікунів
                   </div>
                 )}
@@ -541,24 +532,24 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             </div>
 
             {/* 4. Attendance ("Відвідування") */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-xl p-4 shadow-sm space-y-3">
-              <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/10 pb-2">
+            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
+              <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
                 Аналіз Відвідування
               </span>
-              <div className="space-y-2 max-h-[120px] overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-0.5">
                 {rayonStats.attendance.map(([lbl, val]) => {
                   const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
                   return (
-                    <div key={lbl} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-100 font-semibold truncate max-w-[160px]">{lbl || 'н/д'}</span>
-                      <span className="font-mono text-[10px] font-bold text-slate-200">
+                    <div key={lbl} className="flex items-center justify-between text-[10px]">
+                      <span className="text-slate-100 truncate max-w-[130px]">{lbl || 'н/д'}</span>
+                      <span className="font-mono text-[9px] font-bold text-slate-200">
                         {val} <span className="text-slate-400 font-normal">({pct}%)</span>
                       </span>
                     </div>
                   );
                 })}
                 {rayonStats.attendance.length === 0 && (
-                  <div className="py-4 text-center text-xs text-slate-400 italic">
+                  <div className="py-3 text-center text-[10px] text-slate-400 italic">
                     Немає даних відвідуваності
                   </div>
                 )}
@@ -566,24 +557,24 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             </div>
 
             {/* 5. Reason for absence ("Прич. відсутності") */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-xl p-4 shadow-sm space-y-3">
-              <span className="text-[10px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/10 pb-2">
+            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
+              <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
                 Причини відсутності
               </span>
-              <div className="space-y-2 max-h-[120px] overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-0.5">
                 {rayonStats.presence.map(([lbl, val]) => {
                   const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
                   return (
-                    <div key={lbl} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-100 font-semibold truncate max-w-[160px]">{lbl || 'н/д'}</span>
-                      <span className="font-mono text-[10px] font-bold text-slate-200">
+                    <div key={lbl} className="flex items-center justify-between text-[10px]">
+                      <span className="text-slate-100 truncate max-w-[130px]">{lbl || 'н/д'}</span>
+                      <span className="font-mono text-[9px] font-bold text-slate-200">
                         {val} <span className="text-slate-400 font-normal">({pct}%)</span>
                       </span>
                     </div>
                   );
                 })}
                 {rayonStats.presence.length === 0 && (
-                  <div className="py-4 text-center text-xs text-slate-400 italic">
+                  <div className="py-3 text-center text-[10px] text-slate-400 italic">
                     Немає записаних причин
                   </div>
                 )}
@@ -594,29 +585,29 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       )}
 
       {/* Stats Counter Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
         {cards.map(c => (
-          <div key={c.id} className="flex items-center justify-between rounded-xl border border-[#204250] bg-[#1a3843]/80 p-6 shadow-md">
-            <div className="space-y-1">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">{c.title}</span>
-              <div className="font-display text-3xl font-black text-white">{c.value}</div>
-              <p className="text-xs text-slate-300 font-medium">{c.sub}</p>
+          <div key={c.id} className="flex items-center justify-between rounded-lg border border-[#204250] bg-[#1a3843]/80 p-3.5 shadow-sm">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">{c.title}</span>
+              <div className="font-display text-xl sm:text-2xl font-black text-white">{c.value}</div>
+              <p className="text-[9px] text-slate-300 font-medium">{c.sub}</p>
             </div>
-            <div className={`rounded-xl border p-3 ${c.color}`}>
-              <c.icon className="h-6 w-6" />
+            <div className={`rounded-lg border p-1.5 shrink-0 ${c.color}`}>
+              <c.icon className="h-4 w-4" />
             </div>
           </div>
         ))}
       </div>
 
       {/* Grid of details charts */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         
         {/* Gender & Marital State */}
-        <div className="rounded-xl border border-[#204250] bg-[#1a3843]/80 p-6 shadow-md space-y-6">
-          <div className="border-b border-white/10 pb-3">
-            <h3 className="font-display font-bold text-slate-100">Стать та Сімейний стан</h3>
-            <p className="text-xs text-slate-350">Співвідношення статей та статус шлюбу церковних родин</p>
+        <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
+          <div className="border-b border-white/10 pb-2">
+            <h3 className="font-display font-bold text-sm text-slate-100">Стать та Сімейний стан</h3>
+            <p className="text-[10px] text-slate-350">Співвідношення статей та статус шлюбу церковних родин</p>
           </div>
           
           <div className="space-y-4">
@@ -650,12 +641,12 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
         </div>
 
         {/* Structural Area Parish Density */}
-        <div className="rounded-xl border border-[#204250] bg-[#1a3843]/80 p-6 shadow-md space-y-6">
-          <div className="border-b border-white/10 pb-3">
-            <h3 className="font-display font-semibold text-slate-100">Райони структури (rayon2)</h3>
-            <p className="text-xs text-slate-350">Охоплення районів міста за кількістю членів громади</p>
+        <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
+          <div className="border-b border-white/10 pb-2">
+            <h3 className="font-display font-semibold text-sm text-slate-100">Райони структури (rayon2)</h3>
+            <p className="text-[10px] text-slate-350">Охоплення районів міста за кількістю членів громади</p>
           </div>
-          <div className="max-h-[300px] overflow-y-auto space-y-3 pr-1">
+          <div className="max-h-[210px] overflow-y-auto space-y-2 pr-0.5">
             {Object.entries(stats.areaStats)
               .sort((a, b) => b[1] - a[1])
               .map(([lbl, val]) => 
@@ -665,24 +656,24 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
         </div>
 
         {/* Education & Social Class Group */}
-        <div className="rounded-xl border border-[#204250] bg-[#1a3843]/80 p-6 shadow-md space-y-6">
-          <div className="border-b border-white/10 pb-3">
-            <h3 className="font-display font-semibold text-slate-100">Освіта та Соціальний статус</h3>
-            <p className="text-xs text-slate-350">Розділ за рівнями навчання та соціальним класом</p>
+        <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
+          <div className="border-b border-white/10 pb-2">
+            <h3 className="font-display font-semibold text-sm text-slate-100">Освіта та Соціальний статус</h3>
+            <p className="text-[10px] text-slate-350">Розділ за рівнями навчання та соціальним класом</p>
           </div>
-          <div className="space-y-6">
-            <div className="space-y-2">
+          <div className="space-y-4">
+            <div className="space-y-1.5">
               <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Рівень освіти</span>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {Object.entries(stats.educationStats).map(([lbl, val]) => 
                   renderBar(lbl, val, stats.activeMembers, "bg-violet-400")
                 )}
               </div>
             </div>
             
-            <div className="space-y-2 pt-2">
+            <div className="space-y-1.5 pt-1">
               <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Соціальна категорія</span>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {Object.entries(stats.socialStats)
                   .sort((a, b) => b[1] - a[1])
                   .slice(0, 4)

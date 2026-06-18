@@ -286,7 +286,7 @@ export default function App() {
         >
           <div className="flex gap-1.5 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
             <div 
-              style={{ fontWeight: 'normal', fontStyle: 'italic' }}
+              style={{ fontWeight: 'normal', fontStyle: 'italic', fontSize: '8px' }}
               className="text-[8px] sm:text-[10px] font-bold text-slate-300 leading-tight shrink-0"
             >
               СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>

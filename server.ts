@@ -1868,6 +1868,9 @@ async function syncMemberToFirebase(id: number, member: Member) {
 app.post("/api/members/:id", async (req, res) => {
   const id = Number(req.params.id);
   const updatedData = req.body as Partial<Member>;
+  if (updatedData.pib !== undefined) {
+    updatedData.pib = cleanPibOfParens(updatedData.pib);
+  }
   const memberIndex = members.findIndex(m => m.id === id);
 
   if (memberIndex === -1) {
@@ -2238,7 +2241,7 @@ app.post("/api/members", async (req, res) => {
 
   const newMember: Member = {
     id: nextId,
-    pib: String(newMemberData.pib || "").trim(),
+    pib: cleanPibOfParens(String(newMemberData.pib || "")).trim(),
     stat: String(newMemberData.stat || "брат").trim(),
     
     s_simeyniy_ukr: String(newMemberData.s_simeyniy_ukr || "неодружений").trim(),
@@ -2437,6 +2440,11 @@ async function syncDirectoriesFromFirebase() {
   }
 }
 
+function cleanPibOfParens(pib: string): string {
+  if (!pib) return "";
+  return pib.replace(/\s*\([^)]*\)\s*/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 function formatAddress(addrObj: any): string {
   if (!addrObj) return "";
   
@@ -2597,10 +2605,27 @@ async function syncDatabaseWithFirebase() {
     // Scan and migrate legacy statuses to "наявний"
     const statusMigrationUpdates: any = {};
     const dilyciaCleanupUpdates: any = {};
+    const pibCleanupUpdates: any = {};
     
     Object.keys(data).forEach((stringId) => {
       const parent = data[stringId];
       if (!parent) return;
+      
+      // Clean up second surname in parentheses
+      const rawPib1 = parent["01_PIB"] ? String(parent["01_PIB"]).trim() : "";
+      const rawPib2 = parent["pib"] ? String(parent["pib"]).trim() : "";
+      const cleanPib1 = cleanPibOfParens(rawPib1);
+      const cleanPib2 = cleanPibOfParens(rawPib2);
+      
+      if (rawPib1 && rawPib1 !== cleanPib1) {
+        pibCleanupUpdates[`${stringId}/01_PIB`] = cleanPib1;
+        parent["01_PIB"] = cleanPib1;
+      }
+      if (rawPib2 && rawPib2 !== cleanPib2) {
+        pibCleanupUpdates[`${stringId}/pib`] = cleanPib2;
+        parent["pib"] = cleanPib2;
+      }
+
       const особисте = parent["02_OSOBYSTE"] || {};
       const вибуття = parent["06_VYBUTTYA"] || {};
       const структура = parent["04_STRUCTURA"] || {};
@@ -2669,6 +2694,24 @@ async function syncDatabaseWithFirebase() {
         }
       } catch (cleanErr: any) {
         console.error(`[Firebase Dilycia Cleanup] Cleanup failed:`, cleanErr.message);
+      }
+    }
+
+    if (Object.keys(pibCleanupUpdates).length > 0) {
+      console.log(`[Firebase PIB Cleanup] Found ${Object.keys(pibCleanupUpdates).length} fields with parentheses in PIB. Performing atomic cleanup...`);
+      try {
+        const pibRes = await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(pibCleanupUpdates)
+        });
+        if (pibRes.ok) {
+          console.log(`[Firebase PIB Cleanup] Atomic cleanup of parenthesized names succeeded!`);
+        } else {
+          console.error(`[Firebase PIB Cleanup] Cleanup failed with status: ${pibRes.status}`);
+        }
+      } catch (pibErr: any) {
+        console.error(`[Firebase PIB Cleanup] Cleanup failed:`, pibErr.message);
       }
     }
 

@@ -133,6 +133,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     try {
       const isAll = selectedRayon === "Всі райони";
       const totalActive = rayonStats.total;
+      const churchTotalActive = members.filter(m => m.id_vybuttya === 0).length;
       const bPct = totalActive > 0 ? Math.round((rayonStats.brothers / totalActive) * 100) : 0;
       const sPct = totalActive > 0 ? Math.round((rayonStats.sisters / totalActive) * 100) : 0;
       const oPct = totalActive > 0 ? Math.round((rayonStats.others / totalActive) * 100) : 0;
@@ -218,10 +219,10 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       letter-spacing: -0.5px;
     }
     .header-sub {
-      font-size: 10px;
-      color: #4b5563;
-      font-weight: 600;
-      margin: 3px 0 0 0;
+      font-size: 14px;
+      color: #047857;
+      font-weight: 800;
+      margin: 4px 0 0 0;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
@@ -230,7 +231,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       border: 1px solid #059669;
       color: #047857;
       font-size: 9px;
-      font-weight: 700;
+      font-weight: 800;
       padding: 4px 12px;
       border-radius: 99px;
       text-transform: uppercase;
@@ -247,15 +248,14 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       grid-template-columns: 1fr 1fr;
       gap: 16px;
       margin-bottom: 16px;
-      height: 550px;
+      height: auto;
       box-sizing: border-box;
       align-items: stretch;
     }
     .col {
       display: flex;
       flex-direction: column;
-      gap: 16px;
-      height: 100%;
+      gap: 12px;
       box-sizing: border-box;
     }
     .card {
@@ -339,7 +339,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       display: flex;
       flex-direction: column;
       gap: 6px;
-      overflow-y: auto;
+      overflow: visible;
       flex: 1;
       padding-right: 2px;
     }
@@ -395,7 +395,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
       box-sizing: border-box;
       flex: 1;
-      max-height: 180px;
+      height: auto;
       display: flex;
       flex-direction: column;
     }
@@ -494,14 +494,14 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       <!-- Header Card -->
       <div class="header-card">
         <div>
-          <h1 class="header-title">⛪ АНАЛІТИЧНИЙ ЗВІТ РЕЄСТРУ ЦЕРКВИ</h1>
+          <h1 class="header-title">⛪ СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ ЦЕРКВИ</h1>
           <p class="header-sub">
             ${isAll ? "Узагальнена статистика по всіх районах" : `Звіт по району: ${selectedRayon}`}
           </p>
         </div>
         <div style="text-align: right;">
           <div class="header-status">
-            Активних членів: ${totalActive} осіб
+            ВСЬОГО ЧЛЕНІВ ЦЕРКВИ ${churchTotalActive}
           </div>
           <p class="header-date">Дата формування: ${reportDate} ${reportTime}</p>
         </div>
@@ -539,32 +539,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             </div>
           </div>
 
-          <!-- РАЙОНИ СТРУКТУРИ -->
-          <div class="district-card">
-            <h3 class="card-title">📍 Райони структури</h3>
-            <div class="scroll-list">
-              ${sortedAreaStats.map(([lbl, val]) => {
-                const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
-                return `
-                  <div style="font-size: 10px; box-sizing: border-box; margin-bottom: 2px;">
-                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 2px;">
-                      <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 260px; display: inline-block;">${lbl || "н/д"}</span>
-                      <span>${val} (${pct}%)</span>
-                    </div>
-                    <div style="height: 5px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
-                      <div style="height: 100%; width: ${pct}%; background: #10b981; border-radius: 99px;"></div>
-                    </div>
-                  </div>
-                `;
-              }).join('') || '<p style="font-size: 10px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
-            </div>
-          </div>
-        </div>
-
-        <!-- Right Column -->
-        <div class="col" style="gap: 12px;">
           <!-- СІМЕЙНИЙ СТАН -->
-          <div class="marital-card">
+          <div class="marital-card" style="margin-top: 12px;">
             <h3 class="marital-title">💍 Сімейний Стан</h3>
             <div class="marital-rows">
               <div class="marital-row">
@@ -589,6 +565,10 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col" style="gap: 12px;">
 
           <!-- АНАЛІЗ ВІДВІДУВАНОСТІ -->
           <div class="attendance-card">
@@ -635,21 +615,50 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
 
       </div>
 
-      <!-- РОЗПОДІЛ ПАСТИРСЬКОЇ ОПІКИ (в дві колонки) -->
+      <!-- РОЗПОДІЛ ОПІКИ (Об'єднані блоки Райони Структури та Опікуни) -->
       <div class="care-card">
-        <h3 class="card-title" style="font-size: 11px; margin-bottom: 12px;">💚 Розподіл пастирської опіки</h3>
-        <div class="care-grid">
-          ${rayonStats.caregivers.map(([name, count]) => {
-            const pct = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0;
-            return `
-              <div class="care-item">
-                <span style="font-weight: 700; color: #1e293b; display: inline-block; word-break: break-all; line-height: 1.1; margin-right: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">${name}</span>
-                <span class="care-badge">
-                  ${count} (${pct}%)
-                </span>
-              </div>
-            `;
-          }).join('') || '<p style="font-size: 10.5px; color: #94a3b8; font-style: italic; text-align: center; margin-top: 30px; grid-column: span 2;">Опікунів не знайдено</p>'}
+        <h3 class="card-title" style="font-size: 11px; margin-bottom: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">💚 РОЗПОДІЛ ОПІКИ</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; box-sizing: border-box;">
+          
+          <!-- Райони структури left column -->
+          <div>
+            <h4 style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin: 0 0 8px 0; letter-spacing: 0.5px;">📍 Райони структури</h4>
+            <div class="scroll-list" style="overflow: visible;">
+              ${sortedAreaStats.map(([lbl, val]) => {
+                const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
+                return `
+                  <div style="font-size: 10px; box-sizing: border-box; margin-bottom: 4px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 1px;">
+                      <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 160px; display: inline-block;">${lbl || "н/д"}</span>
+                      <span>${val} (${pct}%)</span>
+                    </div>
+                    <div style="height: 5px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
+                      <div style="height: 100%; width: ${pct}%; background: #10b981; border-radius: 99px;"></div>
+                    </div>
+                  </div>
+                `;
+              }).join('') || '<p style="font-size: 10px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
+            </div>
+          </div>
+
+          <!-- Список опікунів right column -->
+          <div>
+            <h4 style="font-size: 9px; font-weight: 800; color: #64748b; text-transform: uppercase; margin: 0 0 8px 0; letter-spacing: 0.5px;">👤 Список опікунів</h4>
+            <div class="care-grid" style="grid-template-columns: 1fr; gap: 4px;">
+              ${rayonStats.caregivers.map(([name, count]) => {
+                const pct = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0;
+                return `
+                  <div class="care-item">
+                    <span style="font-weight: 700; color: #1e293b; display: inline-block; word-break: break-all; line-height: 1.1; margin-right: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px;">${name}</span>
+                    <span class="care-badge">
+                      ${count} (${pct}%)
+                    </span>
+                  </div>
+                `;
+              }).join('') || '<p style="font-size: 10px; color: #94a3b8; font-style: italic; margin: 0;">Опікунів не знайдено</p>'}
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -753,7 +762,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       {/* Visual Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border-b border-white/10 pb-3">
         <div>
-          <h2 className="font-display text-xl font-bold tracking-tight text-white animate-fade-in">Аналітична статистика реєстру</h2>
+          <h2 className="font-display text-xl font-bold tracking-tight text-white animate-fade-in">Статистика по членству церкви</h2>
           <p className="text-xs text-slate-300">Авторизований зріз по структурі за активними членами громади</p>
         </div>
       </div>
@@ -765,11 +774,10 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             <div className="flex items-center space-x-1.5">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <h3 className="text-xs sm:text-xs font-bold text-slate-100 flex items-center gap-1.5 uppercase tracking-wide">
-                📍 Районний аналітичний зріз:
                 <select
                   value={selectedRayon}
                   onChange={(e) => setSelectedRayon(e.target.value)}
-                  className="bg-[#244b5a]/40 border border-[#2c5869] text-emerald-400 font-extrabold rounded-md py-0.5 px-2 focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer text-[10px] sm:text-[11px] uppercase tracking-wider transition-colors outline-none"
+                  className="bg-[#244b5a]/40 border border-[#2c5869] text-emerald-400 font-black rounded-lg py-1 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer text-xs sm:text-sm md:text-base uppercase tracking-wider transition-all outline-none"
                 >
                   {uniqueRayons.map(rayon => (
                     <option key={rayon} value={rayon} className="bg-[#1a3843] text-emerald-300 font-bold text-xs uppercase">
@@ -788,8 +796,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                 <FileDown className="h-3 w-3 shrink-0" />
                 {isHtmlGenerating ? 'HTML...' : 'Завантажити HTML'}
               </button>
-              <span className="text-[9px] font-black bg-emerald-900 border border-emerald-700 text-emerald-200 px-2 py-1 rounded-full uppercase tracking-wider">
-                {rayonStats.total} активних
+              <span className="text-[9px] font-black bg-emerald-900 border border-emerald-700 text-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
+                {rayonStats.total} ВСЬОГО ЧЛЕНІВ
               </span>
             </div>
           </div>
@@ -805,7 +813,6 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                   </span>
                   <div className="flex items-baseline space-x-1.5 mb-2">
                     <span className="text-xl sm:text-xl font-black text-white">{rayonStats.total}</span>
-                    <span className="text-[9px] font-semibold text-slate-300">всього в районі</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-white/5">
@@ -827,23 +834,6 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                       {rayonStats.total > 0 ? Math.round((rayonStats.sisters / rayonStats.total) * 100) : 0}%
                     </div>
                   </div>
-                </div>
-              </div>
-
-              {/* 1b. Райони структури (rayon2) - Kept permanently under general counts! */}
-              <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
-                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
-                  Райони структури (rayon2)
-                </span>
-                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-0.5">
-                  {rayonStats.area.map(([lbl, val]) => 
-                    renderBar(lbl === "" ? "н/д" : lbl, val, rayonStats.total, "bg-emerald-400", true)
-                  )}
-                  {rayonStats.area.length === 0 && (
-                    <div className="py-3 text-center text-[10px] text-slate-400 italic">
-                      Немає даних по районах
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -937,37 +927,59 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
               </div>
             </div>
 
-            {/* COLUMN 3: Caregivers list - fully visible without scrolling, 2 columns */}
-            <div className="md:col-span-12 lg:col-span-6 bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 flex flex-col">
+            {/* COLUMN 3: РОЗПОДІЛ ОПІКИ */}
+            <div className="md:col-span-12 lg:col-span-6 bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-3 flex flex-col">
               <div className="border-b border-white/5 pb-1">
                 <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block">
-                  Список Опікунів Району
+                  РОЗПОДІЛ ОПІКИ
                 </span>
-                <span className="text-[8px] text-slate-400 block">Пастирська опіка («Опікун»)</span>
+                <span className="text-[8px] text-slate-400 block">Райони структури та пастирська опіка («Опікун»)</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-0.5">
-                {rayonStats.caregivers.map(([name, count]) => {
-                  const pct = rayonStats.total > 0 ? Math.round((count / rayonStats.total) * 100) : 0;
-                  return (
-                    <div key={name} className="flex items-center justify-between gap-1.5 text-[10px] bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-1.5 rounded border border-[#2c5869]/30 transition-colors">
-                      <div className="flex items-center space-x-1 min-w-0 flex-1">
-                        <User className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
-                        <span className="font-semibold text-slate-100 break-words leading-tight">{name}</span>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left side: Райони структури */}
+                <div className="space-y-2">
+                  <span className="text-[8px] font-bold text-slate-350 uppercase tracking-wider block">📍 Райони структури</span>
+                  <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-0.5">
+                    {rayonStats.area.map(([lbl, val]) => 
+                      renderBar(lbl === "" ? "н/д" : lbl, val, rayonStats.total, "bg-emerald-400", true)
+                    )}
+                    {rayonStats.area.length === 0 && (
+                      <div className="py-3 text-center text-[10px] text-slate-400 italic">
+                        Немає даних по районах
                       </div>
-                      <div className="flex items-center space-x-1 shrink-0">
-                        <span className="bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-extrabold text-[9px] px-1 py-0.2 rounded">
-                          {count}
-                        </span>
-                        <span className="text-[8px] text-slate-350">({pct}%)</span>
-                      </div>
-                    </div>
-                  );
-                })}
-                {rayonStats.caregivers.length === 0 && (
-                  <div className="col-span-full py-4 text-center text-[10px] text-slate-400 italic">
-                    Немає призначених опікунів
+                    )}
                   </div>
-                )}
+                </div>
+
+                {/* Right side: Список опікунів */}
+                <div className="space-y-2">
+                  <span className="text-[8px] font-bold text-slate-350 uppercase tracking-wider block">👤 Список опікунів</span>
+                  <div className="grid grid-cols-1 gap-1.5 max-h-[180px] overflow-y-auto pr-0.5 p-0.5">
+                    {rayonStats.caregivers.map(([name, count]) => {
+                      const pct = rayonStats.total > 0 ? Math.round((count / rayonStats.total) * 100) : 0;
+                      return (
+                        <div key={name} className="flex items-center justify-between gap-1.5 text-[10px] bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-1.5 rounded border border-[#2c5869]/30 transition-colors">
+                          <div className="flex items-center space-x-1 min-w-0 flex-1">
+                            <User className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
+                            <span className="font-semibold text-slate-100 break-words leading-tight">{name}</span>
+                          </div>
+                          <div className="flex items-center space-x-1 shrink-0">
+                            <span className="bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-extrabold text-[9px] px-1 py-0.2 rounded">
+                              {count}
+                            </span>
+                            <span className="text-[8px] text-slate-350">({pct}%)</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {rayonStats.caregivers.length === 0 && (
+                      <div className="col-span-full py-4 text-center text-[10px] text-slate-400 italic">
+                        Немає призначених опікунів
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

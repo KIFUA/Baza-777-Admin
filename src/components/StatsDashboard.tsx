@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, DashboardStats } from '../types';
 import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, FileDown, ChevronDown, ChevronUp } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface StatsDashboardProps {
   stats: DashboardStats | null;
@@ -13,7 +11,7 @@ interface StatsDashboardProps {
 export default function StatsDashboard({ stats, members, lookups }: StatsDashboardProps) {
   // State for District selector
   const [selectedRayon, setSelectedRayon] = useState<string>('');
-  const [isPdfGenerating, setIsPdfGenerating] = useState<boolean>(false);
+  const [isHtmlGenerating, setIsHtmlGenerating] = useState<boolean>(false);
   const [showTotalRegisterStats, setShowTotalRegisterStats] = useState<boolean>(false);
 
   // Extract unique rayon/neighborhood names with "Всі райони" option
@@ -129,23 +127,17 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     };
   }, [rayonMembers]);
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadHTML = () => {
     if (!selectedRayon) return;
-    setIsPdfGenerating(true);
+    setIsHtmlGenerating(true);
     try {
-      const container = document.createElement('div');
-      container.style.position = 'absolute';
-      container.style.left = '-9999px';
-      container.style.top = '-9999px';
-      container.id = 'temp-pdf-dashboard-container';
-
       const isAll = selectedRayon === "Всі райони";
       const totalActive = rayonStats.total;
       const bPct = totalActive > 0 ? Math.round((rayonStats.brothers / totalActive) * 100) : 0;
       const sPct = totalActive > 0 ? Math.round((rayonStats.sisters / totalActive) * 100) : 0;
       const oPct = totalActive > 0 ? Math.round((rayonStats.others / totalActive) * 100) : 0;
 
-      // Extract unique area counts for PDF
+      // Extract unique area counts for HTML
       const areaStats: Record<string, number> = {};
       rayonMembers.forEach(m => {
         const key = String(m.rayon2_ukr || '').trim() || 'н/д';
@@ -153,212 +145,537 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       });
       const sortedAreaStats = Object.entries(areaStats).sort((a, b) => b[1] - a[1]);
 
-      const htmlContent = `
-        <div style="width: 1050px; background: #f1f5f9; color: #0f172a; padding: 24px 30px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <!-- Header Card -->
-          <div style="background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #10b981; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <div>
-              <h1 style="font-size: 24px; font-weight: 850; color: #064e3b; margin: 0; letter-spacing: -0.5px;">⛪ АНАЛІТИЧНИЙ ЗВІТ РЕЄСТРУ ЦЕРКВИ</h1>
-              <p style="font-size: 11.5px; color: #4b5563; font-weight: 600; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">
-                ${isAll ? "Узагальнена статистика по всіх районах" : `Звіт по району: ${selectedRayon}`}
-              </p>
-            </div>
-            <div style="text-align: right;">
-              <div style="background: #ecfdf5; border: 1px solid #059669; color: #047857; font-size: 10.5px; font-weight: 700; padding: 6px 16px; border-radius: 99px; text-transform: uppercase; display: inline-block;">
-                Активних членів: ${totalActive} осіб
-              </div>
-              <p style="font-size: 10.5px; color: #9ca3af; margin: 6px 0 0 0; font-weight: 500;">Дата формування: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</p>
-            </div>
-          </div>
+      const reportDate = new Date().toLocaleDateString('uk-UA');
+      const reportTime = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
-          <!-- Grid Content -->
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+      const htmlContent = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Статистика району: ${selectedRayon}</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      background: #f1f5f9;
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .print-btn-container {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+    }
+    .print-btn {
+      background: #2563eb;
+      color: #ffffff;
+      border: none;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      transition: background 0.2s;
+    }
+    .print-btn:hover {
+      background: #1d4ed8;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      min-height: 1120px;
+      background: #f1f5f9;
+      padding: 24px 30px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-radius: 8px;
+    }
+    .header-card {
+      background: #ffffff;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-left: 6px solid #10b981;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-sizing: border-box;
+    }
+    .header-title {
+      font-size: 20px;
+      font-weight: 850;
+      color: #064e3b;
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+    .header-sub {
+      font-size: 10px;
+      color: #4b5563;
+      font-weight: 600;
+      margin: 3px 0 0 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .header-status {
+      background: #ecfdf5;
+      border: 1px solid #059669;
+      color: #047857;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+    .header-date {
+      font-size: 9px;
+      color: #9ca3af;
+      margin: 4px 0 0 0;
+      font-weight: 500;
+    }
+    .upper-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+      height: 550px;
+      box-sizing: border-box;
+      align-items: stretch;
+    }
+    .col {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-sizing: border-box;
+    }
+    .card-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 6px;
+      margin: 0 0 10px 0;
+      letter-spacing: 0.5px;
+    }
+    .total-count {
+      font-size: 26px;
+      font-weight: 900;
+      color: #0f172a;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .total-sub {
+      font-size: 11px;
+      font-weight: 600;
+      color: #64748b;
+      margin-left: 4px;
+    }
+    .progress-bar {
+      height: 8px;
+      width: 100%;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+      display: flex;
+      margin-bottom: 10px;
+    }
+    .progress-segment {
+      height: 100%;
+    }
+    .gender-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .gender-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10.5px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      box-sizing: border-box;
+    }
+    .gender-row-brothers {
+      background: #e0f2fe;
+    }
+    .gender-row-sisters {
+      background: #ffe4e6;
+    }
+    .district-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      flex: 1;
+      max-height: 350px;
+    }
+    .scroll-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      overflow-y: auto;
+      flex: 1;
+      padding-right: 2px;
+    }
+    .scroll-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .scroll-list::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .marital-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-sizing: border-box;
+    }
+    .marital-title {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      margin: 0 0 8px 0;
+      letter-spacing: 0.5px;
+    }
+    .marital-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .marital-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 3px;
+      box-sizing: border-box;
+    }
+    .marital-row-nd {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      box-sizing: border-box;
+    }
+    .attendance-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-sizing: border-box;
+      flex: 1;
+      max-height: 180px;
+      display: flex;
+      flex-direction: column;
+    }
+    .care-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      height: auto;
+      margin-bottom: 16px;
+    }
+    .care-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px 12px;
+      box-sizing: border-box;
+      overflow: visible;
+      flex: 1;
+      padding-right: 2px;
+    }
+    .care-grid::-webkit-scrollbar {
+      width: 4px;
+    }
+    .care-grid::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 2px;
+    }
+    .care-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      padding: 5px 8px;
+      background: #f8fafc;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+      box-sizing: border-box;
+      min-width: 0;
+    }
+    .care-badge {
+      font-weight: 850;
+      background: #10b981;
+      color: #ffffff;
+      padding: 1.5px 5px;
+      border-radius: 8px;
+      font-size: 8px;
+      display: inline-block;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 9px;
+      color: #64748b;
+      font-weight: 500;
+      box-sizing: border-box;
+      margin-top: auto;
+    }
+    
+    @media print {
+      body {
+        background: #ffffff !important;
+        padding: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .container {
+        border: none !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        min-height: auto !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-btn-container no-print">
+    <button class="print-btn" onclick="window.print()">🖨️ Друкувати звіт</button>
+  </div>
+  
+  <div class="container">
+    <div>
+      <!-- Header Card -->
+      <div class="header-card">
+        <div>
+          <h1 class="header-title">⛪ АНАЛІТИЧНИЙ ЗВІТ РЕЄСТРУ ЦЕРКВИ</h1>
+          <p class="header-sub">
+            ${isAll ? "Узагальнена статистика по всіх районах" : `Звіт по району: ${selectedRayon}`}
+          </p>
+        </div>
+        <div style="text-align: right;">
+          <div class="header-status">
+            Активних членів: ${totalActive} осіб
+          </div>
+          <p class="header-date">Дата формування: ${reportDate} ${reportTime}</p>
+        </div>
+      </div>
+
+      <!-- Upper Half Grid (Left Column vs Right Column) -->
+      <div class="upper-grid">
+        
+        <!-- Left Column -->
+        <div class="col">
+          <!-- ЗАГАЛЬНИЙ РОЗПОДІЛ ЧЛЕНІВ -->
+          <div class="card">
+            <h3 class="card-title">👥 Загальний розподіл членів</h3>
+            <div class="total-count">
+              ${totalActive}
+              <span class="total-sub">активних осіб</span>
+            </div>
             
-            <!-- COLUMN 1: General & Areas (Moved right under General) -->
-            <div style="display: flex; flex-direction: column;">
-              <!-- General Count Card -->
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
-                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">👥 Загальний розподіл членів</h3>
-                <div style="font-size: 32px; font-weight: 900; color: #0f172a; margin-bottom: 14px; display: flex; align-items: baseline; gap: 6px;">
-                  ${totalActive}
-                  <span style="font-size: 13px; font-weight: 600; color: #64748b; margin-left: 4px;">активних осіб</span>
-                </div>
-                
-                <!-- Progress bar split -->
-                <div style="height: 9px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden; display: flex; margin-bottom: 14px;">
-                  <div style="height: 100%; width: ${bPct}%; background: #0ea5e9;" title="Брати"></div>
-                  <div style="height: 100%; width: ${sPct}%; background: #f43f5e;" title="Сестри"></div>
-                  <div style="height: 100%; width: ${oPct}%; background: #94a3b8;" title="Інші"></div>
-                </div>
-
-                <div style="display: flex; flex-direction: column;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; padding: 5px 8px; background: #e0f2fe; border-radius: 8px; margin-bottom: 8px; box-sizing: border-box;">
-                    <span style="font-weight: 700; color: #0369a1;">👦 Брати</span>
-                    <span style="font-weight: 800; color: #0369a1;">${rayonStats.brothers} (${bPct}%)</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; padding: 5px 8px; background: #ffe4e6; border-radius: 8px; box-sizing: border-box;">
-                    <span style="font-weight: 700; color: #be123c;">👧 Сестри</span>
-                    <span style="font-weight: 800; color: #be123c;">${rayonStats.sisters} (${sPct}%)</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Areas density block (Moved here under General) -->
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">📍 Райони структури</h3>
-                <div style="display: flex; flex-direction: column;">
-                  ${sortedAreaStats.slice(0, 6).map(([lbl, val]) => {
-                    const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
-                    return `
-                      <div style="font-size: 11px; margin-bottom: 10px; box-sizing: border-box;">
-                        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 3px;">
-                          <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px; display: inline-block;">${lbl || "н/д"}</span>
-                          <span>${val} (${pct}%)</span>
-                        </div>
-                        <div style="height: 6px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
-                          <div style="height: 100%; width: ${pct}%; background: #10b981; border-radius: 99px;"></div>
-                        </div>
-                      </div>
-                    `;
-                  }).join('') || '<p style="font-size: 11.5px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
-                </div>
-              </div>
+            <!-- Progress bar split -->
+            <div class="progress-bar">
+              <div class="progress-segment" style="width: ${bPct}%; background: #0ea5e9;" title="Брати"></div>
+              <div class="progress-segment" style="width: ${sPct}%; background: #f43f5e;" title="Сестри"></div>
+              <div class="progress-segment" style="width: ${oPct}%; background: #94a3b8;" title="Інші"></div>
             </div>
 
-            <!-- COLUMN 2: Marital, Attendance & Reasons -->
-            <div style="display: flex; flex-direction: column;">
-              <!-- Marital Status Card -->
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
-                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">💍 Сімейний Стан</h3>
-                <div style="display: flex; flex-direction: column;">
-                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
-                    <span style="font-weight: 600; color: #334155;">одружені</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.married}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
-                    <span style="font-weight: 600; color: #334155;">неодружені</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.single}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
-                    <span style="font-weight: 600; color: #334155;">розлучені</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.divorced}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
-                    <span style="font-weight: 600; color: #334155;">вдова/вдівець</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.widowed}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 11px; padding-bottom: 1px; box-sizing: border-box;">
-                    <span style="font-weight: 550; color: #94a3b8; font-style: italic;">не вказано</span>
-                    <span style="font-weight: 700; color: #64748b;">${rayonStats.marital.nd}</span>
-                  </div>
-                </div>
+            <div class="gender-rows">
+              <div class="gender-row gender-row-brothers">
+                <span style="font-weight: 700; color: #0369a1;">👦 Брати</span>
+                <span style="font-weight: 800; color: #0369a1;">${rayonStats.brothers} (${bPct}%)</span>
               </div>
-
-              <!-- Attendance Card -->
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
-                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">📈 Аналіз відвідуваності</h3>
-                <div style="display: flex; flex-direction: column;">
-                  ${rayonStats.attendance.slice(0, 5).map(([lbl, val]) => {
-                    const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
-                    return `
-                      <div style="font-size: 11px; margin-bottom: 10px; box-sizing: border-box;">
-                        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 3px;">
-                          <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px; display: inline-block;">${lbl || "н/д"}</span>
-                          <span>${val} (${pct}%)</span>
-                        </div>
-                        <div style="height: 6px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
-                          <div style="height: 100%; width: ${pct}%; background: #3b82f6; border-radius: 99px;"></div>
-                        </div>
-                      </div>
-                    `;
-                  }).join('') || '<p style="font-size: 11.5px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
-                </div>
-              </div>
-
-              <!-- Presence/Absence reason (no "н/д"!) -->
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">📌 Причини відсутності</h3>
-                <div style="display: flex; flex-direction: column;">
-                  ${rayonStats.presence.slice(0, 5).map(([lbl, val]) => {
-                    const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
-                    return `
-                      <div style="font-size: 11px; margin-bottom: 10px; box-sizing: border-box;">
-                        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 3px;">
-                          <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px; display: inline-block;">${lbl}</span>
-                          <span>${val} (${pct}%)</span>
-                        </div>
-                        <div style="height: 6px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
-                          <div style="height: 100%; width: ${pct}%; background: #f59e0b; border-radius: 99px;"></div>
-                        </div>
-                      </div>
-                    `;
-                  }).join('') || '<p style="font-size: 11.5px; color: #64748b; font-style: italic; margin: 0;">Всі присутні</p>'}
-                </div>
+              <div class="gender-row gender-row-sisters">
+                <span style="font-weight: 700; color: #be123c;">👧 Сестри</span>
+                <span style="font-weight: 800; color: #be123c;">${rayonStats.sisters} (${sPct}%)</span>
               </div>
             </div>
-
-            <!-- COLUMN 3: Caregivers list (fully visible in two columns) -->
-            <div style="display: flex; flex-direction: column;">
-              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 480px; display: flex; flex-direction: column;">
-                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">💚 Розподіл пастирської опіки</h3>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; box-sizing: border-box;">
-                  ${rayonStats.caregivers.map(([name, count]) => {
-                    const pct = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0;
-                    return `
-                      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; padding: 6px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; box-sizing: border-box; min-width: 0;">
-                        <span style="font-weight: 700; color: #1e293b; display: inline-block; word-break: break-all; line-height: 1.1; margin-right: 4px;">${name}</span>
-                        <span style="font-weight: 800; background: #10b981; color: #ffffff; padding: 2px 5px; border-radius: 10px; font-size: 8.5px; display: inline-block; white-space: nowrap;">
-                          ${count} (${pct}%)
-                        </span>
-                      </div>
-                    `;
-                  }).join('') || '<p style="font-size: 11.5px; color: #94a3b8; font-style: italic; text-align: center; margin-top: 50px;">Опікунів не знайдено</p>'}
-                </div>
-              </div>
-            </div>
-
           </div>
 
-          <!-- Footer seal -->
-          <div style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #64748b; font-weight: 500;">
-            <span>Сгенеровано автоматично з Системи Реєстру Громади. Для внутрішнього користування.</span>
-            <span style="font-weight: 700; color: #10b981;">Церква ЄХБ «Христа Спасителя»</span>
+          <!-- РАЙОНИ СТРУКТУРИ -->
+          <div class="district-card">
+            <h3 class="card-title">📍 Райони структури</h3>
+            <div class="scroll-list">
+              ${sortedAreaStats.map(([lbl, val]) => {
+                const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
+                return `
+                  <div style="font-size: 10px; box-sizing: border-box; margin-bottom: 2px;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 2px;">
+                      <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 260px; display: inline-block;">${lbl || "н/д"}</span>
+                      <span>${val} (${pct}%)</span>
+                    </div>
+                    <div style="height: 5px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
+                      <div style="height: 100%; width: ${pct}%; background: #10b981; border-radius: 99px;"></div>
+                    </div>
+                  </div>
+                `;
+              }).join('') || '<p style="font-size: 10px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
+            </div>
           </div>
         </div>
-      `;
 
-      container.innerHTML = htmlContent;
-      document.body.appendChild(container);
+        <!-- Right Column -->
+        <div class="col" style="gap: 12px;">
+          <!-- СІМЕЙНИЙ СТАН -->
+          <div class="marital-card">
+            <h3 class="marital-title">💍 Сімейний Стан</h3>
+            <div class="marital-rows">
+              <div class="marital-row">
+                <span style="font-weight: 600; color: #334155;">одружені</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.married}</span>
+              </div>
+              <div class="marital-row">
+                <span style="font-weight: 600; color: #334155;">неодружені</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.single}</span>
+              </div>
+              <div class="marital-row">
+                <span style="font-weight: 600; color: #334155;">розлучені</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.divorced}</span>
+              </div>
+              <div class="marital-row">
+                <span style="font-weight: 600; color: #334155;">вдова/вдівець</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.widowed}</span>
+              </div>
+              <div class="marital-row-nd">
+                <span style="font-weight: 550; color: #94a3b8; font-style: italic;">не вказано</span>
+                <span style="font-weight: 700; color: #64748b;">${rayonStats.marital.nd}</span>
+              </div>
+            </div>
+          </div>
 
-      // Render to canvas
-      const canvas = await html2canvas(container, {
-        scale: 2, // ultra crisp output
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#f1f5f9',
-        logging: false
-      });
+          <!-- АНАЛІЗ ВІДВІДУВАНОСТІ -->
+          <div class="attendance-card">
+            <h3 class="card-title">📈 Аналіз відвідуваності</h3>
+            <div class="scroll-list">
+              ${rayonStats.attendance.slice(0, 5).map(([lbl, val]) => {
+                const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
+                return `
+                  <div style="font-size: 10px; box-sizing: border-box;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 2px;">
+                      <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 155px; display: inline-block;">${lbl || "н/д"}</span>
+                      <span>${val} (${pct}%)</span>
+                    </div>
+                    <div style="height: 5px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
+                      <div style="height: 100%; width: ${pct}%; background: #3b82f6; border-radius: 99px;"></div>
+                    </div>
+                  </div>
+                `;
+              }).join('') || '<p style="font-size: 10px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
+            </div>
+          </div>
 
-      document.body.removeChild(container);
+          <!-- ПРИЧИНИ ВІДСУТНОСТІ -->
+          <div class="attendance-card">
+            <h3 class="card-title">📌 Причини відсутності</h3>
+            <div class="scroll-list">
+              ${rayonStats.presence.slice(0, 5).map(([lbl, val]) => {
+                const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
+                return `
+                  <div style="font-size: 10px; box-sizing: border-box;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 2px;">
+                      <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 155px; display: inline-block;">${lbl}</span>
+                      <span>${val} (${pct}%)</span>
+                    </div>
+                    <div style="height: 5px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
+                      <div style="height: 100%; width: ${pct}%; background: #f59e0b; border-radius: 99px;"></div>
+                    </div>
+                  </div>
+                `;
+              }).join('') || '<p style="font-size: 10px; color: #64748b; font-style: italic; margin: 0;">Всі присутні</p>'}
+            </div>
+          </div>
+        </div>
 
-      const imgWidth = 297; // A4 Landscape
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const imgData = canvas.toDataURL('image/png');
+      </div>
 
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
+      <!-- РОЗПОДІЛ ПАСТИРСЬКОЇ ОПІКИ (в дві колонки) -->
+      <div class="care-card">
+        <h3 class="card-title" style="font-size: 11px; margin-bottom: 12px;">💚 Розподіл пастирської опіки</h3>
+        <div class="care-grid">
+          ${rayonStats.caregivers.map(([name, count]) => {
+            const pct = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0;
+            return `
+              <div class="care-item">
+                <span style="font-weight: 700; color: #1e293b; display: inline-block; word-break: break-all; line-height: 1.1; margin-right: 4px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">${name}</span>
+                <span class="care-badge">
+                  ${count} (${pct}%)
+                </span>
+              </div>
+            `;
+          }).join('') || '<p style="font-size: 10.5px; color: #94a3b8; font-style: italic; text-align: center; margin-top: 30px; grid-column: span 2;">Опікунів не знайдено</p>'}
+        </div>
+      </div>
+    </div>
 
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST');
-      const filename = `Statystyka_Rayonu_${selectedRayon.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      pdf.save(filename);
+    <!-- Footer -->
+    <div class="footer">
+      <span>Звіт згенеровано автоматично з Системи Реєстру Громади. Для внутрішнього користування.</span>
+      <span style="font-weight: 700; color: #10b981;">Церква ЄХБ «Христа Спасителя»</span>
+    </div>
+  </div>
+</body>
+</html>`;
+
+      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
+      const filename = `Statystyka_Rayonu_${selectedRayon.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.html`;
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     } catch (error) {
-      console.error("PDF generation failed:", error);
-      alert("Не вдалося завантажити PDF звіт. Будь ласка, спробуйте ще раз.");
+      console.error("HTML generation failed:", error);
+      alert("Не вдалося завантажити HTML звіт. Будь ласка, спробуйте ще раз.");
     } finally {
-      setIsPdfGenerating(false);
+      setIsHtmlGenerating(false);
     }
   };
 
@@ -464,12 +781,12 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             </div>
             <div className="flex items-center space-x-3 shrink-0">
               <button
-                onClick={handleDownloadPDF}
-                disabled={isPdfGenerating}
-                className="flex items-center gap-1 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 disabled:bg-slate-850 disabled:text-slate-500 text-white px-2.5 py-1 rounded-lg border border-blue-500/30 cursor-pointer shadow-sm transition-colors"
+                onClick={handleDownloadHTML}
+                disabled={isHtmlGenerating}
+                className="flex items-center gap-1 text-[10px] font-bold bg-[#10b981] hover:bg-[#0d9488] disabled:bg-slate-850 disabled:text-slate-500 text-white px-2.5 py-1 rounded-lg border border-emerald-500/30 cursor-pointer shadow-sm transition-colors"
               >
                 <FileDown className="h-3 w-3 shrink-0" />
-                {isPdfGenerating ? 'PDF...' : 'Завантажити PDF'}
+                {isHtmlGenerating ? 'HTML...' : 'Завантажити HTML'}
               </button>
               <span className="text-[9px] font-black bg-emerald-900 border border-emerald-700 text-emerald-200 px-2 py-1 rounded-full uppercase tracking-wider">
                 {rayonStats.total} активних

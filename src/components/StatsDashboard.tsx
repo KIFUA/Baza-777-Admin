@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, DashboardStats } from '../types';
-import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, FileDown } from 'lucide-react';
+import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, FileDown, ChevronDown, ChevronUp } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -14,6 +14,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
   // State for District selector
   const [selectedRayon, setSelectedRayon] = useState<string>('');
   const [isPdfGenerating, setIsPdfGenerating] = useState<boolean>(false);
+  const [showTotalRegisterStats, setShowTotalRegisterStats] = useState<boolean>(false);
 
   // Extract unique rayon/neighborhood names with "Всі райони" option
   const uniqueRayons = useMemo(() => {
@@ -88,11 +89,14 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     });
     const sortedAttendance = Object.entries(attendance).sort((a, b) => b[1] - a[1]);
 
-    // Reason for absence ("Прич. відсутності") counts
+    // Reason for absence ("Прич. відсутності") counts - FILTER OUT "н/д"
     const presence: Record<string, number> = {};
     rayonMembers.forEach(m => {
-      const key = String(m.prysutnist || '').trim() || 'н/д';
-      presence[key] = (presence[key] || 0) + 1;
+      const key = String(m.prysutnist || '').trim();
+      const isNA = !key || key.toLowerCase() === 'н/д' || key === '—' || key === '-';
+      if (!isNA) {
+        presence[key] = (presence[key] || 0) + 1;
+      }
     });
     const sortedPresence = Object.entries(presence).sort((a, b) => b[1] - a[1]);
 
@@ -104,6 +108,14 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     });
     const sortedCaregivers = Object.entries(caregivers).sort((a, b) => b[1] - a[1]);
 
+    // Area/District stats client-side
+    const area: Record<string, number> = {};
+    rayonMembers.forEach(m => {
+      const key = String(m.rayon2_ukr || '').trim() || 'н/д';
+      area[key] = (area[key] || 0) + 1;
+    });
+    const sortedArea = Object.entries(area).sort((a, b) => b[1] - a[1]);
+
     return {
       total,
       brothers,
@@ -112,7 +124,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       marital: { single, married, divorced, widowed, nd },
       attendance: sortedAttendance,
       presence: sortedPresence,
-      caregivers: sortedCaregivers
+      caregivers: sortedCaregivers,
+      area: sortedArea
     };
   }, [rayonMembers]);
 
@@ -132,94 +145,123 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       const sPct = totalActive > 0 ? Math.round((rayonStats.sisters / totalActive) * 100) : 0;
       const oPct = totalActive > 0 ? Math.round((rayonStats.others / totalActive) * 100) : 0;
 
+      // Extract unique area counts for PDF
+      const areaStats: Record<string, number> = {};
+      rayonMembers.forEach(m => {
+        const key = String(m.rayon2_ukr || '').trim() || 'н/д';
+        areaStats[key] = (areaStats[key] || 0) + 1;
+      });
+      const sortedAreaStats = Object.entries(areaStats).sort((a, b) => b[1] - a[1]);
+
       const htmlContent = `
-        <div style="width: 1050px; background: #ffffff; color: #0f172a; padding: 40px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
-          <!-- Header -->
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #10b981; padding-bottom: 15px; margin-bottom: 30px;">
+        <div style="width: 1050px; background: #f1f5f9; color: #0f172a; padding: 24px 30px; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+          <!-- Header Card -->
+          <div style="background: #ffffff; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; display: flex; justify-content: space-between; align-items: center; border-left: 6px solid #10b981; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             <div>
-              <h1 style="font-size: 26px; font-weight: 850; color: #064e3b; margin: 0; letter-spacing: -0.5px;">⛪ АНАЛІТИЧНИЙ ЗВІТ РЕЄСТРУ ЦЕРКВИ</h1>
-              <p style="font-size: 13px; color: #4b5563; font-weight: 600; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">
+              <h1 style="font-size: 24px; font-weight: 850; color: #064e3b; margin: 0; letter-spacing: -0.5px;">⛪ АНАЛІТИЧНИЙ ЗВІТ РЕЄСТРУ ЦЕРКВИ</h1>
+              <p style="font-size: 11.5px; color: #4b5563; font-weight: 600; margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px;">
                 ${isAll ? "Узагальнена статистика по всіх районах" : `Звіт по району: ${selectedRayon}`}
               </p>
             </div>
             <div style="text-align: right;">
-              <div style="background: #ecfdf5; border: 1px solid #059669; color: #047857; font-size: 11px; font-weight: 700; padding: 6px 16px; border-radius: 99px; text-transform: uppercase; display: inline-block;">
+              <div style="background: #ecfdf5; border: 1px solid #059669; color: #047857; font-size: 10.5px; font-weight: 700; padding: 6px 16px; border-radius: 99px; text-transform: uppercase; display: inline-block;">
                 Активних членів: ${totalActive} осіб
               </div>
-              <p style="font-size: 11px; color: #9ca3af; margin: 6px 0 0 0; font-weight: 500;">Дата формування: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</p>
+              <p style="font-size: 10.5px; color: #9ca3af; margin: 6px 0 0 0; font-weight: 500;">Дата формування: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</p>
             </div>
           </div>
 
           <!-- Grid Content -->
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
             
-            <!-- COLUMN 1: General & Marital -->
-            <div style="display: flex; flex-direction: column; gap: 24px;">
+            <!-- COLUMN 1: General & Areas (Moved right under General) -->
+            <div style="display: flex; flex-direction: column;">
               <!-- General Count Card -->
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 16px 0; letter-spacing: 0.5px;">👥 Загальний розподіл членів</h3>
-                <div style="font-size: 36px; font-weight: 900; color: #0f172a; margin-bottom: 16px; display: flex; align-items: baseline; gap: 6px;">
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">👥 Загальний розподіл членів</h3>
+                <div style="font-size: 32px; font-weight: 900; color: #0f172a; margin-bottom: 14px; display: flex; align-items: baseline; gap: 6px;">
                   ${totalActive}
-                  <span style="font-size: 14px; font-weight: 600; color: #64748b;">активних осіб</span>
+                  <span style="font-size: 13px; font-weight: 600; color: #64748b; margin-left: 4px;">активних осіб</span>
                 </div>
                 
                 <!-- Progress bar split -->
-                <div style="height: 10px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden; display: flex; margin-bottom: 16px;">
+                <div style="height: 9px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden; display: flex; margin-bottom: 14px;">
                   <div style="height: 100%; width: ${bPct}%; background: #0ea5e9;" title="Брати"></div>
                   <div style="height: 100%; width: ${sPct}%; background: #f43f5e;" title="Сестри"></div>
                   <div style="height: 100%; width: ${oPct}%; background: #94a3b8;" title="Інші"></div>
                 </div>
 
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 6px 8px; background: #e0f2fe; border-radius: 8px;">
+                <div style="display: flex; flex-direction: column;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; padding: 5px 8px; background: #e0f2fe; border-radius: 8px; margin-bottom: 8px; box-sizing: border-box;">
                     <span style="font-weight: 700; color: #0369a1;">👦 Брати</span>
                     <span style="font-weight: 800; color: #0369a1;">${rayonStats.brothers} (${bPct}%)</span>
                   </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding: 6px 8px; background: #ffe4e6; border-radius: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; padding: 5px 8px; background: #ffe4e6; border-radius: 8px; box-sizing: border-box;">
                     <span style="font-weight: 700; color: #be123c;">👧 Сестри</span>
                     <span style="font-weight: 800; color: #be123c;">${rayonStats.sisters} (${sPct}%)</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Marital Status Card -->
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 16px 0; letter-spacing: 0.5px;">💍 Сімейний Стан</h3>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                  <div style="display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
-                    <span style="font-weight: 600; color: #334155;">одружені</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.married}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
-                    <span style="font-weight: 600; color: #334155;">неодружені</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.single}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
-                    <span style="font-weight: 600; color: #334155;">розлучені</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.divorced}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
-                    <span style="font-weight: 600; color: #334155;">вдова/вдівець</span>
-                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.widowed}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 12px; padding-bottom: 2px;">
-                    <span style="font-weight: 500; color: #94a3b8; font-style: italic;">не вказано</span>
-                    <span style="font-weight: 700; color: #64748b;">${rayonStats.marital.nd}</span>
-                  </div>
+              <!-- Areas density block (Moved here under General) -->
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">📍 Райони структури</h3>
+                <div style="display: flex; flex-direction: column;">
+                  ${sortedAreaStats.slice(0, 6).map(([lbl, val]) => {
+                    const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
+                    return `
+                      <div style="font-size: 11px; margin-bottom: 10px; box-sizing: border-box;">
+                        <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 3px;">
+                          <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px; display: inline-block;">${lbl || "н/д"}</span>
+                          <span>${val} (${pct}%)</span>
+                        </div>
+                        <div style="height: 6px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
+                          <div style="height: 100%; width: ${pct}%; background: #10b981; border-radius: 99px;"></div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('') || '<p style="font-size: 11.5px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
                 </div>
               </div>
             </div>
 
-            <!-- COLUMN 2: Attendance & Reasons -->
-            <div style="display: flex; flex-direction: column; gap: 24px;">
+            <!-- COLUMN 2: Marital, Attendance & Reasons -->
+            <div style="display: flex; flex-direction: column;">
+              <!-- Marital Status Card -->
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">💍 Сімейний Стан</h3>
+                <div style="display: flex; flex-direction: column;">
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
+                    <span style="font-weight: 600; color: #334155;">одружені</span>
+                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.married}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
+                    <span style="font-weight: 600; color: #334155;">неодружені</span>
+                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.single}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
+                    <span style="font-weight: 600; color: #334155;">розлучені</span>
+                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.divorced}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; margin-bottom: 5px; box-sizing: border-box;">
+                    <span style="font-weight: 600; color: #334155;">вдова/вдівець</span>
+                    <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.widowed}</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px; padding-bottom: 1px; box-sizing: border-box;">
+                    <span style="font-weight: 550; color: #94a3b8; font-style: italic;">не вказано</span>
+                    <span style="font-weight: 700; color: #64748b;">${rayonStats.marital.nd}</span>
+                  </div>
+                </div>
+              </div>
+
               <!-- Attendance Card -->
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 16px 0; letter-spacing: 0.5px;">📈 Аналіз відвідуваності</h3>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 16px;">
+                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">📈 Аналіз відвідуваності</h3>
+                <div style="display: flex; flex-direction: column;">
                   ${rayonStats.attendance.slice(0, 5).map(([lbl, val]) => {
                     const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
                     return `
-                      <div style="font-size: 11px;">
+                      <div style="font-size: 11px; margin-bottom: 10px; box-sizing: border-box;">
                         <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 3px;">
                           <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px; display: inline-block;">${lbl || "н/д"}</span>
                           <span>${val} (${pct}%)</span>
@@ -229,20 +271,20 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                         </div>
                       </div>
                     `;
-                  }).join('') || '<p style="font-size: 12px; color: #94a3b8; font-style: italic;">Дані відсутні</p>'}
+                  }).join('') || '<p style="font-size: 11.5px; color: #94a3b8; font-style: italic; margin: 0;">Дані відсутні</p>'}
                 </div>
               </div>
 
-              <!-- Presence/Absence reason -->
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 16px 0; letter-spacing: 0.5px;">📌 Причини відсутності</h3>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+              <!-- Presence/Absence reason (no "н/д"!) -->
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">📌 Причини відсутності</h3>
+                <div style="display: flex; flex-direction: column;">
                   ${rayonStats.presence.slice(0, 5).map(([lbl, val]) => {
                     const pct = totalActive > 0 ? Math.round((val / totalActive) * 100) : 0;
                     return `
-                      <div style="font-size: 11px;">
+                      <div style="font-size: 11px; margin-bottom: 10px; box-sizing: border-box;">
                         <div style="display: flex; justify-content: space-between; font-weight: 700; color: #334155; margin-bottom: 3px;">
-                          <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px; display: inline-block;">${lbl || "н/д"}</span>
+                          <span style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 170px; display: inline-block;">${lbl}</span>
                           <span>${val} (${pct}%)</span>
                         </div>
                         <div style="height: 6px; width: 100%; background: #e2e8f0; border-radius: 99px; overflow: hidden;">
@@ -250,27 +292,27 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                         </div>
                       </div>
                     `;
-                  }).join('') || '<p style="font-size: 12px; color: #94a3b8; font-style: italic;">Дані відсутні</p>'}
+                  }).join('') || '<p style="font-size: 11.5px; color: #64748b; font-style: italic; margin: 0;">Всі присутні</p>'}
                 </div>
               </div>
             </div>
 
-            <!-- COLUMN 3: Caregivers list -->
-            <div style="display: flex; flex-direction: column; gap: 24px;">
-              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 380px; display: flex; flex-direction: column;">
-                <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 16px 0; letter-spacing: 0.5px;">💚 Розподіл пастирської опіки</h3>
-                <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-                  ${rayonStats.caregivers.slice(0, 8).map(([name, count]) => {
+            <!-- COLUMN 3: Caregivers list (fully visible in two columns) -->
+            <div style="display: flex; flex-direction: column;">
+              <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); min-height: 480px; display: flex; flex-direction: column;">
+                <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin: 0 0 14px 0; letter-spacing: 0.5px;">💚 Розподіл пастирської опіки</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; box-sizing: border-box;">
+                  ${rayonStats.caregivers.map(([name, count]) => {
                     const pct = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0;
                     return `
-                      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 8px; background: #f1f5f9; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <span style="font-weight: 700; color: #1e293b; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 160px; display: inline-block;">${name}</span>
-                        <span style="font-weight: 800; background: #10b981; color: #ffffff; padding: 2px 8px; border-radius: 10px; font-size: 10px; display: inline-block;">
-                          ${count} осіб (${pct}%)
+                      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; padding: 6px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; box-sizing: border-box; min-width: 0;">
+                        <span style="font-weight: 700; color: #1e293b; display: inline-block; word-break: break-all; line-height: 1.1; margin-right: 4px;">${name}</span>
+                        <span style="font-weight: 800; background: #10b981; color: #ffffff; padding: 2px 5px; border-radius: 10px; font-size: 8.5px; display: inline-block; white-space: nowrap;">
+                          ${count} (${pct}%)
                         </span>
                       </div>
                     `;
-                  }).join('') || '<p style="font-size: 12px; color: #94a3b8; font-style: italic; text-align: center; margin-top: 50px;">Опікунів не знайдено</p>'}
+                  }).join('') || '<p style="font-size: 11.5px; color: #94a3b8; font-style: italic; text-align: center; margin-top: 50px;">Опікунів не знайдено</p>'}
                 </div>
               </div>
             </div>
@@ -278,7 +320,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
           </div>
 
           <!-- Footer seal -->
-          <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #64748b; font-weight: 500;">
+          <div style="margin-top: 24px; border-top: 1px solid #e2e8f0; padding-top: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #64748b; font-weight: 500;">
             <span>Сгенеровано автоматично з Системи Реєстру Громади. Для внутрішнього користування.</span>
             <span style="font-weight: 700; color: #10b981;">Церква ЄХБ «Христа Спасителя»</span>
           </div>
@@ -293,7 +335,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
         scale: 2, // ultra crisp output
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f1f5f9',
         logging: false
       });
 
@@ -371,17 +413,18 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
   ];
 
   // Render a clean percentage bar with dark theme backgrounds and high-contrast labels
-  const renderBar = (label: string, value: number, max: number, colorClass = "bg-blue-600") => {
+  const renderBar = (label: string, value: number, max: number, colorClass = "bg-blue-600", isCompact = false) => {
     const pct = max > 0 ? Math.round((value / max) * 100) : 0;
     const isNA = !label || label.toLowerCase() === "н/д" || label === "Не визначено" || label.trim() === "";
     const labelToDisplay = isNA ? "н/д" : label;
     return (
-      <div key={label || "empty"} className="group flex flex-col space-y-1">
-        <div className="flex items-center justify-between text-xs font-semibold text-slate-200">
-          <span className={`truncate ${isNA ? "text-slate-400 font-normal italic" : ""}`}>{labelToDisplay}</span>
-          <span className="text-slate-350">{value} ({pct}%)</span>
+      <div key={label || "empty"} className={`group flex flex-col ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
+        <div className={`flex items-center justify-between ${isCompact ? "text-[9px] font-bold" : "text-xs font-semibold"} text-slate-200`}>
+          <span className={`truncate max-w-[70%] ${isNA ? "text-slate-400 font-normal italic" : ""}`}>{labelToDisplay}</span>
+          <div className={`flex-1 border-b border-dotted border-white/15 ${isCompact ? "mx-1.5" : "mx-2"} self-center h-0.5 opacity-30`} />
+          <span className="text-slate-350 shrink-0">{value} ({pct}%)</span>
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/50">
+        <div className={`${isCompact ? "h-1" : "h-1.5"} w-full overflow-hidden rounded-full bg-slate-800/50`}>
           <div className={`h-full rounded-full transition-all duration-500 ${colorClass}`} style={{ width: `${pct}%` }}></div>
         </div>
       </div>
@@ -434,85 +477,165 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {/* 1. General counts */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm flex flex-col justify-between">
-              <div>
-                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block mb-1">
-                  Загальна кількість членів
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            {/* COLUMN 1 */}
+            <div className="md:col-span-6 lg:col-span-3 space-y-3">
+              {/* 1. General counts */}
+              <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm flex flex-col justify-between">
+                <div>
+                  <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block mb-1">
+                    Загальна кількість членів
+                  </span>
+                  <div className="flex items-baseline space-x-1.5 mb-2">
+                    <span className="text-xl sm:text-xl font-black text-white">{rayonStats.total}</span>
+                    <span className="text-[9px] font-semibold text-slate-300">всього в районі</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-white/5">
+                  <div className="bg-[#244b5a]/60 rounded p-1.5 border border-[#2c5869]/40">
+                    <div className="text-[9px] uppercase font-bold text-sky-300 flex items-center gap-0.5">
+                      <User className="h-2.5 w-2.5 text-sky-400" /> Брати
+                    </div>
+                    <div className="text-sm font-black text-sky-100">{rayonStats.brothers}</div>
+                    <div className="text-[9px] text-sky-300 font-medium mt-0.5">
+                      {rayonStats.total > 0 ? Math.round((rayonStats.brothers / rayonStats.total) * 100) : 0}%
+                    </div>
+                  </div>
+                  <div className="bg-[#2a4454]/60 rounded p-1.5 border border-[#355468]/40">
+                    <div className="text-[9px] uppercase font-bold text-rose-300 flex items-center gap-0.5">
+                      <User className="h-2.5 w-2.5 text-rose-400" /> Сестри
+                    </div>
+                    <div className="text-sm font-black text-rose-100">{rayonStats.sisters}</div>
+                    <div className="text-[9px] text-rose-300 font-medium mt-0.5">
+                      {rayonStats.total > 0 ? Math.round((rayonStats.sisters / rayonStats.total) * 100) : 0}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 1b. Райони структури (rayon2) - Kept permanently under general counts! */}
+              <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
+                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
+                  Райони структури (rayon2)
                 </span>
-                <div className="flex items-baseline space-x-1.5 mb-2">
-                  <span className="text-xl sm:text-xl font-black text-white">{rayonStats.total}</span>
-                  <span className="text-[9px] font-semibold text-slate-300">всього в районі</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-white/5">
-                <div className="bg-[#244b5a]/60 rounded p-1.5 border border-[#2c5869]/40">
-                  <div className="text-[9px] uppercase font-bold text-sky-300 flex items-center gap-0.5">
-                    <User className="h-2.5 w-2.5 text-sky-400" /> Брати
-                  </div>
-                  <div className="text-sm font-black text-sky-100">{rayonStats.brothers}</div>
-                  <div className="text-[9px] text-sky-300 font-medium mt-0.5">
-                    {rayonStats.total > 0 ? Math.round((rayonStats.brothers / rayonStats.total) * 100) : 0}%
-                  </div>
-                </div>
-                <div className="bg-[#2a4454]/60 rounded p-1.5 border border-[#355468]/40">
-                  <div className="text-[9px] uppercase font-bold text-rose-300 flex items-center gap-0.5">
-                    <User className="h-2.5 w-2.5 text-rose-400" /> Сестри
-                  </div>
-                  <div className="text-sm font-black text-rose-100">{rayonStats.sisters}</div>
-                  <div className="text-[9px] text-rose-300 font-medium mt-0.5">
-                    {rayonStats.total > 0 ? Math.round((rayonStats.sisters / rayonStats.total) * 100) : 0}%
-                  </div>
+                <div className="space-y-2 max-h-[150px] overflow-y-auto pr-0.5">
+                  {rayonStats.area.map(([lbl, val]) => 
+                    renderBar(lbl === "" ? "н/д" : lbl, val, rayonStats.total, "bg-emerald-400", true)
+                  )}
+                  {rayonStats.area.length === 0 && (
+                    <div className="py-3 text-center text-[10px] text-slate-400 italic">
+                      Немає даних по районах
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* 2. Marital Status */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
-              <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block">
-                Сімейний Стан («Сім. стан»)
-              </span>
-              <div className="grid grid-cols-2 gap-1 px-0.5 text-[10px]">
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
-                  <span className="text-slate-200">одр.</span>
-                  <span className="font-bold text-white">{rayonStats.marital.married}</span>
+            {/* COLUMN 2 */}
+            <div className="md:col-span-6 lg:col-span-3 space-y-3">
+              {/* 2. Marital Status */}
+              <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
+                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block">
+                  Сімейний Стан («Сім. стан»)
+                </span>
+                <div className="grid grid-cols-2 gap-1 px-0.5 text-[10px]">
+                  <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35 w-full">
+                    <span className="text-slate-200 shrink-0">одр.</span>
+                    <div className="flex-1 border-b border-dotted border-white/10 mx-1.5 self-center h-0.5 opacity-30" />
+                    <span className="font-bold text-white shrink-0">{rayonStats.marital.married}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35 w-full">
+                    <span className="text-slate-200 shrink-0">неодр.</span>
+                    <div className="flex-1 border-b border-dotted border-white/10 mx-1.5 self-center h-0.5 opacity-30" />
+                    <span className="font-bold text-white shrink-0">{rayonStats.marital.single}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35 w-full">
+                    <span className="text-slate-200 font-medium shrink-0">розлуч.</span>
+                    <div className="flex-1 border-b border-dotted border-white/10 mx-1.5 self-center h-0.5 opacity-30" />
+                    <span className="font-bold text-white shrink-0">{rayonStats.marital.divorced}</span>
+                  </div>
+                  <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35 w-full">
+                    <span className="text-slate-200 font-medium shrink-0">вдво.</span>
+                    <div className="flex-1 border-b border-dotted border-white/10 mx-1.5 self-center h-0.5 opacity-30" />
+                    <span className="font-bold text-white shrink-0">{rayonStats.marital.widowed}</span>
+                  </div>
+                  <div className="col-span-2 flex justify-between items-center bg-[#244b5a]/30 rounded py-0.5 px-1.5 border border-dashed border-[#2c5869]/40 text-[9px] w-full">
+                    <span className="text-slate-400 italic shrink-0">не вказано (н/д)</span>
+                    <div className="flex-1 border-b border-dotted border-white/10 mx-1.5 self-center h-0.5 opacity-20" />
+                    <span className="font-bold text-slate-300 shrink-0">{rayonStats.marital.nd}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
-                  <span className="text-slate-200">неодр.</span>
-                  <span className="font-bold text-white">{rayonStats.marital.single}</span>
+              </div>
+
+              {/* 3. Attendance ("Відвідування") - Placed in Column 2 */}
+              <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
+                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
+                  Аналіз Відвідування
+                </span>
+                <div className="space-y-1.5 max-h-[110px] overflow-y-auto pr-0.5">
+                  {rayonStats.attendance.map(([lbl, val]) => {
+                    const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
+                    return (
+                      <div key={lbl} className="flex items-center justify-between text-[10px] w-full">
+                        <span className="text-slate-100 truncate max-w-[130px] shrink-0">{lbl || 'н/д'}</span>
+                        <div className="flex-1 border-b border-dotted border-white/15 mx-2 self-center h-0.5 opacity-25" />
+                        <span className="font-mono text-[9px] font-bold text-slate-200 shrink-0">
+                          {val} <span className="text-slate-400 font-normal">({pct}%)</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {rayonStats.attendance.length === 0 && (
+                    <div className="py-3 text-center text-[10px] text-slate-400 italic">
+                      Немає даних відвідуваності
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
-                  <span className="text-slate-200 font-medium">розлуч.</span>
-                  <span className="font-bold text-white">{rayonStats.marital.divorced}</span>
-                </div>
-                <div className="flex justify-between items-center bg-[#244b5a]/50 rounded p-1 border border-[#2c5869]/35">
-                  <span className="text-slate-200 font-medium">вдво.</span>
-                  <span className="font-bold text-white">{rayonStats.marital.widowed}</span>
-                </div>
-                <div className="col-span-2 flex justify-between items-center bg-[#244b5a]/30 rounded py-0.5 px-1.5 border border-dashed border-[#2c5869]/40 text-[9px]">
-                  <span className="text-slate-400 italic">не вказано (н/д)</span>
-                  <span className="font-bold text-slate-300">{rayonStats.marital.nd}</span>
+              </div>
+
+              {/* 4. Reason for absence ("Прич. відсутності") - Placed in Column 2 */}
+              <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
+                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
+                  Причини відсутності
+                </span>
+                <div className="space-y-1.5 max-h-[110px] overflow-y-auto pr-0.5">
+                  {rayonStats.presence.map(([lbl, val]) => {
+                    const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
+                    return (
+                      <div key={lbl} className="flex items-center justify-between text-[10px] w-full">
+                        <span className="text-slate-100 truncate max-w-[130px] shrink-0">{lbl}</span>
+                        <div className="flex-1 border-b border-dotted border-white/15 mx-2 self-center h-0.5 opacity-25" />
+                        <span className="font-mono text-[9px] font-bold text-slate-200 shrink-0">
+                          {val} <span className="text-slate-400 font-normal">({pct}%)</span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                  {rayonStats.presence.length === 0 && (
+                    <div className="py-3 text-center text-[10px] text-slate-400 italic">
+                      Всі присутні
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* 3. Caregivers list */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 lg:row-span-2 flex flex-col">
+            {/* COLUMN 3: Caregivers list - fully visible without scrolling, 2 columns */}
+            <div className="md:col-span-12 lg:col-span-6 bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 flex flex-col">
               <div className="border-b border-white/5 pb-1">
                 <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block">
                   Список Опікунів Району
                 </span>
                 <span className="text-[8px] text-slate-400 block">Пастирська опіка («Опікун»)</span>
               </div>
-              <div className="flex-1 overflow-y-auto max-h-[125px] pr-0.5 space-y-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-0.5">
                 {rayonStats.caregivers.map(([name, count]) => {
                   const pct = rayonStats.total > 0 ? Math.round((count / rayonStats.total) * 100) : 0;
                   return (
-                    <div key={name} className="flex items-center justify-between text-[10px] bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-1 rounded border border-[#2c5869]/30 transition-colors">
-                      <div className="flex items-center space-x-1 min-w-0">
+                    <div key={name} className="flex items-center justify-between gap-1.5 text-[10px] bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-1.5 rounded border border-[#2c5869]/30 transition-colors">
+                      <div className="flex items-center space-x-1 min-w-0 flex-1">
                         <User className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
-                        <span className="font-semibold text-slate-100 truncate">{name}</span>
+                        <span className="font-semibold text-slate-100 break-words leading-tight">{name}</span>
                       </div>
                       <div className="flex items-center space-x-1 shrink-0">
                         <span className="bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-extrabold text-[9px] px-1 py-0.2 rounded">
@@ -524,58 +647,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                   );
                 })}
                 {rayonStats.caregivers.length === 0 && (
-                  <div className="py-4 text-center text-[10px] text-slate-400 italic">
+                  <div className="col-span-full py-4 text-center text-[10px] text-slate-400 italic">
                     Немає призначених опікунів
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 4. Attendance ("Відвідування") */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
-              <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
-                Аналіз Відвідування
-              </span>
-              <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-0.5">
-                {rayonStats.attendance.map(([lbl, val]) => {
-                  const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
-                  return (
-                    <div key={lbl} className="flex items-center justify-between text-[10px]">
-                      <span className="text-slate-100 truncate max-w-[130px]">{lbl || 'н/д'}</span>
-                      <span className="font-mono text-[9px] font-bold text-slate-200">
-                        {val} <span className="text-slate-400 font-normal">({pct}%)</span>
-                      </span>
-                    </div>
-                  );
-                })}
-                {rayonStats.attendance.length === 0 && (
-                  <div className="py-3 text-center text-[10px] text-slate-400 italic">
-                    Немає даних відвідуваності
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* 5. Reason for absence ("Прич. відсутності") */}
-            <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2">
-              <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
-                Причини відсутності
-              </span>
-              <div className="space-y-1.5 max-h-[90px] overflow-y-auto pr-0.5">
-                {rayonStats.presence.map(([lbl, val]) => {
-                  const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
-                  return (
-                    <div key={lbl} className="flex items-center justify-between text-[10px]">
-                      <span className="text-slate-100 truncate max-w-[130px]">{lbl || 'н/д'}</span>
-                      <span className="font-mono text-[9px] font-bold text-slate-200">
-                        {val} <span className="text-slate-400 font-normal">({pct}%)</span>
-                      </span>
-                    </div>
-                  );
-                })}
-                {rayonStats.presence.length === 0 && (
-                  <div className="py-3 text-center text-[10px] text-slate-400 italic">
-                    Немає записаних причин
                   </div>
                 )}
               </div>
@@ -584,24 +657,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
         </div>
       )}
 
-      {/* Stats Counter Cards */}
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 animate-fade-in">
-        {cards.map(c => (
-          <div key={c.id} className="flex items-center justify-between rounded-lg border border-[#204250] bg-[#1a3843]/80 p-3.5 shadow-sm">
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">{c.title}</span>
-              <div className="font-display text-xl sm:text-2xl font-black text-white">{c.value}</div>
-              <p className="text-[9px] text-slate-300 font-medium">{c.sub}</p>
-            </div>
-            <div className={`rounded-lg border p-1.5 shrink-0 ${c.color}`}>
-              <c.icon className="h-4 w-4" />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Grid of details charts */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* Grid of details charts - 2 columns layout since Districts is moved to selected rayon */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         
         {/* Gender & Marital State */}
         <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
@@ -640,21 +697,6 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
           </div>
         </div>
 
-        {/* Structural Area Parish Density */}
-        <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
-          <div className="border-b border-white/10 pb-2">
-            <h3 className="font-display font-semibold text-sm text-slate-100">Райони структури (rayon2)</h3>
-            <p className="text-[10px] text-slate-350">Охоплення районів міста за кількістю членів громади</p>
-          </div>
-          <div className="max-h-[210px] overflow-y-auto space-y-2 pr-0.5">
-            {Object.entries(stats.areaStats)
-              .sort((a, b) => b[1] - a[1])
-              .map(([lbl, val]) => 
-                renderBar(lbl === "" ? "н/д" : lbl, val, stats.activeMembers, "bg-emerald-400")
-              )}
-          </div>
-        </div>
-
         {/* Education & Social Class Group */}
         <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
           <div className="border-b border-white/10 pb-2">
@@ -685,6 +727,43 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
           </div>
         </div>
 
+      </div>
+
+      {/* Collapsible Total Register Stats Accordion at the very bottom */}
+      <div className="border border-[#204250] bg-[#1a3843]/60 rounded-xl overflow-hidden transition-all duration-300">
+        <button
+          onClick={() => setShowTotalRegisterStats(!showTotalRegisterStats)}
+          className="w-full flex items-center justify-between p-4 text-left font-display font-semibold text-xs sm:text-sm text-slate-100 hover:bg-[#204250]/40 transition-colors"
+        >
+          <div className="flex items-center space-x-2">
+            <Users className="h-4 w-5 text-emerald-400 shrink-0" />
+            <span>Загальна статистика реєстру громади (всі записи, вибули, активні)</span>
+          </div>
+          {showTotalRegisterStats ? (
+            <ChevronUp className="h-4 w-4 text-slate-300 shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-slate-300 shrink-0" />
+          )}
+        </button>
+        
+        {showTotalRegisterStats && (
+          <div className="p-4 border-t border-white/5 bg-[#142d36]/40 animate-slide-up duration-200">
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+              {cards.map(c => (
+                <div key={c.id} className="flex items-center justify-between rounded-lg border border-[#204250] bg-[#1a3843]/85 p-3.5 shadow-sm">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">{c.title}</span>
+                    <div className="font-display text-xl sm:text-2xl font-black text-white">{c.value}</div>
+                    <p className="text-[9px] text-slate-300 font-medium">{c.sub}</p>
+                  </div>
+                  <div className={`rounded-lg border p-1.5 shrink-0 ${c.color}`}>
+                    <c.icon className="h-4 w-4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

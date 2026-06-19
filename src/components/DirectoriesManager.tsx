@@ -866,110 +866,123 @@ export default function DirectoriesManager({
               </div>
 
               {isAdmin && showAccessForm && (
-                <form onSubmit={handleSaveAccessUser} className="bg-[#13282e]/80 border border-[#224853]/70 rounded-xl p-4 space-y-3 shadow-md animate-slide-up">
-                  <div className="flex items-center space-x-2 border-b border-[#224853]/45 pb-2">
-                    <ShieldAlert className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
-                    <span className="font-bold text-xs uppercase tracking-wider text-slate-250">
-                      {editingAccessUser ? `Редагування користувача: ${editingAccessUser.user}` : "Створення нового користувача"}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Служитель (ПІБ)</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="Напр. Черняк Вал."
-                        value={accessUser}
-                        onChange={e => setAccessUser(e.target.value)}
-                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Рівень доступу</label>
-                      <select
-                        value={accessLevel}
-                        onChange={e => setAccessLevel(e.target.value)}
-                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                  <div className="bg-[#13282e] border border-[#224853] rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
+                    <div className="flex items-center justify-between p-4 border-b border-[#224853]/45">
+                      <div className="flex items-center space-x-2">
+                        <ShieldAlert className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
+                        <span className="font-bold text-xs uppercase tracking-wider text-slate-250">
+                          {editingAccessUser ? `Редагування користувача: ${editingAccessUser.user}` : "Створення нового користувача"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowAccessForm(false);
+                          setEditingAccessUser(null);
+                        }}
+                        className="text-slate-400 hover:text-white"
                       >
-                        <option value="І-й">І-й рівень (Служитель/Сектор)</option>
-                        <option value="ІІ-й">ІІ-й рівень (Диякон)</option>
-                        <option value="ІІІ-й">ІІІ-й рівень (Пресвітер)</option>
-                        <option value="IV-й">IV-й рівень (Адміністратор)</option>
-                      </select>
+                        ✕
+                      </button>
                     </div>
+                    <form onSubmit={handleSaveAccessUser} className="p-4 space-y-3 overflow-y-auto">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Служитель (ПІБ)</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="Напр. Черняк Вал."
+                            value={accessUser}
+                            onChange={e => setAccessUser(e.target.value)}
+                            className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Позиція за реєстром</label>
-                      <input
-                        type="text"
-                        placeholder="Напр. Диякон, Пресвітер"
-                        value={accessPosition}
-                        onChange={e => setAccessPosition(e.target.value)}
-                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Рівень доступу</label>
+                          <select
+                            value={accessLevel}
+                            onChange={e => setAccessLevel(e.target.value)}
+                            className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
+                          >
+                            <option value="І-й">І-й рівень (Служитель/Сектор)</option>
+                            <option value="ІІ-й">ІІ-й рівень (Диякон)</option>
+                            <option value="ІІІ-й">ІІІ-й рівень (Пресвітер)</option>
+                            <option value="IV-й">IV-й рівень (Адміністратор)</option>
+                          </select>
+                        </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Телеграм ID</label>
-                      <input
-                        type="text"
-                        placeholder="Напр. 969538290"
-                        value={accessTelegramId}
-                        onChange={e => setAccessTelegramId(e.target.value)}
-                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Позиція за реєстром</label>
+                          <input
+                            type="text"
+                            placeholder="Напр. Диякон, Пресвітер"
+                            value={accessPosition}
+                            onChange={e => setAccessPosition(e.target.value)}
+                            className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Пароль</label>
-                      <input
-                        type="text"
-                        placeholder="Вкажіть пароль для входу"
-                        value={accessPassword}
-                        onChange={e => setAccessPassword(e.target.value)}
-                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
-                      />
-                    </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Телеграм ID</label>
+                          <input
+                            type="text"
+                            placeholder="Напр. 969538290"
+                            value={accessTelegramId}
+                            onChange={e => setAccessTelegramId(e.target.value)}
+                            className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
+                          />
+                        </div>
 
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Сектор / Район опіки</label>
-                      <select
-                        value={accessRayon}
-                        onChange={e => setAccessRayon(e.target.value)}
-                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
-                      >
-                        <option value="ВСІ">ВСІ</option>
-                        <option value="ЦЕНТР">ЦЕНТР</option>
-                        {((lookups?.directories?.rayon2 || []) as string[]).map((r: string) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                    </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Пароль</label>
+                          <input
+                            type="text"
+                            placeholder="Вкажіть пароль для входу"
+                            value={accessPassword}
+                            onChange={e => setAccessPassword(e.target.value)}
+                            className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Сектор / Район опіки</label>
+                          <select
+                            value={accessRayon}
+                            onChange={e => setAccessRayon(e.target.value)}
+                            className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
+                          >
+                            <option value="ВСІ">ВСІ</option>
+                            <option value="ЦЕНТР">ЦЕНТР</option>
+                            {((lookups?.directories?.rayon2 || []) as string[]).map((r: string) => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="flex justify-end space-x-2 pt-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAccessForm(false);
+                            setEditingAccessUser(null);
+                          }}
+                          className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded font-bold transition-all outline-none"
+                        >
+                          Скасувати
+                        </button>
+                        <button
+                          type="submit"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-1.5 rounded font-black transition-all outline-none shadow-md flex items-center space-x-1"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span>{editingAccessUser ? "Зберегти" : "Створити"}</span>
+                        </button>
+                      </div>
+                    </form>
                   </div>
-
-                  <div className="flex justify-end space-x-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAccessForm(false);
-                        setEditingAccessUser(null);
-                      }}
-                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded font-bold transition-all outline-none"
-                    >
-                      Скасувати
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-1.5 rounded font-black transition-all outline-none shadow-md flex items-center space-x-1"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                      <span>{editingAccessUser ? "Зберегти" : "Створити"}</span>
-                    </button>
-                  </div>
-                </form>
+                </div>
               )}
 
               {/* List map */}

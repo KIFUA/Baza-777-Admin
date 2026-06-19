@@ -632,7 +632,6 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       <div class="lower-grid">
         <!-- РОЗПОДІЛ ОПІКИ (Об'єднані блоки Райони Структури та Опікуни) -->
         <div class="care-card" style="margin-bottom: 0;">
-          <h3 class="card-title" style="font-size: 11px; margin-bottom: 12px; border-bottom: 1px solid #cbd5e1; padding-bottom: 6px;">💚 РОЗПОДІЛ ОПІКИ</h3>
           <div style="box-sizing: border-box;">
             
             <!-- Райони структури -->
@@ -907,18 +906,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                       Аналіз Відвідування
                     </span>
                     <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-0.5 mt-1.5">
-                      {rayonStats.attendance.map(([lbl, val]) => {
-                        const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
-                        return (
-                          <div key={lbl} className="flex items-center justify-between text-[10px] w-full">
-                            <span className="text-slate-100 truncate max-w-[135px] shrink-0">{lbl || 'н/д'}</span>
-                            <div className="flex-1 border-b border-dotted border-white/15 mx-2 self-center h-0.5 opacity-25" />
-                            <span className="font-mono text-[9px] font-bold text-slate-200 shrink-0">
-                              {val} <span className="text-slate-400 font-normal">({pct}%)</span>
-                            </span>
-                          </div>
-                        );
-                      })}
+                      {rayonStats.attendance.map(([lbl, val]) => 
+                        renderBar(lbl || 'н/д', val, rayonStats.total, "bg-blue-400", true)
+                      )}
                       {rayonStats.attendance.length === 0 && (
                         <div className="py-3 text-center text-[10px] text-slate-400 italic">
                           Немає даних відвідуваності
@@ -935,18 +925,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                       Причини відсутності
                     </span>
                     <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-0.5 mt-1.5">
-                      {rayonStats.presence.map(([lbl, val]) => {
-                        const pct = rayonStats.total > 0 ? Math.round((val / rayonStats.total) * 100) : 0;
-                        return (
-                          <div key={lbl} className="flex items-center justify-between text-[10px] w-full">
-                            <span className="text-slate-100 truncate max-w-[135px] shrink-0">{lbl}</span>
-                            <div className="flex-1 border-b border-dotted border-white/15 mx-2 self-center h-0.5 opacity-25" />
-                            <span className="font-mono text-[9px] font-bold text-slate-200 shrink-0">
-                              {val} <span className="text-slate-400 font-normal">({pct}%)</span>
-                            </span>
-                          </div>
-                        );
-                      })}
+                      {rayonStats.presence.map(([lbl, val]) => 
+                        renderBar(lbl, val, rayonStats.total, "bg-red-400", true)
+                      )}
                       {rayonStats.presence.length === 0 && (
                         <div className="py-3 text-center text-[10px] text-slate-400 italic">
                           Всі присутні
@@ -956,16 +937,44 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                   </div>
                 </div>
               </div>
+              
+              {/* Added Marital Status and Education Blocks */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                 <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
+                    <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Сімейний стан</span>
+                    <div className="space-y-1 mt-1.5 text-[10px]">
+                      {Object.entries(rayonStats.marital).map(([label, value]) =>
+                         renderBar(label, value as number, Object.values(rayonStats.marital as Record<string, number>).reduce((acc: number, curr: number) => acc + curr, 0), "bg-indigo-400", true)
+                      )}
+                    </div>
+                 </div>
+                 
+                 <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
+                    <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Освіта та Соц. статус</span>
+                    <div className="space-y-3 mt-1.5">
+                      <div className="space-y-1">
+                         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Рівень освіти</span>
+                         {Object.entries(stats.educationStats).map(([lbl, val]) => 
+                            renderBar(lbl, val, stats.activeMembers, "bg-violet-400")
+                         )}
+                      </div>
+                      <div className="space-y-1 pt-1">
+                         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Соціальна категорія</span>
+                         {Object.entries(stats.socialStats)
+                           .sort((a, b) => b[1] - a[1])
+                           .slice(0, 4)
+                           .map(([lbl, val]) => 
+                             renderBar(lbl, val, stats.activeMembers, "bg-amber-400")
+                           )
+                         }
+                      </div>
+                    </div>
+                 </div>
+              </div>
             </div>
 
             {/* COLUMN 3: РОЗПОДІЛ ОПІКИ */}
             <div className="md:col-span-12 lg:col-span-6 bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-3 flex flex-col">
-              <div className="border-b border-white/5 pb-1">
-                <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block">
-                  РОЗПОДІЛ ОПІКИ
-                </span>
-                <span className="text-[8px] text-slate-400 block">Райони структури та пастирська опіка («Опікун»)</span>
-              </div>
               
               <div className="space-y-4">
                 {/* Top side: Райони структури */}
@@ -986,7 +995,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                 {/* Bottom side: Список опікунів */}
                 <div className="space-y-2 pt-2 border-t border-white/5">
                   <span className="text-[8px] font-bold text-slate-350 uppercase tracking-wider block">👤 Список опікунів</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[180px] overflow-y-auto pr-0.5 p-0.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-0.5">
                     {rayonStats.caregivers.map(([name, count]) => {
                       const pct = rayonStats.total > 0 ? Math.round((count / rayonStats.total) * 100) : 0;
                       return (
@@ -1016,57 +1025,6 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
           </div>
         </div>
       )}
-
-      {/* Grid of details charts - 2 columns layout since Districts is moved to selected rayon */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        
-        {/* Gender & Marital State */}
-        <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
-          <div className="border-b border-white/10 pb-2">
-            <h3 className="font-display font-bold text-sm text-slate-100">Сімейний стан</h3>
-          </div>
-          
-          <div className="space-y-4">
-            {/* Marital status bar chart */}
-            <div className="space-y-3">
-              {Object.entries(stats.maritalStats).map(([lbl, val]) => 
-                renderBar(lbl, val, stats.activeMembers, "bg-indigo-400")
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Education & Social Class Group */}
-        <div className="rounded-lg border border-[#204250] bg-[#1a3843]/80 p-4 shadow-sm space-y-4">
-          <div className="border-b border-white/10 pb-2">
-            <h3 className="font-display font-semibold text-sm text-slate-100">Освіта та Соціальний статус</h3>
-            <p className="text-[10px] text-slate-350">Розділ за рівнями навчання та соціальним класом</p>
-          </div>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Рівень освіти</span>
-              <div className="space-y-2">
-                {Object.entries(stats.educationStats).map(([lbl, val]) => 
-                  renderBar(lbl, val, stats.activeMembers, "bg-violet-400")
-                )}
-              </div>
-            </div>
-            
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Соціальна категорія</span>
-              <div className="space-y-2">
-                {Object.entries(stats.socialStats)
-                  .sort((a, b) => b[1] - a[1])
-                  .slice(0, 4)
-                  .map(([lbl, val]) => 
-                    renderBar(lbl, val, stats.activeMembers, "bg-amber-400")
-                  )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
 
       {/* Collapsible Total Register Stats Accordion at the very bottom */}
       <div className="border border-[#204250] bg-[#1a3843]/60 rounded-xl overflow-hidden transition-all duration-300">

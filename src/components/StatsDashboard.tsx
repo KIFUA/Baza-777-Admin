@@ -812,7 +812,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
           <div className={`flex-1 border-b border-dotted border-white/15 ${isCompact ? "mx-1.5" : "mx-2"} self-center h-0.5 opacity-30`} />
           <span className="text-slate-350 shrink-0">{value} ({pct}%)</span>
         </div>
-        <div className={`${isCompact ? "h-1" : "h-1.5"} w-full overflow-hidden rounded-full bg-slate-800/50`}>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800/50">
           <div className={`h-full rounded-full transition-all duration-500 ${colorClass}`} style={{ width: `${pct}%` }}></div>
         </div>
       </div>

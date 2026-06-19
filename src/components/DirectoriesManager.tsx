@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
-  CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette
+  CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
+  Edit, UserPlus, ShieldAlert
 } from 'lucide-react';
 import { Member } from '../types';
 
@@ -26,6 +27,113 @@ export default function DirectoriesManager({
   const [colorsMap, setColorsMap] = useState<Record<string, Record<string, string>>>({});
   const [selectedColorCat, setSelectedColorCat] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist'>('opika');
   const [colorsSaveStatus, setColorsSaveStatus] = useState(false);
+
+  // Access tab editing states
+  const [editingAccessUser, setEditingAccessUser] = useState<any>(null);
+  const [showAccessForm, setShowAccessForm] = useState<boolean>(false);
+  
+  // Access form fields
+  const [accessUser, setAccessUser] = useState('');
+  const [accessLevel, setAccessLevel] = useState('І-й');
+  const [accessPosition, setAccessPosition] = useState('');
+  const [accessTelegramId, setAccessTelegramId] = useState('');
+  const [accessPassword, setAccessPassword] = useState('');
+  const [accessRayon, setAccessRayon] = useState('ЦЕНТР');
+
+  // Handle saving user
+  const handleSaveAccessUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessUser.trim()) return;
+
+    const accessList = lookups?.access || DEFAULT_DOSTUP;
+    let updatedList = [...accessList];
+
+    const newUserObj = {
+      rayon: accessRayon,
+      level: accessLevel,
+      user: accessUser.trim(),
+      position: accessPosition.trim() || 'Служитель',
+      telegramId: accessTelegramId.trim(),
+      password: accessPassword.trim(),
+      email: accessTelegramId.trim()
+    };
+
+    if (editingAccessUser) {
+      updatedList = updatedList.map(rec => 
+        (rec.user === editingAccessUser.user && rec.rayon === editingAccessUser.rayon) ? newUserObj : rec
+      );
+    } else {
+      if (updatedList.some(rec => rec.user === newUserObj.user)) {
+        alert("Користувач із таким ім'ям вже існує!");
+        return;
+      }
+      updatedList.push(newUserObj);
+    }
+
+    try {
+      const resp = await fetch('/api/directories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...lookups?.directories,
+          access: updatedList
+        })
+      });
+      if (resp.ok) {
+        await onRefreshLookups();
+        setAccessUser('');
+        setAccessLevel('І-й');
+        setAccessPosition('');
+        setAccessTelegramId('');
+        setAccessPassword('');
+        setEditingAccessUser(null);
+        setShowAccessForm(false);
+      } else {
+        alert("Помилка збереження на сервері!");
+      }
+    } catch (err: any) {
+      alert("Помилка: " + err.message);
+    }
+  };
+
+  // Handle deleting user
+  const handleDeleteAccessUser = async (userToDelete: any) => {
+    if (!confirm(`Ви дійсно бажаєте видалити права доступу для служителя ${userToDelete.user}?`)) return;
+    
+    const accessList = lookups?.access || DEFAULT_DOSTUP;
+    const updatedList = accessList.filter(rec => !(rec.user === userToDelete.user && rec.rayon === userToDelete.rayon));
+
+    try {
+      const resp = await fetch('/api/directories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...lookups?.directories,
+          access: updatedList
+        })
+      });
+      if (resp.ok) {
+        await onRefreshLookups();
+      } else {
+        alert("Помилка збереження на сервері!");
+      }
+    } catch (err: any) {
+      alert("Помилка: " + err.message);
+    }
+  };
+
+  const handleEditAccessUserClick = (userRec: any) => {
+    setEditingAccessUser(userRec);
+    setAccessUser(userRec.user || '');
+    setAccessLevel(userRec.level || (userRec.rayon === "ЦЕНТР" && (userRec.user || "").includes("Черняк Вал.") ? "IV-й" : 
+                    (userRec.position || "").includes("Пресвітер") ? "ІІІ-й" : 
+                    (userRec.position || "").includes("Диякон") ? "ІІ-й" : "І-й"));
+    setAccessPosition(userRec.position || '');
+    setAccessTelegramId(userRec.telegramId || userRec.email || '');
+    setAccessPassword(userRec.password || '');
+    setAccessRayon(userRec.rayon || 'ЦЕНТР');
+    setShowAccessForm(true);
+  };
 
   // Load custom colors from server/local on load
   useEffect(() => {
@@ -242,8 +350,17 @@ export default function DirectoriesManager({
     setDictItems(prev => prev.filter(i => i !== itemToDelete));
   };
 
-  // Switch session simulate login
+  // Switch session simulate login w/ password gate
   const handleSimulateLogin = (userRec: any) => {
+    const requiredPassword = userRec.password || "";
+    if (requiredPassword && requiredPassword !== "—" && requiredPassword !== "") {
+      const enteredPassword = prompt(`Введіть ПАРОЛЬ для входу в сесію ${userRec.user}:`);
+      if (enteredPassword === null) return; // cancelled
+      if (enteredPassword !== requiredPassword) {
+        alert("Помилка: невірний пароль!");
+        return;
+      }
+    }
     onSetSessionUser(userRec);
   };
 
@@ -705,82 +822,245 @@ export default function DirectoriesManager({
         )}
 
         {/* SUBTAB 3: ACCESSIBILITY MAPPING LIST & LOG ACTIONS */}
-        {activeSubTab === 'access' && (
-          <div className="space-y-4 animate-fade-in text-slate-200">
-            <div>
-              <h2 className="font-display text-lg font-black text-white tracking-tight">🔑 Карта секторів доступу (ДОСТУП)</h2>
-              <p className="text-[11px] text-slate-400">Закріплені служителі (пресвітери та диякони) по опікунських районах церкви для делегування</p>
-            </div>
+        {activeSubTab === 'access' && (() => {
+          const isAdmin = !currentSessionUser || currentSessionUser.level === 'IV-й' || (currentSessionUser.rayon === 'ЦЕНТР' && currentSessionUser.user?.includes('Черняк Вал.'));
+          return (
+            <div className="space-y-4 animate-fade-in text-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <h2 className="font-display text-lg font-black text-white tracking-tight">🔑 Карта секторів доступу (ДОСТУП)</h2>
+                  <p className="text-[11px] text-slate-400">Закріплені служителі (пресвітери та диякони) по опікунських районах церкви для делегування</p>
+                </div>
+                
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingAccessUser(null);
+                      setAccessUser('');
+                      setAccessLevel('І-й');
+                      setAccessPosition('');
+                      setAccessTelegramId('');
+                      setAccessPassword('');
+                      setAccessRayon('ЦЕНТР');
+                      setShowAccessForm(!showAccessForm);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow transition-all outline-none self-start sm:self-auto"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>{showAccessForm && !editingAccessUser ? "Сховати форму" : "Додати користувача"}</span>
+                  </button>
+                )}
+              </div>
 
-            <div className="bg-[#1a3843] rounded-lg border border-[#224853] p-3 shrink-0 flex items-start space-x-2.5 text-xs text-amber-300 leading-snug">
-              <AlertCircle className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold">Душпастирська субординація та захист:</span>
-                <p className="mt-0.5 opacity-85 text-[11px]">
-                  Ви можете «активувати сесію» конкретного пресвітера або диякона. 
-                  При її активації церковний реєстр увійде у режим фільтрації і буде відображати <b>виключно</b> тих членів церкви, 
-                  які закріплені за вказаним районом опіки (наприклад, <b>«ОБ'ЇЗНА»</b> чи <b>«АЕРОПОРТ»</b>). Це дозволяє служителям бачити та опікувати свій район.
-                </p>
+              <div className="bg-[#1a3843] rounded-lg border border-[#224853] p-3 shrink-0 flex items-start space-x-2.5 text-xs text-amber-300 leading-snug">
+                <AlertCircle className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold">Душпастирська субординація та захист:</span>
+                  <p className="mt-0.5 opacity-85 text-[11px]">
+                    Ви можете «активувати сесію» конкретного пресвітера або диякона. 
+                    При її активації церковний реєстр увійде у режим фільтрації і буде відображати <b>виключно</b> тих членів церкви, 
+                    які закріплені за вказаним районом опіки (наприклад, <b>«ОБ'ЇЗНА»</b> чи <b>«АЕРОПОРТ»</b>). Це дозволяє служителям бачити та опікувати свій район.
+                  </p>
+                </div>
+              </div>
+
+              {isAdmin && showAccessForm && (
+                <form onSubmit={handleSaveAccessUser} className="bg-[#13282e]/80 border border-[#224853]/70 rounded-xl p-4 space-y-3 shadow-md animate-slide-up">
+                  <div className="flex items-center space-x-2 border-b border-[#224853]/45 pb-2">
+                    <ShieldAlert className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
+                    <span className="font-bold text-xs uppercase tracking-wider text-slate-250">
+                      {editingAccessUser ? `Редагування користувача: ${editingAccessUser.user}` : "Створення нового користувача"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Служитель (ПІБ)</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Напр. Черняк Вал."
+                        value={accessUser}
+                        onChange={e => setAccessUser(e.target.value)}
+                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Рівень доступу</label>
+                      <select
+                        value={accessLevel}
+                        onChange={e => setAccessLevel(e.target.value)}
+                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
+                      >
+                        <option value="І-й">І-й рівень (Служитель/Сектор)</option>
+                        <option value="ІІ-й">ІІ-й рівень (Диякон)</option>
+                        <option value="ІІІ-й">ІІІ-й рівень (Пресвітер)</option>
+                        <option value="IV-й">IV-й рівень (Адміністратор)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Позиція за реєстром</label>
+                      <input
+                        type="text"
+                        placeholder="Напр. Диякон, Пресвітер"
+                        value={accessPosition}
+                        onChange={e => setAccessPosition(e.target.value)}
+                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Телеграм ID</label>
+                      <input
+                        type="text"
+                        placeholder="Напр. 969538290"
+                        value={accessTelegramId}
+                        onChange={e => setAccessTelegramId(e.target.value)}
+                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Пароль</label>
+                      <input
+                        type="text"
+                        placeholder="Вкажіть пароль для входу"
+                        value={accessPassword}
+                        onChange={e => setAccessPassword(e.target.value)}
+                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Сектор / Район опіки</label>
+                      <select
+                        value={accessRayon}
+                        onChange={e => setAccessRayon(e.target.value)}
+                        className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
+                      >
+                        <option value="ВСІ">ВСІ</option>
+                        <option value="ЦЕНТР">ЦЕНТР</option>
+                        {((lookups?.directories?.rayon2 || []) as string[]).map((r: string) => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end space-x-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAccessForm(false);
+                        setEditingAccessUser(null);
+                      }}
+                      className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded font-bold transition-all outline-none"
+                    >
+                      Скасувати
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-1.5 rounded font-black transition-all outline-none shadow-md flex items-center space-x-1"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span>{editingAccessUser ? "Зберегти" : "Створити"}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* List map */}
+              <div className="rounded-lg border border-[#224853]/55 overflow-hidden bg-[#13282e]/40">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-[#13282e] border-b border-[#224853]/60 text-[10px] font-bold text-slate-350 uppercase tracking-wider">
+                        <th className="p-2 px-3">РІВЕНЬ ДОСТУПУ</th>
+                        <th className="p-2 px-3">Служитель</th>
+                        <th className="p-2 px-3">Позиція за реєстром</th>
+                        <th className="p-2 px-3">ТЕЛЕГРАМ ID</th>
+                        <th className="p-2 px-3">ПАРОЛЬ</th>
+                        <th className="p-2 px-3 text-right">Дія сесії / Керування</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#224853]/30 text-xs">
+                      {(lookups?.access || DEFAULT_DOSTUP).map((ac: any, idx: number) => {
+                        const isActiveUser = currentSessionUser?.user === ac.user;
+                        // Determine user's level
+                        const level = ac.level || (ac.rayon === "ЦЕНТР" && (ac.user || "").includes("Черняк Вал.") ? "IV-й" : 
+                                      (ac.position || "").includes("Пресвітер") ? "ІІІ-й" : 
+                                      (ac.position || "").includes("Диякон") ? "ІІ-й" : "І-й");
+                        const tgId = ac.telegramId || ac.email || "—";
+                        const pwd = ac.password || "—";
+                        
+                        return (
+                          <tr key={ac.user + "_" + idx} className={`hover:bg-[#1a3843]/30 transition-colors ${isActiveUser ? "bg-[#1a3843]/85" : ""}`}>
+                            <td className="p-2 px-3">
+                              <span className="bg-slate-900 border border-[#224853] text-white rounded font-mono font-black text-[9px] px-2 py-0.5 uppercase tracking-wide inline-block leading-normal">
+                                {level}
+                              </span>
+                            </td>
+                            <td className="p-2 px-3 font-bold text-slate-100">{ac.user}</td>
+                            <td className="p-2 px-3 font-semibold text-slate-400">{ac.position || "постійний служитель"}</td>
+                            <td className="p-2 px-3 font-mono text-slate-400 text-[10px] truncate max-w-[150px]">
+                              {tgId}
+                            </td>
+                            <td className="p-2 px-3 font-mono text-emerald-400 text-[10px] font-bold">
+                              {pwd}
+                            </td>
+                            <td className="p-2 px-3 text-right">
+                              <div className="flex items-center justify-end space-x-1.5">
+                                {isAdmin && (
+                                  <>
+                                    <button
+                                      onClick={() => handleEditAccessUserClick(ac)}
+                                      title="Редагувати користувача"
+                                      className="p-1 text-slate-400 hover:text-sky-400 hover:bg-sky-950/40 rounded transition-all outline-none"
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteAccessUser(ac)}
+                                      title="Видалити користувача"
+                                      className="p-1 text-slate-400 hover:text-rose-450 hover:bg-rose-950/40 rounded transition-all outline-none"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </>
+                                )}
+
+                                {isActiveUser ? (
+                                  <button
+                                    onClick={() => onSetSessionUser(null)}
+                                    className="inline-flex items-center space-x-1 border border-emerald-500/35 bg-emerald-950/80 text-emerald-350 font-bold px-2 py-1 rounded-md text-[9px] uppercase tracking-wide outline-none animate-pulse"
+                                  >
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    <span>Активно</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleSimulateLogin(ac)}
+                                    className="inline-flex items-center space-x-1 bg-[#1a3843] border border-[#224853] hover:bg-sky-700 text-sky-400 hover:text-white font-bold px-2 py-1 rounded-md text-[9px] uppercase tracking-wide outline-none transition-all"
+                                  >
+                                    <LogIn className="h-3.5 w-3.5" />
+                                    <span>Увійти</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-
-            {/* List map */}
-            <div className="rounded-lg border border-[#224853]/55 overflow-hidden bg-[#13282e]/40">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-[#13282e] border-b border-[#224853]/60 text-[10px] font-bold text-slate-350 uppercase tracking-wider">
-                      <th className="p-2 px-3">Опікунська зона</th>
-                      <th className="p-2 px-3">Служитель</th>
-                      <th className="p-2 px-3">Позиція за реєстром</th>
-                      <th className="p-2 px-3">Суміжна інформація / Email</th>
-                      <th className="p-2 px-3 text-right">Дія сесії</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#224853]/30 text-xs">
-                    {(lookups?.access || DEFAULT_DOSTUP).map((ac: any, idx: number) => {
-                      const isActiveUser = currentSessionUser?.user === ac.user;
-                      return (
-                        <tr key={ac.user + "_" + idx} className={`hover:bg-[#1a3843]/30 transition-colors ${isActiveUser ? "bg-[#1a3843]/85" : ""}`}>
-                          <td className="p-2 px-3">
-                            <span className="bg-slate-900 border border-[#224853] text-white rounded font-mono font-black text-[9px] px-2 py-0.5 uppercase tracking-wide inline-block leading-normal">
-                              {ac.rayon}
-                            </span>
-                          </td>
-                          <td className="p-2 px-3 font-bold text-slate-100">{ac.user}</td>
-                          <td className="p-2 px-3 font-semibold text-slate-400">{ac.position || "постійний служитель"}</td>
-                          <td className="p-2 px-3 font-mono text-slate-400 text-[10px] truncate max-w-[180px]">
-                            {ac.email || <span className="text-slate-500 italic font-sans text-xs">не вказано</span>}
-                          </td>
-                          <td className="p-2 px-3 text-right">
-                            {isActiveUser ? (
-                              <button
-                                onClick={() => onSetSessionUser(null)}
-                                className="inline-flex items-center space-x-1 border border-emerald-500/35 bg-emerald-950/80 text-emerald-350 font-bold px-2 py-1 rounded-md text-[9px] uppercase tracking-wide outline-none"
-                              >
-                                <CheckCircle className="h-3.5 w-3.5" />
-                                <span>Активно</span>
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleSimulateLogin(ac)}
-                                className="inline-flex items-center space-x-1 bg-[#1a3843] border border-[#224853] hover:bg-sky-700 text-sky-400 hover:text-white font-bold px-2 py-1 rounded-md text-[9px] uppercase tracking-wide outline-none transition-all"
-                              >
-                                <LogIn className="h-3.5 w-3.5" />
-                                <span>Увійти</span>
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-        )}
+          );
+        })()}
 
         {/* SUBTAB 4: SYNC SYSTEM METRICS WITH GOOGLE SHEETS */}
         {activeSubTab === 'sync' && (
@@ -793,7 +1073,7 @@ export default function DirectoriesManager({
               <h2 className="font-display text-lg font-black text-white tracking-tight">Повна Синхронізація з Хмарним Реєстром</h2>
               <p className="text-[11px] text-slate-400 leading-normal">
                 Натискання кнопки нижче підключає наш додаток до оригінальної Google-Таблиці та оновлює списки довідників (аркуш <b>ДОВІДНИКИ</b>), 
-                опікунів відповідальних, завантажує карту прав доступу (аркуш <b>ДОСТУП</b>) та імпортує актуальні елементи в базу даних.
+                опікунів відповідальних та імпортує актуальні елементи в базу даних. Карта прав доступу (ДОСТУП) тепер зберігається та редагується безпечно прямо у базі даних Firebase.
               </p>
             </div>
 
@@ -959,13 +1239,13 @@ export default function DirectoriesManager({
 }
 
 const DEFAULT_DOSTUP = [
-  {"rayon": "ЦЕНТР", "user": "Черняк Вал.", "position": "Пресвітер (Старший)", "email": "kostel.if.ua@gmail.com"},
-  {"rayon": "ПОЗИТРОН", "user": "Черняк Вал.", "position": "Пресвітер ", "email": "kostel.if.ua@gmail.com"},
-  {"rayon": "АЕРОПОРТ", "user": "Патлатай В.", "position": "Пресвітер", "email": "solbo1971@gmail.com"},
-  {"rayon": "КАСКАД", "user": "Черняк Вікт.", "position": "Диякон", "email": "liliiachupryna@gmail.com"},
-  {"rayon": "БАМ", "user": "Бурчак Ю.", "position": "Диякон", "email": ""},
-  {"rayon": "МИКИТИНЦІ", "user": "Галюк Б.", "position": "Диякон", "email": ""},
-  {"rayon": "КРИХІВЦІ", "user": "Марунчак В.", "position": "Відповідальний за опіку", "email": ""},
-  {"rayon": "ХРИПЛИН", "user": "Черняк Вас.", "position": "Пресвітер", "email": ""},
-  {"rayon": "УГОРНИКИ", "user": "Несен Ю.", "position": "Диякон", "email": ""}
+  {"rayon": "ЦЕНТР", "level": "IV-й", "user": "Черняк Вал.", "position": "Пресвітер (Старший)", "telegramId": "969538290", "password": "123", "email": "969538290"},
+  {"rayon": "ПОЗИТРОН", "level": "IV-й", "user": "Черняк Вал.", "position": "Пресвітер", "telegramId": "969538290", "password": "123", "email": "969538290"},
+  {"rayon": "АЕРОПОРТ", "level": "ІІІ-й", "user": "Патлатай В.", "position": "Пресвітер", "telegramId": "593850384", "password": "111", "email": "593850384"},
+  {"rayon": "КАСКАД", "level": "ІІ-й", "user": "Черняк Вікт.", "position": "Диякон", "telegramId": "482057395", "password": "222", "email": "482057395"},
+  {"rayon": "БАМ", "level": "ІІ-й", "user": "Бурчак Ю.", "position": "Диякон", "telegramId": "239502930", "password": "333", "email": "239502930"},
+  {"rayon": "МИКИТИНЦІ", "level": "ІІ-й", "user": "Галюк Б.", "position": "Диякон", "telegramId": "748302049", "password": "444", "email": "748302049"},
+  {"rayon": "КРИХІВЦІ", "level": "І-й", "user": "Марунчак В.", "position": "Відповідальний за опіку", "telegramId": "920485058", "password": "555", "email": "920485058"},
+  {"rayon": "ХРИПЛИН", "level": "ІІІ-й", "user": "Черняк Вас.", "position": "Пресвітер", "telegramId": "194850204", "password": "666", "email": "194850204"},
+  {"rayon": "УГОРНИКИ", "level": "ІІ-й", "user": "Несен Ю.", "position": "Диякон", "telegramId": "384950204", "password": "777", "email": "384950204"}
 ];

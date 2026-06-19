@@ -111,32 +111,32 @@ const DEFAULT_RAYON2 = [
 
 // Google Sheets Tab: ДОСТУП - Default Fallback Constants
 const DEFAULT_DOSTUP = [
-  { "rayon": "ЦЕНТР", "user": "Босик Л.", "position": "", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Євстратов О.", "position": "ВІдповідальний", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Мельничук В.", "position": "Диякон", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Несен Ю.", "position": "ВІдповідальний", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Прохніцький Б.", "position": "ВІдповідальний", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Скриник М.", "position": "ВІдповідальний", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Стасінчук В.", "position": "Диякон", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Стафіїв М.", "position": "Диякон", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Факас О.", "position": "ВІдповідальний", "email": "" },
-  { "rayon": "ЦЕНТР", "user": "Черняк Вал.", "position": "Пресвітер", "email": "vacherniak@gmail.com" },
-  { "rayon": "ЦЕНТР", "user": "Шегда П.", "position": "Диякон", "email": "" },
-  { "rayon": "ОБ'ЇЗНА", "user": "Бурчак Ю.", "position": "Диякон", "email": "gvi.dim.777@gmail.com" },
-  { "rayon": "ОБ'ЇЗНА", "user": "Дмитраш М.", "position": "Диякон", "email": "" },
-  { "rayon": "ОБ'ЇЗНА", "user": "Решетило Р.", "position": "Диякон", "email": "" },
-  { "rayon": "ОБ'ЇЗНА", "user": "Стефурак Д.", "position": "Диякон", "email": "" },
-  { "rayon": "ОБ'ЇЗНА", "user": "Черняк Вас.", "position": "Пресвітер", "email": "cherniakvasylcherniak@gmail.com" },
-  { "rayon": "КАСКАД", "user": "Ільницький О.", "position": "Диякон", "email": "" },
-  { "rayon": "КАСКАД", "user": "Луцак М.", "position": "Диякон", "email": "" },
-  { "rayon": "КАСКАД", "user": "Марунчак В.", "position": "Диякон", "email": "" },
-  { "rayon": "КАСКАД", "user": "Скіцко І.", "position": "Пресвітер", "email": "ivanskitsko@ukr.net" },
-  { "rayon": "АЕРОПОРТ", "user": "Бевзюк В.", "position": "Пресвітер", "email": "vbevzyk@gmail.com" },
-  { "rayon": "АЕРОПОРТ", "user": "Галюк Б.", "position": "Диякон", "email": "+380967303099, Alla1967" },
-  { "rayon": "АЕРОПОРТ", "user": "Григорів Г.", "position": "тестувальник", "email": "grigorivgalina@gmail.com" },
-  { "rayon": "АЕРОПОРТ", "user": "Самелюк О.", "position": "Диякон", "email": "solbo1971@gmail.com" },
-  { "rayon": "АЕРОПОРТ", "user": "Черняк Вікт.", "position": "Диякон", "email": "" },
-  { "rayon": "АЕРОПОРТ", "user": "Шпарман Ю.", "position": "ВІдповідальний", "email": "" }
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Босик Л.", "position": "", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Євстратов О.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Мельничук В.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Несен Ю.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Прохніцький Б.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Скриник М.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Стасінчук В.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Стафіїв М.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Факас О.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "IV-й", "user": "Черняк Вал.", "position": "Пресвітер", "password": "123", "telegramId": "vacherniak@gmail.com", "email": "vacherniak@gmail.com" },
+  { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Шегда П.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ОБ'ЇЗНА", "level": "ІІ-й", "user": "Бурчак Ю.", "position": "Диякон", "password": "333", "telegramId": "61234567", "email": "gvi.dim.777@gmail.com" },
+  { "rayon": "ОБ'ЇЗНА", "level": "ІІ-й", "user": "Дмитраш М.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ОБ'ЇЗНА", "level": "ІІ-й", "user": "Решетило Р.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ОБ'ЇЗНА", "level": "ІІ-й", "user": "Стефурак Д.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ОБ'ЇЗНА", "level": "ІІІ-й", "user": "Черняк Вас.", "position": "Пресвітер", "password": "666", "telegramId": "969538290", "email": "cherniakvasylcherniak@gmail.com" },
+  { "rayon": "КАСКАД", "level": "ІІ-й", "user": "Ільницький О.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "КАСКАД", "level": "ІІ-й", "user": "Луцак М.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "КАСКАД", "level": "ІІ-й", "user": "Марунчак В.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "КАСКАД", "level": "ІІІ-й", "user": "Скіцко І.", "position": "Пресвітер", "password": "222", "telegramId": "ivanskitsko@ukr.net", "email": "ivanskitsko@ukr.net" },
+  { "rayon": "АЕРОПОРТ", "level": "ІІІ-й", "user": "Бевзюк В.", "position": "Пресвітер", "password": "111", "telegramId": "vbevzyk@gmail.com", "email": "vbevzyk@gmail.com" },
+  { "rayon": "АЕРОПОРТ", "level": "ІІ-й", "user": "Галюк Б.", "position": "Диякон", "password": "444", "telegramId": "Alla1967", "email": "+380967303099, Alla1967" },
+  { "rayon": "АЕРОПОРТ", "level": "І-й", "user": "Григорів Г.", "position": "тестувальник", "password": "—", "telegramId": "grigorivgalina@gmail.com", "email": "grigorivgalina@gmail.com" },
+  { "rayon": "АЕРОПОРТ", "level": "ІІ-й", "user": "Самелюк О.", "position": "Диякон", "password": "555", "telegramId": "solbo1971@gmail.com", "email": "solbo1971@gmail.com" },
+  { "rayon": "АЕРОПОРТ", "level": "ІІ-й", "user": "Черняк Вікт.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "АЕРОПОРТ", "level": "І-й", "user": "Шпарман Ю.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" }
 ];
 
 // Active State Tables (loaded from Cache or Google sheets, falling back to constants)
@@ -904,32 +904,10 @@ app.post("/api/sync-sheets", async (req, res) => {
     if (freshPrysutnist.length > 0) directories_prysutnist = freshPrysutnist;
     if (freshDiAdmin.length > 0) directories_di_admin = freshDiAdmin;
 
-    // 2. Process "ДОСТУП" sheet
-    const accSheet = workbook.Sheets["ДОСТУП"];
-    if (!accSheet) throw new Error("Sheet 'ДОСТУП' not found in spreadsheet");
-    const accRowsRaw = XLSX.utils.sheet_to_json<any[]>(accSheet, { header: 1, raw: false });
-    const accRows = (accRowsRaw || []).map(row => 
-      (row || []).map(cell => formatXlsxCell(cell))
-    );
+    // 2. Skip "ДОСТУП" sheet - registry is managed exclusively in Firebase RTDB
+    console.log("[Google Sheets Sync] Skipping ДОСТУП tab import - registry is managed in Firebase.");
     
-    const freshDostup: any[] = [];
-    // Skip row 0 (headers: РАЙОН, Користувач, Позиція, E-mail)
-    for (let r = 1; r < accRows.length; r++) {
-      const cols = accRows[r];
-      if (!cols) continue;
-      if (cols[1]) { // user name must exist
-        freshDostup.push({
-          rayon: cols[0] || "",
-          user: cols[1],
-          position: cols[2] || "",
-          email: cols[3] || ""
-        });
-      }
-    }
-    
-    if (freshDostup.length > 0) access_dostup = freshDostup;
-    
-    // Write synchronized directories and access control lists to Firebase Realtime Database
+    // Write synchronized directories to Firebase Realtime Database
     await syncDirectoriesToFirebase();
 
     // 3. Fetch and Sync members list "СПИСОК" from Google Sheets
@@ -1553,6 +1531,9 @@ app.post("/api/directories/save", async (req, res) => {
   saveDatabaseToCache();
   try {
     await syncDirectoriesToFirebase();
+    if (Array.isArray(access)) {
+      await syncAccessDostupToFirebase();
+    }
   } catch (e) {
     console.error("Firebase manual directories save error:", e);
   }
@@ -1620,7 +1601,7 @@ app.get("/api/members", async (req, res) => {
   }
 
   // Filter Area
-  if (area) {
+  if (area && area.toLowerCase() !== "всі" && area.toLowerCase() !== "все") {
     result = result.filter(m => m.rayon2_ukr.toLowerCase() === area.toLowerCase());
   }
 
@@ -2354,6 +2335,40 @@ async function saveCustomColorsToFirebase(colorsMap: any) {
   }
 }
 
+async function syncAccessDostupToFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/access_dostup.json?auth=${DB_SECRET}`;
+  try {
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(access_dostup)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    console.log("[Firebase Access Sync] Access list successfully saved to Firebase RTDB.");
+  } catch (err: any) {
+    console.error("[Firebase Access Sync] Failed to save access list to Firebase:", err.message);
+  }
+}
+
+async function syncAccessDostupFromFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/access_dostup.json?auth=${DB_SECRET}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data: any = await res.json();
+    if (Array.isArray(data)) {
+      access_dostup = data;
+      console.log("[Firebase Access Sync] Access list loaded from Firebase RTDB:", access_dostup.length, "users.");
+    } else {
+      console.log("[Firebase Access Sync] No access list found on Firebase, using current state.");
+    }
+  } catch (err: any) {
+    console.error("[Firebase Access Sync] Failed to load access list from Firebase:", err.message);
+  }
+}
+
 async function syncDirectoriesToFirebase() {
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
   const url = `${FIREBASE_URL}/directories.json?auth=${DB_SECRET}`;
@@ -2584,6 +2599,9 @@ async function syncDatabaseWithFirebase() {
   
   // Load specialized lookup directories from Firebase RTDB
   await syncDirectoriesFromFirebase();
+
+  // Load access control lists from Firebase RTDB
+  await syncAccessDostupFromFirebase();
   
   // Load custom colors configuration from Firebase RTDB
   await fetchCustomColorsFromFirebase().catch(() => {});

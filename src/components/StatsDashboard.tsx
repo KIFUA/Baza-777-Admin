@@ -119,7 +119,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       brothers,
       sisters,
       others,
-      marital: { single, married, divorced, widowed, nd },
+      marital: { "неодружені": single, "одружені": married, "розлучені": divorced, "вдова/вдівець": widowed, "не вказано": nd },
       attendance: sortedAttendance,
       presence: sortedPresence,
       caregivers: sortedCaregivers,
@@ -583,23 +583,23 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             <div class="marital-rows">
               <div class="marital-row">
                 <span style="font-weight: 600; color: #334155;">одружені</span>
-                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.married}</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital["одружені"]}</span>
               </div>
               <div class="marital-row">
                 <span style="font-weight: 600; color: #334155;">неодружені</span>
-                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.single}</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital["неодружені"]}</span>
               </div>
               <div class="marital-row">
                 <span style="font-weight: 600; color: #334155;">розлучені</span>
-                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.divorced}</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital["розлучені"]}</span>
               </div>
               <div class="marital-row">
                 <span style="font-weight: 600; color: #334155;">вдова/вдівець</span>
-                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital.widowed}</span>
+                <span style="font-weight: 700; color: #0f172a;">${rayonStats.marital["вдова/вдівець"]}</span>
               </div>
               <div class="marital-row-nd">
                 <span style="font-weight: 550; color: #94a3b8; font-style: italic;">не вказано</span>
-                <span style="font-weight: 700; color: #64748b;">${rayonStats.marital.nd}</span>
+                <span style="font-weight: 700; color: #64748b;">${rayonStats.marital["не вказано"]}</span>
               </div>
             </div>
           </div>
@@ -807,7 +807,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     const labelToDisplay = isNA ? "н/д" : label;
     return (
       <div key={label || "empty"} className={`group flex flex-col ${isCompact ? "space-y-0.5" : "space-y-1"}`}>
-        <div className={`flex items-center justify-between ${isCompact ? "text-[9px] font-bold" : "text-xs font-semibold"} text-slate-200`}>
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-200">
           <span className={`truncate max-w-[70%] ${isNA ? "text-slate-400 font-normal italic" : ""}`}>{labelToDisplay}</span>
           <div className={`flex-1 border-b border-dotted border-white/15 ${isCompact ? "mx-1.5" : "mx-2"} self-center h-0.5 opacity-30`} />
           <span className="text-slate-350 shrink-0">{value} ({pct}%)</span>
@@ -905,7 +905,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                     <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
                       Аналіз Відвідування
                     </span>
-                    <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-0.5 mt-1.5">
+                    <div className="space-y-1.5 mt-1.5">
                       {rayonStats.attendance.map(([lbl, val]) => 
                         renderBar(lbl || 'н/д', val, rayonStats.total, "bg-blue-400", true)
                       )}
@@ -924,7 +924,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                     <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
                       Причини відсутності
                     </span>
-                    <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-0.5 mt-1.5">
+                    <div className="space-y-1.5 mt-1.5">
                       {rayonStats.presence.map(([lbl, val]) => 
                         renderBar(lbl, val, rayonStats.total, "bg-red-400", true)
                       )}
@@ -980,7 +980,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                 {/* Top side: Райони структури */}
                 <div className="space-y-2">
                   <span className="text-[8px] font-bold text-slate-350 uppercase tracking-wider block">📍 Райони структури</span>
-                  <div className="space-y-1.5 max-h-[180px] overflow-y-auto pr-0.5">
+                  <div className="space-y-1.5">
                     {rayonStats.area.map(([lbl, val]) => 
                       renderBar(lbl === "" ? "н/д" : lbl, val, rayonStats.total, "bg-emerald-400", true)
                     )}
@@ -994,27 +994,27 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
 
                 {/* Bottom side: Список опікунів */}
                 <div className="space-y-2 pt-2 border-t border-white/5">
-                  <span className="text-[8px] font-bold text-slate-350 uppercase tracking-wider block">👤 Список опікунів</span>
+                  <span className="text-xs font-bold text-slate-350 uppercase tracking-wider block">👤 Список опікунів</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-0.5">
                     {rayonStats.caregivers.map(([name, count]) => {
                       const pct = rayonStats.total > 0 ? Math.round((count / rayonStats.total) * 100) : 0;
                       return (
-                        <div key={name} className="flex items-center justify-between gap-1.5 text-[10px] bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-1.5 rounded border border-[#2c5869]/30 transition-colors">
+                        <div key={name} className="flex items-center justify-between gap-1.5 text-xs bg-[#244b5a]/60 hover:bg-[#2c5869]/60 p-1.5 rounded border border-[#2c5869]/30 transition-colors">
                           <div className="flex items-center space-x-1 min-w-0 flex-1">
-                            <User className="h-2.5 w-2.5 text-emerald-400 shrink-0" />
+                            <User className="h-3 w-3 text-emerald-400 shrink-0" />
                             <span className="font-semibold text-slate-100 break-words leading-tight">{name}</span>
                           </div>
                           <div className="flex items-center space-x-1 shrink-0">
-                            <span className="bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-extrabold text-[9px] px-1 py-0.2 rounded">
+                            <span className="bg-emerald-950 border border-emerald-700/80 text-emerald-300 font-extrabold text-xs px-1.5 py-0.5 rounded">
                               {count}
                             </span>
-                            <span className="text-[8px] text-slate-350">({pct}%)</span>
+                            <span className="text-xs text-slate-350">({pct}%)</span>
                           </div>
                         </div>
                       );
                     })}
                     {rayonStats.caregivers.length === 0 && (
-                      <div className="col-span-full py-4 text-center text-[10px] text-slate-400 italic">
+                      <div className="col-span-full py-4 text-center text-xs text-slate-400 italic">
                         Немає призначених опікунів
                       </div>
                     )}

@@ -22,18 +22,10 @@ export default function LoginPage({ onLogin, accessList }: LoginPageProps) {
         return;
     }
 
-    const level = user.level || 'І-й';
-    // Password check: only if level is NOT 'І-й' or if user actually set a password in the system for Level 1 as well? 
-    // The user said: "без пароля вхід має бути для І рівня"
-    if (level === 'І-й') {
-        onLogin(user);
+    if (user.password === password) {
+      onLogin(user);
     } else {
-        // Require password for level > І-й
-        if (user.password === password) {
-          onLogin(user);
-        } else {
-          setError('Невірний пароль');
-        }
+      setError('Невірний пароль');
     }
   };
 
@@ -70,7 +62,7 @@ export default function LoginPage({ onLogin, accessList }: LoginPageProps) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-[#1a3843] border border-[#224853] text-white rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-sky-500 outline-none"
-                    placeholder="Введіть пароль (необов'язково для І рівня)"
+                    placeholder="Введіть пароль"
                 />
             </div>
           </div>

@@ -139,10 +139,12 @@ export default function DirectoriesManager({
 
   // Handle deleting user
   const handleDeleteAccessUser = async (userToDelete: any) => {
+    console.log("Delete user:", userToDelete);
     if (!confirm(`Ви дійсно бажаєте видалити права доступу для служителя ${userToDelete.user}?`)) return;
     
     const accessList = lookups?.access || DEFAULT_DOSTUP;
-    const updatedList = accessList.filter(rec => !(rec.user === userToDelete.user && rec.rayon === userToDelete.rayon));
+    // Ensure we are filtering correctly based on user and rayon
+    const updatedList = accessList.filter(rec => !(rec.user === userToDelete.user && rec.rayon === (userToDelete.rayon || 'ЦЕНТР')));
 
     try {
       const resp = await fetch('/api/directories/save', {
@@ -429,7 +431,7 @@ export default function DirectoriesManager({
           className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'dicts' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
         >
           <Users className="h-4 w-4 text-sky-400 shrink-0" />
-          <span>📚 Налаштування списків</span>
+          <span>📚 Списки</span>
         </button>
 
         <button
@@ -437,7 +439,7 @@ export default function DirectoriesManager({
           className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'colors' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
         >
           <Palette className="h-4 w-4 text-violet-400 shrink-0" />
-          <span>🎨 Налаштування кольорів</span>
+          <span>🎨 Кольори</span>
         </button>
 
         <button
@@ -1059,7 +1061,7 @@ export default function DirectoriesManager({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#224853]/30 text-xs">
-                          {(lookups?.access || DEFAULT_DOSTUP).sort((a,b) => (a.user || "").localeCompare(b.user || "")).map((ac: any, idx: number) => {
+                          {(lookups?.access || DEFAULT_DOSTUP).filter((v,i,a)=>a.findIndex(t=>(t.user === v.user && t.rayon===v.rayon))===i).sort((a,b) => (a.user || "").localeCompare(b.user || "")).map((ac: any, idx: number) => {
                             const isActiveUser = currentSessionUser?.user === ac.user;
                             // Determine user's level
                             const level = ac.level || (ac.rayon === "ЦЕНТР" && (ac.user || "").includes("Черняк Вал.") ? "IV-й" : 

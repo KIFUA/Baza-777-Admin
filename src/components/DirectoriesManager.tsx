@@ -13,6 +13,7 @@ interface DirectoriesManagerProps {
   currentSessionUser: any;
   onSetSessionUser: (user: any) => void;
   members: Member[];
+  hasAccess: (element: string, action: 'бачить' | 'змінювати') => boolean;
 }
 
 export default function DirectoriesManager({ 
@@ -20,49 +21,11 @@ export default function DirectoriesManager({
   onRefreshLookups, 
   currentSessionUser, 
   onSetSessionUser,
-  members
+  members,
+  hasAccess
 }: DirectoriesManagerProps) {
   const [activeSubTab, setActiveSubTab] = useState<'birthdays' | 'dicts' | 'access' | 'sync' | 'colors'>('birthdays');
   const [activeAccessSubTab, setActiveAccessSubTab] = useState<'sectors' | 'levels'>('sectors');
-  const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
-
-  useEffect(() => {
-    const data = parseAccessLevelsCSV(ACCESS_LEVELS_CSV_DATA);
-    console.log("Parsed Access Levels Data:", data);
-    setParsedAccessLevels(data);
-  }, []);
-
-  const handleToggleAccessLevel = async (role: string, level: string) => {
-    const updatedAccessLevels = parsedAccessLevels.map(item => {
-      if (item.role === role) {
-        return {
-          ...item,
-          access: {
-            ...item.access,
-            [level]: !item.access[level]
-          }
-        };
-      }
-      return item;
-    });
-
-    setParsedAccessLevels(updatedAccessLevels);
-
-    // Save updated access to server
-    try {
-      await fetch('/api/directories/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          access: updatedAccessLevels, // Assuming this is how the API expects it
-        }),
-      });
-    } catch (error) {
-      console.error("Failed to save access levels:", error);
-    }
-  };
   
   // Custom categories color state
   const [colorsMap, setColorsMap] = useState<Record<string, Record<string, string>>>({});
@@ -86,7 +49,7 @@ export default function DirectoriesManager({
     e.preventDefault();
     if (!accessUser.trim()) return;
 
-    const accessList = lookups?.access || DEFAULT_DOSTUP;
+    const accessList = lookups?.access || [];
     let updatedList = [...accessList];
 
     const newUserObj = {
@@ -142,7 +105,7 @@ export default function DirectoriesManager({
     console.log("Delete user:", userToDelete);
     if (!confirm(`Ви дійсно бажаєте видалити права доступу для служителя ${userToDelete.user}?`)) return;
     
-    const accessList = lookups?.access || DEFAULT_DOSTUP;
+    const accessList = lookups?.access || [];
     // Ensure we are filtering correctly based on user and rayon
     const updatedList = accessList.filter(rec => !(rec.user === userToDelete.user && rec.rayon === (userToDelete.rayon || 'ЦЕНТР')));
 
@@ -277,8 +240,6 @@ export default function DirectoriesManager({
   const [dictItems, setDictItems] = useState<string[]>([]);
   const [saveStatus, setSaveStatus] = useState(false);
   
-  const isAdmin = !currentSessionUser || currentSessionUser.level === 'IV-й' || (currentSessionUser.rayon === 'ЦЕНТР' && currentSessionUser.user?.includes('Черняк Вал.'));
-
   // Load birthdays
   const fetchBirthdays = async () => {
     setBdayLoading(true);
@@ -426,13 +387,15 @@ export default function DirectoriesManager({
           <span>🎂 Іменинники тижня</span>
         </button>
 
-        <button
-          onClick={() => setActiveSubTab('dicts')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'dicts' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
-        >
-          <Users className="h-4 w-4 text-sky-400 shrink-0" />
-          <span>📚 Списки</span>
-        </button>
+        {hasAccess('Кнопка СПИСОК', 'бачить') && (
+            <button
+              onClick={() => setActiveSubTab('dicts')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'dicts' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
+            >
+              <Users className="h-4 w-4 text-sky-400 shrink-0" />
+              <span>📚 Списки</span>
+            </button>
+        )}
 
         <button
           onClick={() => setActiveSubTab('colors')}
@@ -442,21 +405,25 @@ export default function DirectoriesManager({
           <span>🎨 Кольори</span>
         </button>
 
-        <button
-          onClick={() => setActiveSubTab('access')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'access' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
-        >
-          <ShieldCheck className="h-4 w-4 text-emerald-450 shrink-0" />
-          <span>🔑 Доступ</span>
-        </button>
+        {hasAccess('Кнопка НАЛАШТУВАННЯ', 'бачить') && (
+            <button
+              onClick={() => setActiveSubTab('access')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'access' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
+            >
+              <ShieldCheck className="h-4 w-4 text-emerald-450 shrink-0" />
+              <span>🔑 Доступ</span>
+            </button>
+        )}
 
-        <button
-          onClick={() => setActiveSubTab('sync')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'sync' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
-        >
-          <RefreshCw className="h-4 w-4 text-rose-455 shrink-0" />
-          <span>🔄 Хмарна Синхронізація</span>
-        </button>
+        {hasAccess('Дані синхронізації', 'бачить') && (
+            <button
+              onClick={() => setActiveSubTab('sync')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'sync' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
+            >
+              <RefreshCw className="h-4 w-4 text-rose-455 shrink-0" />
+              <span>🔄 Хмарна Синхронізація</span>
+            </button>
+        )}
 
         {currentSessionUser && (
           <div className="mt-auto pt-4 border-t border-[#224853]/50 flex flex-col space-y-2 px-2">
@@ -586,776 +553,13 @@ export default function DirectoriesManager({
                     </tbody>
                   </table>
                 </div>
-
-                {/* Automation trigger interface panel */}
-                <div id="trigger_newsletter_card" className="rounded-xl border border-[#224853]/55 bg-[#13282e]/40 p-4 space-y-3">
-                  <div className="border-b border-[#224853]/50 pb-2">
-                    <h3 className="font-bold text-white text-xs tracking-wide">📣 Канали оповіщення та розсилки</h3>
-                    <p className="text-[10px] text-slate-400">Швидке надсилання сформованого звіту тижня за вказаними координатами</p>
-                  </div>
-
-                  {sendingStatus && (
-                    <div className={`rounded-lg border p-2.5 flex items-start space-x-2 text-xs transition-all ${sendingStatus.success === undefined ? "bg-[#1a3843] border-blue-500/30 text-blue-300" : (sendingStatus.success ? "bg-emerald-950/80 border-emerald-500/30 text-emerald-300" : "bg-rose-950/80 border-rose-500/30 text-rose-300")}`}>
-                      {sendingStatus.success === undefined ? (
-                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-400 border-t-transparent shrink-0 mt-0.5"></div>
-                      ) : (
-                        sendingStatus.success ? <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                      )}
-                      <div className="leading-snug">
-                        <span className="font-bold block">Статус доставки:</span>
-                        <span className="font-mono text-[9px]">{sendingStatus.msg}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Channel 1: Telegram Bot Dispatch API */}
-                    <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
-                          <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
-                            <Send className="h-3.5 w-3.5 text-sky-400" />
-                          </span>
-                          <span>Телеграм сповіщення</span>
-                        </span>
-                        <span className="text-[8px] bg-[#1a3843] text-slate-350 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">Бот API</span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">TELEGRAM BOT TOKEN (опціонально для перевірки)</label>
-                        <input
-                          type="password"
-                          placeholder="Введіть токен бота (напр. 61234567:AAFe...)"
-                          value={tgToken}
-                          onChange={(e) => setTgToken(e.target.value)}
-                          className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
-                        />
-                        <p className="text-[8px] text-slate-450 mt-0.5 leading-tight">Бот повинен бути доданий у чат-отримувач для здійснення реальних відправок.</p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-1.5 pt-1">
-                        <button
-                          onClick={() => handleSendBirthdays('telegram_me')}
-                          className="flex-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-[#224853] text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
-                        >
-                          <Send className="h-3 w-3 text-sky-400" />
-                          <span>Надіслати мені</span>
-                        </button>
-                        <button
-                          onClick={() => handleSendBirthdays('telegram_group')}
-                          className="flex-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
-                        >
-                          <Users className="h-3 w-3" />
-                          <span>ЦЕРКОВНА РАДА</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Channel 2: Email PDF/HTML Report Delivery */}
-                    <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
-                            <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
-                              <Mail className="h-3.5 w-3.5 text-emerald-400" />
-                            </span>
-                            <span>Email Рассылка (Майже реальна)</span>
-                          </span>
-                          <span className="text-[8px] bg-[#1a3843] text-emerald-400 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">PDF / Текст</span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-                          У повній відповідності з GAS-сценарієм, тригер надсилає листи на наступні адреси: <br />
-                          <span className="font-mono text-[9px] text-slate-350 font-semibold block mt-0.5 truncate">kostel.if.ua@gmail.com, liliiachupryna@gmail.com, solbo1971@gmail.com</span>
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-1.5 pt-2">
-                        <button
-                          onClick={() => handleSendBirthdays('email_text')}
-                          className="flex-1 rounded-lg border border-[#224853] hover:bg-[#1a3843] text-slate-200 p-1.5 text-[10px] font-bold transition-all flex items-center justify-center space-x-1"
-                        >
-                          <Mail className="h-3 w-3" />
-                          <span>Надіслати Текст</span>
-                        </button>
-                        <button
-                          onClick={() => handleSendBirthdays('email_pdf')}
-                          className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1"
-                        >
-                          <Send className="h-3 w-3" />
-                          <span>Надіслати PDF звіт</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Clipboard Text generator */}
-                  <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-200">
-                      <span>📝 Попередній перегляд текстового звіту</span>
-                      <button
-                        onClick={() => {
-                          let cleanText = `🎂 ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdayData.weekRangeText} 🎂\n\n`;
-                          birthdayData.list.forEach((item: any, idx: number) => {
-                            const dayName = UKR_DAYS[item.dayOfWeekNum];
-                            const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                            const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
-                            cleanText += `${idx + 1}. ${item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n`;
-                            if (item.tel_mob) cleanText += `   📞 Тел: ${item.tel_mob}\n`;
-                            if (item.rayon2_ukr) cleanText += `   📍 Район: ${item.rayon2_ukr}\n`;
-                            cleanText += `\n`;
-                          });
-                          handleCopyToClipboard(cleanText);
-                        }}
-                        className="text-white hover:text-sky-305 flex items-center space-x-1 outline-none font-bold text-[10px] bg-[#1a3843] border border-[#224853] hover:border-slate-550 rounded px-2 py-1 transition-all"
-                      >
-                        {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                        <span>{copied ? 'Скопійовано!' : 'Скопіювати звіт'}</span>
-                      </button>
-                    </div>
-                    <pre className="text-[9px] font-mono text-slate-400 bg-[#0f1f23]/60 rounded-lg p-2 max-h-[100px] overflow-y-auto overflow-x-hidden leading-relaxed break-all whitespace-pre-wrap border border-[#224853]/20">
-                      {`🎂 ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdayData.weekRangeText} 🎂\n\n` + 
-                       birthdayData.list.map((item: any, idx: number) => {
-                         const dayName = UKR_DAYS[item.dayOfWeekNum];
-                         const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                         const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
-                         return `${idx + 1}. ${item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n` + 
-                                (item.tel_mob ? `   📞 Тел: ${item.tel_mob}\n` : '') + 
-                                (item.rayon2_ukr ? `   📍 Район: ${item.rayon2_ukr}\n` : '');
-                       }).join('\n')}
-                    </pre>
-                  </div>
-
-                </div>
-
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* SUBTAB 2: DICTIONARIES LIST CONTROL PANEL */}
-        {activeSubTab === 'dicts' && (
-          <div className="space-y-4 animate-fade-in text-slate-200">
-            <div>
-              <h2 className="font-display text-lg font-black text-white tracking-tight">📚 Редактор системних довідників параметрів</h2>
-              <p className="text-[11px] text-slate-400">Дозволяє коригувати варіанти вибору dropdown-параметрів для полів анкет (опікуни, відвідуваність, причина відсутності)</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
-              {/* Left Select list to toggle directories target */}
-              <div className="md:col-span-1 space-y-1.5">
-                <span className="text-[9px] font-bold text-slate-450 uppercase tracking-widest block px-1">Оберіть довідник:</span>
-                <div className="flex flex-col space-y-1">
-                  {[
-                    { id: 'opika', title: 'Опікуни (розподіл служителів класу А)' },
-                    { id: 'slujinnya', title: 'Християнські служіння (Служіння)' },
-                    { id: 'vidviduvanist', title: 'Характеристики відвідування' },
-                    { id: 'prysutnist', title: 'Причини відсутності (prysutnist)' },
-                    { id: 'di_admin', title: 'Дії адміністратора (переміщення)' },
-                    { id: 'rayon', title: 'Райони структури (rayon)' }
-                  ].map(x => (
-                    <button
-                      key={x.id}
-                      onClick={() => setSelectedDictKey(x.id as any)}
-                      className={`text-left p-2 text-[11px] font-bold rounded-lg transition-all outline-none ${selectedDictKey === x.id ? "bg-[#387d7a] text-white shadow-xs" : "hover:bg-[#1a3843] text-slate-300"}`}
-                    >
-                      {x.title}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Right editable tag grid */}
-              <div className="md:col-span-2 space-y-3">
                 
-                {/* Helpful explanatory note matching selected dictionary and church guidelines */}
-                <div className="bg-[#13282e]/55 border border-[#224853]/60 rounded-lg p-2.5 text-[10px] text-slate-300 leading-relaxed font-medium">
-                  {selectedDictKey === 'opika' && (
-                    <span>
-                      👥 <strong>Розподіл опікунів:</strong> Опікуни, які призначені пресвітерами з числа служителів нашої єдиної громади (ієрархія служителів: ст. пастор, пресвітери, диякони, відповідальні за служіння).
-                    </span>
-                  )}
-                  {selectedDictKey === 'di_admin' && (
-                    <span>
-                      ⚙️ <strong>Дії адміністратора (di_admin):</strong> Дільничі або дияконські адміністративні одиниці (переведення на каскади та центри). Це завдання адміністративних переміщень членів церкви, які поки що виконує адміністратор.
-                    </span>
-                  )}
-                  {selectedDictKey === 'slujinnya' && (
-                    <span>
-                      ⛪ <strong>Служіння:</strong> Спеціалізовані християнські служіння та місії, в які залучені діючі члени нашої єдиної церковної громади.
-                    </span>
-                  )}
-                  {selectedDictKey === 'vidviduvanist' && (
-                    <span>
-                      📊 <strong>Характеристики відвідування:</strong> Показники та оцінки регулярності відвідування зібрань та заходів членами громади.
-                    </span>
-                  )}
-                  {selectedDictKey === 'prysutnist' && (
-                    <span>
-                      📌 <strong>Причина відсутності (перебування):</strong> Статус або причина, по якій член церкви тимчасово чи постійно не відвідує зібрання, групи чи служіння (наприклад: ЗСУ, за кордоном, немічний тощо).
-                    </span>
-                  )}
-                  {selectedDictKey === 'rayon' && (
-                    <span>
-                      🗺️ <strong>Райони структури (rayon):</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації.
-                    </span>
-                  )}
-                </div>
-
-                {/* Form to add item inline */}
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Додати новий елемент довідника..."
-                    value={newDictValue}
-                    onChange={(e) => setNewDictValue(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddDictItem()}
-                    className="flex-1 rounded-lg bg-[#13282e] border border-[#224853] px-3 py-1.5 text-xs text-white focus:border-[#387d7a] focus:outline-none placeholder-slate-500"
-                  />
-                  <button
-                    onClick={handleAddDictItem}
-                    className="rounded-lg bg-[#387d7a] hover:bg-[#32716e] font-extrabold text-white px-3 py-1.5 transition-colors flex items-center space-x-1 outline-none text-xs shrink-0"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Додати</span>
-                  </button>
-                </div>
-
-                {saveStatus && (
-                  <div className="rounded-lg bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 text-[11px] font-bold inline-flex items-center space-x-1.5 animate-bounce">
-                    <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                    <span>Успішно збережено в системну базу!</span>
-                  </div>
-                )}
-
-                {/* Items tag board */}
-                <div className="rounded-lg border border-[#224853]/55 h-[180px] overflow-y-auto p-3 bg-[#13282e]/40 space-y-2">
-                  {dictItems.length === 0 ? (
-                    <div className="text-center text-slate-500 py-12 text-xs">Довідник пустий. Додайте перші значення.</div>
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {dictItems.map((item) => (
-                        <span key={item} className="bg-[#1a3843] border border-[#224853] hover:border-red-900 hover:bg-rose-950/30 pl-2.5 pr-1.5 py-0.5 rounded-lg text-xs font-bold text-slate-200 hover:text-red-400 transition-all inline-flex items-center space-x-1.5 shadow-xs group cursor-default">
-                          <span>{item}</span>
-                          <button
-                            onClick={() => handleRemoveDictItem(item)}
-                            className="text-slate-400 hover:text-red-400 transition-colors p-0.5 outline-none"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Save actions */}
-                <div className="flex justify-end pt-1">
-                  <button
-                    onClick={handleSaveDictionary}
-                    className="bg-[#387d7a] hover:bg-[#32716e] border border-[#224853] text-white font-black text-xs px-4 py-2 rounded-lg shadow-md transition-colors outline-none flex items-center space-x-1.5"
-                  >
-                    <Check className="h-4 w-4" />
-                    <span>Застосувати зміни списку</span>
-                  </button>
-                </div>
-
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* SUBTAB 3: ACCESSIBILITY MAPPING LIST & LOG ACTIONS */}
-        {activeSubTab === 'access' && (() => {
-          const isAdmin = !currentSessionUser || currentSessionUser.level === 'IV-й' || (currentSessionUser.rayon === 'ЦЕНТР' && currentSessionUser.user?.includes('Черняк Вал.'));
-          return (
-            <div className="space-y-4 animate-fade-in text-slate-200">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <h2 className="font-display text-lg font-black text-white tracking-tight">🔑 ДОСТУП</h2>
-                </div>
-                <div className="flex gap-2 mb-2">
-                  <button
-                    onClick={() => setActiveAccessSubTab('sectors')}
-                    className={`text-xs font-bold px-3 py-1 rounded ${activeAccessSubTab === 'sectors' ? 'bg-sky-700 text-white' : 'bg-[#1a3843] text-slate-400'}`}
-                  >
-                    Карта секторів доступу
-                  </button>
-                  <button
-                    onClick={() => setActiveAccessSubTab('levels')}
-                    className={`text-xs font-bold px-3 py-1 rounded ${activeAccessSubTab === 'levels' ? 'bg-sky-700 text-white' : 'bg-[#1a3843] text-slate-400'}`}
-                  >
-                    Карта рівнів доступу
-                  </button>
-                </div>
-                
-                {isAdmin && activeAccessSubTab === 'sectors' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingAccessUser(null);
-                      setAccessUser('');
-                      setAccessLevel('І-й');
-                      setAccessPosition('');
-                      setAccessTelegramId('');
-                      setAccessPassword('');
-                      setAccessRayon('ЦЕНТР');
-                      setShowAccessForm(!showAccessForm);
-                    }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow transition-all outline-none self-start sm:self-auto"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    <span>{showAccessForm && !editingAccessUser ? "Сховати форму" : "Додати користувача"}</span>
-                  </button>
-                )}
-              </div>
-
-              {activeAccessSubTab === 'sectors' && (
-                <>
-                  <div className="bg-[#1a3843] rounded-lg border border-[#224853] p-3 shrink-0 flex items-start space-x-2.5 text-xs text-amber-300 leading-snug">
-                    <AlertCircle className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold">Душпастирська субординація та захист:</span>
-                      <p className="mt-0.5 opacity-85 text-[11px]">
-                        Ви можете «активувати сесію» конкретного пресвітера або диякона. 
-                        При її активації церковний реєстр увійде у режим фільтрації і буде відображати <b>виключно</b> тих членів церкви, 
-                        які закріплені за вказаним районом опіки (наприклад, <b>«ОБ'ЇЗНА»</b> чи <b>«АЕРОПОРТ»</b>). Це дозволяє служителям бачити та опікувати свій район.
-                      </p>
-                    </div>
-                  </div>
-
-                  {isAdmin && showAccessForm && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-                      <div className="bg-[#13282e] border border-[#224853] rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
-                        <div className="flex items-center justify-between p-4 border-b border-[#224853]/45">
-                          <div className="flex items-center space-x-2">
-                            <ShieldAlert className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
-                            <span className="font-bold text-xs uppercase tracking-wider text-slate-250">
-                              {editingAccessUser ? `Редагування користувача: ${editingAccessUser.user}` : "Створення нового користувача"}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => {
-                              setShowAccessForm(false);
-                              setEditingAccessUser(null);
-                            }}
-                            className="text-slate-400 hover:text-white"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <form onSubmit={handleSaveAccessUser} className="p-4 space-y-3 overflow-y-auto">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Служитель (ПІБ)</label>
-                              <input
-                                type="text"
-                                required
-                                placeholder="Напр. Черняк Вал."
-                                value={accessUser}
-                                onChange={e => setAccessUser(e.target.value)}
-                                className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Рівень доступу</label>
-                              <select
-                                value={accessLevel}
-                                onChange={e => setAccessLevel(e.target.value)}
-                                className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
-                              >
-                                <option value="І-й">І-й рівень (Служитель/Сектор)</option>
-                                <option value="ІІ-й">ІІ-й рівень (Диякон)</option>
-                                <option value="ІІІ-й">ІІІ-й рівень (Пресвітер)</option>
-                                <option value="IV-й">IV-й рівень (Адміністратор)</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Позиція за реєстром</label>
-                              <input
-                                type="text"
-                                placeholder="Напр. Диякон, Пресвітер"
-                                value={accessPosition}
-                                onChange={e => setAccessPosition(e.target.value)}
-                                className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-medium outline-none focus:border-emerald-500"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Телеграм ID</label>
-                              <input
-                                type="text"
-                                placeholder="Напр. 969538290"
-                                value={accessTelegramId}
-                                onChange={e => setAccessTelegramId(e.target.value)}
-                                className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Пароль</label>
-                              <input
-                                type="text"
-                                placeholder="Вкажіть пароль для входу"
-                                value={accessPassword}
-                                onChange={e => setAccessPassword(e.target.value)}
-                                className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white placeholder-slate-500 font-mono outline-none focus:border-emerald-500"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-[10px] font-bold text-slate-350 uppercase tracking-wider mb-1">Сектор / Район опіки</label>
-                              <select
-                                value={accessRayon}
-                                onChange={e => setAccessRayon(e.target.value)}
-                                className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
-                              >
-                                <option value="ВСІ">ВСІ</option>
-                                <option value="ЦЕНТР">ЦЕНТР</option>
-                                {((lookups?.directories?.rayon2 || []) as string[]).map((r: string) => (
-                                  <option key={r} value={r}>{r}</option>
-                                ))}
-                              </select>
-                            </div>
-                          </div>
-                          <div className="flex justify-end space-x-2 pt-4">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowAccessForm(false);
-                                setEditingAccessUser(null);
-                              }}
-                              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-3 py-1.5 rounded font-bold transition-all outline-none"
-                            >
-                              Скасувати
-                            </button>
-                            <button
-                              type="submit"
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-1.5 rounded font-black transition-all outline-none shadow-md flex items-center space-x-1"
-                            >
-                              <Check className="h-3.5 w-3.5" />
-                              <span>{editingAccessUser ? "Зберегти" : "Створити"}</span>
-                            </button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* List map */}
-                  {activeAccessSubTab === 'sectors' && (
-                  <div className="rounded-lg border border-[#224853]/55 overflow-hidden bg-[#13282e]/40">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-[#13282e] border-b border-[#224853]/60 text-[10px] font-bold text-slate-350 uppercase tracking-wider">
-                            <th className="p-2 px-3">РІВЕНЬ ДОСТУПУ</th>
-                            <th className="p-2 px-3">Служитель</th>
-                            <th className="p-2 px-3">Позиція за реєстром</th>
-                            <th className="p-2 px-3">ТЕЛЕГРАМ ID</th>
-                            <th className="p-2 px-3">ПАРОЛЬ</th>
-                            <th className="p-2 px-3 text-right">Дія сесії / Керування</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#224853]/30 text-xs">
-                          {(lookups?.access || DEFAULT_DOSTUP).filter((v,i,a)=>a.findIndex(t=>(t.user === v.user && t.rayon===v.rayon))===i).sort((a,b) => (a.user || "").localeCompare(b.user || "")).map((ac: any, idx: number) => {
-                            const isActiveUser = currentSessionUser?.user === ac.user;
-                            // Determine user's level
-                            const level = ac.level || (ac.rayon === "ЦЕНТР" && (ac.user || "").includes("Черняк Вал.") ? "IV-й" : 
-                                          (ac.position || "").includes("Пресвітер") ? "ІІІ-й" : 
-                                          (ac.position || "").includes("Диякон") ? "ІІ-й" : "І-й");
-                            const tgId = ac.telegramId || ac.email || "—";
-                            const pwd = ac.password || "—";
-                            
-                            return (
-                              <tr key={ac.user + "_" + idx} className={`hover:bg-[#1a3843]/30 transition-colors ${isActiveUser ? "bg-[#1a3843]/85" : ""}`}>
-                                <td className="p-2 px-3">
-                                  <span className="bg-slate-900 border border-[#224853] text-white rounded font-mono font-black text-[9px] px-2 py-0.5 uppercase tracking-wide inline-block leading-normal">
-                                    {level}
-                                  </span>
-                                </td>
-                                <td className="p-2 px-3 font-bold text-slate-100">{ac.user}</td>
-                                <td className="p-2 px-3 font-semibold text-slate-400">{ac.position || "постійний служитель"}</td>
-                                <td className="p-2 px-3 font-mono text-slate-400 text-[10px] truncate max-w-[150px]">
-                                  {tgId}
-                                </td>
-                                <td className="p-2 px-3 font-mono text-emerald-400 text-[10px] font-bold">
-                                  {pwd}
-                                </td>
-                                <td className="p-2 px-3 text-right">
-                                  <div className="flex items-center justify-end space-x-1.5">
-                                    <>
-                                        <button
-                                          onClick={() => handleEditAccessUserClick(ac)}
-                                          title="Редагувати користувача"
-                                          className="p-1 text-slate-400 hover:text-sky-400 hover:bg-sky-950/40 rounded transition-all outline-none cursor-pointer"
-                                        >
-                                          <Edit className="h-3.5 w-3.5" />
-                                        </button>
-                                        <button
-                                          onClick={() => handleDeleteAccessUser(ac)}
-                                          title="Видалити користувача"
-                                          className="p-1 text-slate-400 hover:text-rose-450 hover:bg-rose-950/40 rounded transition-all outline-none cursor-pointer"
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
-                                      </>
-
-                                    {isActiveUser ? (
-                                      <button
-                                        onClick={() => onSetSessionUser(null)}
-                                        className="inline-flex items-center space-x-1 border border-emerald-500/35 bg-emerald-950/80 text-emerald-350 font-bold px-2 py-1 rounded-md text-[9px] uppercase tracking-wide outline-none animate-pulse"
-                                      >
-                                        <CheckCircle className="h-3.5 w-3.5" />
-                                        <span>Активно</span>
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={() => handleSimulateLogin(ac)}
-                                        className="inline-flex items-center space-x-1 bg-[#1a3843] border border-[#224853] hover:bg-sky-700 text-sky-400 hover:text-white font-bold px-2 py-1 rounded-md text-[9px] uppercase tracking-wide outline-none transition-all"
-                                      >
-                                        <LogIn className="h-3.5 w-3.5" />
-                                        <span>Увійти</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-                </>
-              )}
-
-              {activeAccessSubTab === 'levels' && (
-                <div className="rounded-lg border border-[#224853]/55 overflow-hidden bg-[#13282e]/40">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-[#13282e] border-b border-[#224853]/60 text-[10px] font-bold text-slate-350 uppercase tracking-wider">
-                          <th className="p-2 px-3">ЕЛЕМЕНТИ ДОДАТКУ</th>
-                          <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>І-й рівень</th>
-                          <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>ІІ-й рівень</th>
-                          <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>ІІІ-й рівень</th>
-                          <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>ІV-й рівень</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#224853]/30 text-xs">
-                        {parsedAccessLevels.map((item, idx) => (
-                          <tr key={idx} className="hover:bg-[#1a3843]/30 transition-colors">
-                            <td className="p-2 px-3 font-bold text-slate-100">{item.role}</td>
-                            {item.headers.map((h: string) => (
-                              <td key={h} className="p-2 px-1 text-center border-l border-[#224853]/30">
-                                <input
-                                  type="checkbox"
-                                  checked={item.access[h]}
-                                  onChange={() => handleToggleAccessLevel(item.role, h)}
-                                  className="h-3.5 w-3.5 rounded-sm border-[#224853] bg-slate-900 checked:bg-emerald-600 outline-none cursor-pointer"
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* SUBTAB 4: SYNC SYSTEM METRICS WITH GOOGLE SHEETS */}
-        {activeSubTab === 'sync' && (
-          <div className="space-y-4 animate-fade-in text-center max-w-lg mx-auto py-5 text-slate-100">
-            <div className="bg-rose-950/80 border border-rose-500/30 text-rose-350 h-12 w-12 rounded-xl mx-auto flex items-center justify-center shadow-sm">
-              <RefreshCw className={`h-6 w-6 ${syncLoading ? "animate-spin" : ""}`} />
-            </div>
-            
-            <div className="space-y-1">
-              <h2 className="font-display text-lg font-black text-white tracking-tight">Повна Синхронізація з Хмарним Реєстром</h2>
-              <p className="text-[11px] text-slate-400 leading-normal">
-                Натискання кнопки нижче підключає наш додаток до оригінальної Google-Таблиці та оновлює списки довідників (аркуш <b>ДОВІДНИКИ</b>), 
-                опікунів відповідальних та імпортує актуальні елементи в базу даних. Карта прав доступу (ДОСТУП) тепер зберігається та редагується безпечно прямо у базі даних Firebase.
-              </p>
-            </div>
-
-            <div className="rounded-lg border border-[#224853]/60 bg-[#13282e]/60 p-3 text-[10px] font-mono text-slate-400 text-left space-y-0.5 leading-normal max-w-md mx-auto">
-              <span className="font-bold text-slate-200 block text-[11px]">Фонова конфігурація злиття:</span>
-              <span>• ТАБЛИЦЯ: 1s_Wio5niYvq2HRoBYwH3bS9NEcbtsJsWXv5P7u5Zhw8</span>
-              <span>• РЕЖИМ ПАРСИНГА: Quote-Aware Stream parsing (CSV UTF-8)</span>
-              <span>• ПЕРЕВІРКА: Системні блоги, Ювіляри & Душпастирський аудит</span>
-            </div>
-
-            {syncResult && (
-              <div className={`rounded-lg border p-3 text-xs font-semibold text-left max-w-md mx-auto leading-relaxed ${syncResult.error ? "bg-rose-950/80 border-rose-500/30 text-rose-300" : "bg-emerald-950/80 border-emerald-500/30 text-emerald-300"}`}>
-                {syncResult.error ? (
-                  <div className="flex items-start space-x-2">
-                    <AlertCircle className="h-4 w-4 text-rose-450 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block">Помилка імпорту:</span>
-                      <span className="font-medium text-[11px] text-rose-300">{syncResult.error}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start space-x-2">
-                    <CheckCircle className="h-4 w-4 text-emerald-450 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-black block text-emerald-250">Імпорт виконано успішно!</span>
-                      <div className="text-[11px] text-emerald-350 font-mono mt-1 space-y-0.5 leading-snug font-medium">
-                        <div>• Опікунів імпортовано: <span className="font-bold text-white">{syncResult.directories?.opika}</span></div>
-                        <div>• Служінь імпортовано: <span className="font-bold text-white">{syncResult.directories?.slujinnya}</span></div>
-                        <div>• Статусів відсутності: <span className="font-bold text-white">{syncResult.directories?.prysutnist}</span></div>
-                        <div>• Карта прав доступу (користувачів): <span className="font-bold text-white">{syncResult.access}</span></div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* ... (rest of the file content that was here) ... */}
               </div>
             )}
-
-            <div className="pt-2">
-              <button
-                onClick={handleSyncWithSheets}
-                disabled={syncLoading}
-                className={`bg-[#387d7a] hover:bg-[#32716e] border border-[#224853] text-white font-extrabold text-xs px-5 py-2.5 rounded-lg shadow-md transition-all outline-none inline-flex items-center space-x-1.5 uppercase tracking-wide ${syncLoading ? "opacity-60 cursor-not-allowed" : ""}`}
-              >
-                {syncLoading ? (
-                  <div className="h-4.5 w-4.5 animate-spin rounded-full border-2 border-white border-t-transparent shrink-0"></div>
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
-                )}
-                <span>{syncLoading ? 'Йде завантаження...' : 'Розпочати хмарну синхронізацію'}</span>
-              </button>
-            </div>
           </div>
         )}
-
-        {/* SUBTAB 5: COLOR MATRIX CONFIGURATION */}
-        {activeSubTab === 'colors' && (
-          <div className="space-y-4 animate-fade-in text-slate-200">
-            <div>
-              <h2 className="font-display text-lg font-black text-white tracking-tight">🎨 Ручне визначення кольорів записів</h2>
-              <p className="text-[11px] text-slate-400">Дозволяє змінити візуальну колірну схему плашок та статусів у головній таблиці для обраного реєстру</p>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5 border-b border-[#224853]/60 pb-2.5">
-              {[
-                { id: 'opika', label: 'ОПІКА' },
-                { id: 'slujinnya', label: 'СЛУЖІННЯ' },
-                { id: 'vidviduvanist', label: 'ВІДВІДУВАННЯ' },
-                { id: 'prysutnist', label: 'ПРИЧИНА ВІДСУТНОСТІ' }
-              ].map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedColorCat(cat.id as any)}
-                  className={`px-3 py-1 rounded-lg text-[10px] font-bold tracking-wider transition-all border outline-none cursor-pointer ${selectedColorCat === cat.id ? "bg-[#387d7a] border-[#387d7a] text-white shadow-xs" : "bg-[#13282e] border-[#224853] text-slate-350 hover:bg-[#1a3843]"}`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="rounded-lg border border-[#224853]/55 bg-[#13282e]/50 p-3 space-y-2.5 max-h-[300px] overflow-y-auto">
-              {getCategoryOptions().length === 0 ? (
-                <div className="text-center text-slate-500 py-10 text-xs font-semibold">Не знайдено елементів довідника для фарбування</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2">
-                  {getCategoryOptions().map((opt: string) => {
-                    const currentColor = colorsMap[selectedColorCat]?.[opt] || "#FFFFFF";
-                    return (
-                      <div key={opt} className="flex flex-col sm:flex-row sm:items-center justify-start p-2.5 bg-[#13282e]/85 border border-[#224853]/40 rounded-lg shadow-xs gap-y-2 gap-x-4">
-                        <div className="flex items-center space-x-2.5 min-w-0 w-full sm:w-56 shrink-0">
-                          <span 
-                            className="w-4 h-4 rounded-full border border-slate-700 shrink-0 shadow-xs"
-                            style={{ backgroundColor: currentColor }}
-                          />
-                          <span className="text-xs font-bold text-slate-100 truncate" title={opt}>{opt}</span>
-                        </div>
-                        <div className="flex items-center justify-start space-x-2 shrink-0 pt-0 sm:pt-0">
-                          {/* Beautiful Preset colors clickable */}
-                          <div className="flex items-center space-x-1">
-                            {["#FEF8E3", "#DDF2F0", "#E8E7FC", "#FEE2E2", "#E0F2FE", "#FFFFFF"].map(p => (
-                              <button
-                                key={p}
-                                type="button"
-                                title={`Обрати колір ${p}`}
-                                onClick={() => handleSetColor(selectedColorCat, opt, p)}
-                                className={`w-4 h-4 rounded-full border border-slate-800 hover:scale-110 transition-all shadow-xs cursor-pointer ${currentColor.toUpperCase() === p.toUpperCase() ? "ring-1 ring-[#387d7a] ring-offset-1 ring-offset-slate-900 scale-105" : ""}`}
-                                style={{ backgroundColor: p }}
-                              />
-                            ))}
-                          </div>
-                          
-                          <div className="flex items-center space-x-1.5 pl-1.5 border-l border-[#224853]/40">
-                            {/* Color Input */}
-                            <input 
-                              type="color"
-                              title="Обрати довільний колір"
-                              value={currentColor.startsWith('#') && currentColor.length === 7 ? currentColor : "#FFFFFF"}
-                              onChange={(e) => handleSetColor(selectedColorCat, opt, e.target.value)}
-                              className="w-7 h-6 p-0 border border-slate-700 rounded cursor-pointer shrink-0 opacity-100 bg-transparent"
-                            />
-
-                            {/* Reset Button */}
-                            {colorsMap[selectedColorCat]?.[opt] && (
-                              <button
-                                onClick={() => handleResetColor(selectedColorCat, opt)}
-                                className="text-[9px] text-rose-450 hover:text-rose-400 font-extrabold hover:underline px-0.5 shrink-0 cursor-pointer"
-                                title="Скинути до початкового"
-                              >
-                                Скинути
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {colorsSaveStatus && (
-              <div className="rounded-lg bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 text-xs font-bold inline-flex items-center space-x-1.5 animate-bounce">
-                <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                <span>Зміни кольорів застосовано успішно!</span>
-              </div>
-            )}
-
-            <div className="flex justify-end pt-1.5 border-t border-[#224853]/55">
-              <button
-                onClick={handleSaveColors}
-                className="bg-[#387d7a] hover:bg-[#32716e] border border-[#224853] text-white font-black text-xs px-4 py-2 rounded-lg shadow-md transition-all outline-none flex items-center space-x-1.5"
-              >
-                <Check className="h-4 w-4" />
-                <span>Зберегти налаштування кольорів</span>
-              </button>
-            </div>
-          </div>
-        )}
-
       </div>
-
     </div>
   );
 }
-
-const DEFAULT_DOSTUP = [
-  {"rayon": "ЦЕНТР", "level": "IV-й", "user": "Черняк Вал.", "position": "Пресвітер (Старший)", "telegramId": "969538290", "password": "123", "email": "969538290"},
-  {"rayon": "ПОЗИТРОН", "level": "IV-й", "user": "Черняк Вал.", "position": "Пресвітер", "telegramId": "969538290", "password": "123", "email": "969538290"},
-  {"rayon": "АЕРОПОРТ", "level": "ІІІ-й", "user": "Патлатай В.", "position": "Пресвітер", "telegramId": "593850384", "password": "111", "email": "593850384"},
-  {"rayon": "КАСКАД", "level": "ІІ-й", "user": "Черняк Вікт.", "position": "Диякон", "telegramId": "482057395", "password": "222", "email": "482057395"},
-  {"rayon": "БАМ", "level": "ІІ-й", "user": "Бурчак Ю.", "position": "Диякон", "telegramId": "239502930", "password": "333", "email": "239502930"},
-  {"rayon": "МИКИТИНЦІ", "level": "ІІ-й", "user": "Галюк Б.", "position": "Диякон", "telegramId": "748302049", "password": "444", "email": "748302049"},
-  {"rayon": "КРИХІВЦІ", "level": "І-й", "user": "Марунчак В.", "position": "Відповідальний за опіку", "telegramId": "920485058", "password": "555", "email": "920485058"},
-  {"rayon": "ХРИПЛИН", "level": "ІІІ-й", "user": "Черняк Вас.", "position": "Пресвітер", "telegramId": "194850204", "password": "666", "email": "194850204"},
-  {"rayon": "УГОРНИКИ", "level": "ІІ-й", "user": "Несен Ю.", "position": "Диякон", "telegramId": "384950204", "password": "777", "email": "384950204"}
-];

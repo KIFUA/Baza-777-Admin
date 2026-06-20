@@ -8,6 +8,7 @@ import MemberForm from './components/MemberForm';
 import SpreadsheetView from './components/SpreadsheetView';
 import DirectoriesManager from './components/DirectoriesManager';
 import ReportGenerator from './components/ReportGenerator';
+import LoginPage from './components/LoginPage';
 import { 
   Users, UserCheck, Heart, Shield, History, BarChart3, Search, 
   MapPin, Phone, UserPlus, Filter, RotateCcw, ChevronLeft, ChevronRight, BookOpen,
@@ -22,6 +23,7 @@ export default function App() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [spreadsheetLoading, setSpreadsheetLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'generator' (ГЕНЕРАТОР) or 'settings' (НАЛАШТУВАННЯ)
   const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'generator' | 'settings' | 'stats'>('spreadsheet');
@@ -43,6 +45,45 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
+
+  useEffect(() => {
+    import('./accessLevels').then(module => {
+        const data = module.parseAccessLevelsCSV(module.ACCESS_LEVELS_CSV_DATA);
+        setParsedAccessLevels(data);
+    });
+  }, []);
+
+  const hasAccess = (element: string, action: 'бачить' | 'змінювати') => {
+    const userLevel = currentSessionUser?.level || 'І-й';
+    // Mapping: "І-й" -> "І", "ІІ-й" -> "ІІ", etc.
+    // Ensure we are using correct Unicode characters
+    const levelMap: Record<string, string> = {
+        'І-й': 'І',
+        'ІІ-й': 'ІІ',
+        'ІІІ-й': 'ІІІ',
+        'ІV-й': 'ІV'
+    };
+    
+    // Debug what is happening
+    console.log(`hasAccess debug: element="${element}", action="${action}", userLevel="${userLevel}"`);
+    
+    const level = levelMap[userLevel] || userLevel.split('-')[0];
+    
+    const roleAccess = parsedAccessLevels.find(rec => rec.role === element);
+    
+    // If element is not in CSV, strictly deny.
+    if (!roleAccess) {
+        console.log(`hasAccess debug: roleAccess not found for "${element}"`);
+        return false; 
+    }
+    
+    const key = `${level}-${action}`;
+    
+    console.log(`hasAccess debug: level="${level}", key="${key}", roleAccess.access keys=${Object.keys(roleAccess.access)}, value=${roleAccess.access[key]}`);
+    
+    return roleAccess.access[key] === true;
+  };
 
   useEffect(() => {
     const checkAdmin = () => {
@@ -274,6 +315,18 @@ export default function App() {
   const paginatedMembers = members.slice(startIndex, startIndex + pageSize);
 
   const activeStatsCount = members.filter(m => m.id_vybuttya === 0).length;
+
+  if (!isAuthenticated && lookups) {
+      return (
+          <LoginPage 
+            onLogin={(user) => {
+                setCurrentSessionUser(user);
+                setIsAuthenticated(true);
+            }} 
+            accessList={lookups.access || []}
+          />
+      );
+  }
 
   return (
     <div className="h-screen flex flex-col font-sans select-none antialiased overflow-hidden" style={{ backgroundColor: '#264653' }}>
@@ -515,6 +568,7 @@ export default function App() {
                   currentSessionUser={currentSessionUser}
                   onSetSessionUser={setCurrentSessionUser}
                   members={allMembers}
+                  hasAccess={hasAccess}
                 />
               </div>
             ) : null}

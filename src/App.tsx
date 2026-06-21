@@ -520,7 +520,7 @@ export default function App() {
             ) : mainMode === 'questionnaire' ? (
               /* Questionnaire Legacy Embedded View */
               <div className="flex-1 flex flex-col min-h-[450px] bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
-                {!isAdmin && !selectedMemberId ? (
+                {false ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <p className="text-zinc-500 text-[11px] font-normal tracking-wide">
                       Ці записи тільки для адміністратора

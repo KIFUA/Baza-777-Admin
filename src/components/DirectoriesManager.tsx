@@ -334,7 +334,7 @@ export default function DirectoriesManager({
   // Dictionary editor state
   const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon'>('opika');
   const [newDictValue, setNewDictValue] = useState('');
-  const [dictItems, setDictItems] = useState<string[]>([]);
+  const [dictItems, setDictItems] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState(false);
   
   const isAdmin = !currentSessionUser || currentSessionUser.level === 'IV-й' || (currentSessionUser.rayon === 'ЦЕНТР' && currentSessionUser.user?.includes('Черняк Вал.'));
@@ -361,12 +361,22 @@ export default function DirectoriesManager({
   // Load selected dictionary items from lookups
   useEffect(() => {
     if (lookups?.directories) {
-      let list = lookups.directories[selectedDictKey] || [];
-      if (selectedDictKey === 'vidviduvanist') {
-        list = list.filter((item: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(item));
-        if (list.length === 0) list = ["Постійно", "Періодично", "Рідко", "Ніколи"];
+      if (selectedDictKey === 'rayon') {
+        const rayoni = lookups.directories.rayon || [];
+        // Assuming lookups.directories.rayon might be an array of strings or objects {name, presbyterId}
+        // Let's normalize it to an array of objects
+        setDictItems(rayoni.map((r: any) => typeof r === 'string' ? { name: r, presbyterId: null } : r));
+      } else if (selectedDictKey === 'opika') {
+         const opikuni = lookups.directories.opika || [];
+         setDictItems(opikuni.map((o: any) => typeof o === 'string' ? { name: o, rayon: null } : o));
+      } else {
+        let list = lookups.directories[selectedDictKey] || [];
+        if (selectedDictKey === 'vidviduvanist') {
+          list = list.filter((item: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(item));
+          if (list.length === 0) list = ["Постійно", "Періодично", "Рідко", "Ніколи"];
+        }
+        setDictItems(list);
       }
-      setDictItems([...list]);
     }
   }, [selectedDictKey, lookups]);
 
@@ -807,12 +817,12 @@ export default function DirectoriesManager({
                 <span className="text-[9px] font-bold text-slate-450 uppercase tracking-widest block px-1">Оберіть довідник:</span>
                 <div className="flex flex-col space-y-1">
                   {[
-                    { id: 'opika', title: 'Опікуни (розподіл служителів класу А)' },
+                    { id: 'rayon', title: 'Райони структури' },
+                    { id: 'opika', title: 'Опікуни' },
                     { id: 'slujinnya', title: 'Християнські служіння (Служіння)' },
                     { id: 'vidviduvanist', title: 'Характеристики відвідування' },
                     { id: 'prysutnist', title: 'Причини відсутності (prysutnist)' },
-                    { id: 'di_admin', title: 'Дії адміністратора (переміщення)' },
-                    { id: 'rayon', title: 'Райони структури (rayon)' }
+                    { id: 'di_admin', title: 'Дії адміністратора (переміщення)' }
                   ].map(x => (
                     <button
                       key={x.id}
@@ -832,7 +842,7 @@ export default function DirectoriesManager({
                 <div className="bg-[#13282e]/55 border border-[#224853]/60 rounded-lg p-2.5 text-[10px] text-slate-300 leading-relaxed font-medium">
                   {selectedDictKey === 'opika' && (
                     <span>
-                      👥 <strong>Розподіл опікунів:</strong> Опікуни, які призначені пресвітерами з числа служителів нашої єдиної громади (ієрархія служителів: ст. пастор, пресвітери, диякони, відповідальні за служіння).
+                      👥 <strong>Опікуни:</strong> Опікуни, які призначені пресвітерами з числа служителів нашої єдиної громади (ієрархія служителів: ст. пастор, пресвітери, диякони, відповідальні за служіння). Прив'язка опікуна до району.
                     </span>
                   )}
                   {selectedDictKey === 'di_admin' && (
@@ -857,7 +867,7 @@ export default function DirectoriesManager({
                   )}
                   {selectedDictKey === 'rayon' && (
                     <span>
-                      🗺️ <strong>Райони структури (rayon):</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації.
+                      🗺️ <strong>Райони структури:</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації. Закріплення служителя за районом.
                     </span>
                   )}
                 </div>
@@ -894,9 +904,9 @@ export default function DirectoriesManager({
                     <div className="text-center text-slate-500 py-12 text-xs">Довідник пустий. Додайте перші значення.</div>
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
-                      {dictItems.map((item) => (
-                        <span key={item} className="bg-[#1a3843] border border-[#224853] hover:border-red-900 hover:bg-rose-950/30 pl-2.5 pr-1.5 py-0.5 rounded-lg text-xs font-bold text-slate-200 hover:text-red-400 transition-all inline-flex items-center space-x-1.5 shadow-xs group cursor-default">
-                          <span>{item}</span>
+                      {dictItems.map((item, idx) => (
+                        <span key={idx} className="bg-[#1a3843] border border-[#224853] hover:border-red-900 hover:bg-rose-950/30 pl-2.5 pr-1.5 py-0.5 rounded-lg text-xs font-bold text-slate-200 hover:text-red-400 transition-all inline-flex items-center space-x-1.5 shadow-xs group cursor-default">
+                          <span>{typeof item === 'string' ? item : item.name}</span>
                           <button
                             onClick={() => handleRemoveDictItem(item)}
                             className="text-slate-400 hover:text-red-400 transition-colors p-0.5 outline-none"

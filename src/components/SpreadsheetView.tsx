@@ -904,7 +904,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
       
       {/* Search & Mode filters rail */}
       <div className="px-1.5 py-1 sm:px-3 sm:py-1.5 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-row flex-wrap items-center justify-start gap-1.5 sm:gap-2 shrink-0 shadow-sm scale-interface-down-33 font-semibold pb-1 pb-1">
-        {userLevel !== 'І-й' && isAdmin && (
+        {(isAdmin || ['ІІІ-й', 'IV-й'].includes(userLevel)) && userLevel !== 'І-й' && (
           <div className="flex items-center shrink-0">
             <select
               id="filter_status_select"

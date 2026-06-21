@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
   CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
-  Edit, UserPlus, ShieldAlert
+  Edit, UserPlus, ShieldAlert, Save
 } from 'lucide-react';
 import { Member } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
@@ -27,10 +27,14 @@ export default function DirectoriesManager({
   const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
 
   useEffect(() => {
-    const data = parseAccessLevelsCSV(ACCESS_LEVELS_CSV_DATA);
-    console.log("Parsed Access Levels Data:", data);
-    setParsedAccessLevels(data);
-  }, []);
+    if (lookups?.permission_levels && lookups.permission_levels.length > 0) {
+      setParsedAccessLevels(lookups.permission_levels);
+    } else {
+      const data = parseAccessLevelsCSV(ACCESS_LEVELS_CSV_DATA);
+      console.log("Parsed Access Levels Data:", data);
+      setParsedAccessLevels(data);
+    }
+  }, [lookups]);
 
   const handleToggleAccessLevel = async (role: string, level: string) => {
     const updatedAccessLevels = parsedAccessLevels.map(item => {
@@ -48,7 +52,6 @@ export default function DirectoriesManager({
 
     setParsedAccessLevels(updatedAccessLevels);
 
-    // Save updated access to server
     try {
       await fetch('/api/directories/save', {
         method: 'POST',
@@ -56,11 +59,68 @@ export default function DirectoriesManager({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          access: updatedAccessLevels, // Assuming this is how the API expects it
+          access: updatedAccessLevels,
         }),
       });
+      if (onRefreshLookups) onRefreshLookups();
     } catch (error) {
-      console.error("Failed to save access levels:", error);
+      console.error("Failed to save checkbox permissions list:", error);
+    }
+  };
+
+  const [sectorsSaveLoading, setSectorsSaveLoading] = useState(false);
+  const [levelsSaveLoading, setLevelsSaveLoading] = useState(false);
+
+  const DEFAULT_DOSTUP = [
+    { "rayon": "ЦЕНТР", "level": "IV-й", "user": "Адміністратор", "position": "Адміністратор", "password": "777", "telegramId": "240931069", "email": "240931069" }
+  ];
+
+  const handleSaveSectorsToFirebase = async () => {
+    setSectorsSaveLoading(true);
+    const accessList = lookups?.access || DEFAULT_DOSTUP;
+    try {
+      const resp = await fetch('/api/directories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...lookups?.directories,
+          access: accessList
+        })
+      });
+      if (resp.ok) {
+        if (onRefreshLookups) await onRefreshLookups();
+        alert("Карту секторів доступу успішно збережено в базі ФБ!");
+      } else {
+        alert("Помилка при збереженні Карти секторів доступу!");
+      }
+    } catch (e: any) {
+      alert("Помилка: " + e.message);
+    } finally {
+      setSectorsSaveLoading(false);
+    }
+  };
+
+  const handleSaveLevelsToFirebase = async () => {
+    setLevelsSaveLoading(true);
+    try {
+      const resp = await fetch('/api/directories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...lookups?.directories,
+          access: parsedAccessLevels
+        })
+      });
+      if (resp.ok) {
+        if (onRefreshLookups) await onRefreshLookups();
+        alert("Карту рівнів доступу успішно збережено в базі ФБ!");
+      } else {
+        alert("Помилка при збереженні Карти рівнів доступу!");
+      }
+    } catch (e: any) {
+      alert("Помилка: " + e.message);
+    } finally {
+      setLevelsSaveLoading(false);
     }
   };
   
@@ -890,41 +950,57 @@ export default function DirectoriesManager({
                   </button>
                 </div>
                 
-                {isAdmin && activeAccessSubTab === 'sectors' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingAccessUser(null);
-                      setAccessUser('');
-                      setAccessLevel('І-й');
-                      setAccessPosition('');
-                      setAccessTelegramId('');
-                      setAccessPassword('');
-                      setAccessRayon('ЦЕНТР');
-                      setShowAccessForm(!showAccessForm);
-                    }}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1 shadow transition-all outline-none self-start sm:self-auto"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    <span>{showAccessForm && !editingAccessUser ? "Сховати форму" : "Додати користувача"}</span>
-                  </button>
+                {isAdmin && (
+                  <div className="flex items-center gap-2 flex-wrap sm:self-auto self-start">
+                    {activeAccessSubTab === 'sectors' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleSaveSectorsToFirebase}
+                          disabled={sectorsSaveLoading}
+                          className="bg-[#2a6d8c] hover:bg-[#20536c] text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow transition-all outline-none"
+                        >
+                          <Save className={`h-3.5 w-3.5 ${sectorsSaveLoading ? "animate-spin" : ""}`} />
+                          <span>{sectorsSaveLoading ? "Збереження..." : "Зберегти в базі"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingAccessUser(null);
+                            setAccessUser('');
+                            setAccessLevel('І-й');
+                            setAccessPosition('');
+                            setAccessTelegramId('');
+                            setAccessPassword('');
+                            setAccessRayon('ЦЕНТР');
+                            setShowAccessForm(!showAccessForm);
+                          }}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow transition-all outline-none"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          <span>{showAccessForm && !editingAccessUser ? "Сховати форму" : "Додати користувача"}</span>
+                        </button>
+                      </>
+                    )}
+
+                    {activeAccessSubTab === 'levels' && (
+                      <button
+                        type="button"
+                        onClick={handleSaveLevelsToFirebase}
+                        disabled={levelsSaveLoading}
+                        className="bg-[#2a6d8c] hover:bg-[#20536c] text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow transition-all outline-none"
+                      >
+                        <Save className={`h-3.5 w-3.5 ${levelsSaveLoading ? "animate-spin" : ""}`} />
+                        <span>{levelsSaveLoading ? "Збереження..." : "Зберегти в базі"}</span>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
               {activeAccessSubTab === 'sectors' && (
                 <>
-                  <div className="bg-[#1a3843] rounded-lg border border-[#224853] p-3 shrink-0 flex items-start space-x-2.5 text-xs text-amber-300 leading-snug">
-                    <AlertCircle className="h-4.5 w-4.5 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold">Душпастирська субординація та захист:</span>
-                      <p className="mt-0.5 opacity-85 text-[11px]">
-                        Ви можете «активувати сесію» конкретного пресвітера або диякона. 
-                        При її активації церковний реєстр увійде у режим фільтрації і буде відображати <b>виключно</b> тих членів церкви, 
-                        які закріплені за вказаним районом опіки (наприклад, <b>«ОБ'ЇЗНА»</b> чи <b>«АЕРОПОРТ»</b>). Це дозволяє служителям бачити та опікувати свій район.
-                      </p>
-                    </div>
-                  </div>
-
                   {isAdmin && showAccessForm && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
                       <div className="bg-[#13282e] border border-[#224853] rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh]">
@@ -1140,11 +1216,21 @@ export default function DirectoriesManager({
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-[#13282e] border-b border-[#224853]/60 text-[10px] font-bold text-slate-350 uppercase tracking-wider">
-                          <th className="p-2 px-3">ЕЛЕМЕНТИ ДОДАТКУ</th>
+                          <th className="p-2 px-3" rowSpan={2}>ЕЛЕМЕНТИ ДОДАТКУ</th>
                           <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>І-й рівень</th>
                           <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>ІІ-й рівень</th>
                           <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>ІІІ-й рівень</th>
                           <th className="p-2 px-1 text-center border-l border-[#224853]/30" colSpan={2}>ІV-й рівень</th>
+                        </tr>
+                        <tr className="bg-[#13282e]/80 border-b border-[#224853]/50 text-[9px] font-extrabold text-[#7fa3b0] uppercase tracking-wide">
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/30 text-sky-400">бачить</th>
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/20 text-emerald-450">змінює</th>
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/30 text-sky-400">бачить</th>
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/20 text-emerald-450">змінює</th>
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/30 text-sky-450">бачить</th>
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/20 text-emerald-450">змінює</th>
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/30 text-sky-450">бачить</th>
+                          <th className="p-1.5 px-1 text-center border-l border-[#224853]/20 text-emerald-450">змінює</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#224853]/30 text-xs">

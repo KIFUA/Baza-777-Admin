@@ -111,16 +111,21 @@ const DEFAULT_RAYON2 = [
 
 // Google Sheets Tab: ДОСТУП - Default Fallback Constants
 const DEFAULT_DOSTUP = [
-  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Босик Л.", "position": "", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Євстратов О.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "IV-й", "user": "Адміністратор", "position": "Адміністратор", "password": "777", "telegramId": "240931069", "email": "240931069" },
+  { "rayon": "ЦЕНТР", "level": "IV-й", "user": "Григорів В.", "position": "Адміністратор", "password": "777", "telegramId": "240931069", "email": "240931069" },
+  { "rayon": "АЕРОПОРТ", "level": "ІІ-й", "user": "Григорів Г.", "position": "тестувальник", "password": "999", "telegramId": "858036501", "email": "858036501" },
+  { "rayon": "АЕРОПОРТ", "level": "ІІІ-й", "user": "Бевзюк В.", "position": "Пресвітер", "password": "222-1", "telegramId": "951757352", "email": "951757352" },
+  { "rayon": "КАСКАД", "level": "ІІІ-й", "user": "Скіцко І.", "position": "Пресвітер", "password": "222-2", "telegramId": "435624187", "email": "435624187" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Босик Л.", "position": "Відповідальний за опіку", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Євстратов О.", "position": "Відповідальний", "password": "—", "telegramId": "—", "email": "" },
   { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Мельничук В.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Несен Ю.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Прохніцький Б.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Скриник М.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Несен Ю.", "position": "Відповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Прохніцький Б.", "position": "Відповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Скриник М.", "position": "Відповідальний", "password": "—", "telegramId": "—", "email": "" },
   { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Стасінчук В.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
   { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Стафіїв М.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Факас О.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "ЦЕНТР", "level": "IV-й", "user": "Черняк Вал.", "position": "Пресвітер", "password": "123", "telegramId": "vacherniak@gmail.com", "email": "vacherniak@gmail.com" },
+  { "rayon": "ЦЕНТР", "level": "І-й", "user": "Факас О.", "position": "Відповідальний", "password": "—", "telegramId": "—", "email": "" },
+  { "rayon": "ЦЕНТР", "level": "IV-й", "user": "Черняк Вал.", "position": "Пресвітер (Старший)", "password": "123", "telegramId": "969538290", "email": "969538290" },
   { "rayon": "ЦЕНТР", "level": "ІІ-й", "user": "Шегда П.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
   { "rayon": "ОБ'ЇЗНА", "level": "ІІ-й", "user": "Бурчак Ю.", "position": "Диякон", "password": "333", "telegramId": "61234567", "email": "gvi.dim.777@gmail.com" },
   { "rayon": "ОБ'ЇЗНА", "level": "ІІ-й", "user": "Дмитраш М.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
@@ -130,13 +135,10 @@ const DEFAULT_DOSTUP = [
   { "rayon": "КАСКАД", "level": "ІІ-й", "user": "Ільницький О.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
   { "rayon": "КАСКАД", "level": "ІІ-й", "user": "Луцак М.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
   { "rayon": "КАСКАД", "level": "ІІ-й", "user": "Марунчак В.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "КАСКАД", "level": "ІІІ-й", "user": "Скіцко І.", "position": "Пресвітер", "password": "222", "telegramId": "ivanskitsko@ukr.net", "email": "ivanskitsko@ukr.net" },
-  { "rayon": "АЕРОПОРТ", "level": "ІІІ-й", "user": "Бевзюк В.", "position": "Пресвітер", "password": "111", "telegramId": "vbevzyk@gmail.com", "email": "vbevzyk@gmail.com" },
   { "rayon": "АЕРОПОРТ", "level": "ІІ-й", "user": "Галюк Б.", "position": "Диякон", "password": "444", "telegramId": "Alla1967", "email": "+380967303099, Alla1967" },
-  { "rayon": "АЕРОПОРТ", "level": "І-й", "user": "Григорів Г.", "position": "тестувальник", "password": "—", "telegramId": "grigorivgalina@gmail.com", "email": "grigorivgalina@gmail.com" },
   { "rayon": "АЕРОПОРТ", "level": "ІІ-й", "user": "Самелюк О.", "position": "Диякон", "password": "555", "telegramId": "solbo1971@gmail.com", "email": "solbo1971@gmail.com" },
   { "rayon": "АЕРОПОРТ", "level": "ІІ-й", "user": "Черняк Вікт.", "position": "Диякон", "password": "—", "telegramId": "—", "email": "" },
-  { "rayon": "АЕРОПОРТ", "level": "І-й", "user": "Шпарман Ю.", "position": "ВІдповідальний", "password": "—", "telegramId": "—", "email": "" }
+  { "rayon": "АЕРОПОРТ", "level": "І-й", "user": "Шпарман Ю.", "position": "Відповідальний", "password": "—", "telegramId": "—", "email": "" }
 ];
 
 // Active State Tables (loaded from Cache or Google sheets, falling back to constants)
@@ -147,6 +149,7 @@ let directories_prysutnist: string[] = [...DEFAULT_PRYSUTNIST_PARAMS];
 let directories_di_admin: string[] = [...DEFAULT_DI_ADMIN];
 let directories_rayon2: string[] = [...DEFAULT_RAYON2];
 let access_dostup: any[] = [...DEFAULT_DOSTUP];
+let permission_levels: any[] = [];
 
 // Standard ministry translation name mapping for IDs (from 0 to 37)
 const MINISTRY_MAP: Record<number, string> = {
@@ -323,6 +326,11 @@ function loadDatabase() {
         .map((r: string) => String(r || "").replace(/\s*-\s*SOS/gi, "").trim())
         .filter((r: string, idx: number, arr: string[]) => r && arr.indexOf(r) === idx);
       access_dostup = db.access_dostup || [...DEFAULT_DOSTUP];
+      if (Array.isArray(access_dostup) && (access_dostup.length === 0 || access_dostup.some(item => !item || item.role !== undefined || !item.user))) {
+        console.warn("Detected corrupted or empty access_dostup in cache. Resetting to DEFAULT_DOSTUP...");
+        access_dostup = [...DEFAULT_DOSTUP];
+      }
+      permission_levels = db.permission_levels || [];
       console.log(`Loaded cache: ${members.length} members.`);
       loadedFromCache = true;
     } catch (err: any) {
@@ -472,7 +480,8 @@ function saveDatabaseToCache() {
       directories_prysutnist,
       directories_di_admin,
       directories_rayon2,
-      access_dostup
+      access_dostup,
+      permission_levels
     };
     fs.writeFileSync(DB_CACHE_FILE, JSON.stringify(db, null, 2), "utf-8");
     
@@ -764,7 +773,8 @@ app.get("/api/lookups", async (req, res) => {
       rayon2: sortRayonsArray(directories_rayon2),
       rayon: sortRayonsArray(directories_rayon2)
     },
-    access: access_dostup
+    access: access_dostup,
+    permission_levels: permission_levels
   });
 });
 
@@ -1517,7 +1527,15 @@ app.post("/api/directories/save", async (req, res) => {
   
   const targetRayons = Array.isArray(rayon) ? rayon : rayon2;
   if (Array.isArray(targetRayons)) directories_rayon2 = targetRayons;
-  if (Array.isArray(access)) access_dostup = access;
+  let isPermissionsArray = false;
+  if (Array.isArray(access)) {
+    if (access.length > 0 && access[0] && (access[0].role !== undefined || access[0].headers !== undefined)) {
+      isPermissionsArray = true;
+      permission_levels = access;
+    } else {
+      access_dostup = access;
+    }
+  }
 
   auditLogs.push({
     id: "dir_" + Date.now(),
@@ -1532,7 +1550,11 @@ app.post("/api/directories/save", async (req, res) => {
   try {
     await syncDirectoriesToFirebase();
     if (Array.isArray(access)) {
-      await syncAccessDostupToFirebase();
+      if (isPermissionsArray) {
+        await syncPermissionLevelsToFirebase();
+      } else {
+        await syncAccessDostupToFirebase();
+      }
     }
   } catch (e) {
     console.error("Firebase manual directories save error:", e);
@@ -2359,13 +2381,53 @@ async function syncAccessDostupFromFirebase() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data: any = await res.json();
     if (Array.isArray(data)) {
-      access_dostup = data;
-      console.log("[Firebase Access Sync] Access list loaded from Firebase RTDB:", access_dostup.length, "users.");
+      if (data.length === 0 || data.some(item => !item || item.role !== undefined || !item.user)) {
+        console.warn("[Firebase Access Sync] Detected corrupted or empty access list on Firebase. Resetting to DEFAULT_DOSTUP and saving back...");
+        access_dostup = [...DEFAULT_DOSTUP];
+        await syncAccessDostupToFirebase();
+      } else {
+        access_dostup = data;
+        console.log("[Firebase Access Sync] Access list loaded from Firebase RTDB:", access_dostup.length, "users.");
+      }
     } else {
       console.log("[Firebase Access Sync] No access list found on Firebase, using current state.");
+      access_dostup = [...DEFAULT_DOSTUP];
+      await syncAccessDostupToFirebase();
     }
   } catch (err: any) {
     console.error("[Firebase Access Sync] Failed to load access list from Firebase:", err.message);
+  }
+}
+
+async function syncPermissionLevelsToFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/permission_levels.json?auth=${DB_SECRET}`;
+  try {
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(permission_levels)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    console.log("[Firebase Permissions Sync] Permission levels successfully saved to Firebase RTDB.");
+  } catch (err: any) {
+    console.error("[Firebase Permissions Sync] Failed to save permission levels to Firebase:", err.message);
+  }
+}
+
+async function syncPermissionLevelsFromFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/permission_levels.json?auth=${DB_SECRET}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data: any = await res.json();
+    if (Array.isArray(data)) {
+      permission_levels = data;
+      console.log("[Firebase Permissions Sync] Permission levels loaded from Firebase RTDB:", permission_levels.length, "roles.");
+    }
+  } catch (err: any) {
+    console.error("[Firebase Permissions Sync] Failed to load permission levels from Firebase:", err.message);
   }
 }
 
@@ -2602,6 +2664,7 @@ async function syncDatabaseWithFirebase() {
 
   // Load access control lists from Firebase RTDB
   await syncAccessDostupFromFirebase();
+  await syncPermissionLevelsFromFirebase().catch(() => {});
   
   // Load custom colors configuration from Firebase RTDB
   await fetchCustomColorsFromFirebase().catch(() => {});

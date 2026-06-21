@@ -336,20 +336,39 @@ export default function App() {
                   justifyContent: 'center'
                 }}
                 onClick={() => { 
-                  setMainMode('spreadsheet'); 
-                  setSelectedMemberId(null); 
-                  setShowForm(false); 
-                  // Instant load using cache, reload synced changes in background in parallel
-                  Promise.all([
-                    fetchAllMembers(),
-                    fetchMembers(),
-                    fetchLookupsAndStats()
-                  ]).catch(err => console.error("Error updating tab data:", err));
+                  setIsAuthenticated(false); 
+                  setCurrentSessionUser(null);
+                  localStorage.removeItem("user_tg_id");
                 }}
-                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                className="px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d]"
               >
-                СПИСОК
+                ВИХІД
               </button>
+              {currentSessionUser?.level !== 'І-й' && (
+                <button
+                  style={{
+                    fontSize: '12px',
+                    height: '30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  onClick={() => { 
+                    setMainMode('spreadsheet'); 
+                    setSelectedMemberId(null); 
+                    setShowForm(false); 
+                    // Instant load using cache, reload synced changes in background in parallel
+                    Promise.all([
+                      fetchAllMembers(),
+                      fetchMembers(),
+                      fetchLookupsAndStats()
+                    ]).catch(err => console.error("Error updating tab data:", err));
+                  }}
+                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                >
+                  СПИСОК
+                </button>
+              )}
               {currentSessionUser?.level !== 'І-й' && (
                 <button
                   style={{

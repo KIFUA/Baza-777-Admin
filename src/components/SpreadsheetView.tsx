@@ -993,26 +993,24 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         )}
 
         {/* Filters (Фільтри) */}
-        {userLevel !== 'І-й' && (
-          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
-            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Пошук"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
-              >
-                <X className="h-3 w-3 sm:h-4 sm:w-4" />
-              </button>
-            )}
-          </div>
-        )}
+        <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
+          <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Пошук"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+            >
+              <X className="h-3 w-3 sm:h-4 sm:w-4" />
+            </button>
+          )}
+        </div>
 
         {userLevel !== 'І-й' && (
           <button

@@ -350,71 +350,77 @@ export default function App() {
               >
                 СПИСОК
               </button>
-              <button
-                style={{
-                  fontSize: '12px',
-                  height: '30px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title="Перейти до анкет"
-                onClick={() => { 
-                  setMainMode('questionnaire'); 
-                  setSelectedMemberId(null); 
-                  setShowForm(false); 
-                  // Instant load using cache, reload synced changes in background in parallel
-                  Promise.all([
-                    fetchAllMembers(),
-                    fetchMembers(),
-                    fetchLookupsAndStats()
-                  ]).catch(err => console.error("Error updating tab data:", err));
-                }}
-                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-              >
-                АНКЕТИ
-              </button>
-              <button
-                style={{
-                  fontSize: '12px',
-                  height: '30px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title="Аналітична статистика реєстру та зрізи за районами"
-                onClick={() => {
-                  setMainMode('stats');
-                  setSelectedMemberId(null);
-                  setShowForm(false);
-                  Promise.all([
-                    fetchAllMembers(),
-                    fetchMembers(),
-                    fetchLookupsAndStats()
-                  ]).catch(err => console.error("Error updating tab data:", err));
-                }}
-                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-              >
-                СТАТИСТИКА
-              </button>
-              <button
-                style={{
-                  fontSize: '12px',
-                  height: '30px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title="Налаштування довідників та кольорів"
-                onClick={() => {
-                  setMainMode('settings');
-                  setSelectedMemberId(null);
-                  setShowForm(false);
-                }}
-                className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-              >
-                НАЛАШТУВАННЯ
-              </button>
+              {currentSessionUser?.level !== 'І-й' && (
+                <button
+                  style={{
+                    fontSize: '12px',
+                    height: '30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Перейти до анкет"
+                  onClick={() => { 
+                    setMainMode('questionnaire'); 
+                    setSelectedMemberId(null); 
+                    setShowForm(false); 
+                    // Instant load using cache, reload synced changes in background in parallel
+                    Promise.all([
+                      fetchAllMembers(),
+                      fetchMembers(),
+                      fetchLookupsAndStats()
+                    ]).catch(err => console.error("Error updating tab data:", err));
+                  }}
+                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                >
+                  АНКЕТИ
+                </button>
+              )}
+              {currentSessionUser?.level !== 'І-й' && (
+                <>
+                  <button
+                    style={{
+                      fontSize: '12px',
+                      height: '30px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Аналітична статистика реєстру та зрізи за районами"
+                    onClick={() => {
+                      setMainMode('stats');
+                      setSelectedMemberId(null);
+                      setShowForm(false);
+                      Promise.all([
+                        fetchAllMembers(),
+                        fetchMembers(),
+                        fetchLookupsAndStats()
+                      ]).catch(err => console.error("Error updating tab data:", err));
+                    }}
+                    className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                  >
+                    СТАТИСТИКА
+                  </button>
+                  <button
+                    style={{
+                      fontSize: '12px',
+                      height: '30px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Налаштування довідників та кольорів"
+                    onClick={() => {
+                      setMainMode('settings');
+                      setSelectedMemberId(null);
+                      setShowForm(false);
+                    }}
+                    className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                  >
+                    НАЛАШТУВАННЯ
+                  </button>
+                </>
+              )}
             </nav>
           </div>
         </div>
@@ -474,6 +480,7 @@ export default function App() {
                 <SpreadsheetView
                   members={allMembers}
                   lookups={lookups}
+                  userLevel={currentSessionUser?.level}
                   onOpenProfile={async (id) => {
                     setSelectedMemberId(id);
                     setMainMode('questionnaire');

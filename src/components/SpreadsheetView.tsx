@@ -8,12 +8,13 @@ import {
 interface SpreadsheetViewProps {
   members: Member[];
   lookups: any;
+  userLevel?: string;
   onOpenProfile: (id: number) => void;
   onUpdateMember: (id: number, updatedFields: Partial<Member>) => Promise<boolean>;
   onOpenGenerator: () => void;
 }
 
-export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpdateMember, onOpenGenerator }: SpreadsheetViewProps) {
+export default function SpreadsheetView({ members, lookups, userLevel, onOpenProfile, onUpdateMember, onOpenGenerator }: SpreadsheetViewProps) {
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
   const [selectedRayonFilter, setSelectedRayonFilter] = useState<string>('');
   const [selectedOpikaFilter, setSelectedOpikaFilter] = useState<string>('');
@@ -482,8 +483,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
           }
         });
         // Scale/button/padding spacing buffer
-        const finalWidth = maxWidth + (isMobile ? 24 : 44);
-        const minWidth = isMobile ? 85 : 155;
+        const finalWidth = maxWidth + (isMobile ? 20 : 36);
+        const minWidth = isMobile ? 70 : 130;
         const calculatedWidth = Math.max(minWidth, Math.ceil(finalWidth));
         return isMobile ? Math.min(160, calculatedWidth) : Math.min(350, calculatedWidth);
       }
@@ -903,8 +904,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
       
       {/* Search & Mode filters rail */}
       <div className="px-1.5 py-1 sm:px-3 sm:py-1.5 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-row flex-wrap items-center justify-start gap-1.5 sm:gap-2 shrink-0 shadow-sm scale-interface-down-33 font-semibold pb-1 pb-1">
-        {/* Status filtering select (Наявні / Вибулі / Всі) */}
-        {isAdmin && (
+        {userLevel !== 'І-й' && isAdmin && (
           <div className="flex items-center shrink-0">
             <select
               id="filter_status_select"
@@ -921,123 +921,133 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
         )}
 
         {/* District Select (РАЙОН) */}
-        <div className="flex items-center shrink-0">
-          <select
-            id="filter_rayon_select"
-            title="Виберіть район"
-            value={selectedRayonFilter}
-            onChange={(e) => {
-              const r = e.target.value;
-              setSelectedRayonFilter(r);
-              setSelectedOpikaFilter(''); // Reset dependent opika filter
-            }}
-            className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
-              selectedRayonFilter 
-                ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
+        {userLevel !== 'І-й' && (
+          <div className="flex items-center shrink-0">
+            <select
+              id="filter_rayon_select"
+              title="Виберіть район"
+              value={selectedRayonFilter}
+              onChange={(e) => {
+                const r = e.target.value;
+                setSelectedRayonFilter(r);
+                setSelectedOpikaFilter(''); // Reset dependent opika filter
+              }}
+              className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
+                selectedRayonFilter 
+                  ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
+                  : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
+              }`}
+            >
+              <option value="" className="bg-[#1a3843]">РАЙОН (ВСІ)</option>
+              {rayonList.map((r, i) => (
+                <option key={i} value={r} className="bg-[#1a3843]">{r}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Caretaker Select (ОПІКА) - Dependent list */}
+        {userLevel !== 'І-й' && (
+          <div className="flex items-center shrink-0 relative">
+            <select
+              id="filter_opika_select"
+              title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
+              value={selectedOpikaFilter}
+              onChange={(e) => {
+                if (!selectedRayonFilter) {
+                  setShowRayonWarning(true);
+                  setTimeout(() => setShowRayonWarning(false), 2500);
+                  return;
+                }
+                setSelectedOpikaFilter(e.target.value);
+              }}
+              onMouseDown={(e) => {
+                if (!selectedRayonFilter) {
+                  e.preventDefault();
+                  setShowRayonWarning(true);
+                  setTimeout(() => setShowRayonWarning(false), 2500);
+                }
+              }}
+              className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
+                selectedOpikaFilter 
+                  ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
+                  : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
+              } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
+            >
+              <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
+              {selectedRayonFilter && opikaList.map((o, i) => (
+                <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
+              ))}
+            </select>
+
+            {showRayonWarning && (
+              <div 
+                id="rayon_warning_tooltip"
+                className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
+              >
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span>Спочатку виберіть район</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Filters (Фільтри) */}
+        {userLevel !== 'І-й' && (
+          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
+            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Пошук"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                <X className="h-3 w-3 sm:h-4 sm:w-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {userLevel !== 'І-й' && (
+          <button
+            title="Перейти до генератора списків"
+            onClick={onOpenGenerator}
+            className="justify-center px-1.5 py-1 sm:px-3 h-[24px] sm:h-[32px] text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold text-white transition-all bg-[#387d7a] hover:bg-[#2b5f5d] border border-[#1b3642] rounded shadow-sm tracking-widest uppercase flex items-center whitespace-nowrap cursor-pointer shrink-0"
+          >
+            ВЛАСНІ СПИСКИ
+          </button>
+        )}
+
+        {userLevel !== 'І-й' && (
+          <button
+            id="toggle_rayon_col_btn"
+            type="button"
+            onClick={() => setShowRayonColumn(!showRayonColumn)}
+            className={`justify-center flex items-center space-x-1 px-1.5 py-1 sm:px-3 sm:py-1.5 h-[24px] sm:h-[32px] rounded border text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none shrink-0 ${
+              showRayonColumn
+                ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm font-semibold"
                 : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
             }`}
           >
-            <option value="" className="bg-[#1a3843]">РАЙОН (ВСІ)</option>
-            {rayonList.map((r, i) => (
-              <option key={i} value={r} className="bg-[#1a3843]">{r}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Caretaker Select (ОПІКА) - Dependent list */}
-        <div className="flex items-center shrink-0 relative">
-          <select
-            id="filter_opika_select"
-            title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
-            value={selectedOpikaFilter}
-            onChange={(e) => {
-              if (!selectedRayonFilter) {
-                setShowRayonWarning(true);
-                setTimeout(() => setShowRayonWarning(false), 2500);
-                return;
-              }
-              setSelectedOpikaFilter(e.target.value);
-            }}
-            onMouseDown={(e) => {
-              if (!selectedRayonFilter) {
-                e.preventDefault();
-                setShowRayonWarning(true);
-                setTimeout(() => setShowRayonWarning(false), 2500);
-              }
-            }}
-            className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
-              selectedOpikaFilter 
-                ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
-                : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
-            } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
-          >
-            <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
-            {selectedRayonFilter && opikaList.map((o, i) => (
-              <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
-            ))}
-          </select>
-
-          {showRayonWarning && (
-            <div 
-              id="rayon_warning_tooltip"
-              className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
-            >
-              <AlertTriangle className="h-3 w-3 shrink-0" />
-              <span>Спочатку виберіть район</span>
-            </div>
-          )}
-        </div>
-
-        {/* Filters (Фільтри) */}
-        <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
-          <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Пошук"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
-          />
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
-            >
-              <X className="h-3 w-3 sm:h-4 sm:w-4" />
-            </button>
-          )}
-        </div>
-
-        <button
-          title="Перейти до генератора списків"
-          onClick={onOpenGenerator}
-          className="justify-center px-1.5 py-1 sm:px-3 h-[24px] sm:h-[32px] text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold text-white transition-all bg-[#387d7a] hover:bg-[#2b5f5d] border border-[#1b3642] rounded shadow-sm tracking-widest uppercase flex items-center whitespace-nowrap cursor-pointer shrink-0"
-        >
-          ВЛАСНІ СПИСКИ
-        </button>
-
-        <button
-          id="toggle_rayon_col_btn"
-          type="button"
-          onClick={() => setShowRayonColumn(!showRayonColumn)}
-          className={`justify-center flex items-center space-x-1 px-1.5 py-1 sm:px-3 sm:py-1.5 h-[24px] sm:h-[32px] rounded border text-[8px] xs:text-[9.5px] sm:text-[11px] font-bold uppercase transition-all select-none cursor-pointer outline-none shrink-0 ${
-            showRayonColumn
-              ? "bg-[#387d7a] border-[#387d7a] text-white shadow-sm font-semibold"
-              : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
-          }`}
-        >
-          <span className="hidden sm:inline">Район у таблиці 🧭</span>
-          <span className="sm:hidden">Район 🧭</span>
-          <span className="opacity-85 text-[8px] sm:text-[10px] ml-0.5">
-            {showRayonColumn ? "(Так)" : "(Ні)"}
-          </span>
-        </button>
+            <span className="hidden sm:inline">Район у таблиці 🧭</span>
+            <span className="sm:hidden">Район 🧭</span>
+            <span className="opacity-85 text-[8px] sm:text-[10px] ml-0.5">
+              {showRayonColumn ? "(Так)" : "(Ні)"}
+            </span>
+          </button>
+        )}
 
       </div>
 
       {/* Spreadsheet grid scroll core */}
       <div className="flex-1 overflow-auto spreadsheet-scroll-container bg-[#cde0cf] min-h-[220px] max-h-full w-full border border-[#8fba94] rounded-md shadow-inner">
-        <table className="w-full border-collapse border border-[#8fba94] text-[11px] bg-[#cde0cf] select-text">
+        <table className={`${userLevel === 'І-й' ? 'w-fit' : 'w-full'} border-collapse border border-[#8fba94] text-[11px] bg-[#cde0cf] select-text`}>
           <thead className="sticky top-0 z-[100] shadow-[0_1px_2px_rgba(0,0,0,0.1)] outline outline-1 outline-[#8fba94]">
             <tr style={{ height: '22px' }} className="bg-[#b2cfb6] text-[#0d341d]">
               <th 
@@ -1065,26 +1075,24 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
               >
                 ПІБ
               </th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] leading-none uppercase">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-left font-bold w-36 min-w-[144px] max-w-[144px] truncate bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-28 min-w-[112px] max-w-[112px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОПІКА</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-48 min-w-[192px] max-w-[192px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СЛУЖІННЯ</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-20 min-w-[80px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІДВІДУВАННЯ</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold w-24 min-w-[96px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none" title="ПРИЧИНА ВІДСУТНОСТІ">ПРИЧ. ВІДСУТНОСТІ</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold w-12 min-w-[48px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІК</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] min-w-[150px] whitespace-nowrap text-[5.5px] sm:text-[6.5px] uppercase leading-none">
-                АДРЕСА
-              </th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold min-w-28 bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ТЕЛЕФОН</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">ДАТА НАРОДЖ.</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОС-ТА</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ХР. С.Д.</th>
-              <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СІМ. СТАН</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold w-14 min-w-[56px] max-w-[56px] bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СОЦ.<br/>СТАН</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В.Х.</th>
+              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОПІКА</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СЛУЖІННЯ</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІДВІДУВАННЯ</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none" title="ПРИЧИНА ВІДСУТНОСТІ">ПРИЧ. ВІДСУТНОСТІ</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІК</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">АДРЕСА</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ТЕЛЕФОН</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТА НАРОДЖ.</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОС-ТА</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ХР. С.Д.</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СІМ. СТАН</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СОЦ.<br/>СТАН</th>}
+              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">В.Х.</th>}
               <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В_ЦЕРКВІ_З</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">РОКІВ В Ц.</th>
+              <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none w-10 min-w-[40px] max-w-[40px]">РОКІВ В Ц.</th>
             </tr>
           </thead>
           <tbody className="font-medium text-[#113a21]">
@@ -1127,11 +1135,7 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className="py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden cursor-pointer"
-                      onDoubleClick={(e) => {
-                        e.stopPropagation();
-                        onOpenProfile(m.id);
-                      }}
+                      className="py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden"
                     >
                       <div className="flex items-center justify-between space-x-1">
                         <div className="flex items-center space-x-1 truncate min-w-0 flex-1">
@@ -1153,21 +1157,11 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                             );
                           })()}
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenProfile(m.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 hidden sm:flex ml-1 px-1.5 py-0.5 text-[9px] bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded items-center space-x-0.5 transition-all text-center h-5 shrink-0 scale-75 origin-center"
-                          title="Двічі клацніть або натисніть сюди, щоб редагувати анкету цієї особи у вікні"
-                        >
-                          <span className="tracking-tighter">Анкета ↗</span>
-                        </button>
                       </div>
                     </td>
 
                     {/* Custom Editable Contact Dates (Request 2 & 4) */}
-                    {(() => {
+                    {userLevel !== 'І-й' && (() => {
                       const bgClass = getContactDateBgClass(m.d_kontaktiv);
                       const isSalat = bgClass === 'bg-[#69DD90]';
                       const textClass = isSalat ? 'text-[#06331a]' : 'text-rose-950';
@@ -1175,8 +1169,8 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                       const allDates = parseContactDates(m.d_kontaktiv);
                       const isTooltipOpen = activeContactTooltipId === m.id;
                       return (
-                        <td 
-                          className={`py-0.5 px-0.5 border-r border-[#8fba94] text-center w-[62px] min-w-[62px] max-w-[62px] sm:w-[86px] sm:min-w-[86px] sm:max-w-[86px] relative cursor-pointer select-none hover:brightness-95 transition-all ${bgClass}`}
+                      <td 
+                          className={`py-0.5 px-0.5 border-r border-[#8fba94] text-center relative cursor-pointer select-none hover:brightness-95 transition-all ${bgClass}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveContactTooltipId(isTooltipOpen ? null : m.id);
@@ -1217,254 +1211,280 @@ export default function SpreadsheetView({ members, lookups, onOpenProfile, onUpd
                     })()}
 
                     {/* Remarks with Popup Tooltip on Hover or Tap (Request 2) */}
-                    {editingRemarkId === m.id ? (
-                      <td 
-                        className="py-0.5 px-0.5 border-r border-[#8fba94] bg-white w-36 min-w-[144px] max-w-[144px]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="text"
-                          value={editingRemarkValue}
-                          onChange={(e) => setEditingRemarkValue(e.target.value)}
-                          onBlur={async () => {
-                            const originalVal = m.primitka || '';
-                            if (editingRemarkValue !== originalVal) {
-                              await onUpdateMember(m.id, { primitka: editingRemarkValue });
-                            }
-                            setEditingRemarkId(null);
-                          }}
-                          onKeyDown={async (e) => {
-                            if (e.key === 'Enter') {
+                    {userLevel !== 'І-й' ? (
+                      editingRemarkId === m.id ? (
+                        <td 
+                          className="py-0.5 px-0.5 border-r border-[#8fba94] bg-white w-36 min-w-[144px] max-w-[144px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="text"
+                            value={editingRemarkValue}
+                            onChange={(e) => setEditingRemarkValue(e.target.value)}
+                            onBlur={async () => {
                               const originalVal = m.primitka || '';
                               if (editingRemarkValue !== originalVal) {
                                 await onUpdateMember(m.id, { primitka: editingRemarkValue });
                               }
                               setEditingRemarkId(null);
-                            } else if (e.key === 'Escape') {
-                              setEditingRemarkId(null);
+                            }}
+                            onKeyDown={async (e) => {
+                              if (e.key === 'Enter') {
+                                const originalVal = m.primitka || '';
+                                if (editingRemarkValue !== originalVal) {
+                                  await onUpdateMember(m.id, { primitka: editingRemarkValue });
+                                }
+                                setEditingRemarkId(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingRemarkId(null);
+                              }
+                            }}
+                            autoFocus
+                            className="w-full bg-slate-50 border border-emerald-500 rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                          />
+                        </td>
+                      ) : (
+                        <td 
+                          className="py-0.5 px-1 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 italic font-semibold text-[10px] relative cursor-pointer overflow-visible w-36 min-w-[144px] max-w-[144px]"
+                          onMouseEnter={(e) => {
+                            const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
+                            if (div && div.scrollWidth > div.clientWidth) {
+                              setActiveRemarkTooltipId(m.id);
                             }
                           }}
-                          autoFocus
-                          className="w-full bg-slate-50 border border-emerald-500 rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                        />
-                      </td>
-                    ) : (
-                      <td 
-                        className="py-0.5 px-1 border-r border-[#8fba94] bg-[#fef9c3]/40 text-[#1e3e29] group-hover:bg-[#fef08a]/60 italic font-semibold text-[10px] relative cursor-pointer overflow-visible w-36 min-w-[144px] max-w-[144px]"
-                        onMouseEnter={(e) => {
-                          const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
-                          if (div && div.scrollWidth > div.clientWidth) {
-                            setActiveRemarkTooltipId(m.id);
-                          }
-                        }}
-                        onMouseLeave={() => {
-                          setActiveRemarkTooltipId(null);
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
-                          if (div && div.scrollWidth > div.clientWidth) {
-                            setActiveRemarkTooltipId(activeRemarkTooltipId === m.id ? null : m.id);
-                          }
-                        }}
-                        onDoubleClick={(e) => {
-                          e.stopPropagation();
-                          setEditingRemarkId(m.id);
-                          setEditingRemarkValue(m.primitka || '');
-                          setActiveRemarkTooltipId(null);
-                        }}
-                      >
-                        <div className="remark-text-div truncate max-w-[128px]">
-                          {m.primitka || '—'}
-                        </div>
-                        {activeRemarkTooltipId === m.id && m.primitka && (
-                          <div 
-                            className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-72 sm:w-96 bg-emerald-950 text-white border border-emerald-700 rounded-lg shadow-xl p-3 z-[300] text-left font-sans text-xs not-italic font-semibold whitespace-normal normal-case leading-relaxed animate-in fade-in zoom-in-95 duration-100"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-emerald-950" />
-                            {m.primitka}
+                          onMouseLeave={() => {
+                            setActiveRemarkTooltipId(null);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
+                            if (div && div.scrollWidth > div.clientWidth) {
+                              setActiveRemarkTooltipId(activeRemarkTooltipId === m.id ? null : m.id);
+                            }
+                          }}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            setEditingRemarkId(m.id);
+                            setEditingRemarkValue(m.primitka || '');
+                            setActiveRemarkTooltipId(null);
+                          }}
+                        >
+                          <div className="remark-text-div truncate max-w-[128px]">
+                            {m.primitka || '—'}
                           </div>
-                        )}
-                      </td>
-                    )}
+                          {activeRemarkTooltipId === m.id && m.primitka && (
+                            <div 
+                              className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-72 sm:w-96 bg-emerald-950 text-white border border-emerald-700 rounded-lg shadow-xl p-3 z-[300] text-left font-sans text-xs not-italic font-semibold whitespace-normal normal-case leading-relaxed animate-in fade-in zoom-in-95 duration-100"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-emerald-950" />
+                              {m.primitka}
+                            </div>
+                          )}
+                        </td>
+                      )
+                    ) : null}
 
                     {/* "Дії" (di_admin) Inline Dropdown (Request 5) */}
-                    {renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-amber-800 bg-amber-50/50 rounded px-1')}
+                    {userLevel !== 'І-й' && renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-amber-800 bg-amber-50/50 rounded px-1')}
 
                     {/* Shepherd (Oversight/Opika) */}
-                    {renderDropdownCell(m, 'presviter', caregivers, '—', 'text-slate-700 bg-emerald-50/40 rounded px-1')}
+                    {userLevel !== 'І-й' && renderDropdownCell(m, 'presviter', caregivers, '—', 'text-slate-700 bg-emerald-50/40 rounded px-1')}
 
                     {/* "Служіння" Column (Ministry) with multiple choice popup */}
-                    <td 
-                      className="py-0.5 px-1 border-r border-[#8fba94] text-center w-48 min-w-[192px] max-w-[192px] relative cursor-pointer hover:bg-emerald-800/10 transition-colors select-none"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCell({ id: m.id, field: 's_slujinnya_spysok' });
-                      }}
-                      title="Клацніть для швидкої зміни служінь"
-                    >
-                      {editingCell?.id === m.id && editingCell?.field === 's_slujinnya_spysok' && (
-                        <>
-                          {/* Invisible click backdrop to dismiss edit mode on outer-click */}
-                          <div 
-                            className="fixed inset-0 z-[240] cursor-default bg-transparent" 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingCell(null);
-                            }}
-                          />
-                          <div 
-                            className="absolute right-0 top-full mt-1 bg-white border-2 border-emerald-600 rounded-lg shadow-xl p-3 z-[250] w-64 text-slate-800"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 mb-2">
-                              <span className="text-[11px] font-extrabold text-emerald-800">Швидка зміна служінь</span>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setEditingCell(null); }}
-                                className="text-slate-450 hover:text-rose-600 font-black text-xs px-1 hover:bg-slate-100 rounded leading-none transition-colors"
-                              >
-                                ✕
-                              </button>
-                            </div>
-                            <div className="max-h-52 overflow-y-auto text-left space-y-1.5 pr-1 font-sans">
-                              {ministryOptions.map((opt) => {
-                                const selectedList = m.s_slujinnya_spysok 
-                                  ? m.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
-                                  : [];
-                                const isChecked = selectedList.includes(opt);
-                                const slStyle = getSlujStyle(opt);
-                                return (
-                                  <label 
-                                    key={opt} 
-                                    className="flex items-center gap-2 py-1 px-1.5 cursor-pointer rounded hover:bg-slate-100/80 transition-colors select-none text-[10.5px] font-bold text-slate-700"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isChecked}
-                                      onChange={async (e) => {
-                                        let newList;
-                                        if (e.target.checked) {
-                                          newList = [...selectedList, opt];
-                                        } else {
-                                          newList = selectedList.filter(item => item !== opt);
-                                        }
-                                        const sortedNewList = ministryOptions.filter(o => newList.includes(o));
-                                        const valString = sortedNewList.join(', ');
-                                        await onUpdateMember(m.id, { s_slujinnya_spysok: valString });
-                                      }}
-                                      className="h-3 w-3 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                    />
-                                    <span 
-                                      style={{
-                                        backgroundColor: slStyle.bg,
-                                        color: slStyle.text,
-                                        border: `1px solid ${slStyle.border}`,
-                                        padding: '1px 4px',
-                                        borderRadius: '3px'
-                                      }}
-                                      className={`text-[11px] sm:text-xs truncate max-w-[160px] ${isChecked ? 'font-black shadow-sm' : 'font-semibold opacity-85'}`}
-                                      title={opt}
+                    {userLevel !== 'І-й' && (
+                      <td 
+                        className="py-0.5 px-1 border-r border-[#8fba94] text-center w-48 min-w-[192px] max-w-[192px] relative cursor-pointer hover:bg-emerald-800/10 transition-colors select-none"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCell({ id: m.id, field: 's_slujinnya_spysok' });
+                        }}
+                        title="Клацніть для швидкої зміни служінь"
+                      >
+                        {editingCell?.id === m.id && editingCell?.field === 's_slujinnya_spysok' && (
+                          <>
+                            {/* Invisible click backdrop to dismiss edit mode on outer-click */}
+                            <div 
+                              className="fixed inset-0 z-[240] cursor-default bg-transparent" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingCell(null);
+                              }}
+                            />
+                            <div 
+                              className="absolute right-0 top-full mt-1 bg-white border-2 border-emerald-600 rounded-lg shadow-xl p-3 z-[250] w-64 text-slate-800"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5 mb-2">
+                                <span className="text-[11px] font-extrabold text-emerald-800">Швидка зміна служінь</span>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setEditingCell(null); }}
+                                  className="text-slate-450 hover:text-rose-600 font-black text-xs px-1 hover:bg-slate-100 rounded leading-none transition-colors"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="max-h-52 overflow-y-auto text-left space-y-1.5 pr-1 font-sans">
+                                {ministryOptions.map((opt) => {
+                                  const selectedList = m.s_slujinnya_spysok 
+                                    ? m.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                                    : [];
+                                  const isChecked = selectedList.includes(opt);
+                                  const slStyle = getSlujStyle(opt);
+                                  return (
+                                    <label 
+                                      key={opt} 
+                                      className="flex items-center gap-2 py-1 px-1.5 cursor-pointer rounded hover:bg-slate-100/80 transition-colors select-none text-[10.5px] font-bold text-slate-700"
                                     >
-                                      {opt}
-                                    </span>
-                                  </label>
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={async (e) => {
+                                          let newList;
+                                          if (e.target.checked) {
+                                            newList = [...selectedList, opt];
+                                          } else {
+                                            newList = selectedList.filter(item => item !== opt);
+                                          }
+                                          const sortedNewList = ministryOptions.filter(o => newList.includes(o));
+                                          const valString = sortedNewList.join(', ');
+                                          await onUpdateMember(m.id, { s_slujinnya_spysok: valString });
+                                        }}
+                                        className="h-3 w-3 rounded border-slate-350 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                      />
+                                      <span 
+                                        style={{
+                                          backgroundColor: slStyle.bg,
+                                          color: slStyle.text,
+                                          border: `1px solid ${slStyle.border}`,
+                                          padding: '1px 4px',
+                                          borderRadius: '3px'
+                                        }}
+                                        className={`text-[11px] sm:text-xs truncate max-w-[160px] ${isChecked ? 'font-black shadow-sm' : 'font-semibold opacity-85'}`}
+                                        title={opt}
+                                      >
+                                        {opt}
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        {/* Display of selected */}
+                        {(() => {
+                          const selectedList = m.s_slujinnya_spysok 
+                            ? m.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                            : [];
+                          return selectedList.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-1 w-full p-0.5">
+                              {selectedList.map(name => {
+                                const style = getSlujStyle(name);
+                                return (
+                                  <span 
+                                    key={name} 
+                                    style={{
+                                      backgroundColor: style.bg,
+                                      color: style.text,
+                                      borderColor: style.border
+                                    }}
+                                    className="border px-1 py-0.5 rounded text-[10px] truncate font-extrabold block text-center shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
+                                    title={name}
+                                  >
+                                    {name}
+                                  </span>
                                 );
                               })}
                             </div>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Display of selected */}
-                      {(() => {
-                        const selectedList = m.s_slujinnya_spysok 
-                          ? m.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
-                          : [];
-                        return selectedList.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-1 w-full p-0.5">
-                            {selectedList.map(name => {
-                              const style = getSlujStyle(name);
-                              return (
-                                <span 
-                                  key={name} 
-                                  style={{
-                                    backgroundColor: style.bg,
-                                    color: style.text,
-                                    borderColor: style.border
-                                  }}
-                                  className="border px-1 py-0.5 rounded text-[10px] truncate font-extrabold block text-center shadow-[0_1px_1px_rgba(0,0,0,0.02)]" 
-                                  title={name}
-                                >
-                                  {name}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 font-bold text-[10px]">немає</span>
-                        );
-                      })()}
-                    </td>
+                          ) : (
+                            <span className="text-slate-400 font-bold text-[10px]">немає</span>
+                          );
+                        })()}
+                      </td>
+                    )}
 
                     {/* "Відвідуваність" Inline Dropdown (Request 6) */}
-                    {renderDropdownCell(m, 'vidviduvanist', lookups?.directories?.vidviduvanist || [], 'н/д', 'text-slate-700 bg-slate-100/70 rounded-full px-1.5 py-0.5')}
+                    {userLevel !== 'І-й' && renderDropdownCell(m, 'vidviduvanist', lookups?.directories?.vidviduvanist || [], 'н/д', 'text-slate-700 bg-slate-100/70 rounded-full px-1.5 py-0.5')}
 
                     {/* "Прич. відсутності" Inline Dropdown */}
-                    {renderDropdownCell(m, 'prysutnist', lookups?.directories?.prysutnist || [], 'н/д', 'text-blue-700 bg-blue-50 rounded-full px-1.5 py-0.5')}
+                    {userLevel !== 'І-й' && renderDropdownCell(m, 'prysutnist', lookups?.directories?.prysutnist || [], 'н/д', 'text-blue-700 bg-blue-50 rounded-full px-1.5 py-0.5')}
 
                     {/* Demographics */}
-                    <td className="py-0.5 px-1 border-r border-slate-300 text-center font-semibold text-[10px] font-mono">
-                      {m.vik_rokiv1 ? `${m.vik_rokiv1}` : '—'}
-                    </td>
+                    {userLevel !== 'І-й' && (
+                      <td className="py-0.5 px-1 border-r border-slate-300 text-center font-semibold text-[10px] font-mono">
+                        {m.vik_rokiv1 ? `${m.vik_rokiv1}` : '—'}
+                      </td>
+                    )}
 
                     {/* Address (Request 1) */}
-                    <td className="py-0.5 px-1.5 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap text-[11px] align-middle" title={m.address}>
-                      {formatAddress(m.address)}
-                    </td>
-                    <td className="py-0.5 px-1 border-r border-slate-300 text-center font-mono font-bold text-[10px] text-slate-700">
-                      {formatPhoneNumber(m.tel_mob)}
-                    </td>
+                    {userLevel !== 'І-й' && (
+                      <td className="py-0.5 px-1.5 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap text-[11px] align-middle" title={m.address}>
+                        {formatAddress(m.address)}
+                      </td>
+                    )}
+
+                    {userLevel !== 'І-й' && (
+                      <td className="py-0.5 px-1 border-r border-slate-300 text-center font-mono font-bold text-[10px] text-slate-700">
+                        {formatPhoneNumber(m.tel_mob)}
+                      </td>
+                    )}
 
                     {/* Dates birth & Edu */}
-                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
-                      {formatDateToUA(m.d_narodjennya)}
-                    </td>
-                    <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px]">
-                      {m.s_osvita_ukr || '—'}
-                    </td>
+                    {userLevel !== 'І-й' && (
+                      <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 text-[10px] truncate bg-slate-50/10">
+                        {formatDateToUA(m.d_narodjennya)}
+                      </td>
+                    )}
+
+                    {userLevel !== 'І-й' && (
+                      <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px]">
+                        {m.s_osvita_ukr || '—'}
+                      </td>
+                    )}
 
                     {/* Dynamic spiritual parameters */}
-                    <td 
-                      className="py-0.5 px-0.5 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors text-slate-600 text-[10px]"
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        await onUpdateMember(m.id, { hsd: !m.hsd });
-                      }}
-                      title="Клацніть для швидкого перемикання статусу Хр. С.Д. (так/ні)"
-                    >
-                      {m.hsd ? "так" : "ні"}
-                    </td>
-                    <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px] max-w-20 truncate">
-                      {m.s_simeyniy_ukr ? (
-                        /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
-                      ) : '—'}
-                    </td>
-                    <td 
-                      className="py-0.5 px-0.5 border-r border-slate-300 text-center text-slate-650 text-[10px] w-14 min-w-[56px] max-w-[56px] truncate"
-                      title={m.s_socialniy_ukr || '—'}
-                    >
-                      {m.s_socialniy_ukr || '—'}
-                    </td>
+                    {userLevel !== 'І-й' && (
+                      <td 
+                        className="py-0.5 px-0.5 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors text-slate-600 text-[10px]"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await onUpdateMember(m.id, { hsd: !m.hsd });
+                        }}
+                        title="Клацніть для швидкого перемикання статусу Хр. С.Д. (так/ні)"
+                      >
+                        {m.hsd ? "так" : "ні"}
+                      </td>
+                    )}
+
+                    {userLevel !== 'І-й' && (
+                      <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px] truncate">
+                        {m.s_simeyniy_ukr ? (
+                          /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
+                        ) : '—'}
+                      </td>
+                    )}
+
+                    {userLevel !== 'І-й' && (
+                      <td 
+                        className="py-0.5 px-0.5 border-r border-slate-300 text-center text-slate-650 text-[10px] truncate"
+                        title={m.s_socialniy_ukr || '—'}
+                      >
+                        {m.s_socialniy_ukr || '—'}
+                      </td>
+                    )}
 
                     {/* Baptisms dates & years inside church */}
-                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
-                      {renderWaterBaptism(m.d_vodnogo)}
-                    </td>
-                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 w-[86px] min-w-[86px] max-w-[86px] text-[10px] truncate bg-slate-50/10">
+                    {userLevel !== 'І-й' && (
+                      <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 text-[10px] truncate bg-slate-50/10">
+                        {renderWaterBaptism(m.d_vodnogo)}
+                      </td>
+                    )}
+                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 text-[10px] truncate bg-slate-50/10">
                       {formatDateToUA(m.d_vstupu)}
                     </td>
-                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-bold text-[10px] font-mono text-[#1e4620] bg-[#c3dfc7] group-hover:bg-[#9dbb9f]">
+                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-bold text-[10px] font-mono text-[#1e4620] bg-[#c3dfc7] group-hover:bg-[#9dbb9f] w-10 min-w-[40px] max-w-[40px]">
                       {yearsInChurch}
                     </td>
 

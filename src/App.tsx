@@ -111,6 +111,14 @@ export default function App() {
     }
     
     const targetNorm = normalizeStr(mappedName);
+
+    if (levelNum <= 2) {
+      const normOpika = normalizeStr('Опіка');
+      const normPoleOpika = normalizeStr('Поле опіка');
+      if (targetNorm === normOpika || targetNorm === normPoleOpika) {
+        return { view: false, edit: false };
+      }
+    }
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
@@ -218,7 +226,53 @@ export default function App() {
 
       if (groupFilter) params.append('group', groupFilter);
       if (statusFilter) params.append('status', statusFilter);
-      if (caregiverFilter) params.append('caretaker', caregiverFilter);
+
+      // Force caregiver segment constraint if user is an opikun
+      const getLevelNum = (lvl: string): number => {
+        if (!lvl) return 1;
+        const s = lvl.toUpperCase();
+        if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+        if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+        if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+        return 1;
+      };
+      const levelNum = getLevelNum(currentSessionUser?.level || 'І-й');
+
+      const getMatchedCaregiverName = (userObj: any, opikaList: string[]): string | null => {
+        if (!userObj || !userObj.user || !opikaList || opikaList.length === 0) return null;
+        const userName = userObj.user;
+        
+        const isMatchingCaregiverName = (caregiverName: string, usrName: string): boolean => {
+          if (!caregiverName || !usrName) return false;
+          const cn = caregiverName.toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '').trim();
+          const un = usrName.toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '').trim();
+          
+          if (cn === un) return true;
+          if (cn.includes(un) || un.includes(cn)) return true;
+          
+          const userWords = usrName.toLowerCase().match(/[a-zа-яёієїґ]+/g) || [];
+          const caregiverWords = caregiverName.toLowerCase().match(/[a-zа-яёієїґ]+/g) || [];
+          
+          if (userWords.length > 0 && caregiverWords.length > 0) {
+            if (userWords[0] === caregiverWords[0]) {
+              if (userWords[1] && caregiverWords[1]) {
+                if (userWords[1][0] === caregiverWords[1][0] || caregiverWords[1][0] === userWords[1][0]) {
+                  return true;
+                }
+              } else {
+                return true;
+              }
+            }
+          }
+          return false;
+        };
+
+        return opikaList.find((c: string) => isMatchingCaregiverName(c, userName)) || null;
+      };
+
+      const matchedCaretaker = getMatchedCaregiverName(currentSessionUser, lookups?.directories?.opika || []);
+      const targetCaretaker = (levelNum <= 2 && matchedCaretaker) ? matchedCaretaker : caregiverFilter;
+      if (targetCaretaker) params.append('caretaker', targetCaretaker);
 
       const resp = await fetch(`/api/members?${params.toString()}`);
       if (resp.ok) {

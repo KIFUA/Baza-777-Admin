@@ -74,6 +74,14 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
     }
     
     const targetNorm = normalizeStr(mappedName);
+
+    if (levelNum <= 2) {
+      const normOpika = normalizeStr('Опіка');
+      const normPoleOpika = normalizeStr('Поле опіка');
+      if (targetNorm === normOpika || targetNorm === normPoleOpika) {
+        return { view: false, edit: false };
+      }
+    }
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
@@ -519,8 +527,122 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
     }
   }, [selectedRayonFilter, selectedOpikaFilter, opikaList]);
 
+  // Pre-load default caretaker filter for matched level II (or below) caregiver user on mount
+  useEffect(() => {
+    try {
+      const getLevelNum = (lvl: string): number => {
+        if (!lvl) return 1;
+        const s = lvl.toUpperCase();
+        if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+        if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+        if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+        return 1;
+      };
+      const levelNum = getLevelNum(userLevel || 'І-й');
+      if (levelNum > 2) return;
+
+      const cached = localStorage.getItem("baza_current_session_user");
+      if (!cached) return;
+      const sessionUser = JSON.parse(cached);
+      if (!sessionUser || !sessionUser.user) return;
+      
+      const oList = lookups?.directories?.opika || [];
+      const userName = sessionUser.user;
+
+      const isMatchingCaregiverName = (caregiverName: string, usrName: string): boolean => {
+        if (!caregiverName || !usrName) return false;
+        const cn = caregiverName.toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '').trim();
+        const un = usrName.toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '').trim();
+        
+        if (cn === un) return true;
+        if (cn.includes(un) || un.includes(cn)) return true;
+        
+        const userWords = usrName.toLowerCase().match(/[a-zа-яёієїґ]+/g) || [];
+        const caregiverWords = caregiverName.toLowerCase().match(/[a-zа-яёієїґ]+/g) || [];
+        
+        if (userWords.length > 0 && caregiverWords.length > 0) {
+          if (userWords[0] === caregiverWords[0]) {
+            if (userWords[1] && caregiverWords[1]) {
+              if (userWords[1][0] === caregiverWords[1][0] || caregiverWords[1][0] === userWords[1][0]) {
+                return true;
+              }
+            } else {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      const matched = oList.find((c: string) => isMatchingCaregiverName(c, userName));
+      if (matched) {
+        setSelectedOpikaFilter(matched);
+        
+        // Auto-select correct Rayon if bound
+        const opikaBindings = lookups?.directories?.opika_bindings || [];
+        const matchedBinding = opikaBindings.find((b: any) => b.name === matched);
+        if (matchedBinding && matchedBinding.rayon) {
+          setSelectedRayonFilter(matchedBinding.rayon);
+        } else if (sessionUser.rayon && sessionUser.rayon !== "ВСІ" && sessionUser.rayon !== "") {
+          setSelectedRayonFilter(sessionUser.rayon);
+        }
+      }
+    } catch (_) {}
+  }, [userLevel, lookups]);
+
   // Filter members list locally + sort alphabetically by PIB
   const filteredMembers = useMemo(() => {
+    const getLevelNum = (lvl: string): number => {
+      if (!lvl) return 1;
+      const s = lvl.toUpperCase();
+      if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+      if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+      if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+      return 1;
+    };
+    const levelNum = getLevelNum(userLevel || 'І-й');
+    
+    let matchedCaretakerName: string | null = null;
+    try {
+      const cached = localStorage.getItem("baza_current_session_user");
+      if (cached) {
+        const sessionUser = JSON.parse(cached);
+        if (sessionUser && sessionUser.user) {
+          const opikaList = lookups?.directories?.opika || [];
+          const userName = sessionUser.user;
+          
+          const isMatchingCaregiverName = (caregiverName: string, usrName: string): boolean => {
+            if (!caregiverName || !usrName) return false;
+            const cn = caregiverName.toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '').trim();
+            const un = usrName.toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '').trim();
+            
+            if (cn === un) return true;
+            if (cn.includes(un) || un.includes(cn)) return true;
+            
+            const userWords = usrName.toLowerCase().match(/[a-zа-яёієїґ]+/g) || [];
+            const caregiverWords = caregiverName.toLowerCase().match(/[a-zа-яёієїґ]+/g) || [];
+            
+            if (userWords.length > 0 && caregiverWords.length > 0) {
+              if (userWords[0] === caregiverWords[0]) {
+                if (userWords[1] && caregiverWords[1]) {
+                  if (userWords[1][0] === caregiverWords[1][0] || caregiverWords[1][0] === userWords[1][0]) {
+                    return true;
+                  }
+                } else {
+                  return true;
+                }
+              }
+            }
+            return false;
+          };
+
+          matchedCaretakerName = opikaList.find((c: string) => isMatchingCaregiverName(c, userName)) || null;
+        }
+      }
+    } catch (_) {}
+
+    const effectiveOpikaFilter = (levelNum <= 2 && matchedCaretakerName) ? matchedCaretakerName : selectedOpikaFilter;
+
     const list = members.filter(m => {
       // 1. Status Filter (active / dismissed / all)
       if (filterType === 'active' && m.id_vybuttya > 0) return false;
@@ -530,7 +652,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
       if (selectedRayonFilter && m.rayon2_ukr !== selectedRayonFilter) return false;
 
       // 3. Opika Filter
-      if (selectedOpikaFilter && m.presviter !== selectedOpikaFilter) return false;
+      if (effectiveOpikaFilter && m.presviter !== effectiveOpikaFilter) return false;
 
       // 4. Search query filter (pib, address, phone, presviter)
       if (searchQuery) {

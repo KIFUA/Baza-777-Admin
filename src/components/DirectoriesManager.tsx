@@ -332,7 +332,7 @@ export default function DirectoriesManager({
   const [syncResult, setSyncResult] = useState<any>(null);
 
   // Dictionary editor state
-  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon'>('opika');
+  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon'>('rayon');
   const [newDictValue, setNewDictValue] = useState('');
   const [dictItems, setDictItems] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState(false);
@@ -363,12 +363,20 @@ export default function DirectoriesManager({
     if (lookups?.directories) {
       if (selectedDictKey === 'rayon') {
         const rayoni = lookups.directories.rayon || [];
-        // Assuming lookups.directories.rayon might be an array of strings or objects {name, presbyterId}
-        // Let's normalize it to an array of objects
-        setDictItems(rayoni.map((r: any) => typeof r === 'string' ? { name: r, presbyterId: null } : r));
+        const bindings = lookups.directories.rayon_bindings || [];
+        setDictItems(rayoni.map((r: any) => {
+          const name = typeof r === 'string' ? r : (r?.name || "");
+          const found = bindings.find((b: any) => (b.name || "").toLowerCase() === name.toLowerCase());
+          return { name, presbyterId: found ? found.presbyterId : (r?.presbyterId || null) };
+        }));
       } else if (selectedDictKey === 'opika') {
          const opikuni = lookups.directories.opika || [];
-         setDictItems(opikuni.map((o: any) => typeof o === 'string' ? { name: o, rayon: null } : o));
+         const bindings = lookups.directories.opika_bindings || [];
+         setDictItems(opikuni.map((o: any) => {
+           const name = typeof o === 'string' ? o : (o?.name || "");
+           const found = bindings.find((b: any) => (b.name || "").toLowerCase() === name.toLowerCase());
+           return { name, rayon: found ? found.rayon : (o?.rayon || null) };
+         }));
       } else {
         let list = lookups.directories[selectedDictKey] || [];
         if (selectedDictKey === 'vidviduvanist') {
@@ -436,10 +444,31 @@ export default function DirectoriesManager({
   const handleSaveDictionary = async () => {
     if (!lookups?.directories) return;
     try {
+      let finalVal: any = dictItems;
+      let extraPayload: any = {};
+
+      if (selectedDictKey === 'rayon') {
+        const strList = dictItems.map((i: any) => typeof i === 'string' ? i : i.name);
+        finalVal = strList;
+        extraPayload = {
+          rayon: strList,
+          rayon_bindings: dictItems
+        };
+      } else if (selectedDictKey === 'opika') {
+        const strList = dictItems.map((i: any) => typeof i === 'string' ? i : i.name);
+        finalVal = strList;
+        extraPayload = {
+          opika: strList,
+          opika_bindings: dictItems
+        };
+      }
+
       const payload = {
         ...lookups.directories,
-        [selectedDictKey]: dictItems
+        [selectedDictKey]: finalVal,
+        ...extraPayload
       };
+      
       const resp = await fetch('/api/directories/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -455,14 +484,34 @@ export default function DirectoriesManager({
 
   const handleAddDictItem = () => {
     const trimmed = newDictValue.trim();
-    if (trimmed && !dictItems.includes(trimmed)) {
-      setDictItems(prev => [...prev, trimmed]);
-      setNewDictValue('');
+    if (trimmed) {
+      if (selectedDictKey === 'rayon') {
+        const alreadyExists = dictItems.some(i => (typeof i === 'string' ? i : i.name).toLowerCase() === trimmed.toLowerCase());
+        if (!alreadyExists) {
+          setDictItems(prev => [...prev, { name: trimmed, presbyterId: null }]);
+          setNewDictValue('');
+        }
+      } else if (selectedDictKey === 'opika') {
+        const alreadyExists = dictItems.some(i => (typeof i === 'string' ? i : i.name).toLowerCase() === trimmed.toLowerCase());
+        if (!alreadyExists) {
+          setDictItems(prev => [...prev, { name: trimmed, rayon: null }]);
+          setNewDictValue('');
+        }
+      } else {
+        if (!dictItems.includes(trimmed)) {
+          setDictItems(prev => [...prev, trimmed]);
+          setNewDictValue('');
+        }
+      }
     }
   };
 
-  const handleRemoveDictItem = (itemToDelete: string) => {
-    setDictItems(prev => prev.filter(i => i !== itemToDelete));
+  const handleRemoveDictItem = (itemToDelete: any) => {
+    setDictItems(prev => prev.filter(i => {
+      const nameCurrent = typeof i === 'string' ? i : i.name;
+      const nameDelete = typeof itemToDelete === 'string' ? itemToDelete : itemToDelete.name;
+      return nameCurrent !== nameDelete;
+    }));
   };
 
   // Switch session simulate login w/ password gate
@@ -899,22 +948,110 @@ export default function DirectoriesManager({
                 )}
 
                 {/* Items tag board */}
-                <div className="rounded-lg border border-[#224853]/55 h-[180px] overflow-y-auto p-3 bg-[#13282e]/40 space-y-2">
+                <div className="rounded-lg border border-[#224853]/55 h-[280px] overflow-y-auto p-3 bg-[#13282e]/40 space-y-2">
                   {dictItems.length === 0 ? (
                     <div className="text-center text-slate-500 py-12 text-xs">Довідник пустий. Додайте перші значення.</div>
                   ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {dictItems.map((item, idx) => (
-                        <span key={idx} className="bg-[#1a3843] border border-[#224853] hover:border-red-900 hover:bg-rose-950/30 pl-2.5 pr-1.5 py-0.5 rounded-lg text-xs font-bold text-slate-200 hover:text-red-400 transition-all inline-flex items-center space-x-1.5 shadow-xs group cursor-default">
-                          <span>{typeof item === 'string' ? item : item.name}</span>
-                          <button
-                            onClick={() => handleRemoveDictItem(item)}
-                            className="text-slate-400 hover:text-red-400 transition-colors p-0.5 outline-none"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </span>
-                      ))}
+                    <div>
+                      {selectedDictKey === 'rayon' ? (
+                        <div className="space-y-2.5">
+                          {dictItems.map((item: any, idx: number) => {
+                            const name = typeof item === 'string' ? item : item.name;
+                            const presbyterIdVal = typeof item === 'string' ? '' : (item.presbyterId || '');
+                            return (
+                              <div key={idx} className="bg-[#1a3843] border border-[#224853] p-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs font-black text-slate-100 uppercase tracking-wide">📍 {name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Закріплення служителя:</span>
+                                  <select
+                                    value={presbyterIdVal}
+                                    onChange={(e) => {
+                                      const updated = [...dictItems];
+                                      updated[idx] = { ...updated[idx], presbyterId: e.target.value ? Number(e.target.value) : null };
+                                      setDictItems(updated);
+                                    }}
+                                    className="bg-[#12282e] border border-[#224853] text-[11.5px] font-bold text-teal-300 rounded-lg px-2 py-1 focus:outline-none"
+                                  >
+                                    <option value="">— Оберіть... —</option>
+                                    {members.filter(m => {
+                                      const isActive = Number(m.id_vybuttya || 0) === 0;
+                                      const isBrother = m.stat === 'брат';
+                                      const isPresbyter = (m.di_admin || "").toLowerCase().includes('пресвітер');
+                                      return isActive && isBrother && isPresbyter;
+                                    }).sort((a,b) => (a.pib || "").localeCompare(b.pib || "")).map((m: any) => (
+                                      <option key={m.id} value={m.id}>👨‍💼 {m.pib}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => handleRemoveDictItem(item)}
+                                    className="text-slate-400 hover:text-red-400 hover:bg-rose-950/45 p-1 rounded-lg transition-colors outline-none shrink-0"
+                                    title="Видалити район"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : selectedDictKey === 'opika' ? (
+                        <div className="space-y-2.5">
+                          {dictItems.map((item: any, idx: number) => {
+                            const name = typeof item === 'string' ? item : item.name;
+                            const rayonVal = typeof item === 'string' ? '' : (item.rayon || '');
+                            // Obtain current rayon list strings for linking
+                            const rayonList = lookups?.directories?.rayon || [];
+                            const rayonNamesList = rayonList.map((r: any) => typeof r === 'string' ? r : (r?.name || ""));
+                            return (
+                              <div key={idx} className="bg-[#1a3843] border border-[#224853] p-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-xs font-black text-slate-100">👥 {name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Прив'язка до району:</span>
+                                  <select
+                                    value={rayonVal}
+                                    onChange={(e) => {
+                                      const updated = [...dictItems];
+                                      updated[idx] = { ...updated[idx], rayon: e.target.value || null };
+                                      setDictItems(updated);
+                                    }}
+                                    className="bg-[#12282e] border border-[#224853] text-[11.5px] font-bold text-teal-300 rounded-lg px-2 py-1 focus:outline-none"
+                                  >
+                                    <option value="">— Оберіть... —</option>
+                                    {rayonNamesList.map((rName: string) => (
+                                      <option key={rName} value={rName}>📍 {rName}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => handleRemoveDictItem(item)}
+                                    className="text-slate-400 hover:text-red-400 hover:bg-rose-950/45 p-1 rounded-lg transition-colors outline-none shrink-0"
+                                    title="Видалити опікуна"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {dictItems.map((item, idx) => (
+                            <span key={idx} className="bg-[#1a3843] border border-[#224853] hover:border-red-900 hover:bg-rose-950/30 pl-2.5 pr-1.5 py-0.5 rounded-lg text-xs font-bold text-slate-200 hover:text-red-400 transition-all inline-flex items-center space-x-1.5 shadow-xs group cursor-default">
+                              <span>{typeof item === 'string' ? item : item.name}</span>
+                              <button
+                                onClick={() => handleRemoveDictItem(item)}
+                                className="text-slate-400 hover:text-red-400 transition-colors p-0.5 outline-none"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

@@ -506,7 +506,26 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
 
   const isMobile = windowWidth < 640;
   const indexColWidth = isMobile ? 22 : 40;
-  const rayonColWidth = 241;
+
+  const rayonColWidth = useMemo(() => {
+    let maxCharLen = 0;
+    filteredMembers.forEach(m => {
+      const len = (m.rayon2_ukr || m.rayon || "").trim().length;
+      if (len > maxCharLen) maxCharLen = len;
+    });
+    if (lookups?.directories?.rayon) {
+      lookups.directories.rayon.forEach((r: any) => {
+        const val = typeof r === 'string' ? r : (r?.name || "");
+        const len = val.trim().length;
+        if (len > maxCharLen) maxCharLen = len;
+      });
+    }
+    const finalWidth = maxCharLen * (isMobile ? 6.5 : 8.5) + (isMobile ? 20 : 36);
+    const minWidth = isMobile ? 70 : 120;
+    const calculatedWidth = Math.max(minWidth, Math.ceil(finalWidth));
+    return isMobile ? Math.min(130, calculatedWidth) : Math.min(280, calculatedWidth);
+  }, [filteredMembers, lookups?.directories?.rayon, isMobile]);
+
   const pibLeftSticky = showRayonColumn ? (indexColWidth + rayonColWidth) : indexColWidth;
 
   const getCustomColor = (category: 'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist', value: string) => {
@@ -1133,9 +1152,15 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className="py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden"
+                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden ${userLevel === 'IV-й' ? 'cursor-pointer select-none' : ''}`}
+                      onDoubleClick={(e) => {
+                        if (userLevel === 'IV-й') {
+                          e.stopPropagation();
+                          onOpenProfile(m.id);
+                        }
+                      }}
                     >
-                      <div className="flex items-center justify-between space-x-1">
+                      <div className="flex items-center justify-between space-x-1 relative h-full min-h-[24px]">
                         <div className="flex items-center space-x-1 truncate min-w-0 flex-1">
                           {m.id_vybuttya > 0 && (
                             <span className="inline-block h-2 w-2 rounded-full bg-amber-500 shrink-0" title="Знято з обліку" />
@@ -1155,6 +1180,22 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                             );
                           })()}
                         </div>
+                        {userLevel === 'IV-й' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenProfile(m.id);
+                            }}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[#002f13] px-1 py-0.5 rounded-sm text-[8.5px] font-black uppercase tracking-wider flex items-center space-x-0.5 shadow-xs border border-[#00d65c]"
+                            style={{ backgroundColor: '#00ff6e' }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#00e05f'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#00ff6e'}
+                            title="Перейти до анкет"
+                          >
+                            <FileText className="h-2 w-2 shrink-0 text-[#002f13]" />
+                            <span>Анкета</span>
+                          </button>
+                        )}
                       </div>
                     </td>
 

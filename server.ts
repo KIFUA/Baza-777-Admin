@@ -148,6 +148,8 @@ let directories_vidviduvanist: string[] = [...DEFAULT_VIDVIDUVANIST_PARAMS];
 let directories_prysutnist: string[] = [...DEFAULT_PRYSUTNIST_PARAMS];
 let directories_di_admin: string[] = [...DEFAULT_DI_ADMIN];
 let directories_rayon2: string[] = [...DEFAULT_RAYON2];
+let directories_rayon_bindings: any[] = [];
+let directories_opika_bindings: any[] = [];
 let access_dostup: any[] = [...DEFAULT_DOSTUP];
 let permission_levels: any[] = [];
 
@@ -325,6 +327,8 @@ function loadDatabase() {
       directories_rayon2 = ((db as any).directories_rayon2 || [...DEFAULT_RAYON2])
         .map((r: string) => String(r || "").replace(/\s*-\s*SOS/gi, "").trim())
         .filter((r: string, idx: number, arr: string[]) => r && arr.indexOf(r) === idx);
+      directories_rayon_bindings = (db as any).directories_rayon_bindings || [];
+      directories_opika_bindings = (db as any).directories_opika_bindings || [];
       access_dostup = db.access_dostup || [...DEFAULT_DOSTUP];
       if (Array.isArray(access_dostup) && (access_dostup.length === 0 || access_dostup.some(item => !item || item.role !== undefined || !item.user))) {
         console.warn("Detected corrupted or empty access_dostup in cache. Resetting to DEFAULT_DOSTUP...");
@@ -480,6 +484,8 @@ function saveDatabaseToCache() {
       directories_prysutnist,
       directories_di_admin,
       directories_rayon2,
+      directories_rayon_bindings,
+      directories_opika_bindings,
       access_dostup,
       permission_levels
     };
@@ -1514,9 +1520,11 @@ app.post("/api/birthdays/send", async (req, res) => {
 
 // 2.4 API: Save Custom Directories manually edited in directories tab
 app.post("/api/directories/save", async (req, res) => {
-  const { opika, slujinnya, vidviduvanist, prysutnist, di_admin, rayon, rayon2, access } = req.body;
+  const { opika, slujinnya, vidviduvanist, prysutnist, di_admin, rayon, rayon2, access, rayon_bindings, opika_bindings } = req.body;
   
   if (Array.isArray(opika)) directories_opika = opika;
+  if (Array.isArray(rayon_bindings)) directories_rayon_bindings = rayon_bindings;
+  if (Array.isArray(opika_bindings)) directories_opika_bindings = opika_bindings;
   if (Array.isArray(slujinnya)) directories_slujinnya = slujinnya;
   if (Array.isArray(vidviduvanist)) {
     directories_vidviduvanist = vidviduvanist.filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
@@ -2441,7 +2449,9 @@ async function syncDirectoriesToFirebase() {
       vidviduvanist: directories_vidviduvanist,
       prysutnist: directories_prysutnist,
       di_admin: directories_di_admin,
-      rayon: directories_rayon2 // saved as rayon key on Firebase now
+      rayon: directories_rayon2, // saved as rayon key on Firebase now
+      rayon_bindings: directories_rayon_bindings,
+      opika_bindings: directories_opika_bindings
     };
     const res = await fetch(url, {
       method: "PUT",
@@ -2464,6 +2474,8 @@ async function syncDirectoriesFromFirebase() {
     const data: any = await res.json();
     if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin || data.rayon || data.rayon2)) {
       if (Array.isArray(data.opika)) directories_opika = data.opika;
+      if (Array.isArray(data.rayon_bindings)) directories_rayon_bindings = data.rayon_bindings;
+      if (Array.isArray(data.opika_bindings)) directories_opika_bindings = data.opika_bindings;
       
       // Shift/Prepend "" empty option into slujinnya lookup array if needed
       if (Array.isArray(data.slujinnya)) {

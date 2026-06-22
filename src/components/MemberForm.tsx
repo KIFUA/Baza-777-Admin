@@ -11,6 +11,32 @@ interface MemberFormProps {
 
 export default function MemberForm({ member, lookups, onSave, onCancel }: MemberFormProps) {
   const isEdit = !!member;
+
+  // Get locked rayon for Level <= 3
+  const hasSpecificRayonLock = (() => {
+    try {
+      const cached = localStorage.getItem("baza_current_session_user");
+      if (cached) {
+        const sessionUser = JSON.parse(cached);
+        if (sessionUser) {
+          const getLevelNum = (lvl: string): number => {
+            if (!lvl) return 1;
+            const s = lvl.toUpperCase();
+            if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+            if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+            if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+            return 1;
+          };
+          const levelNum = getLevelNum(sessionUser.level || 'І-й');
+          const sessionUserRayon = sessionUser.rayon;
+          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== '') {
+            return sessionUserRayon;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  })();
   
   const [formData, setFormData] = useState<Partial<Member>>({
     pib: '',
@@ -29,7 +55,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
     skype: '',
     d_narodjennya: '',
     presviter: '',
-    rayon2_ukr: '',
+    rayon2_ukr: hasSpecificRayonLock || '',
     id_rayon2: '',
     n_dilyci: 'Дільниця №1',
     id_dilnicya: '1',
@@ -52,8 +78,10 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
   useEffect(() => {
     if (member) {
       setFormData({ ...member });
+    } else if (hasSpecificRayonLock) {
+      setFormData(prev => ({ ...prev, rayon2_ukr: hasSpecificRayonLock }));
     }
-  }, [member]);
+  }, [member, hasSpecificRayonLock]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -470,17 +498,23 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-slate-700">Район структури</label>
-                <select
-                  name="rayon2_ukr"
-                  value={formData.rayon2_ukr || ''}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
-                >
-                  <option value="">Не вказано</option>
-                  {STRUCTURAL_AREAS.map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
+                {hasSpecificRayonLock ? (
+                  <div className="w-full rounded-lg border border-teal-500/30 bg-teal-50/10 p-2 text-xs font-bold text-teal-600 dark:text-teal-400">
+                    {hasSpecificRayonLock}
+                  </div>
+                ) : (
+                  <select
+                    name="rayon2_ukr"
+                    value={formData.rayon2_ukr || ''}
+                    onChange={handleChange}
+                    className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
+                  >
+                    <option value="">Не вказано</option>
+                    {STRUCTURAL_AREAS.map(a => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div className="space-y-1">

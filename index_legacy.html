@@ -123,6 +123,19 @@
           </button>
         </div>
 
+        <!-- ФІЛЬТР ПО РАЙОНУ -->
+        <div class="mb-3 flex flex-col gap-1">
+          <label class="block text-xs font-medium text-gray-400 select-none"
+            >Фільтр по району</label
+          >
+          <select
+            id="searchRayonFilter"
+            class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-full bg-zinc-900 text-xs py-1.5 px-2 cursor-pointer"
+          >
+            <option value="">-- Всі райони --</option>
+          </select>
+        </div>
+
         <label class="block text-xs font-medium text-gray-400 mb-1"
           >Пошук особи (ПІБ)</label
         >
@@ -1044,6 +1057,27 @@
             });
           }
 
+          // Populate searchRayonFilter Select
+          const searchRayonFilter = document.getElementById("searchRayonFilter");
+          if (searchRayonFilter && rayonList) {
+            searchRayonFilter.innerHTML = '<option value="">-- Всі райони --</option>';
+            rayonList.forEach(r => {
+              if (r) {
+                const opt = document.createElement("option");
+                opt.value = r;
+                opt.textContent = r;
+                searchRayonFilter.appendChild(opt);
+              }
+            });
+
+            // Check for locked rayon
+            const lockedRayon = getLockedRayon();
+            if (lockedRayon) {
+              searchRayonFilter.value = lockedRayon;
+              searchRayonFilter.disabled = true;
+            }
+          }
+
           // 2. Populate Opika (Care) Select
           const opikaSelect = document.getElementById("opika");
           if (opikaSelect && dirs.opika) {
@@ -1401,6 +1435,41 @@
       });
 
       let allMembers = [];
+
+      function getLockedRayon() {
+        try {
+          const cached = localStorage.getItem("baza_current_session_user");
+          if (cached) {
+            const sessionUser = JSON.parse(cached);
+            if (sessionUser) {
+              const getLevelNum = (lvl) => {
+                if (!lvl) return 1;
+                const s = String(lvl).toUpperCase();
+                if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+                if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+                if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+                return 1;
+              };
+              const levelNum = getLevelNum(sessionUser.level || 'І-й');
+              const sessionUserRayon = sessionUser.rayon;
+              if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== '') {
+                return sessionUserRayon;
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing current session user:", e);
+        }
+        return null;
+      }
+
+      function getMemberRayon(m) {
+        if (!m || !m.rawData) return "";
+        const rec = m.rawData;
+        const structura = rec["04_STRUCTURA"] || {};
+        const personal = rec["02_OSOBYSTE"] || {};
+        return String(structura["1_rayon"] || personal["rayon"] || rec["rayon"] || rec["rayon2_ukr"] || "").trim();
+      }
       const urlParams = new URLSearchParams(window.location.search);
       const urlMerge = urlParams.get('merge'); 
       let isMergeOn = (urlMerge === 'after'); // If merge=after is passed, we filter duplicates, otherwise default to false (before merge)
@@ -2158,6 +2227,15 @@
           const passSearch = m.pib && String(m.pib).toLowerCase().includes(txt);
           if (!passSearch) return false;
 
+          // Filter by selected searchRayonFilter
+          const searchRayonFilter = document.getElementById("searchRayonFilter");
+          if (searchRayonFilter && searchRayonFilter.value) {
+            const mRayon = getMemberRayon(m).trim().toUpperCase();
+            if (mRayon !== searchRayonFilter.value.trim().toUpperCase()) {
+              return false;
+            }
+          }
+
           const rec = m.rawData || {};
           const isLeft =
             rec["02_OSOBYSTE"]?.["13_status"] === "вибув" ||
@@ -2217,6 +2295,13 @@
           }
         }
       });
+
+      const searchRayonFilterEl = document.getElementById("searchRayonFilter");
+      if (searchRayonFilterEl) {
+        searchRayonFilterEl.addEventListener("change", () => {
+          triggerSearchReFilter();
+        });
+      }
 
       window.addExtraPhoneField = (val = "") => {
         const container = document.getElementById("phone_fields_container");

@@ -125,6 +125,30 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
     };
   };
 
+  const getLevelNum = (lvl: string): number => {
+    if (!lvl) return 1;
+    const s = lvl.toUpperCase();
+    if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+    if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+    if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+    return 1;
+  };
+
+  const levelNum = getLevelNum(userLevel || 'І-й');
+
+  let sessionUserRayon = '';
+  try {
+    const cached = localStorage.getItem("baza_current_session_user");
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.rayon) {
+        sessionUserRayon = parsed.rayon;
+      }
+    }
+  } catch (_) {}
+
+  const hasSpecificRayonLock = levelNum <= 3 && !!sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== '';
+
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
   const [selectedRayonFilter, setSelectedRayonFilter] = useState<string>('');
   const [selectedOpikaFilter, setSelectedOpikaFilter] = useState<string>('');
@@ -472,6 +496,8 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
       "ЧЕРНЯК ВАЛ": "ЦЕНТР"
     };
 
+    const opikaBindings = lookups?.directories?.opika_bindings || [];
+
     return (allPresviters as string[]).filter(p => {
       const pStr = String(p || "");
       const pNorm = pStr.trim().toUpperCase().replace(/\./g, '').trim();
@@ -479,6 +505,28 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
       // 1. Leader match
       if (leaderMap[pNorm]) {
         return leaderMap[pNorm] === targetRayonNorm;
+      }
+
+      // 1.5 Explicit bindings match
+      if (opikaBindings.length > 0) {
+        let hasAnyBindingForP = false;
+        let isBoundToTargetRayon = false;
+
+        for (const b of opikaBindings) {
+          if (!b.name || !b.rayon) continue;
+          const bNameNorm = b.name.trim().toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '');
+          const pNameNorm = pStr.trim().toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '');
+          if (bNameNorm === pNameNorm || bNameNorm.includes(pNameNorm) || pNameNorm.includes(bNameNorm)) {
+            hasAnyBindingForP = true;
+            if (b.rayon.trim().toUpperCase() === targetRayonNorm) {
+              isBoundToTargetRayon = true;
+            }
+          }
+        }
+
+        if (hasAnyBindingForP) {
+          return isBoundToTargetRayon;
+        }
       }
 
       // 2. Member match to locate caretaker's district
@@ -539,12 +587,19 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         return 1;
       };
       const levelNum = getLevelNum(userLevel || 'І-й');
-      if (levelNum > 2) return;
 
       const cached = localStorage.getItem("baza_current_session_user");
       if (!cached) return;
       const sessionUser = JSON.parse(cached);
-      if (!sessionUser || !sessionUser.user) return;
+      if (!sessionUser) return;
+
+      // Active district lock for Level 3 and lower
+      if (levelNum <= 3 && sessionUser.rayon && sessionUser.rayon !== "ВСІ" && sessionUser.rayon !== "") {
+        setSelectedRayonFilter(sessionUser.rayon);
+      }
+
+      if (levelNum > 2) return;
+      if (!sessionUser.user) return;
       
       const oList = lookups?.directories?.opika || [];
       const userName = sessionUser.user;
@@ -1182,7 +1237,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         )}
 
         {/* District Select (РАЙОН) */}
-        {getPermission('Поле районів').view && (
+        {getPermission('Поле районів').view && !hasSpecificRayonLock && (
           <div className="flex items-center shrink-0">
             <select
               id="filter_rayon_select"

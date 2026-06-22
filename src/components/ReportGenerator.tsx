@@ -75,12 +75,39 @@ interface ReportGeneratorProps {
       opika?: string[];
       slujinnya?: string[];
       prysutnist?: string[];
+      opika_bindings?: any[];
     };
     vybuv?: { ID: any; Value: string }[];
   };
 }
 
 export default function ReportGenerator({ members = [], lookups }: ReportGeneratorProps) {
+  // Get locked rayon for Level <= 3
+  const hasSpecificRayonLock = useMemo(() => {
+    try {
+      const cached = localStorage.getItem("baza_current_session_user");
+      if (cached) {
+        const sessionUser = JSON.parse(cached);
+        if (sessionUser) {
+          const getLevelNum = (lvl: string): number => {
+            if (!lvl) return 1;
+            const s = lvl.toUpperCase();
+            if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+            if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+            if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+            return 1;
+          };
+          const levelNum = getLevelNum(sessionUser.level || 'І-й');
+          const sessionUserRayon = sessionUser.rayon;
+          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== '') {
+            return sessionUserRayon;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }, []);
+
   const [selectedStatus, setSelectedStatus] = useState<string>("Наявні");
   const [selectedVybuttyaId, setSelectedVybuttyaId] = useState<string>("");
   const [selectedRayon, setSelectedRayon] = useState<string>("");
@@ -97,6 +124,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const [selectedColumns, setSelectedColumns] = useState<string[]>(
     AVAILABLE_COLUMNS.filter(col => col.defaultChecked).map(col => col.key)
   );
+
+  useEffect(() => {
+    if (hasSpecificRayonLock) {
+      setSelectedRayon(hasSpecificRayonLock);
+    }
+  }, [hasSpecificRayonLock]);
 
   useEffect(() => {
     const fetchColors = async () => {
@@ -244,9 +277,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   };
 
   const uniqueRayons = useMemo(() => {
+    if (hasSpecificRayonLock) {
+      return [hasSpecificRayonLock];
+    }
     const raw = lookups?.directories?.rayon || Array.from(new Set(members.map(m => m.rayon2_ukr).filter(Boolean)));
     return sortRayonsList(raw);
-  }, [lookups, members]);
+  }, [lookups, members, hasSpecificRayonLock]);
 
   const uniquePresviters = useMemo(() => {
     const baseList = lookups?.directories?.opika || Array.from(new Set(members.map(m => m.presviter).filter(Boolean)));
@@ -264,11 +300,35 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       "ЧЕРНЯК ВАЛ": "ЦЕНТР"
     };
 
+    const opikaBindings = lookups?.directories?.opika_bindings || [];
+
     return (allPresviters as string[]).filter(p => {
       const pStr = String(p || "");
       const pNorm = pStr.trim().toUpperCase().replace(/\./g, "").trim();
       if (leaderMap[pNorm]) {
         return leaderMap[pNorm] === targetRayonNorm;
+      }
+
+      // Explicit bindings match
+      if (opikaBindings.length > 0) {
+        let hasAnyBindingForP = false;
+        let isBoundToTargetRayon = false;
+
+        for (const b of opikaBindings) {
+          if (!b.name || !b.rayon) continue;
+          const bNameNorm = b.name.trim().toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '');
+          const pNameNorm = pStr.trim().toLowerCase().replace(/[^a-zа-яёієїґ0-9]/g, '');
+          if (bNameNorm === pNameNorm || bNameNorm.includes(pNameNorm) || pNameNorm.includes(bNameNorm)) {
+            hasAnyBindingForP = true;
+            if (b.rayon.trim().toUpperCase() === targetRayonNorm) {
+              isBoundToTargetRayon = true;
+            }
+          }
+        }
+
+        if (hasAnyBindingForP) {
+          return isBoundToTargetRayon;
+        }
       }
 
       const foundMember = members.find(m => {
@@ -1677,22 +1737,24 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     </select>
                   </div>
                 ) : (
-                  <div className="flex flex-col space-y-1 w-[140px] shrink-0">
-                    <label className="text-[10px] font-bold text-slate-400">Район</label>
-                    <select 
-                      value={selectedRayon} 
-                      onChange={e => setSelectedRayon(e.target.value)}
-                      className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
-                    >
-                      <option value="">-- Всі райони --</option>
-                      {uniqueRayons.map(r => (
-                        <option key={r} value={r}>{r}</option>
-                      ))}
-                    </select>
-                  </div>
+                  !hasSpecificRayonLock && (
+                    <div className="flex flex-col space-y-1 w-[140px] shrink-0">
+                      <label className="text-[10px] font-bold text-slate-400">Район</label>
+                      <select 
+                        value={selectedRayon} 
+                        onChange={e => setSelectedRayon(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1.5 text-xs font-semibold focus:border-teal-500 focus:outline-[#1f424f] bg-[#1a3843] text-slate-200"
+                      >
+                        <option value="">-- Всі райони --</option>
+                        {uniqueRayons.map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )
                 )}
 
-                {selectedStatus === "Вибулі" && (
+                {selectedStatus === "Вибулі" && !hasSpecificRayonLock && (
                   <div className="flex flex-col space-y-1 w-[140px] shrink-0">
                     <label className="text-[10px] font-bold text-slate-400">Район</label>
                     <select 

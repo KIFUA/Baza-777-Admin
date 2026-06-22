@@ -9,6 +9,32 @@ interface StatsDashboardProps {
 }
 
 export default function StatsDashboard({ stats, members, lookups }: StatsDashboardProps) {
+  // Get locked rayon for Level <= 3
+  const hasSpecificRayonLock = useMemo(() => {
+    try {
+      const cached = localStorage.getItem("baza_current_session_user");
+      if (cached) {
+        const sessionUser = JSON.parse(cached);
+        if (sessionUser) {
+          const getLevelNum = (lvl: string): number => {
+            if (!lvl) return 1;
+            const s = lvl.toUpperCase();
+            if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+            if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+            if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+            return 1;
+          };
+          const levelNum = getLevelNum(sessionUser.level || 'І-й');
+          const sessionUserRayon = sessionUser.rayon;
+          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== '') {
+            return sessionUserRayon;
+          }
+        }
+      }
+    } catch (_) {}
+    return null;
+  }, []);
+
   // State for District selector
   const [selectedRayon, setSelectedRayon] = useState<string>('');
   const [isHtmlGenerating, setIsHtmlGenerating] = useState<boolean>(false);
@@ -16,6 +42,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
 
   // Extract unique rayon/neighborhood names with "Всі райони" option
   const uniqueRayons = useMemo(() => {
+    if (hasSpecificRayonLock) {
+      return [hasSpecificRayonLock];
+    }
     const rs = new Set<string>();
     members.forEach(m => {
       if (m.rayon2_ukr && m.rayon2_ukr.trim()) {
@@ -28,14 +57,16 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       });
     }
     return ["Всі райони", ...Array.from(rs).sort()];
-  }, [members, lookups]);
+  }, [members, lookups, hasSpecificRayonLock]);
 
   // Default to first rayon (which will be "Всі райони") once available
   useEffect(() => {
-    if (uniqueRayons.length > 0 && !selectedRayon) {
+    if (hasSpecificRayonLock) {
+      setSelectedRayon(hasSpecificRayonLock);
+    } else if (uniqueRayons.length > 0 && !selectedRayon) {
       setSelectedRayon(uniqueRayons[0]);
     }
-  }, [uniqueRayons, selectedRayon]);
+  }, [uniqueRayons, selectedRayon, hasSpecificRayonLock]);
 
   // Compute active members in selected rayon
   const rayonMembers = useMemo(() => {
@@ -836,17 +867,23 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             <div className="flex items-center space-x-1.5">
               <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
               <h3 className="text-xs sm:text-xs font-bold text-slate-100 flex items-center gap-1.5 uppercase tracking-wide">
-                <select
-                  value={selectedRayon}
-                  onChange={(e) => setSelectedRayon(e.target.value)}
-                  className="bg-[#244b5a]/40 border border-[#2c5869] text-emerald-400 font-black rounded-lg py-1 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer text-xs sm:text-sm md:text-base uppercase tracking-wider transition-all outline-none"
-                >
-                  {uniqueRayons.map(rayon => (
-                    <option key={rayon} value={rayon} className="bg-[#1a3843] text-emerald-300 font-bold text-xs uppercase">
-                      {rayon}
-                    </option>
-                  ))}
-                </select>
+                {hasSpecificRayonLock ? (
+                  <span className="bg-[#244b5a]/40 border border-[#2c5869] text-emerald-400 font-black rounded-lg py-1 px-3.5 text-xs sm:text-sm md:text-base uppercase tracking-wider">
+                    {hasSpecificRayonLock}
+                  </span>
+                ) : (
+                  <select
+                    value={selectedRayon}
+                    onChange={(e) => setSelectedRayon(e.target.value)}
+                    className="bg-[#244b5a]/40 border border-[#2c5869] text-emerald-400 font-black rounded-lg py-1 px-3.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer text-xs sm:text-sm md:text-base uppercase tracking-wider transition-all outline-none"
+                  >
+                    {uniqueRayons.map(rayon => (
+                      <option key={rayon} value={rayon} className="bg-[#1a3843] text-emerald-300 font-bold text-xs uppercase">
+                        {rayon}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </h3>
             </div>
             <div className="flex items-center space-x-3 shrink-0">

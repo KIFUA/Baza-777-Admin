@@ -26,7 +26,7 @@ export default function App() {
   
   const [currentSessionUser, setCurrentSessionUser] = useState<any>(() => {
     try {
-      const cached = localStorage.getItem("baza_current_session_user");
+      const cached = localStorage.getItem("baza_current_session_user") || sessionStorage.getItem("baza_current_session_user");
       return cached ? JSON.parse(cached) : null;
     } catch (_) {
       return null;
@@ -35,19 +35,26 @@ export default function App() {
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     try {
-      return !!localStorage.getItem("baza_current_session_user");
+      return !!(localStorage.getItem("baza_current_session_user") || sessionStorage.getItem("baza_current_session_user"));
     } catch (_) {
       return false;
     }
   });
 
-  const handleUpdateSessionUser = (user: any) => {
+  const handleUpdateSessionUser = (user: any, remember: boolean = true) => {
     setCurrentSessionUser(user);
     if (user) {
-      localStorage.setItem("baza_current_session_user", JSON.stringify(user));
+      if (remember) {
+        localStorage.setItem("baza_current_session_user", JSON.stringify(user));
+        sessionStorage.removeItem("baza_current_session_user");
+      } else {
+        sessionStorage.setItem("baza_current_session_user", JSON.stringify(user));
+        localStorage.removeItem("baza_current_session_user");
+      }
       setIsAuthenticated(true);
     } else {
       localStorage.removeItem("baza_current_session_user");
+      sessionStorage.removeItem("baza_current_session_user");
       setIsAuthenticated(false);
     }
   };
@@ -220,14 +227,6 @@ export default function App() {
       if (searchQuery) params.append('q', searchQuery);
       if (genderFilter) params.append('gender', genderFilter);
       
-      // Force rayon segment constraint if restricted session is active
-      const targetRayon = currentSessionUser?.rayon || areaFilter;
-      if (targetRayon) params.append('area', targetRayon);
-
-      if (groupFilter) params.append('group', groupFilter);
-      if (statusFilter) params.append('status', statusFilter);
-
-      // Force caregiver segment constraint if user is an opikun
       const getLevelNum = (lvl: string): number => {
         if (!lvl) return 1;
         const s = lvl.toUpperCase();
@@ -238,6 +237,18 @@ export default function App() {
       };
       const levelNum = getLevelNum(currentSessionUser?.level || 'І-й');
 
+      const assignedRayon = currentSessionUser?.rayon;
+      const isSpecificRayon = assignedRayon && assignedRayon !== 'ВСІ' && assignedRayon !== 'ВСЕ' && assignedRayon !== '';
+      const shouldRestrictRayon = levelNum <= 3 && isSpecificRayon;
+
+      // Force rayon segment constraint if restricted session is active
+      const targetRayon = shouldRestrictRayon ? assignedRayon : areaFilter;
+      if (targetRayon) params.append('area', targetRayon);
+
+      if (groupFilter) params.append('group', groupFilter);
+      if (statusFilter) params.append('status', statusFilter);
+
+      // Force caregiver segment constraint if user is an opikun
       const getMatchedCaregiverName = (userObj: any, opikaList: string[]): string | null => {
         if (!userObj || !userObj.user || !opikaList || opikaList.length === 0) return null;
         const userName = userObj.user;
@@ -291,7 +302,25 @@ export default function App() {
       setSpreadsheetLoading(true);
     }
     try {
-      const resp = await fetch('/api/members?status='); // empty status returns all records
+      const getLevelNum = (lvl: string): number => {
+        if (!lvl) return 1;
+        const s = lvl.toUpperCase();
+        if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+        if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+        if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+        return 1;
+      };
+      const levelNum = getLevelNum(currentSessionUser?.level || 'І-й');
+
+      const assignedRayon = currentSessionUser?.rayon;
+      const isSpecificRayon = assignedRayon && assignedRayon !== 'ВСІ' && assignedRayon !== 'ВСЕ' && assignedRayon !== '';
+      const shouldRestrictRayon = levelNum <= 3 && isSpecificRayon;
+
+      const url = shouldRestrictRayon
+        ? `/api/members?status=&area=${encodeURIComponent(assignedRayon)}`
+        : '/api/members?status=';
+
+      const resp = await fetch(url); // empty status returns all records
       if (resp.ok) {
         const json = await resp.json();
         setAllMembers(json);
@@ -477,10 +506,12 @@ export default function App() {
   if (!isAuthenticated && lookups) {
       return (
           <LoginPage 
-            onLogin={(user) => {
-                handleUpdateSessionUser(user);
+            onLogin={(user, remember) => {
+                handleUpdateSessionUser(user, remember);
             }} 
             accessList={lookups.access || []}
+            rayonList={lookups.directories?.rayon || lookups.directories?.rayon2 || []}
+            opikaBindings={lookups.directories?.opika_bindings || []}
           />
       );
   }

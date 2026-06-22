@@ -26,6 +26,29 @@ export default function DirectoriesManager({
   const [activeAccessSubTab, setActiveAccessSubTab] = useState<'sectors' | 'levels'>('sectors');
   const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
 
+  const getFormattedPibForPresbyter = (m: any, allCandidates: any[]) => {
+    const pibStr = String(m.pib || '').trim();
+    const parts = pibStr.split(/\s+/);
+    if (parts.length < 2) return pibStr;
+    
+    const lastName = parts[0];
+    const firstName = parts[1];
+    const patronymic = parts[2] || '';
+    
+    const isDuplicate = allCandidates.some(other => {
+      if (other.id === m.id) return false;
+      const otherParts = String(other.pib || '').trim().split(/\s+/);
+      if (otherParts.length < 2) return false;
+      return otherParts[0].toLowerCase() === lastName.toLowerCase() && 
+             otherParts[1].toLowerCase() === firstName.toLowerCase();
+    });
+    
+    if (isDuplicate && patronymic) {
+      return `${lastName} ${firstName} ${patronymic.charAt(0)}.`;
+    }
+    return `${lastName} ${firstName}`;
+  };
+
   useEffect(() => {
     if (lookups?.permission_levels && lookups.permission_levels.length > 0) {
       setParsedAccessLevels(lookups.permission_levels);
@@ -901,54 +924,30 @@ export default function DirectoriesManager({
                   )}
                   {selectedDictKey === 'slujinnya' && (
                     <span>
-                      ⛪ <strong>Служіння:</strong> Спеціалізовані християнські служіння та місії, в які залучені діючі члени нашої єдиної церковної громади.
+                      ⛪ <strong>Служіння:</strong> Спеціалізовані християнські служіння та місії, в які залучені діючі члени нашої єдиної громади.
                     </span>
                   )}
                   {selectedDictKey === 'vidviduvanist' && (
                     <span>
-                      📊 <strong>Характеристики відвідування:</strong> Показники та оцінки регулярності відвідування зібрань та заходів членами громади.
+                      📊 <strong>Характеристики відвідування:</strong> Статуси регулярності участі членів церкви у недільних зібраннях (Постійно, Періодично, Рідко, Ніколи).
                     </span>
                   )}
                   {selectedDictKey === 'prysutnist' && (
                     <span>
-                      📌 <strong>Причина відсутності (перебування):</strong> Статус або причина, по якій член церкви тимчасово чи постійно не відвідує зібрання, групи чи служіння (наприклад: ЗСУ, за кордоном, немічний тощо).
+                      ❓ <strong>Причини відсутності:</strong> Довідник причин, через які опікувані члени могли пропустити богослужіння.
                     </span>
                   )}
                   {selectedDictKey === 'rayon' && (
                     <span>
-                      🗺️ <strong>Райони структури:</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації. Закріплення служителя за районом.
+                      🗺️ <strong>Райони структури:</strong> Окремі географічні або адміністративні райони та групи (наприклад, ЦЕНТР, КАСКАД, АЕРОПОРТ), що дозволяють групувати членів церкви для територіального опікунства та комунікації. Пресвітер за районом.
                     </span>
                   )}
                 </div>
 
-                {/* Form to add item inline */}
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    placeholder="Додати новий елемент довідника..."
-                    value={newDictValue}
-                    onChange={(e) => setNewDictValue(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddDictItem()}
-                    className="flex-1 rounded-lg bg-[#13282e] border border-[#224853] px-3 py-1.5 text-xs text-white focus:border-[#387d7a] focus:outline-none placeholder-slate-500"
-                  />
-                  <button
-                    onClick={handleAddDictItem}
-                    className="rounded-lg bg-[#387d7a] hover:bg-[#32716e] font-extrabold text-white px-3 py-1.5 transition-colors flex items-center space-x-1 outline-none text-xs shrink-0"
-                  >
-                    <Plus className="h-4 w-4" />
-                    <span>Додати</span>
-                  </button>
-                </div>
-
-                {saveStatus && (
-                  <div className="rounded-lg bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 px-2.5 py-1 text-[11px] font-bold inline-flex items-center space-x-1.5 animate-bounce">
-                    <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-                    <span>Успішно збережено в системну базу!</span>
-                  </div>
-                )}
-
                 {/* Items tag board */}
-                <div className="rounded-lg border border-[#224853]/55 h-[280px] overflow-y-auto p-3 bg-[#13282e]/40 space-y-2">
+                <div className={`rounded-lg border border-[#224853]/55 p-3 bg-[#13282e]/40 space-y-2 ${
+                  selectedDictKey === 'rayon' ? 'h-auto overflow-visible' : 'h-[280px] overflow-y-auto'
+                }`}>
                   {dictItems.length === 0 ? (
                     <div className="text-center text-slate-500 py-12 text-xs">Довідник пустий. Додайте перші значення.</div>
                   ) : (
@@ -964,7 +963,7 @@ export default function DirectoriesManager({
                                   <span className="text-xs font-black text-slate-100 uppercase tracking-wide">📍 {name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Закріплення служителя:</span>
+                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Пресвітер:</span>
                                   <select
                                     value={presbyterIdVal}
                                     onChange={(e) => {
@@ -975,14 +974,20 @@ export default function DirectoriesManager({
                                     className="bg-[#12282e] border border-[#224853] text-[11.5px] font-bold text-teal-300 rounded-lg px-2 py-1 focus:outline-none"
                                   >
                                     <option value="">— Оберіть... —</option>
-                                    {members.filter(m => {
-                                      const isActive = Number(m.id_vybuttya || 0) === 0;
-                                      const isBrother = m.stat === 'брат';
-                                      const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер");
-                                      return isActive && isBrother && isPresbyter;
-                                    }).sort((a,b) => (a.pib || "").localeCompare(b.pib || "")).map((m: any) => (
-                                      <option key={m.id} value={m.id}>👨‍💼 {m.pib}</option>
-                                    ))}
+                                    {(() => {
+                                      const candidates = members.filter(m => {
+                                        const isActive = Number(m.id_vybuttya || 0) === 0;
+                                        const isBrother = m.stat === 'брат';
+                                        const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер");
+                                        return isActive && isBrother && isPresbyter;
+                                      }).sort((a,b) => (a.pib || "").localeCompare(b.pib || ""));
+                                      
+                                      return candidates.map((m: any) => (
+                                        <option key={m.id} value={m.id}>
+                                          👨‍💼 {getFormattedPibForPresbyter(m, candidates)}
+                                        </option>
+                                      ));
+                                    })()}
                                   </select>
                                   <button
                                     onClick={() => handleRemoveDictItem(item)}
@@ -1005,12 +1010,12 @@ export default function DirectoriesManager({
                             const rayonList = lookups?.directories?.rayon || [];
                             const rayonNamesList = rayonList.map((r: any) => typeof r === 'string' ? r : (r?.name || ""));
                             return (
-                              <div key={idx} className="bg-[#1a3843] border border-[#224853] p-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs font-black text-slate-100">👥 {name}</span>
+                              <div key={idx} className="bg-[#1a3843] border border-[#224853] p-2.5 rounded-xl flex flex-row items-center justify-between gap-3 shadow-xs">
+                                <div className="flex items-center space-x-2 min-w-0 pr-2">
+                                  <span className="text-xs font-black text-slate-100 truncate whitespace-nowrap" title={name}>👥 {name}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Прив'язка до району:</span>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Район:</span>
                                   <select
                                     value={rayonVal}
                                     onChange={(e) => {

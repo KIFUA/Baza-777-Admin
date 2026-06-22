@@ -14,6 +14,9 @@ import {
 } from "./src/types";
 
 export const app = express();
+if (process.env.FIREBASE_SECRET === "YOUR_FIREBASE_SECRET_KEY") {
+  process.env.FIREBASE_SECRET = "";
+}
 const PORT = 3000;
 const DB_CACHE_FILE = path.join(process.cwd(), "db_cache.json");
 const tablyciDir = path.join(process.cwd(), "tablyci");
@@ -777,7 +780,9 @@ app.get("/api/lookups", async (req, res) => {
       prysutnist: directories_prysutnist,
       di_admin: directories_di_admin,
       rayon2: sortRayonsArray(directories_rayon2),
-      rayon: sortRayonsArray(directories_rayon2)
+      rayon: sortRayonsArray(directories_rayon2),
+      rayon_bindings: directories_rayon_bindings,
+      opika_bindings: directories_opika_bindings
     },
     access: access_dostup,
     permission_levels: permission_levels
@@ -1564,6 +1569,7 @@ app.post("/api/directories/save", async (req, res) => {
         await syncAccessDostupToFirebase();
       }
     }
+    lastDatabaseSyncTime = Date.now();
   } catch (e) {
     console.error("Firebase manual directories save error:", e);
   }
@@ -2465,6 +2471,82 @@ async function syncDirectoriesToFirebase() {
   }
 }
 
+async function writeBindingsToFirebase() {
+  const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+  const url = `${FIREBASE_URL}/directories.json?auth=${DB_SECRET}`;
+  try {
+    await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rayon_bindings: directories_rayon_bindings,
+        opika_bindings: directories_opika_bindings
+      })
+    });
+    console.log("[Bindings Sync] Successfully saved default bindings back to Firebase!");
+  } catch (err: any) {
+    console.error("[Bindings Sync] Failed to auto-save default bindings:", err.message);
+  }
+}
+
+function initializeDefaultBindingsIfNeeded(membersList: any[]) {
+  if (!Array.isArray(membersList) || membersList.length === 0) return;
+
+  const findId = (surnamePart: string) => {
+    const match = membersList.find(m => {
+      const p = (m.pib || "").toLowerCase();
+      return p.includes(surnamePart.toLowerCase());
+    });
+    return match ? match.id : null;
+  };
+
+  let dirtied = false;
+
+  // If rayon_bindings is empty, set default leaders
+  if (!directories_rayon_bindings || directories_rayon_bindings.length === 0) {
+    console.log("[Bindings Init] Initializing default district leaders (rayon_bindings)...");
+    const aeroportId = findId("Бевзюк В") || findId("Бевзюк");
+    const kaskadId = findId("Скіцко І") || findId("Скіцко");
+    const vasylId = membersList.find(m => (m.pib || "").includes("Черняк Вас"))?.id || findId("Черняк Вас");
+    const valeriyId = membersList.find(m => (m.pib || "").includes("Черняк Вал"))?.id || findId("Черняк Вал");
+
+    directories_rayon_bindings = [
+      { name: "АЕРОПОРТ", presbyterId: aeroportId },
+      { name: "КАСКАД", presbyterId: kaskadId },
+      { name: "ОБ'ЇЗНА", presbyterId: vasylId },
+      { name: "ЦЕНТР", presbyterId: valeriyId }
+    ];
+    dirtied = true;
+  }
+
+  // If opika_bindings is empty, map default guardians to rayon / districts
+  if (!directories_opika_bindings || directories_opika_bindings.length === 0) {
+    console.log("[Bindings Init] Initializing default guardians (opika_bindings)...");
+    const initialOpikaData = [
+      { rayon: "АЕРОПОРТ", guardians: ["Бевзюк В.", "Галюк Б.", "Самелюк О.", "Черняк Вік.", "Шпарман Ю."] },
+      { rayon: "КАСКАД", guardians: ["Ільницький О.", "Луцак М.", "Марунчак В.", "Скіцко І."] },
+      { rayon: "ОБ'ЇЗНА", guardians: ["Бурчак Ю.", "Дмитраш М.", "Решетило Р.", "Стефурак Д.", "Черняк Вас."] },
+      { rayon: "ЦЕНТР", guardians: ["Євстратов О.", "Мельничук В.", "Несен Ю.", "Скриник М.", "Стасінчук В.", "Стафіїв М.", "Факас О.", "Черняк Вал.", "Шегда П."] }
+    ];
+
+    const bindings: any[] = [];
+    initialOpikaData.forEach(item => {
+      item.guardians.forEach(g => {
+        bindings.push({
+          name: g,
+          rayon: item.rayon
+        });
+      });
+    });
+    directories_opika_bindings = bindings;
+    dirtied = true;
+  }
+
+  if (dirtied) {
+    writeBindingsToFirebase().catch(err => console.error(err));
+  }
+}
+
 async function syncDirectoriesFromFirebase() {
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
   const url = `${FIREBASE_URL}/directories.json?auth=${DB_SECRET}`;
@@ -3063,6 +3145,8 @@ async function syncDatabaseWithFirebase() {
           }
         }
       });
+
+      initializeDefaultBindingsIfNeeded(members);
 
       saveDatabaseToCache();
       lastDatabaseSyncTime = Date.now();

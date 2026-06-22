@@ -15,6 +15,108 @@ interface SpreadsheetViewProps {
 }
 
 export default function SpreadsheetView({ members, lookups, userLevel, onOpenProfile, onUpdateMember, onOpenGenerator }: SpreadsheetViewProps) {
+  const getPermission = (fieldName: string): { view: boolean, edit: boolean } => {
+    const level = userLevel || 'І-й';
+    
+    const getLevelNum = (lvl: string): number => {
+      if (!lvl) return 1;
+      const s = lvl.toUpperCase();
+      if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+      if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+      if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+      return 1;
+    };
+
+    const levelNum = getLevelNum(level);
+
+    const roleMapping: Record<string, string> = {
+      'дати контактів з пресв.': 'Дата контакт.',
+      'примітки і пояснення': 'Примітки',
+      'завдання для адмін.': 'Завд. для адм.',
+      'опіка': 'Опіка',
+      'служіння': 'Служіння',
+      'відвідування': 'Відвідув.',
+      'прич. відсутності': 'Прич. відсутн.',
+      'вік': 'Вік',
+      'адреса': 'Адрес',
+      'телефон': 'Телефон',
+      'дата народж.': 'Дата народж.',
+      'ос-та': 'Освіта',
+      'хр. с.д.': 'Хр. С.Д.',
+      'сім. стан': 'Сім. стан',
+      'соц. стан': 'Соц. стан',
+      'в.х.': 'В.Х.',
+      'в_церкві_з': 'В церкві з',
+      'років в ц.': 'К-ть рок. в Ц.',
+      'район': 'РАЙОН',
+      'піб': 'ПІБ',
+      'всего членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
+      'всього членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
+      'список': 'Кнопка СПИСОК',
+      'анкети': 'Кнопка АНКЕТИ',
+      'статистика': 'Кнопка СТАТИСТИКА',
+      'налаштування': 'Кнопка НАЛАШТУВАННЯ',
+      'pole statusів': 'Поле статусів',
+      'поле статусів': 'Поле статусів',
+      'поле районів': 'Поле районів',
+      'поле опіка': 'Поле опіка',
+      'поле пошук': 'Поле пошук',
+      'кнопка власні списки': 'Кнопка ВЛАСНІ СПИСКИ',
+      'кнопка район у таблиці': 'Кнопка РАЙОН У ТАБЛИЦІ'
+    };
+
+    const normalizeStr = (s: string) => s.replace(/[^a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]/g, '').toLowerCase().trim();
+    
+    let mappedName = fieldName;
+    const cleanFieldName = fieldName.toLowerCase().trim();
+    if (roleMapping[cleanFieldName]) {
+      mappedName = roleMapping[cleanFieldName];
+    }
+    
+    const targetNorm = normalizeStr(mappedName);
+    
+    const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
+    const row = list.find((item: any) => {
+      const dbRole = normalizeStr(item.role || "");
+      return dbRole === targetNorm || 
+             dbRole === 'кнопка' + targetNorm || 
+             dbRole === 'поле' + targetNorm;
+    });
+
+    if (!row) {
+      const isPublic = ['№', 'піб', 'в_церкві_з', 'років в ц.', 'rayon2_ukr', 'поле пошук'].includes(targetNorm);
+      const isVisible = isPublic || (levelNum > 1);
+      const isEditable = isVisible && (levelNum === 4);
+      return { view: isVisible, edit: isEditable };
+    }
+
+    const findAccessValue = (access: Record<string, boolean>, lvlNum: number, action: 'view' | 'edit'): boolean => {
+      const keys = Object.keys(access || {});
+      for (const k of keys) {
+        const rawKey = k.toLowerCase().trim();
+        let keyLvl = 1;
+        if (rawKey.includes('iv') || rawKey.includes('іv')) keyLvl = 4;
+        else if (rawKey.includes('iii') || rawKey.includes('ііі')) keyLvl = 3;
+        else if (rawKey.includes('ii') || rawKey.includes('іі')) keyLvl = 2;
+        else keyLvl = 1;
+
+        const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
+        const isView = rawKey.includes('бач') || rawKey.includes('view');
+
+        if (keyLvl === lvlNum) {
+          if (action === 'view' && isView) return !!access[k];
+          if (action === 'edit' && isEdit) return !!access[k];
+        }
+      }
+      return false;
+    };
+
+    return {
+      view: findAccessValue(row.access, levelNum, 'view'),
+      edit: findAccessValue(row.access, levelNum, 'edit')
+    };
+  };
+
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
   const [selectedRayonFilter, setSelectedRayonFilter] = useState<string>('');
   const [selectedOpikaFilter, setSelectedOpikaFilter] = useState<string>('');
@@ -762,10 +864,28 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
       }
     }
 
+    let mappedRole = '';
+    if (field === 'di_admin') mappedRole = 'ЗАВДАННЯ ДЛЯ АДМІН.';
+    else if (field === 'presviter') mappedRole = 'ОПІКА';
+    else if (field === 's_slujinnya_spysok') mappedRole = 'СЛУЖІННЯ';
+    else if (field === 'vidviduvanist') mappedRole = 'ВІДВІДУВАННЯ';
+    else if (field === 'prysutnist') mappedRole = 'ПРИЧ. ВІДСУТНОСТІ';
+    else if (field === 'rayon2_ukr') mappedRole = 'РАЙОН';
+
     return (
       <td 
         style={tdStyle}
-        onClick={(e) => { e.stopPropagation(); setEditingCell({ id: m.id, field }); }}
+        onClick={(e) => { 
+          e.stopPropagation(); 
+          if (mappedRole) {
+            const perm = getPermission(mappedRole);
+            if (!perm.edit) {
+              alert("Дія відхилена: недостатньо прав для редагування.");
+              return;
+            }
+          }
+          setEditingCell({ id: m.id, field }); 
+        }}
         className={`${tdClassName} text-center cursor-pointer hover:bg-slate-200/50 min-h-[28px] transition-colors`}
         title="Клацніть для швидкої зміни значення"
       >
@@ -923,7 +1043,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
       
       {/* Search & Mode filters rail */}
       <div className="px-1.5 py-1 sm:px-3 sm:py-1.5 bg-[#2a4d5c] border-b border-[#1b3642] flex flex-row flex-wrap items-center justify-start gap-1.5 sm:gap-2 shrink-0 shadow-sm scale-interface-down-33 font-semibold pb-1 pb-1">
-        {(isAdmin || ['ІІІ-й', 'IV-й'].includes(userLevel)) && userLevel !== 'І-й' && (
+        {getPermission('Поле статусів').view && (
           <div className="flex items-center shrink-0">
             <select
               id="filter_status_select"
@@ -940,7 +1060,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         )}
 
         {/* District Select (РАЙОН) */}
-        {userLevel !== 'І-й' && (
+        {getPermission('Поле районів').view && (
           <div className="flex items-center shrink-0">
             <select
               id="filter_rayon_select"
@@ -966,7 +1086,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         )}
 
         {/* Caretaker Select (ОПІКА) - Dependent list */}
-        {userLevel !== 'І-й' && (
+        {getPermission('Поле опіка').view && (
           <div className="flex items-center shrink-0 relative">
             <select
               id="filter_opika_select"
@@ -1012,26 +1132,28 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         )}
 
         {/* Filters (Фільтри) */}
-        <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
-          <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Пошук"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
-          />
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
-            >
-              <X className="h-3 w-3 sm:h-4 sm:w-4" />
-            </button>
-          )}
-        </div>
+        {getPermission('Поле пошук').view && (
+          <div className="relative w-24 xs:w-28 sm:w-40 h-[24px] sm:h-[32px] flex items-center">
+            <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 sm:left-2.5 sm:h-4 sm:w-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Пошук"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-full rounded border border-[#1b3642] pl-5 pr-5 py-0 text-[10px] sm:pl-8 sm:pr-6 sm:text-[11px] focus:border-[#387d7a] focus:outline-none bg-[#1a3843] text-slate-200 placeholder-slate-400 font-medium"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 flex items-center justify-center"
+              >
+                <X className="h-3 w-3 sm:h-4 sm:w-4" />
+              </button>
+            )}
+          </div>
+        )}
 
-        {userLevel !== 'І-й' && (
+        {getPermission('Кнопка ВЛАСНІ СПИСКИ').view && (
           <button
             title="Перейти до генератора списків"
             onClick={onOpenGenerator}
@@ -1041,7 +1163,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
           </button>
         )}
 
-        {userLevel !== 'І-й' && (
+        {getPermission('Кнопка РАЙОН У ТАБЛИЦІ').view && (
           <button
             id="toggle_rayon_col_btn"
             type="button"
@@ -1092,24 +1214,24 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
               >
                 ПІБ
               </th>
-              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОПІКА</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СЛУЖІННЯ</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІДВІДУВАННЯ</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none" title="ПРИЧИНА ВІДСУТНОСТІ">ПРИЧ. ВІДСУТНОСТІ</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІК</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">АДРЕСА</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ТЕЛЕФОН</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТА НАРОДЖ.</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОС-ТА</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ХР. С.Д.</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СІМ. СТАН</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СОЦ.<br/>СТАН</th>}
-              {userLevel !== 'І-й' && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">В.Х.</th>}
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В_ЦЕРКВІ_З</th>
-              <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none w-10 min-w-[40px] max-w-[40px]">РОКІВ В Ц.</th>
+               {getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>}
+               {getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>}
+               {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>}
+               {getPermission('ОПІКА').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОПІКА</th>}
+               {getPermission('СЛУЖІННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СЛУЖІННЯ</th>}
+               {getPermission('ВІДВІДУВАННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІДВІДУВАННЯ</th>}
+               {getPermission('ПРИЧ. ВІДСУТНОСТІ').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none" title="ПРИЧИНА ВІДСУТНОСТІ">ПРИЧ. ВІДСУТНОСТІ</th>}
+               {getPermission('ВІК').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІК</th>}
+               {getPermission('АДРЕСА').view && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">АДРЕСА</th>}
+               {getPermission('ТЕЛЕФОН').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ТЕЛЕФОН</th>}
+               {getPermission('ДАТА НАРОДЖ.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТА НАРОДЖ.</th>}
+               {getPermission('ОС-ТА').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОС-ТА</th>}
+               {getPermission('ХР. С.Д.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ХР. С.Д.</th>}
+               {getPermission('СІМ. СТАН').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СІМ. СТАН</th>}
+               {getPermission('СОЦ. СТАН').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СОЦ.<br/>СТАН</th>}
+               {getPermission('В.Х.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">В.Х.</th>}
+               {getPermission('В_ЦЕРКВІ_З').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] w-[86px] min-w-[86px] max-w-[86px] leading-none uppercase">В_ЦЕРКВІ_З</th>}
+               {getPermission('РОКІВ В Ц.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none w-10 min-w-[40px] max-w-[40px]">РОКІВ В Ц.</th>}
             </tr>
           </thead>
           <tbody className="font-medium text-[#113a21]">
@@ -1152,9 +1274,9 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden ${userLevel === 'IV-й' ? 'cursor-pointer select-none' : ''}`}
+                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''}`}
                       onDoubleClick={(e) => {
-                        if (userLevel === 'IV-й') {
+                        if (getPermission('АНКЕТИ').view) {
                           e.stopPropagation();
                           onOpenProfile(m.id);
                         }
@@ -1180,7 +1302,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                             );
                           })()}
                         </div>
-                        {userLevel === 'IV-й' && (
+                        {getPermission('АНКЕТИ').view && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1200,7 +1322,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                     </td>
 
                     {/* Custom Editable Contact Dates (Request 2 & 4) */}
-                    {userLevel !== 'І-й' && (() => {
+                    {getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').view && (() => {
                       const bgClass = getContactDateBgClass(m.d_kontaktiv);
                       const isSalat = bgClass === 'bg-[#69DD90]';
                       const textClass = isSalat ? 'text-[#06331a]' : 'text-rose-950';
@@ -1216,6 +1338,10 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                           }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
+                            if (!getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').edit) {
+                              alert("Дія відхилена: недостатньо прав для редагування.");
+                              return;
+                            }
                             handleOpenContactModal(m);
                           }}
                           title="Клацніть для перегляду всіх дат; Двічі клацніть для редагування"
@@ -1250,7 +1376,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                     })()}
 
                     {/* Remarks with Popup Tooltip on Hover or Tap (Request 2) */}
-                    {userLevel !== 'І-й' ? (
+                    {getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').view ? (
                       editingRemarkId === m.id ? (
                         <td 
                           className="py-0.5 px-0.5 border-r border-[#8fba94] bg-white w-36 min-w-[144px] max-w-[144px]"
@@ -1303,6 +1429,10 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                           }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
+                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit) {
+                              alert("Дія відхилена: недостатньо прав для редагування.");
+                              return;
+                            }
                             setEditingRemarkId(m.id);
                             setEditingRemarkValue(m.primitka || '');
                             setActiveRemarkTooltipId(null);
@@ -1325,13 +1455,13 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                     ) : null}
 
                     {/* "Дії" (di_admin) Inline Dropdown (Request 5) */}
-                    {userLevel !== 'І-й' && renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-amber-800 bg-amber-50/50 rounded px-1')}
+                    {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-amber-800 bg-amber-50/50 rounded px-1')}
 
                     {/* Shepherd (Oversight/Opika) */}
-                    {userLevel !== 'І-й' && renderDropdownCell(m, 'presviter', caregivers, '—', 'text-slate-700 bg-emerald-50/40 rounded px-1')}
+                    {getPermission('ОПІКА').view && renderDropdownCell(m, 'presviter', caregivers, '—', 'text-slate-700 bg-emerald-50/40 rounded px-1')}
 
                     {/* "Служіння" Column (Ministry) with multiple choice popup */}
-                    {userLevel !== 'І-й' && (
+                    {getPermission('СЛУЖІННЯ').view && (
                       <td 
                         className="py-0.5 px-1 border-r border-[#8fba94] text-center w-48 min-w-[192px] max-w-[192px] relative cursor-pointer hover:bg-emerald-800/10 transition-colors select-none"
                         onClick={(e) => {
@@ -1445,46 +1575,46 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                     )}
 
                     {/* "Відвідуваність" Inline Dropdown (Request 6) */}
-                    {userLevel !== 'І-й' && renderDropdownCell(m, 'vidviduvanist', lookups?.directories?.vidviduvanist || [], 'н/д', 'text-slate-700 bg-slate-100/70 rounded-full px-1.5 py-0.5')}
+                    {getPermission('ВІДВІДУВАННЯ').view && renderDropdownCell(m, 'vidviduvanist', lookups?.directories?.vidviduvanist || [], 'н/д', 'text-slate-700 bg-slate-100/70 rounded-full px-1.5 py-0.5')}
 
                     {/* "Прич. відсутності" Inline Dropdown */}
-                    {userLevel !== 'І-й' && renderDropdownCell(m, 'prysutnist', lookups?.directories?.prysutnist || [], 'н/д', 'text-blue-700 bg-blue-50 rounded-full px-1.5 py-0.5')}
+                    {getPermission('ПРИЧ. ВІДСУТНОСТІ').view && renderDropdownCell(m, 'prysutnist', lookups?.directories?.prysutnist || [], 'н/д', 'text-blue-700 bg-blue-50 rounded-full px-1.5 py-0.5')}
 
                     {/* Demographics */}
-                    {userLevel !== 'І-й' && (
+                    {getPermission('ВІК').view && (
                       <td className="py-0.5 px-1 border-r border-slate-300 text-center font-semibold text-[10px] font-mono">
                         {m.vik_rokiv1 ? `${m.vik_rokiv1}` : '—'}
                       </td>
                     )}
 
                     {/* Address (Request 1) */}
-                    {userLevel !== 'І-й' && (
+                    {getPermission('АДРЕСА').view && (
                       <td className="py-0.5 px-1.5 border-r border-slate-300 bg-[#edf7f0]/45 whitespace-nowrap text-[11px] align-middle" title={m.address}>
                         {formatAddress(m.address)}
                       </td>
                     )}
 
-                    {userLevel !== 'І-й' && (
+                    {getPermission('ТЕЛЕФОН').view && (
                       <td className="py-0.5 px-1 border-r border-slate-300 text-center font-mono font-bold text-[10px] text-slate-700">
                         {formatPhoneNumber(m.tel_mob)}
                       </td>
                     )}
 
                     {/* Dates birth & Edu */}
-                    {userLevel !== 'І-й' && (
+                    {getPermission('ДАТА НАРОДЖ.').view && (
                       <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 text-[10px] truncate bg-slate-50/10">
                         {formatDateToUA(m.d_narodjennya)}
                       </td>
                     )}
 
-                    {userLevel !== 'І-й' && (
+                    {getPermission('ОС-ТА').view && (
                       <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px]">
                         {m.s_osvita_ukr || '—'}
                       </td>
                     )}
 
                     {/* Dynamic spiritual parameters */}
-                    {userLevel !== 'І-й' && (
+                    {getPermission('ХР. С.Д.').view && (
                       <td 
                         className="py-0.5 px-0.5 border-r border-[#8fba94] text-center cursor-pointer select-none hover:bg-slate-200/50 transition-colors text-slate-600 text-[10px]"
                         onClick={async (e) => {
@@ -1497,7 +1627,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                       </td>
                     )}
 
-                    {userLevel !== 'І-й' && (
+                    {getPermission('СІМ. СТАН').view && (
                       <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px] truncate">
                         {m.s_simeyniy_ukr ? (
                           /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
@@ -1505,7 +1635,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                       </td>
                     )}
 
-                    {userLevel !== 'І-й' && (
+                    {getPermission('СОЦ. СТАН').view && (
                       <td 
                         className="py-0.5 px-0.5 border-r border-slate-300 text-center text-slate-650 text-[10px] truncate"
                         title={m.s_socialniy_ukr || '—'}
@@ -1515,17 +1645,21 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                     )}
 
                     {/* Baptisms dates & years inside church */}
-                    {userLevel !== 'І-й' && (
+                    {getPermission('В.Х.').view && (
                       <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 text-[10px] truncate bg-slate-50/10">
                         {renderWaterBaptism(m.d_vodnogo)}
                       </td>
                     )}
-                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 text-[10px] truncate bg-slate-50/10">
-                      {formatDateToUA(m.d_vstupu)}
-                    </td>
-                    <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-bold text-[10px] font-mono text-[#1e4620] bg-[#c3dfc7] group-hover:bg-[#9dbb9f] w-10 min-w-[40px] max-w-[40px]">
-                      {yearsInChurch}
-                    </td>
+                    {getPermission('В_ЦЕРКВІ_З').view && (
+                      <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-mono text-slate-600 text-[10px] truncate bg-slate-50/10">
+                        {formatDateToUA(m.d_vstupu)}
+                      </td>
+                    )}
+                    {getPermission('РОКІВ В Ц.').view && (
+                      <td className="py-0.5 px-0.5 border-r border-slate-300 text-center font-bold text-[10px] font-mono text-[#1e4620] bg-[#c3dfc7] group-hover:bg-[#9dbb9f] w-10 min-w-[40px] max-w-[40px]">
+                        {yearsInChurch}
+                      </td>
+                    )}
 
                   </tr>
                 );

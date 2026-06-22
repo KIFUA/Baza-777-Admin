@@ -978,7 +978,7 @@ export default function DirectoriesManager({
                                     {members.filter(m => {
                                       const isActive = Number(m.id_vybuttya || 0) === 0;
                                       const isBrother = m.stat === 'брат';
-                                      const isPresbyter = (m.di_admin || "").toLowerCase().includes('пресвітер');
+                                      const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер");
                                       return isActive && isBrother && isPresbyter;
                                     }).sort((a,b) => (a.pib || "").localeCompare(b.pib || "")).map((m: any) => (
                                       <option key={m.id} value={m.id}>👨‍💼 {m.pib}</option>

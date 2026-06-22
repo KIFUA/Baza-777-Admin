@@ -23,14 +23,140 @@ export default function App() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [spreadsheetLoading, setSpreadsheetLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
+  const [currentSessionUser, setCurrentSessionUser] = useState<any>(() => {
+    try {
+      const cached = localStorage.getItem("baza_current_session_user");
+      return cached ? JSON.parse(cached) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return !!localStorage.getItem("baza_current_session_user");
+    } catch (_) {
+      return false;
+    }
+  });
+
+  const handleUpdateSessionUser = (user: any) => {
+    setCurrentSessionUser(user);
+    if (user) {
+      localStorage.setItem("baza_current_session_user", JSON.stringify(user));
+      setIsAuthenticated(true);
+    } else {
+      localStorage.removeItem("baza_current_session_user");
+      setIsAuthenticated(false);
+    }
+  };
+
+  const getPermission = (elementName: string): { view: boolean, edit: boolean } => {
+    const level = currentSessionUser?.level || 'І-й';
+    
+    const getLevelNum = (lvl: string): number => {
+      if (!lvl) return 1;
+      const s = lvl.toUpperCase();
+      if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+      if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+      if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+      return 1;
+    };
+
+    const levelNum = getLevelNum(level);
+
+    const roleMapping: Record<string, string> = {
+      'дати контактів з пресв.': 'Дата контакт.',
+      'примітки і пояснення': 'Примітки',
+      'завдання для адмін.': 'Завд. для адм.',
+      'опіка': 'Опіка',
+      'служіння': 'Служіння',
+      'відвідування': 'Відвідув.',
+      'прич. відсутності': 'Прич. відсутн.',
+      'вік': 'Вік',
+      'адреса': 'Адрес',
+      'телефон': 'Телефон',
+      'дата народж.': 'Дата народж.',
+      'ос-та': 'Освіта',
+      'хр. с.д.': 'Хр. С.Д.',
+      'сім. стан': 'Сім. стан',
+      'соц. стан': 'Соц. стан',
+      'в.х.': 'В.Х.',
+      'в_церкві_з': 'В церкві з',
+      'років в ц.': 'К-ть рок. в Ц.',
+      'район': 'РАЙОН',
+      'піб': 'ПІБ',
+      'всего членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
+      'всього членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
+      'список': 'Кнопка СПИСОК',
+      'анкети': 'Кнопка АНКЕТИ',
+      'статистика': 'Кнопка СТАТИСТИКА',
+      'налаштування': 'Кнопка НАЛАШТУВАННЯ',
+      'pole statusів': 'Поле статусів',
+      'поле статусів': 'Поле статусів',
+      'поле районів': 'Поле районів',
+      'поле опіка': 'Поле опіка',
+      'поле пошук': 'Поле пошук',
+      'кнопка власні списки': 'Кнопка ВЛАСНІ СПИСКИ',
+      'кнопка район у таблиці': 'Кнопка РАЙОН У ТАБЛИЦІ'
+    };
+
+    const normalizeStr = (s: string) => s.replace(/[^a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]/g, '').toLowerCase().trim();
+    
+    let mappedName = elementName;
+    const cleanFieldName = elementName.toLowerCase().trim();
+    if (roleMapping[cleanFieldName]) {
+      mappedName = roleMapping[cleanFieldName];
+    }
+    
+    const targetNorm = normalizeStr(mappedName);
+    
+    const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
+    const row = list.find((item: any) => {
+      const dbRole = normalizeStr(item.role || "");
+      return dbRole === targetNorm || 
+             dbRole === 'кнопка' + targetNorm || 
+             dbRole === 'поле' + targetNorm;
+    });
+
+    if (!row) {
+      const isPublic = ['поле пошук'].includes(targetNorm);
+      const isVisible = isPublic || (levelNum > 1);
+      const isEditable = isVisible && (levelNum === 4);
+      return { view: isVisible, edit: isEditable };
+    }
+
+    const findAccessValue = (access: Record<string, boolean>, lvlNum: number, action: 'view' | 'edit'): boolean => {
+      const keys = Object.keys(access || {});
+      for (const k of keys) {
+        const rawKey = k.toLowerCase().trim();
+        let keyLvl = 1;
+        if (rawKey.includes('iv') || rawKey.includes('іv')) keyLvl = 4;
+        else if (rawKey.includes('iii') || rawKey.includes('ііі')) keyLvl = 3;
+        else if (rawKey.includes('ii') || rawKey.includes('іі')) keyLvl = 2;
+        else keyLvl = 1;
+
+        const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
+        const isView = rawKey.includes('бач') || rawKey.includes('view');
+
+        if (keyLvl === lvlNum) {
+          if (action === 'view' && isView) return !!access[k];
+          if (action === 'edit' && isEdit) return !!access[k];
+        }
+      }
+      return false;
+    };
+
+    return {
+      view: findAccessValue(row.access, levelNum, 'view'),
+      edit: findAccessValue(row.access, levelNum, 'edit')
+    };
+  };
+
   // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'generator' (ГЕНЕРАТОР) or 'settings' (НАЛАШТУВАННЯ)
   const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'generator' | 'settings' | 'stats'>('spreadsheet');
   const [activeTab, setActiveTab] = useState<'members' | 'pastoral' | 'history' | 'stats'>('members');
-
-  // Interactive local session simulator based on Google Sheet tab "ДОСТУП"
-  const [currentSessionUser, setCurrentSessionUser] = useState<any>(null);
 
   // Directory Filter State
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +180,23 @@ export default function App() {
     const interval = setInterval(checkAdmin, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    let modeToElement: Record<string, string> = {
+      'spreadsheet': 'СПИСОК',
+      'questionnaire': 'АНКЕТИ',
+      'stats': 'СТАТИСТИКА',
+      'settings': 'НАЛАШТУВАННЯ'
+    };
+    const currentElemName = modeToElement[mainMode];
+    if (currentElemName && !getPermission(currentElemName).view) {
+      if (getPermission('СПИСОК').view) {
+        setMainMode('spreadsheet');
+      } else if (getPermission('АНКЕТИ').view) {
+        setMainMode('questionnaire');
+      }
+    }
+  }, [currentSessionUser, lookups, mainMode]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -281,8 +424,7 @@ export default function App() {
       return (
           <LoginPage 
             onLogin={(user) => {
-                setCurrentSessionUser(user);
-                setIsAuthenticated(true);
+                handleUpdateSessionUser(user);
             }} 
             accessList={lookups.access || []}
           />
@@ -307,24 +449,26 @@ export default function App() {
               ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
             </div>
             
-            <div 
-              style={{ height: '30px', width: '245px' }}
-              className="bg-[#1a3843] border border-[#142d36] rounded px-1 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap"
-            >
-              <span 
-                style={{ fontSize: '12px', lineHeight: '18px' }}
-                className="hidden sm:inline mr-2"
+            {getPermission('ВСЬОГО ЧЛЕНІВ ЦЕРКВИ').view && (
+              <div 
+                style={{ height: '30px', width: '245px' }}
+                className="bg-[#1a3843] border border-[#142d36] rounded px-1 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap"
               >
-                ВСЬОГО ЧЛЕНІВ ЦЕРКВИ
-              </span>
-              <span className="sm:hidden mr-1">ВСЬОГО</span>
-              <span 
-                style={{ fontSize: '13px', fontWeight: 'bold', color: '#00cb4c' }}
-                className="font-black text-[10px] sm:text-sm text-white"
-              >
-                {members.length}
-              </span>
-            </div>
+                <span 
+                  style={{ fontSize: '12px', lineHeight: '18px' }}
+                  className="hidden sm:inline mr-2"
+                >
+                  ВСЬОГО ЧЛЕНІВ ЦЕРКВИ
+                </span>
+                <span className="sm:hidden mr-1">ВСЬОГО</span>
+                <span 
+                  style={{ fontSize: '13px', fontWeight: 'bold', color: '#00cb4c' }}
+                  className="font-black text-[10px] sm:text-sm text-white"
+                >
+                  {members.length}
+                </span>
+              </div>
+            )}
 
             <nav className="flex space-x-1 sm:space-x-2 shrink-0 ml-2">
               <button
@@ -336,15 +480,14 @@ export default function App() {
                   justifyContent: 'center'
                 }}
                 onClick={() => { 
-                  setIsAuthenticated(false); 
-                  setCurrentSessionUser(null);
+                  handleUpdateSessionUser(null);
                   localStorage.removeItem("user_tg_id");
                 }}
                 className="px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d]"
               >
                 ВИХІД
               </button>
-              {currentSessionUser?.level !== 'І-й' && (
+              {getPermission('СПИСОК').view && (
                 <button
                   style={{
                     fontSize: '12px',
@@ -369,7 +512,7 @@ export default function App() {
                   СПИСОК
                 </button>
               )}
-              {currentSessionUser?.level !== 'І-й' && (
+              {getPermission('АНКЕТИ').view && (
                 <button
                   style={{
                     fontSize: '12px',
@@ -395,50 +538,50 @@ export default function App() {
                   АНКЕТИ
                 </button>
               )}
-              {currentSessionUser?.level !== 'І-й' && (
-                <>
-                  <button
-                    style={{
-                      fontSize: '12px',
-                      height: '30px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="Аналітична статистика реєстру та зрізи за районами"
-                    onClick={() => {
-                      setMainMode('stats');
-                      setSelectedMemberId(null);
-                      setShowForm(false);
-                      Promise.all([
-                        fetchAllMembers(),
-                        fetchMembers(),
-                        fetchLookupsAndStats()
-                      ]).catch(err => console.error("Error updating tab data:", err));
-                    }}
-                    className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                  >
-                    СТАТИСТИКА
-                  </button>
-                  <button
-                    style={{
-                      fontSize: '12px',
-                      height: '30px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="Налаштування довідників та кольорів"
-                    onClick={() => {
-                      setMainMode('settings');
-                      setSelectedMemberId(null);
-                      setShowForm(false);
-                    }}
-                    className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                  >
-                    НАЛАШТУВАННЯ
-                  </button>
-                </>
+              {getPermission('СТАТИСТИКА').view && (
+                <button
+                  style={{
+                    fontSize: '12px',
+                    height: '30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Аналітична статистика реєстру та зрізи за районами"
+                  onClick={() => {
+                    setMainMode('stats');
+                    setSelectedMemberId(null);
+                    setShowForm(false);
+                    Promise.all([
+                      fetchAllMembers(),
+                      fetchMembers(),
+                      fetchLookupsAndStats()
+                    ]).catch(err => console.error("Error updating tab data:", err));
+                  }}
+                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                >
+                  СТАТИСТИКА
+                </button>
+              )}
+              {getPermission('НАЛАШТУВАННЯ').view && (
+                <button
+                  style={{
+                    fontSize: '12px',
+                    height: '30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Налаштування довідників та кольорів"
+                  onClick={() => {
+                    setMainMode('settings');
+                    setSelectedMemberId(null);
+                    setShowForm(false);
+                  }}
+                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                >
+                  НАЛАШТУВАННЯ
+                </button>
               )}
             </nav>
           </div>
@@ -553,7 +696,7 @@ export default function App() {
                   lookups={lookups}
                   onRefreshLookups={fetchLookupsAndStats}
                   currentSessionUser={currentSessionUser}
-                  onSetSessionUser={setCurrentSessionUser}
+                  onSetSessionUser={handleUpdateSessionUser}
                   members={allMembers}
                 />
               </div>

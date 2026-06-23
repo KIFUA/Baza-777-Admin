@@ -9,12 +9,21 @@ interface SpreadsheetViewProps {
   members: Member[];
   lookups: any;
   userLevel?: string;
+  selectedMemberId?: number | null;
   onOpenProfile: (id: number) => void;
   onUpdateMember: (id: number, updatedFields: Partial<Member>) => Promise<boolean>;
   onOpenGenerator: () => void;
 }
 
-export default function SpreadsheetView({ members, lookups, userLevel, onOpenProfile, onUpdateMember, onOpenGenerator }: SpreadsheetViewProps) {
+export default function SpreadsheetView({ 
+  members, 
+  lookups, 
+  userLevel, 
+  selectedMemberId, 
+  onOpenProfile, 
+  onUpdateMember, 
+  onOpenGenerator 
+}: SpreadsheetViewProps) {
   const getPermission = (fieldName: string): { view: boolean, edit: boolean } => {
     const level = userLevel || 'І-й';
     
@@ -152,6 +161,27 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
   const [selectedRayonFilter, setSelectedRayonFilter] = useState<string>('');
   const [selectedOpikaFilter, setSelectedOpikaFilter] = useState<string>('');
+  const [selectedSlujinnyaFilter, setSelectedSlujinnyaFilter] = useState<string>('');
+  const [selectedVidviduvanistFilter, setSelectedVidviduvanistFilter] = useState<string>('');
+  const [selectedPrysutnistFilter, setSelectedPrysutnistFilter] = useState<string>('');
+  const [activeFilterDropdown, setActiveFilterDropdown] = useState<'slujinnya' | 'vidviduvanist' | 'prysutnist' | null>(null);
+
+  const lastTapRef = React.useRef<{ [key: number]: number }>({});
+
+  useEffect(() => {
+    if (selectedMemberId !== undefined && selectedMemberId !== null) {
+      const timer = setTimeout(() => {
+        const parent = document.querySelector('.spreadsheet-scroll-container');
+        const row = document.getElementById(`member-row-${selectedMemberId}`);
+        if (parent && row) {
+          const thead = parent.querySelector('thead');
+          const offset = thead ? thead.clientHeight : 22;
+          parent.scrollTop = row.offsetTop - offset;
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedMemberId]);
   const [showRayonWarning, setShowRayonWarning] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showRayonColumn, setShowRayonColumn] = useState(false);
@@ -722,12 +752,37 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         return pibMatch || phoneMatch || presvMatch || rayonMatch || primitkaMatch || addressMatch;
       }
 
+      // 5. Ministry Filter (col: СЛУЖІННЯ)
+      if (selectedSlujinnyaFilter) {
+        const val = m.s_slujinnya_spysok || '';
+        const selectedList = val.split(/[,;]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+        if (!selectedList.includes(selectedSlujinnyaFilter.toUpperCase())) {
+          return false;
+        }
+      }
+
+      // 6. Attendance Filter (col: ВІДВІДУВАННЯ)
+      if (selectedVidviduvanistFilter) {
+        const val = m.vidviduvanist || '';
+        if (val.trim().toUpperCase() !== selectedVidviduvanistFilter.trim().toUpperCase()) {
+          return false;
+        }
+      }
+
+      // 7. Absence Reason Filter (col: ПРИЧ. ВІДСУТНОСТІ)
+      if (selectedPrysutnistFilter) {
+        const val = m.prysutnist || '';
+        if (val.trim().toUpperCase() !== selectedPrysutnistFilter.trim().toUpperCase()) {
+          return false;
+        }
+      }
+
       return true;
     });
 
     // Sort alphabetically by full name (pib)
     return [...list].sort((a, b) => (a.pib || '').localeCompare(b.pib || '', 'uk-UA'));
-  }, [members, filterType, selectedRayonFilter, selectedOpikaFilter, searchQuery]);
+  }, [members, filterType, selectedRayonFilter, selectedOpikaFilter, searchQuery, selectedSlujinnyaFilter, selectedVidviduvanistFilter, selectedPrysutnistFilter]);
 
   // Calculate dynamic ПІБ column width based on the longest record, optimized for mobile screens
   const pibColumnWidth = useMemo(() => {
@@ -1273,10 +1328,10 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
           <div className="flex items-center shrink-0 relative">
             <select
               id="filter_opika_select"
-              title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
+              title={(!selectedRayonFilter && levelNum !== 4) ? "Спочатку виберіть район" : undefined}
               value={selectedOpikaFilter}
               onChange={(e) => {
-                if (!selectedRayonFilter) {
+                if (!selectedRayonFilter && levelNum !== 4) {
                   setShowRayonWarning(true);
                   setTimeout(() => setShowRayonWarning(false), 2500);
                   return;
@@ -1284,7 +1339,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                 setSelectedOpikaFilter(e.target.value);
               }}
               onMouseDown={(e) => {
-                if (!selectedRayonFilter) {
+                if (!selectedRayonFilter && levelNum !== 4) {
                   e.preventDefault();
                   setShowRayonWarning(true);
                   setTimeout(() => setShowRayonWarning(false), 2500);
@@ -1294,15 +1349,15 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                 selectedOpikaFilter 
                   ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
                   : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
-              } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
+              } ${(!selectedRayonFilter && levelNum !== 4) ? "opacity-70 cursor-not-allowed" : ""}`}
             >
               <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
-              {selectedRayonFilter && opikaList.map((o, i) => (
+              {(selectedRayonFilter || levelNum === 4) && opikaList.map((o, i) => (
                 <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
               ))}
             </select>
 
-            {showRayonWarning && (
+            {showRayonWarning && levelNum !== 4 && (
               <div 
                 id="rayon_warning_tooltip"
                 className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
@@ -1401,9 +1456,142 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                {getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>}
                {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>}
                {getPermission('ОПІКА').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОПІКА</th>}
-               {getPermission('СЛУЖІННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">СЛУЖІННЯ</th>}
-               {getPermission('ВІДВІДУВАННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІДВІДУВАННЯ</th>}
-               {getPermission('ПРИЧ. ВІДСУТНОСТІ').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none" title="ПРИЧИНА ВІДСУТНОСТІ">ПРИЧ. ВІДСУТНОСТІ</th>}
+               {getPermission('СЛУЖІННЯ').view && (
+                  <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]">
+                    <div className="flex items-center justify-center space-x-1">
+                      <span className="font-bold">СЛУЖІННЯ</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveFilterDropdown(activeFilterDropdown === 'slujinnya' ? null : 'slujinnya');
+                        }}
+                        className={`p-[1px] rounded transition-all focus:outline-none cursor-pointer ${selectedSlujinnyaFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-[#0d341d]/60 hover:text-[#0d341d]'}`}
+                        title="Фільтр служіння"
+                      >
+                        <Filter size={6} className="h-1.5 w-1.5 sm:h-2 sm:w-2" />
+                      </button>
+                    </div>
+
+                    {activeFilterDropdown === 'slujinnya' && (
+                      <>
+                        <div className="fixed inset-0 z-[120]" onClick={() => setActiveFilterDropdown(null)} />
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[130] bg-[#e4efe5] border border-[#8fba94] rounded-md shadow-xl p-1.5 min-w-[140px] max-w-[200px] font-sans normal-case text-left">
+                          <div className="max-h-56 overflow-y-auto space-y-0.5 text-[8.5px] sm:text-[10px] text-emerald-950 font-semibold select-none">
+                            <div 
+                              onClick={() => { setSelectedSlujinnyaFilter(''); setActiveFilterDropdown(null); }}
+                              className={`px-2 py-1 rounded cursor-pointer ${!selectedSlujinnyaFilter ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                            >
+                              (ВСІ ЧЛЕНИ)
+                            </div>
+                            {ministryOptions.map((opt) => (
+                              <div 
+                                key={opt}
+                                onClick={() => { setSelectedSlujinnyaFilter(opt); setActiveFilterDropdown(null); }}
+                                className={`px-2 py-1 rounded cursor-pointer truncate ${selectedSlujinnyaFilter === opt ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                                title={opt}
+                              >
+                                {opt}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </th>
+                )}
+                {getPermission('ВІДВІДУВАННЯ').view && (
+                  <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]">
+                    <div className="flex items-center justify-center space-x-1">
+                      <span className="font-bold">ВІДВІДУВАННЯ</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveFilterDropdown(activeFilterDropdown === 'vidviduvanist' ? null : 'vidviduvanist');
+                        }}
+                        className={`p-[1px] rounded transition-all focus:outline-none cursor-pointer ${selectedVidviduvanistFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-[#0d341d]/60 hover:text-[#0d341d]'}`}
+                        title="Фільтр відвідування"
+                      >
+                        <Filter size={6} className="h-1.5 w-1.5 sm:h-2 sm:w-2" />
+                      </button>
+                    </div>
+
+                    {activeFilterDropdown === 'vidviduvanist' && (
+                      <>
+                        <div className="fixed inset-0 z-[120]" onClick={() => setActiveFilterDropdown(null)} />
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[130] bg-[#e4efe5] border border-[#8fba94] rounded-md shadow-xl p-1.5 min-w-[130px] max-w-[180px] font-sans normal-case text-left">
+                          <div className="max-h-56 overflow-y-auto space-y-0.5 text-[8.5px] sm:text-[10px] text-emerald-950 font-semibold select-none">
+                            <div 
+                              onClick={() => { setSelectedVidviduvanistFilter(''); setActiveFilterDropdown(null); }}
+                              className={`px-2 py-1 rounded cursor-pointer ${!selectedVidviduvanistFilter ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                            >
+                              (ВСІ ЧЛЕНИ)
+                            </div>
+                            {Array.isArray(lookups?.directories?.vidviduvanist) && 
+                              lookups.directories.vidviduvanist.map((opt: string) => (
+                                <div 
+                                  key={opt}
+                                  onClick={() => { setSelectedVidviduvanistFilter(opt); setActiveFilterDropdown(null); }}
+                                  className={`px-2 py-1 rounded cursor-pointer truncate ${selectedVidviduvanistFilter === opt ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                                  title={opt}
+                                >
+                                  {opt}
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </th>
+                )}
+                {getPermission('ПРИЧ. ВІДСУТНОСТІ').view && (
+                  <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]" title="ПРИЧИНА ВІДСУТНОСТІ">
+                    <div className="flex items-center justify-center space-x-1">
+                      <span className="font-bold">ПРИЧ. ВІДСУТНОСТІ</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveFilterDropdown(activeFilterDropdown === 'prysutnist' ? null : 'prysutnist');
+                        }}
+                        className={`p-[1px] rounded transition-all focus:outline-none cursor-pointer ${selectedPrysutnistFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-[#0d341d]/60 hover:text-[#0d341d]'}`}
+                        title="Фільтр причини відсутності"
+                      >
+                        <Filter size={6} className="h-1.5 w-1.5 sm:h-2 sm:w-2" />
+                      </button>
+                    </div>
+
+                    {activeFilterDropdown === 'prysutnist' && (
+                      <>
+                        <div className="fixed inset-0 z-[120]" onClick={() => setActiveFilterDropdown(null)} />
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[130] bg-[#e4efe5] border border-[#8fba94] rounded-md shadow-xl p-1.5 min-w-[130px] max-w-[180px] font-sans normal-case text-left">
+                          <div className="max-h-56 overflow-y-auto space-y-0.5 text-[8.5px] sm:text-[10px] text-emerald-950 font-semibold select-none">
+                            <div 
+                              onClick={() => { setSelectedPrysutnistFilter(''); setActiveFilterDropdown(null); }}
+                              className={`px-2 py-1 rounded cursor-pointer ${!selectedPrysutnistFilter ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                            >
+                              (ВСІ ЧЛЕНИ)
+                            </div>
+                            {Array.isArray(lookups?.directories?.prysutnist) && 
+                              lookups.directories.prysutnist.map((opt: string) => (
+                                <div 
+                                  key={opt}
+                                  onClick={() => { setSelectedPrysutnistFilter(opt); setActiveFilterDropdown(null); }}
+                                  className={`px-2 py-1 rounded cursor-pointer truncate ${selectedPrysutnistFilter === opt ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                                  title={opt}
+                                >
+                                  {opt}
+                                </div>
+                              ))
+                            }
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </th>
+                )}
                {getPermission('ВІК').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ВІК</th>}
                {getPermission('АДРЕСА').view && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">АДРЕСА</th>}
                {getPermission('ТЕЛЕФОН').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ТЕЛЕФОН</th>}
@@ -1426,6 +1614,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                 return (
                   <tr 
                     key={m.id} 
+                    id={`member-row-${m.id}`}
                     className="border-b border-[#8fba94] even:bg-[#d5e6d8] odd:bg-[#e4efe5] hover:bg-[#a8c7ab] cursor-pointer group transition-colors"
                   >
                     {/* Sticky index cell */}
@@ -1458,11 +1647,15 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                         left: `${pibLeftSticky}px`
                       }}
                       className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''}`}
-                      onDoubleClick={(e) => {
-                        if (getPermission('АНКЕТИ').view) {
+                      onClick={(e) => {
+                        if (!getPermission('АНКЕТИ').view) return;
+                        const now = Date.now();
+                        const lastTap = lastTapRef.current[m.id] || 0;
+                        if (now - lastTap < 350) {
                           e.stopPropagation();
                           onOpenProfile(m.id);
                         }
+                        lastTapRef.current[m.id] = now;
                       }}
                     >
                       <div className="flex items-center justify-between space-x-1 relative h-full min-h-[24px]">
@@ -1491,7 +1684,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                               e.stopPropagation();
                               onOpenProfile(m.id);
                             }}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[#002f13] px-1 py-0.5 rounded-sm text-[8.5px] font-black uppercase tracking-wider flex items-center space-x-0.5 shadow-xs border border-[#00d65c]"
+                            className="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[#002f13] px-1 py-0.5 rounded-sm text-[8.5px] font-black uppercase tracking-wider items-center space-x-0.5 shadow-xs border border-[#00d65c]"
                             style={{ backgroundColor: '#00ff6e' }}
                             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#00e05f'}
                             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#00ff6e'}

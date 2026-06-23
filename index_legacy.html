@@ -2571,6 +2571,9 @@
       }
 
       function selectMember(id) {
+        if (window.parent && window.parent !== window && typeof window.parent.__bazaSelectedMemberChanged === 'function') {
+          window.parent.__bazaSelectedMemberChanged(parseInt(id, 10));
+        }
         const member = allMembers.find((m) => m.id === id);
         if (!member) return;
 

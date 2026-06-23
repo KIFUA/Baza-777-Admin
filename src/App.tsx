@@ -183,6 +183,14 @@ export default function App() {
 
   // Active Selected Context
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+  const [lastOpenedMemberId, setLastOpenedMemberId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (selectedMemberId !== null) {
+      setLastOpenedMemberId(selectedMemberId);
+    }
+  }, [selectedMemberId]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -394,8 +402,13 @@ export default function App() {
       }
     };
 
+    (window as any).__bazaSelectedMemberChanged = (id: number | null) => {
+      setSelectedMemberId(id);
+    };
+
     return () => {
       delete (window as any).__bazaNotifyDatabaseChanged;
+      delete (window as any).__bazaSelectedMemberChanged;
     };
   }, []);
 
@@ -738,6 +751,7 @@ export default function App() {
                   members={allMembers}
                   lookups={lookups}
                   userLevel={currentSessionUser?.level}
+                  selectedMemberId={lastOpenedMemberId}
                   onOpenProfile={async (id) => {
                     setSelectedMemberId(id);
                     setMainMode('questionnaire');

@@ -1649,6 +1649,10 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                         className="py-0.5 px-1 border-r border-[#8fba94] text-center w-48 min-w-[192px] max-w-[192px] relative cursor-pointer hover:bg-emerald-800/10 transition-colors select-none"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!getPermission('СЛУЖІННЯ').edit) {
+                            alert("Тимчасово вносити зміни не можна");
+                            return;
+                          }
                           setEditingCell({ id: m.id, field: 's_slujinnya_spysok' });
                         }}
                         title="Клацніть для швидкої зміни служінь"

@@ -1466,10 +1466,10 @@ export default function SpreadsheetView({
                           e.stopPropagation();
                           setActiveFilterDropdown(activeFilterDropdown === 'slujinnya' ? null : 'slujinnya');
                         }}
-                        className={`p-[1px] rounded transition-all focus:outline-none cursor-pointer ${selectedSlujinnyaFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-[#0d341d]/60 hover:text-[#0d341d]'}`}
+                        className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedSlujinnyaFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Фільтр служіння"
                       >
-                        <Filter size={6} className="h-1.5 w-1.5 sm:h-2 sm:w-2" />
+                        <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
                       </button>
                     </div>
 
@@ -1510,10 +1510,10 @@ export default function SpreadsheetView({
                           e.stopPropagation();
                           setActiveFilterDropdown(activeFilterDropdown === 'vidviduvanist' ? null : 'vidviduvanist');
                         }}
-                        className={`p-[1px] rounded transition-all focus:outline-none cursor-pointer ${selectedVidviduvanistFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-[#0d341d]/60 hover:text-[#0d341d]'}`}
+                        className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedVidviduvanistFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Фільтр відвідування"
                       >
-                        <Filter size={6} className="h-1.5 w-1.5 sm:h-2 sm:w-2" />
+                        <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
                       </button>
                     </div>
 
@@ -1556,10 +1556,10 @@ export default function SpreadsheetView({
                           e.stopPropagation();
                           setActiveFilterDropdown(activeFilterDropdown === 'prysutnist' ? null : 'prysutnist');
                         }}
-                        className={`p-[1px] rounded transition-all focus:outline-none cursor-pointer ${selectedPrysutnistFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-[#0d341d]/60 hover:text-[#0d341d]'}`}
+                        className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedPrysutnistFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Фільтр причини відсутності"
                       >
-                        <Filter size={6} className="h-1.5 w-1.5 sm:h-2 sm:w-2" />
+                        <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
                       </button>
                     </div>
 

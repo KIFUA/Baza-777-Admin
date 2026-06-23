@@ -162,7 +162,7 @@ export default function DirectoriesManager({
   const [accessPosition, setAccessPosition] = useState('');
   const [accessTelegramId, setAccessTelegramId] = useState('');
   const [accessPassword, setAccessPassword] = useState('');
-  const [accessRayon, setAccessRayon] = useState('ЦЕНТР');
+  const [accessRayon, setAccessRayon] = useState('ВСІ');
 
   // Handle saving user
   const handleSaveAccessUser = async (e: React.FormEvent) => {
@@ -1125,7 +1125,7 @@ export default function DirectoriesManager({
                             setAccessPosition('');
                             setAccessTelegramId('');
                             setAccessPassword('');
-                            setAccessRayon('ЦЕНТР');
+                            setAccessRayon('ВСІ');
                             setShowAccessForm(!showAccessForm);
                           }}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow transition-all outline-none"
@@ -1242,10 +1242,17 @@ export default function DirectoriesManager({
                                 className="w-full bg-slate-900 border border-[#224853]/70 rounded px-2.5 py-1.5 text-white font-medium outline-none focus:border-emerald-500"
                               >
                                 <option value="ВСІ">ВСІ</option>
-                                <option value="ЦЕНТР">ЦЕНТР</option>
-                                {((lookups?.directories?.rayon2 || []) as string[]).map((r: string) => (
-                                  <option key={r} value={r}>{r}</option>
-                                ))}
+                                {(() => {
+                                  // Gather structural areas and sort them in Ukrainian alphabetical order
+                                  const raw = (lookups?.directories?.rayon2 || ["ЦЕНТР", "АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА"]) as string[];
+                                  const uniqueRayons = Array.from(new Set(
+                                    raw.map(r => String(r || '').trim().toUpperCase()).filter(Boolean)
+                                  )).sort((a, b) => a.localeCompare(b, 'uk'));
+                                  
+                                  return uniqueRayons.map((r: string) => (
+                                    <option key={r} value={r}>{r}</option>
+                                  ));
+                                })()}
                               </select>
                             </div>
                           </div>

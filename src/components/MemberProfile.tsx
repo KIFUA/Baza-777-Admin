@@ -19,6 +19,18 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');
 
+  const rawUser = localStorage.getItem("baza_current_session_user") || sessionStorage.getItem("baza_current_session_user");
+  const userObj = rawUser ? JSON.parse(rawUser) : null;
+  const isUserAdmin = userObj?.level === 'IV-й' || (userObj?.rayon === 'ЦЕНТР' && userObj?.user?.includes('Черняк Вал.'));
+
+  const checkAdminPermission = (): boolean => {
+    if (!isUserAdmin) {
+      alert("Тимчасово вносити зміни не можна");
+      return false;
+    }
+    return true;
+  };
+
   const [showMinistrySelect, setShowMinistrySelect] = useState(false);
 
   const caregivers = lookups?.directories?.opika || [
@@ -98,6 +110,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const handleFieldUpdate = async (field: string, val: any) => {
+    if (!checkAdminPermission()) return;
     if (!data || !data.member) return;
     try {
       const resp = await fetch(`/api/members/${memberId}`, {
@@ -142,6 +155,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
   const handleAddChild = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkAdminPermission()) return;
     if (!newChildName) return;
     try {
       const resp = await fetch(`/api/members/${memberId}/children`, {
@@ -168,6 +182,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
   const handleAddMinistry = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkAdminPermission()) return;
     try {
       const resp = await fetch(`/api/members/${memberId}/ministries`, {
         method: 'POST',
@@ -188,6 +203,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const handleEndMinistry = async (recId: number) => {
+    if (!checkAdminPermission()) return;
     const dStr = prompt("Введіть дату завершення служіння (РРРР-ММ-ДД):", new Date().toISOString().split('T')[0]);
     if (!dStr) return;
     try {
@@ -206,6 +222,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
   const handleAddDiscipline = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!checkAdminPermission()) return;
     if (!newDiscReason) return;
     try {
       const resp = await fetch(`/api/members/${memberId}/disciplines`, {
@@ -229,6 +246,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const handleResolveDiscipline = async (recId: number) => {
+    if (!checkAdminPermission()) return;
     const dStr = prompt("Введіть дату зняття стягнення (РРРР-ММ-ДД):", new Date().toISOString().split('T')[0]);
     if (!dStr) return;
     try {
@@ -289,12 +307,14 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
           </div>
 
           <div className="flex space-x-2">
-            <button
-              onClick={() => onEdit(member)}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-            >
-              Редагувати анкету
-            </button>
+            {isUserAdmin && (
+              <button
+                onClick={() => onEdit(member)}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Редагувати анкету
+              </button>
+            )}
             <button
               onClick={onClose}
               className="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors"
@@ -429,7 +449,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           const val = e.target.value;
                           await handleFieldUpdate('presviter', val);
                         }}
-                        className="font-bold text-blue-800 bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] text-[11px]"
+                        disabled={!isUserAdmin}
+                        className={`font-bold text-blue-800 bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] text-[11px] ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                       >
                         <option value="">-- не встановлено --</option>
                         {caregivers.map((c: string) => (
@@ -453,7 +474,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           const val = e.target.value;
                           await handleFieldUpdate('rayon2_ukr', val);
                         }}
-                        className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold uppercase text-[10px] border border-blue-200/50 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px]"
+                        disabled={!isUserAdmin}
+                        className={`px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold uppercase text-[10px] border border-blue-200/50 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                       >
                         <option value="">Не вказано</option>
                         {rayonOptions.map((r: string) => (
@@ -546,7 +568,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         const val = e.target.value;
                         await handleFieldUpdate('vidviduvanist', val);
                       }}
-                      className="font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      disabled={!isUserAdmin}
+                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 cursor-pointer ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                     >
                       <option value="">-- не внесено --</option>
                       {vidviduvanistOptions.map((o: string) => (
@@ -566,7 +589,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         const val = e.target.value;
                         await handleFieldUpdate('prysutnist', val);
                       }}
-                      className="font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                      disabled={!isUserAdmin}
+                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-emerald-500 cursor-pointer ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                     >
                       <option value="">-- не внесено --</option>
                       {prysutnistOptions.map((o: string) => (
@@ -668,13 +692,15 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     <Baby className="h-4 w-4 text-blue-500" />
                     <span>Неповнолітні та дорослі діти ({children.length})</span>
                   </h4>
-                  <button
-                    onClick={() => setShowAddChild(!showAddChild)}
-                    className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span>Додати дитину</span>
-                  </button>
+                  {isUserAdmin && (
+                    <button
+                      onClick={() => setShowAddChild(!showAddChild)}
+                      className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>Додати дитину</span>
+                    </button>
+                  )}
                 </div>
 
                 {showAddChild && (
@@ -755,13 +781,15 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <Briefcase className="h-4 w-4" />
                   <span>Журнал духовних та церковних служінь</span>
                 </h4>
-                <button
-                  onClick={() => setShowAddMinistry(!showAddMinistry)}
-                  className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Призначити служіння</span>
-                </button>
+                {isUserAdmin && (
+                  <button
+                    onClick={() => setShowAddMinistry(!showAddMinistry)}
+                    className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Призначити служіння</span>
+                  </button>
+                )}
               </div>
 
               {showAddMinistry && (
@@ -828,7 +856,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                               </div>
                               <div className="whitespace-nowrap text-right text-xs text-slate-500 font-medium">
                                 <div><b>{min.startDate || "Давня дата"}</b> — {min.endDate ? <span className="text-slate-400">{min.endDate}</span> : <span className="text-emerald-600 font-bold uppercase text-[9px]">Активно</span>}</div>
-                                {min.isActive && (
+                                {min.isActive && isUserAdmin && (
                                   <button
                                     onClick={() => handleEndMinistry(min.id)}
                                     className="text-[10px] text-red-500 font-bold mt-1.5 hover:underline"
@@ -860,13 +888,15 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <AlertCircle className="h-4 w-4 text-rose-500" />
                   <span>Дисциплінарний Стан та Зауваження (05_ISTORIJA)</span>
                 </h4>
-                <button
-                  onClick={() => setShowAddDisc(!showAddDisc)}
-                  className="flex items-center space-x-1 text-xs font-bold text-rose-600 hover:opacity-80"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Додати стягнення</span>
-                </button>
+                {isUserAdmin && (
+                  <button
+                    onClick={() => setShowAddDisc(!showAddDisc)}
+                    className="flex items-center space-x-1 text-xs font-bold text-rose-600 hover:opacity-80"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Додати стягнення</span>
+                  </button>
+                )}
               </div>
 
               {showAddDisc && (
@@ -940,7 +970,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </div>
                         </div>
 
-                        {disc.isActive && (
+                        {disc.isActive && isUserAdmin && (
                           <button
                             onClick={() => handleResolveDiscipline(disc.id)}
                             className="bg-white hover:bg-emerald-50 border border-slate-200 text-emerald-600 text-[10px] font-bold px-3 py-1 rounded-lg shadow-sm"

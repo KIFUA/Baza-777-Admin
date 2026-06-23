@@ -402,6 +402,11 @@ export default function App() {
 
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
+    const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.'));
+    if (!isCurrentUserAdmin) {
+      alert("Тимчасово вносити зміни не можна");
+      return false;
+    }
     try {
       const resp = await fetch(`/api/members/${id}`, {
         method: 'POST',
@@ -434,6 +439,11 @@ export default function App() {
 
   // Create or Update form save callback
   const handleSaveMember = async (data: Partial<Member>) => {
+    const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.'));
+    if (!isCurrentUserAdmin) {
+      alert("Тимчасово вносити зміни не можна");
+      return;
+    }
     try {
       const url = editingMember ? `/api/members/${editingMember.id}` : '/api/members';
       const resp = await fetch(url, {

@@ -16,6 +16,20 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
   const [rememberDevice, setRememberDevice] = useState(true);
   const [error, setError] = useState('');
 
+  // Callback refs for automatic transition between fields
+  const rayonRef = (el: HTMLSelectElement | null) => {
+    if (el) el.focus();
+  };
+  const guardianRef = (el: HTMLSelectElement | null) => {
+    if (el) el.focus();
+  };
+  const passwordRef = (el: HTMLInputElement | null) => {
+    if (el) el.focus();
+  };
+  const submitBtnRef = (el: HTMLButtonElement | null) => {
+    if (el) el.focus();
+  };
+
   // 1. Prepare access list & unique districts
   let displayAccessList = [...accessList];
   if (displayAccessList.length === 0) {
@@ -161,6 +175,17 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
     (primaryType === 'district' && !!selectedRayon && !!selectedGuardian && isPasswordCorrect)
   );
 
+  // Auto focus submit button once form becomes valid so they can instantly press Enter
+  React.useEffect(() => {
+    if (isFormValid) {
+      const timer = setTimeout(() => {
+        const btn = document.getElementById('login-submit-btn') as HTMLButtonElement | null;
+        if (btn) btn.focus();
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [isFormValid]);
+
   const handlePrimaryTypeChange = (val: string) => {
     setPrimaryType(val);
     setSelectedRayon('');
@@ -244,6 +269,7 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <select 
+                  ref={rayonRef}
                   value={selectedRayon}
                   onChange={(e) => handleRayonChange(e.target.value)}
                   className="w-full bg-[#1a3843] border border-[#224853] text-white rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 outline-none cursor-pointer hover:bg-[#1f424f] duration-150"
@@ -266,6 +292,7 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
               <div className="relative">
                 <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <select 
+                  ref={guardianRef}
                   value={selectedGuardian}
                   onChange={(e) => handleGuardianChange(e.target.value)}
                   className="w-full bg-[#1a3843] border border-[#224853] text-white rounded-lg pl-9 pr-3 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 outline-none cursor-pointer hover:bg-[#1f424f] duration-150"
@@ -296,6 +323,7 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
               <div className="relative">
                 <Lock className={`absolute left-3 top-3 h-4 w-4 transition-colors ${password && isPasswordCorrect ? 'text-emerald-400' : 'text-slate-400'}`} />
                 <input 
+                  ref={passwordRef}
                   type="password"
                   value={password}
                   onChange={(e) => {
@@ -335,6 +363,8 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
 
           {/* Кнопка "Увійти" */}
           <button 
+            id="login-submit-btn"
+            ref={submitBtnRef}
             type="submit"
             disabled={!isFormValid}
             className={`w-full font-bold py-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${

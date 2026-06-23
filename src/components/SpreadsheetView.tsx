@@ -121,7 +121,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
 
     return {
       view: findAccessValue(row.access, levelNum, 'view'),
-      edit: findAccessValue(row.access, levelNum, 'edit')
+      edit: levelNum === 4 ? findAccessValue(row.access, levelNum, 'edit') : false
     };
   };
 
@@ -799,10 +799,10 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         if (len > maxCharLen) maxCharLen = len;
       });
     }
-    const finalWidth = maxCharLen * (isMobile ? 6.5 : 8.5) + (isMobile ? 20 : 36);
-    const minWidth = isMobile ? 70 : 120;
+    const finalWidth = maxCharLen * (isMobile ? 5.5 : 6.8) + (isMobile ? 12 : 20);
+    const minWidth = isMobile ? 50 : 80;
     const calculatedWidth = Math.max(minWidth, Math.ceil(finalWidth));
-    return isMobile ? Math.min(130, calculatedWidth) : Math.min(280, calculatedWidth);
+    return isMobile ? Math.min(110, calculatedWidth) : Math.min(180, calculatedWidth);
   }, [filteredMembers, lookups?.directories?.rayon, isMobile]);
 
   const pibLeftSticky = showRayonColumn ? (indexColWidth + rayonColWidth) : indexColWidth;
@@ -1057,7 +1057,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
           if (mappedRole) {
             const perm = getPermission(mappedRole);
             if (!perm.edit) {
-              alert("Дія відхилена: недостатньо прав для редагування.");
+              alert("Тимчасово вносити зміни не можна");
               return;
             }
           }
@@ -1263,6 +1263,12 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
         )}
 
         {/* Caretaker Select (ОПІКА) - Dependent list */}
+        {(levelNum === 2 || levelNum === 3) && (
+          <div id="selected_rayon_badge" className="flex items-center shrink-0 bg-[#14323d] border border-[#2b5869] text-[#7cebc2] font-bold px-2 sm:px-3 text-[10px] sm:text-[11px] uppercase h-[24px] sm:h-[32px] rounded shadow-sm">
+            <span>Район: {selectedRayonFilter || 'ВСІ'}</span>
+          </div>
+        )}
+
         {getPermission('Поле опіка').view && (
           <div className="flex items-center shrink-0 relative">
             <select
@@ -1516,7 +1522,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (!getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').edit) {
-                              alert("Дія відхилена: недостатньо прав для редагування.");
+                              alert("Тимчасово вносити зміни не можна");
                               return;
                             }
                             handleOpenContactModal(m);
@@ -1607,7 +1613,7 @@ export default function SpreadsheetView({ members, lookups, userLevel, onOpenPro
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit) {
-                              alert("Дія відхилена: недостатньо прав для редагування.");
+                              alert("Тимчасово вносити зміни не можна");
                               return;
                             }
                             setEditingRemarkId(m.id);

@@ -1328,10 +1328,10 @@ export default function SpreadsheetView({
           <div className="flex items-center shrink-0 relative">
             <select
               id="filter_opika_select"
-              title={(!selectedRayonFilter && levelNum !== 4) ? "Спочатку виберіть район" : undefined}
+              title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
               value={selectedOpikaFilter}
               onChange={(e) => {
-                if (!selectedRayonFilter && levelNum !== 4) {
+                if (!selectedRayonFilter) {
                   setShowRayonWarning(true);
                   setTimeout(() => setShowRayonWarning(false), 2500);
                   return;
@@ -1339,7 +1339,7 @@ export default function SpreadsheetView({
                 setSelectedOpikaFilter(e.target.value);
               }}
               onMouseDown={(e) => {
-                if (!selectedRayonFilter && levelNum !== 4) {
+                if (!selectedRayonFilter) {
                   e.preventDefault();
                   setShowRayonWarning(true);
                   setTimeout(() => setShowRayonWarning(false), 2500);
@@ -1349,15 +1349,15 @@ export default function SpreadsheetView({
                 selectedOpikaFilter 
                   ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
                   : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
-              } ${(!selectedRayonFilter && levelNum !== 4) ? "opacity-70 cursor-not-allowed" : ""}`}
+              } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
             >
               <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
-              {(selectedRayonFilter || levelNum === 4) && opikaList.map((o, i) => (
+              {selectedRayonFilter && opikaList.map((o, i) => (
                 <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
               ))}
             </select>
 
-            {showRayonWarning && levelNum !== 4 && (
+            {showRayonWarning && (
               <div 
                 id="rayon_warning_tooltip"
                 className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"

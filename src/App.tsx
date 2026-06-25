@@ -633,6 +633,7 @@ export default function App() {
                   }}
                   onClick={() => { 
                     setMainMode('spreadsheet'); 
+                    setSelectedMemberId(null); 
                     setShowForm(false); 
                     // Instant load using cache, reload synced changes in background in parallel
                     Promise.all([

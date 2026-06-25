@@ -21,6 +21,25 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
   // <select disabled={!!isRestricted} ... />
   // <textarea disabled={!!isRestricted} ... />
 
+  // Get level number
+  const levelNum = (() => {
+    try {
+      const cached = localStorage.getItem("baza_current_session_user");
+      if (cached) {
+        const sessionUser = JSON.parse(cached);
+        if (sessionUser) {
+          const lvl = sessionUser.level || 'І-й';
+          const s = lvl.toUpperCase();
+          if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+          if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+          if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+          return 1;
+        }
+      }
+    } catch (_) {}
+    return 1;
+  })();
+
   // Get locked rayon for Level <= 3
   const hasSpecificRayonLock = (() => {
     try {
@@ -28,15 +47,6 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
       if (cached) {
         const sessionUser = JSON.parse(cached);
         if (sessionUser) {
-          const getLevelNum = (lvl: string): number => {
-            if (!lvl) return 1;
-            const s = lvl.toUpperCase();
-            if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
-            if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
-            if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
-            return 1;
-          };
-          const levelNum = getLevelNum(sessionUser.level || 'І-й');
           const sessionUserRayon = sessionUser.rayon;
           if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== 'ВСІ РАЙОНИ' && sessionUserRayon !== '') {
             return sessionUserRayon;
@@ -463,41 +473,61 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
             <div className="space-y-1">
               <label className="text-xs font-semibold text-slate-700 block text-slate-800 font-bold">Духовні служіння (вибрані активні служіння)</label>
-              <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 max-h-40 overflow-y-auto space-y-1.5 balance-scroll">
-                {ministryOptions.map((opt) => {
-                  const selectedList = formData.s_slujinnya_spysok 
-                    ? formData.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
-                    : [];
-                  const isChecked = selectedList.includes(opt);
-                  return (
-                    <label 
-                      key={opt} 
-                      className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 hover:text-slate-900 font-bold"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) => {
-                          let newList;
-                          if (e.target.checked) {
-                            newList = [...selectedList, opt];
-                          } else {
-                            newList = selectedList.filter(item => item !== opt);
-                          }
-                          const sortedNewList = ministryOptions.filter(o => newList.includes(o));
-                          setFormData(prev => ({
-                            ...prev,
-                            s_slujinnya_spysok: sortedNewList.join(', ')
-                          }));
-                        }}
-                        className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className={isChecked ? 'font-bold text-blue-900 border-b border-blue-100' : ''}>{opt}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              <p className="text-[10px] text-slate-400">Швидкий вибір активних служінь для списку (синхронізується з колонкою "СЛУЖІННЯ" в таблиці та базою даних).</p>
+              {levelNum <= 3 ? (
+                <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 max-h-40 overflow-y-auto space-y-1.5 balance-scroll">
+                  {(() => {
+                    const selectedList = formData.s_slujinnya_spysok 
+                      ? formData.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                      : [];
+                    if (selectedList.length === 0) {
+                      return <span className="text-slate-400 italic text-xs">Служінь не вибрано</span>;
+                    }
+                    return selectedList.map((opt) => (
+                      <div key={opt} className="flex items-center gap-2 text-xs font-bold text-blue-900 bg-blue-50/30 rounded px-2 py-1 border border-blue-100">
+                        <span>• {opt}</span>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-lg p-2.5 bg-slate-50/50 max-h-40 overflow-y-auto space-y-1.5 balance-scroll">
+                  {ministryOptions.map((opt) => {
+                    const selectedList = formData.s_slujinnya_spysok 
+                      ? formData.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                      : [];
+                    const isChecked = selectedList.includes(opt);
+                    return (
+                      <label 
+                        key={opt} 
+                        className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-700 hover:text-slate-900 font-bold"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            let newList;
+                            if (e.target.checked) {
+                              newList = [...selectedList, opt];
+                            } else {
+                              newList = selectedList.filter(item => item !== opt);
+                            }
+                            const sortedNewList = ministryOptions.filter(o => newList.includes(o));
+                            setFormData(prev => ({
+                              ...prev,
+                              s_slujinnya_spysok: sortedNewList.join(', ')
+                            }));
+                          }}
+                          className="h-3.5 w-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className={isChecked ? 'font-bold text-blue-900 border-b border-blue-100' : ''}>{opt}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {levelNum > 3 && (
+                <p className="text-[10px] text-slate-400">Швидкий вибір активних служінь для списку (синхронізується з колонкою "СЛУЖІННЯ" в таблиці та базою даних).</p>
+              )}
             </div>
 
             <div className="space-y-1">

@@ -1318,7 +1318,7 @@ export default function SpreadsheetView({
         )}
 
         {/* Caretaker Select (ОПІКА) - Dependent list */}
-        {(levelNum === 2 || levelNum === 3) && (
+        {(levelNum === 2 || levelNum === 3) && hasSpecificRayonLock && (
           <div id="selected_rayon_badge" className="flex items-center shrink-0 bg-[#14323d] border border-[#2b5869] text-[#7cebc2] font-bold px-2 sm:px-3 text-[10px] sm:text-[11px] uppercase h-[24px] sm:h-[32px] rounded shadow-sm">
             <span>Район: {selectedRayonFilter || 'ВСІ'}</span>
           </div>

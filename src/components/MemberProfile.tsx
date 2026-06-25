@@ -493,13 +493,15 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     <div className="border-t border-slate-250 pt-3 mt-3">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-slate-400 font-bold text-[11px]">Духовне служіння:</span>
-                        <button
-                          type="button"
-                          onClick={() => setShowMinistrySelect(!showMinistrySelect)}
-                          className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[10px] border border-emerald-200 hover:bg-emerald-100 transition-colors uppercase outline-none"
-                        >
-                          {showMinistrySelect ? "Закрити ✕" : "Змінити ✎"}
-                        </button>
+                        {isUserAdmin && !isRestricted && (
+                          <button
+                            type="button"
+                            onClick={() => setShowMinistrySelect(!showMinistrySelect)}
+                            className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[10px] border border-emerald-200 hover:bg-emerald-100 transition-colors uppercase outline-none"
+                          >
+                            {showMinistrySelect ? "Закрити ✕" : "Змінити ✎"}
+                          </button>
+                        )}
                       </div>
 
                       {!showMinistrySelect && (
@@ -518,7 +520,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         </div>
                       )}
 
-                      {showMinistrySelect && (
+                      {showMinistrySelect && isUserAdmin && !isRestricted && (
                         <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
                           {ministryOptions.map((opt) => {
                             const selectedList = member.s_slujinnya_spysok 

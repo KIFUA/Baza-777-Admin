@@ -359,6 +359,8 @@ export default function DirectoriesManager({
   const [newDictValue, setNewDictValue] = useState('');
   const [dictItems, setDictItems] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState(false);
+  const [editingItemIdx, setEditingItemIdx] = useState<number | null>(null);
+  const [editingItemVal, setEditingItemVal] = useState<string>('');
   
   const isAdmin = !currentSessionUser || currentSessionUser.level === 'IV-й' || (currentSessionUser.rayon === 'ЦЕНТР' && currentSessionUser.user?.includes('Черняк Вал.'));
 
@@ -383,6 +385,8 @@ export default function DirectoriesManager({
 
   // Load selected dictionary items from lookups
   useEffect(() => {
+    setEditingItemIdx(null);
+    setEditingItemVal('');
     if (lookups?.directories) {
       if (selectedDictKey === 'rayon') {
         const rayoni = lookups.directories.rayon || [];
@@ -535,6 +539,29 @@ export default function DirectoriesManager({
       const nameDelete = typeof itemToDelete === 'string' ? itemToDelete : itemToDelete.name;
       return nameCurrent !== nameDelete;
     }));
+  };
+
+  const handleSaveItemEdit = (idx: number) => {
+    const trimmed = editingItemVal.trim();
+    if (!trimmed) return;
+
+    setDictItems(prev => {
+      const updated = [...prev];
+      if (selectedDictKey === 'rayon') {
+        updated[idx] = typeof updated[idx] === 'string'
+          ? trimmed
+          : { ...updated[idx], name: trimmed };
+      } else if (selectedDictKey === 'opika') {
+        updated[idx] = typeof updated[idx] === 'string'
+          ? trimmed
+          : { ...updated[idx], name: trimmed };
+      } else {
+        updated[idx] = trimmed;
+      }
+      return updated;
+    });
+    setEditingItemIdx(null);
+    setEditingItemVal('');
   };
 
   // Switch session simulate login w/ password gate
@@ -891,10 +918,10 @@ export default function DirectoriesManager({
                   {[
                     { id: 'rayon', title: 'Райони структури' },
                     { id: 'opika', title: 'Опікуни' },
-                    { id: 'slujinnya', title: 'Християнські служіння (Служіння)' },
+                    { id: 'slujinnya', title: 'Служіння' },
                     { id: 'vidviduvanist', title: 'Характеристики відвідування' },
-                    { id: 'prysutnist', title: 'Причини відсутності (prysutnist)' },
-                    { id: 'di_admin', title: 'Дії адміністратора (переміщення)' }
+                    { id: 'prysutnist', title: 'Причина відсутності' },
+                    { id: 'di_admin', title: 'Завдання для адміна' }
                   ].map(x => (
                     <button
                       key={x.id}
@@ -919,7 +946,7 @@ export default function DirectoriesManager({
                   )}
                   {selectedDictKey === 'di_admin' && (
                     <span>
-                      ⚙️ <strong>Дії адміністратора (di_admin):</strong> Дільничі або дияконські адміністративні одиниці (переведення на каскади та центри). Це завдання адміністративних переміщень членів церкви, які поки що виконує адміністратор.
+                      ⚙️ <strong>Завдання для адміна:</strong> Дільничі або дияконські адміністративні одиниці (переведення на каскади та центри). Це завдання адміністративних переміщень членів церкви, які поки що виконує адміністратор.
                     </span>
                   )}
                   {selectedDictKey === 'slujinnya' && (
@@ -934,7 +961,7 @@ export default function DirectoriesManager({
                   )}
                   {selectedDictKey === 'prysutnist' && (
                     <span>
-                      ❓ <strong>Причини відсутності:</strong> Довідник причин, через які опікувані члени могли пропустити богослужіння.
+                      ❓ <strong>Причина відсутності:</strong> Довідник причин, через які опікувані члени могли пропустити богослужіння.
                     </span>
                   )}
                   {selectedDictKey === 'rayon' && (
@@ -949,14 +976,26 @@ export default function DirectoriesManager({
                   selectedDictKey === 'rayon' ? 'h-auto overflow-visible' : 'h-[280px] overflow-y-auto'
                 }`}>
                   {/* ADD ITEM INPUT */}
-                  {(selectedDictKey === 'rayon' || selectedDictKey === 'opika') && (
+                  {selectedDictKey && (
                     <div className="flex gap-2 p-2 bg-[#1a3843]/50 rounded-lg mb-2">
                       <input 
                         type="text" 
                         value={newDictValue} 
                         onChange={(e) => setNewDictValue(e.target.value)}
                         className="bg-[#12282e] border border-[#224853] text-xs text-white rounded p-1.5 flex-1 focus:outline-none focus:border-sky-500"
-                        placeholder={selectedDictKey === 'rayon' ? "Назва нового району..." : "Ім'я нового опікуна..."}
+                        placeholder={
+                          selectedDictKey === 'rayon' 
+                            ? "Назва нового району..." 
+                            : selectedDictKey === 'opika' 
+                              ? "Ім'я нового опікуна..." 
+                              : selectedDictKey === 'slujinnya'
+                                ? "Назва нового служіння..."
+                                : selectedDictKey === 'vidviduvanist'
+                                  ? "Новий статус відвідування..."
+                                  : selectedDictKey === 'prysutnist'
+                                    ? "Нова причина відсутності..."
+                                    : "Нове завдання для адміна..."
+                        }
                       />
                       <button 
                         onClick={handleAddDictItem} 
@@ -978,9 +1017,53 @@ export default function DirectoriesManager({
                             const presbyterIdVal = typeof item === 'string' ? '' : (item.presbyterId || '');
                             return (
                               <div key={idx} className="bg-[#1a3843] border border-[#224853] p-2.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs font-black text-slate-100 uppercase tracking-wide">📍 {name}</span>
-                                </div>
+                                {editingItemIdx === idx ? (
+                                  <div className="flex items-center space-x-2 flex-1">
+                                    <span className="text-xs shrink-0">📍</span>
+                                    <input
+                                      type="text"
+                                      value={editingItemVal}
+                                      onChange={(e) => setEditingItemVal(e.target.value)}
+                                      className="bg-[#12282e] border border-sky-500 text-xs text-white rounded px-2 py-1 focus:outline-none font-bold w-full max-w-[200px]"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleSaveItemEdit(idx);
+                                        } else if (e.key === 'Escape') {
+                                          setEditingItemIdx(null);
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => handleSaveItemEdit(idx)}
+                                      className="text-emerald-400 hover:text-emerald-300 p-1 shrink-0"
+                                      title="Зберегти"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingItemIdx(null)}
+                                      className="text-slate-400 hover:text-slate-300 p-1 shrink-0"
+                                      title="Скасувати"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs font-black text-slate-100 uppercase tracking-wide">📍 {name}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingItemIdx(idx);
+                                        setEditingItemVal(name);
+                                      }}
+                                      className="text-slate-400 hover:text-teal-300 p-0.5 rounded transition-colors shrink-0"
+                                      title="Редагувати назву"
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-2">
                                   <span className="text-[10px] text-slate-400 font-bold shrink-0">
                                     {presbyterIdVal && members.find(m => m.id === Number(presbyterIdVal))?.di_admin ? 
@@ -1033,9 +1116,53 @@ export default function DirectoriesManager({
                             const rayonNamesList = rayonList.map((r: any) => typeof r === 'string' ? r : (r?.name || ""));
                             return (
                               <div key={idx} className="bg-[#1a3843] border border-[#224853] p-2.5 rounded-xl flex flex-row items-center justify-between gap-3 shadow-xs">
-                                <div className="flex items-center space-x-2 min-w-0 pr-2">
-                                  <span className="text-xs font-black text-slate-100 truncate whitespace-nowrap" title={name}>👥 {name}</span>
-                                </div>
+                                {editingItemIdx === idx ? (
+                                  <div className="flex items-center space-x-2 flex-1 min-w-0 pr-2">
+                                    <span className="text-xs shrink-0">👥</span>
+                                    <input
+                                      type="text"
+                                      value={editingItemVal}
+                                      onChange={(e) => setEditingItemVal(e.target.value)}
+                                      className="bg-[#12282e] border border-sky-500 text-xs text-white rounded px-2 py-1 focus:outline-none font-bold w-full"
+                                      autoFocus
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleSaveItemEdit(idx);
+                                        } else if (e.key === 'Escape') {
+                                          setEditingItemIdx(null);
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      onClick={() => handleSaveItemEdit(idx)}
+                                      className="text-emerald-400 hover:text-emerald-300 p-1 shrink-0"
+                                      title="Зберегти"
+                                    >
+                                      <Check className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingItemIdx(null)}
+                                      className="text-slate-400 hover:text-slate-300 p-1 shrink-0"
+                                      title="Скасувати"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center space-x-2 min-w-0 pr-2">
+                                    <span className="text-xs font-black text-slate-100 truncate whitespace-nowrap" title={name}>👥 {name}</span>
+                                    <button
+                                      onClick={() => {
+                                        setEditingItemIdx(idx);
+                                        setEditingItemVal(name);
+                                      }}
+                                      className="text-slate-400 hover:text-teal-300 p-0.5 rounded transition-colors shrink-0"
+                                      title="Редагувати ім'я"
+                                    >
+                                      <Edit className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                )}
                                 <div className="flex items-center gap-2 shrink-0">
                                   <span className="text-[10px] text-slate-400 font-bold shrink-0">Район:</span>
                                   <select
@@ -1066,17 +1193,67 @@ export default function DirectoriesManager({
                         </div>
                       ) : (
                         <div className="flex flex-wrap gap-1.5">
-                          {dictItems.map((item, idx) => (
-                            <span key={idx} className="bg-[#1a3843] border border-[#224853] hover:border-red-900 hover:bg-rose-950/30 pl-2.5 pr-1.5 py-0.5 rounded-lg text-xs font-bold text-slate-200 hover:text-red-400 transition-all inline-flex items-center space-x-1.5 shadow-xs group cursor-default">
-                              <span>{typeof item === 'string' ? item : item.name}</span>
-                              <button
-                                onClick={() => handleRemoveDictItem(item)}
-                                className="text-slate-400 hover:text-red-400 transition-colors p-0.5 outline-none"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </span>
-                          ))}
+                          {dictItems.map((item, idx) => {
+                            const name = typeof item === 'string' ? item : item.name;
+                            if (editingItemIdx === idx) {
+                              return (
+                                <div key={idx} className="bg-[#1a3843] border border-sky-500 px-2 py-0.5 rounded-lg text-xs font-bold text-white inline-flex items-center space-x-1 shadow-xs">
+                                  <input
+                                    type="text"
+                                    value={editingItemVal}
+                                    onChange={(e) => setEditingItemVal(e.target.value)}
+                                    className="bg-[#12282e] text-xs text-white rounded px-1.5 py-0.5 focus:outline-none w-28 font-bold"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        handleSaveItemEdit(idx);
+                                      } else if (e.key === 'Escape') {
+                                        setEditingItemIdx(null);
+                                      }
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => handleSaveItemEdit(idx)}
+                                    className="text-emerald-400 hover:text-emerald-300 p-0.5"
+                                    title="Зберегти"
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingItemIdx(null)}
+                                    className="text-slate-400 hover:text-slate-300 p-0.5"
+                                    title="Скасувати"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              );
+                            }
+                            return (
+                              <span key={idx} className="bg-[#1a3843] border border-[#224853] pl-2.5 pr-1.5 py-0.5 rounded-lg text-xs font-bold text-slate-200 transition-all inline-flex items-center space-x-1.5 shadow-xs group cursor-default">
+                                <span>{name}</span>
+                                <div className="flex items-center space-x-1">
+                                  <button
+                                    onClick={() => {
+                                      setEditingItemIdx(idx);
+                                      setEditingItemVal(name);
+                                    }}
+                                    className="text-slate-400 hover:text-teal-300 transition-colors p-0.5 outline-none"
+                                    title="Редагувати"
+                                  >
+                                    <Edit className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemoveDictItem(item)}
+                                    className="text-slate-400 hover:text-red-400 transition-colors p-0.5 outline-none"
+                                    title="Видалити"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

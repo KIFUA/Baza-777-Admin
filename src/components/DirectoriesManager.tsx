@@ -227,7 +227,7 @@ export default function DirectoriesManager({
     
     const accessList = lookups?.access || DEFAULT_DOSTUP;
     // Ensure we are filtering correctly based on user and rayon
-    const updatedList = accessList.filter(rec => !(rec.user === userToDelete.user && rec.rayon === (userToDelete.rayon || 'ЦЕНТР')));
+    const updatedList = accessList.filter(rec => !(rec.user === userToDelete.user && (rec.rayon || 'ЦЕНТР') === (userToDelete.rayon || 'ЦЕНТР')));
 
     try {
       const resp = await fetch('/api/directories/save', {
@@ -948,6 +948,25 @@ export default function DirectoriesManager({
                 <div className={`rounded-lg border border-[#224853]/55 p-3 bg-[#13282e]/40 space-y-2 ${
                   selectedDictKey === 'rayon' ? 'h-auto overflow-visible' : 'h-[280px] overflow-y-auto'
                 }`}>
+                  {/* ADD ITEM INPUT */}
+                  {(selectedDictKey === 'rayon' || selectedDictKey === 'opika') && (
+                    <div className="flex gap-2 p-2 bg-[#1a3843]/50 rounded-lg mb-2">
+                      <input 
+                        type="text" 
+                        value={newDictValue} 
+                        onChange={(e) => setNewDictValue(e.target.value)}
+                        className="bg-[#12282e] border border-[#224853] text-xs text-white rounded p-1.5 flex-1 focus:outline-none focus:border-sky-500"
+                        placeholder={selectedDictKey === 'rayon' ? "Назва нового району..." : "Ім'я нового опікуна..."}
+                      />
+                      <button 
+                        onClick={handleAddDictItem} 
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1"
+                      >
+                        <Plus className="h-3 w-3" /> Додати
+                      </button>
+                    </div>
+                  )}
+
                   {dictItems.length === 0 ? (
                     <div className="text-center text-slate-500 py-12 text-xs">Довідник пустий. Додайте перші значення.</div>
                   ) : (
@@ -963,7 +982,10 @@ export default function DirectoriesManager({
                                   <span className="text-xs font-black text-slate-100 uppercase tracking-wide">📍 {name}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">Пресвітер:</span>
+                                  <span className="text-[10px] text-slate-400 font-bold shrink-0">
+                                    {presbyterIdVal && members.find(m => m.id === Number(presbyterIdVal))?.di_admin ? 
+                                      (members.find(m => m.id === Number(presbyterIdVal))?.di_admin || 'Керівник') : 'Пресвітер'}:
+                                  </span>
                                   <select
                                     value={presbyterIdVal}
                                     onChange={(e) => {
@@ -978,7 +1000,7 @@ export default function DirectoriesManager({
                                       const candidates = members.filter(m => {
                                         const isActive = Number(m.id_vybuttya || 0) === 0;
                                         const isBrother = m.stat === 'брат';
-                                        const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер");
+                                        const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер") || (m.di_admin || "").toLowerCase().includes("єпископ");
                                         return isActive && isBrother && isPresbyter;
                                       }).sort((a,b) => (a.pib || "").localeCompare(b.pib || ""));
                                       

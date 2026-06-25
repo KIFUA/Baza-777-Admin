@@ -1637,7 +1637,7 @@ app.get("/api/members", async (req, res) => {
   }
 
   // Filter Area
-  if (area && area.toLowerCase() !== "всі" && area.toLowerCase() !== "все") {
+  if (area && area.toLowerCase() !== "всі" && area.toLowerCase() !== "все" && area.toLowerCase() !== "всі райони") {
     result = result.filter(m => m.rayon2_ukr.toLowerCase() === area.toLowerCase());
   }
 

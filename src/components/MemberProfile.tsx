@@ -12,9 +12,10 @@ interface MemberProfileProps {
   onNavigateToMember: (id: number) => void;
   lookups: any;
   onUpdateMember?: (id: number, updatedFields: Partial<Member>) => Promise<boolean>;
+  isRestricted?: boolean;
 }
 
-export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToMember, lookups, onUpdateMember }: MemberProfileProps) {
+export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToMember, lookups, onUpdateMember, isRestricted }: MemberProfileProps) {
   const [data, setData] = useState<MemberDetailExtended | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');
@@ -24,6 +25,10 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   const isUserAdmin = userObj?.level === 'IV-й' || (userObj?.rayon === 'ЦЕНТР' && userObj?.user?.includes('Черняк Вал.'));
 
   const checkAdminPermission = (): boolean => {
+    if (isRestricted) {
+      alert("Доступ лише для перегляду");
+      return false;
+    }
     if (!isUserAdmin) {
       alert("Тимчасово вносити зміни не можна");
       return false;
@@ -307,7 +312,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
           </div>
 
           <div className="flex space-x-2">
-            {isUserAdmin && (
+            {isUserAdmin && !isRestricted && (
               <button
                 onClick={() => onEdit(member)}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
@@ -449,8 +454,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           const val = e.target.value;
                           await handleFieldUpdate('presviter', val);
                         }}
-                        disabled={!isUserAdmin}
-                        className={`font-bold text-blue-800 bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] text-[11px] ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                        disabled={!isUserAdmin || isRestricted}
+                        className={`font-bold text-blue-800 bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] text-[11px] ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                       >
                         <option value="">-- не встановлено --</option>
                         {caregivers.map((c: string) => (
@@ -474,8 +479,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           const val = e.target.value;
                           await handleFieldUpdate('rayon2_ukr', val);
                         }}
-                        disabled={!isUserAdmin}
-                        className={`px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold uppercase text-[10px] border border-blue-200/50 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                        disabled={!isUserAdmin || isRestricted}
+                        className={`px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold uppercase text-[10px] border border-blue-200/50 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                       >
                         <option value="">Не вказано</option>
                         {rayonOptions.map((r: string) => (
@@ -568,8 +573,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         const val = e.target.value;
                         await handleFieldUpdate('vidviduvanist', val);
                       }}
-                      disabled={!isUserAdmin}
-                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 cursor-pointer ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                      disabled={!isUserAdmin || isRestricted}
+                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 cursor-pointer ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                     >
                       <option value="">-- не внесено --</option>
                       {vidviduvanistOptions.map((o: string) => (
@@ -589,8 +594,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         const val = e.target.value;
                         await handleFieldUpdate('prysutnist', val);
                       }}
-                      disabled={!isUserAdmin}
-                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-emerald-500 cursor-pointer ${!isUserAdmin ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                      disabled={!isUserAdmin || isRestricted}
+                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-emerald-500 cursor-pointer ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                     >
                       <option value="">-- не внесено --</option>
                       {prysutnistOptions.map((o: string) => (
@@ -692,7 +697,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     <Baby className="h-4 w-4 text-blue-500" />
                     <span>Неповнолітні та дорослі діти ({children.length})</span>
                   </h4>
-                  {isUserAdmin && (
+                  {isUserAdmin && !isRestricted && (
                     <button
                       onClick={() => setShowAddChild(!showAddChild)}
                       className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
@@ -781,7 +786,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <Briefcase className="h-4 w-4" />
                   <span>Журнал духовних та церковних служінь</span>
                 </h4>
-                {isUserAdmin && (
+                {isUserAdmin && !isRestricted && (
                   <button
                     onClick={() => setShowAddMinistry(!showAddMinistry)}
                     className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
@@ -856,7 +861,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                               </div>
                               <div className="whitespace-nowrap text-right text-xs text-slate-500 font-medium">
                                 <div><b>{min.startDate || "Давня дата"}</b> — {min.endDate ? <span className="text-slate-400">{min.endDate}</span> : <span className="text-emerald-600 font-bold uppercase text-[9px]">Активно</span>}</div>
-                                {min.isActive && isUserAdmin && (
+                                {min.isActive && isUserAdmin && !isRestricted && (
                                   <button
                                     onClick={() => handleEndMinistry(min.id)}
                                     className="text-[10px] text-red-500 font-bold mt-1.5 hover:underline"
@@ -888,7 +893,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <AlertCircle className="h-4 w-4 text-rose-500" />
                   <span>Дисциплінарний Стан та Зауваження (05_ISTORIJA)</span>
                 </h4>
-                {isUserAdmin && (
+                {isUserAdmin && !isRestricted && (
                   <button
                     onClick={() => setShowAddDisc(!showAddDisc)}
                     className="flex items-center space-x-1 text-xs font-bold text-rose-600 hover:opacity-80"
@@ -970,7 +975,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </div>
                         </div>
 
-                        {disc.isActive && isUserAdmin && (
+                        {disc.isActive && isUserAdmin && !isRestricted && (
                           <button
                             onClick={() => handleResolveDiscipline(disc.id)}
                             className="bg-white hover:bg-emerald-50 border border-slate-200 text-emerald-600 text-[10px] font-bold px-3 py-1 rounded-lg shadow-sm"

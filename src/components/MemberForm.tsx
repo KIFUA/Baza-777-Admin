@@ -7,10 +7,19 @@ interface MemberFormProps {
   lookups: any;
   onSave: (data: Partial<Member>) => void;
   onCancel: () => void;
+  isRestricted?: boolean;
 }
 
-export default function MemberForm({ member, lookups, onSave, onCancel }: MemberFormProps) {
+export default function MemberForm({ member, lookups, onSave, onCancel, isRestricted }: MemberFormProps) {
   const isEdit = !!member;
+  
+  // ... (rest of code)
+  
+  // Apply disabled={!!isRestricted} to all inputs/selects/textareas
+  // For example:
+  // <input disabled={!!isRestricted} ... />
+  // <select disabled={!!isRestricted} ... />
+  // <textarea disabled={!!isRestricted} ... />
 
   // Get locked rayon for Level <= 3
   const hasSpecificRayonLock = (() => {
@@ -256,6 +265,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
             <input
               type="text"
               name="pib"
+              disabled={!!isRestricted}
               value={formData.pib}
               onChange={handleChange}
               placeholder="Прізвище Ім'я По-батькові"
@@ -269,6 +279,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               <label className="text-xs font-medium text-slate-700">Стать / Роль</label>
               <select
                 name="stat"
+                disabled={!!isRestricted}
                 value={formData.stat}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold ring-blue-50 focus:border-blue-500 focus:outline-none focus:ring-4"
@@ -283,6 +294,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               <input
                 type="date"
                 name="d_narodjennya"
+                disabled={!!isRestricted}
                 value={formData.d_narodjennya || ''}
                 onChange={handleChange}
                 className="w-full rounded-lg border border-slate-200 p-1.5 bg-white text-xs font-semibold ring-blue-50 focus:border-blue-500 focus:outline-none"
@@ -295,6 +307,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
             <input
               type="text"
               name="tel_mob"
+              disabled={!!isRestricted}
               value={formData.tel_mob || ''}
               onChange={handleChange}
               placeholder="067 XX XX XXX"
@@ -308,6 +321,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               <input
                 type="text"
                 name="tel1"
+                disabled={!!isRestricted}
                 value={formData.tel1 || ''}
                 onChange={handleChange}
                 placeholder="Додатковий контакт"
@@ -320,6 +334,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
               <input
                 type="text"
                 name="skype"
+                disabled={!!isRestricted}
                 value={formData.skype || ''}
                 onChange={handleChange}
                 placeholder="skype username"
@@ -332,6 +347,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
             <label className="text-xs font-medium text-slate-700">Освіта</label>
             <select
               name="id_osvita"
+              disabled={!!isRestricted}
               value={formData.id_osvita}
               onChange={handleChange}
               className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
@@ -346,6 +362,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
             <label className="text-xs font-medium text-slate-700">Професія</label>
             <select
               name="id_profesiya"
+              disabled={!!isRestricted}
               value={formData.id_profesiya}
               onChange={handleChange}
               className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"
@@ -360,6 +377,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel }: Member
             <label className="text-xs font-medium text-slate-700">Сімейний стан</label>
             <select
               name="id_simeyniy"
+              disabled={!!isRestricted}
               value={formData.id_simeyniy}
               onChange={handleChange}
               className="w-full rounded-lg border border-slate-200 p-1.5 text-xs font-semibold focus:border-blue-500 focus:outline-none"

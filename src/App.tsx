@@ -137,7 +137,8 @@ export default function App() {
 
     if (!row) {
       const isPublic = ['поле пошук'].includes(targetNorm);
-      const isVisible = isPublic || (levelNum > 1);
+      const isGlobalViewer = (currentSessionUser?.level === 'ІІІ-й' || currentSessionUser?.level === '3') && currentSessionUser?.rayon === 'ВСІ РАЙОНИ';
+      const isVisible = isPublic || (levelNum > 1) || isGlobalViewer;
       const isEditable = isVisible && (levelNum === 4);
       return { view: isVisible, edit: isEditable };
     }
@@ -246,7 +247,7 @@ export default function App() {
       const levelNum = getLevelNum(currentSessionUser?.level || 'І-й');
 
       const assignedRayon = currentSessionUser?.rayon;
-      const isSpecificRayon = assignedRayon && assignedRayon !== 'ВСІ' && assignedRayon !== 'ВСЕ' && assignedRayon !== '';
+      const isSpecificRayon = assignedRayon && assignedRayon !== 'ВСІ' && assignedRayon !== 'ВСЕ' && assignedRayon !== 'ВСІ РАЙОНИ' && assignedRayon !== '';
       const shouldRestrictRayon = levelNum <= 3 && isSpecificRayon;
 
       // Force rayon segment constraint if restricted session is active
@@ -321,7 +322,8 @@ export default function App() {
       const levelNum = getLevelNum(currentSessionUser?.level || 'І-й');
 
       const assignedRayon = currentSessionUser?.rayon;
-      const isSpecificRayon = assignedRayon && assignedRayon !== 'ВСІ' && assignedRayon !== 'ВСЕ' && assignedRayon !== '';
+      const isGlobalViewer = (currentSessionUser?.level === 'ІІІ-й' || currentSessionUser?.level === '3') && assignedRayon === 'ВСІ РАЙОНИ';
+      const isSpecificRayon = assignedRayon && assignedRayon !== 'ВСІ' && assignedRayon !== 'ВСЕ' && assignedRayon !== '' && !isGlobalViewer;
       const shouldRestrictRayon = levelNum <= 3 && isSpecificRayon;
 
       const url = shouldRestrictRayon
@@ -392,7 +394,6 @@ export default function App() {
 
   useEffect(() => {
     fetchLookupsAndStats();
-    fetchAllMembers();
     preloadRawFirebase();
 
     (window as any).__bazaNotifyDatabaseChanged = async () => {
@@ -412,10 +413,33 @@ export default function App() {
     };
   }, []);
 
+  useEffect(() => {
+    fetchAllMembers();
+  }, [currentSessionUser]);
 
+
+
+  const getLevelNum = (lvl: string): number => {
+    if (!lvl) return 1;
+    const s = lvl.toUpperCase();
+    if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+    if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+    if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+    return 1;
+  };
+
+  const levelNum = getLevelNum(currentSessionUser?.level || 'І-й');
+  const assignedRayon = currentSessionUser?.rayon;
+  const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
+  
+  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.'));
+  const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserAdmin) || isGlobalViewer;
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
-    const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.'));
+    if (isReadOnly) {
+      alert("У вас лише права перегляду.");
+      return false;
+    }
     if (!isCurrentUserAdmin) {
       alert("Тимчасово вносити зміни не можна");
       return false;
@@ -452,7 +476,10 @@ export default function App() {
 
   // Create or Update form save callback
   const handleSaveMember = async (data: Partial<Member>) => {
-    const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.'));
+    if (isReadOnly) {
+      alert("У вас лише права перегляду.");
+      return;
+    }
     if (!isCurrentUserAdmin) {
       alert("Тимчасово вносити зміни не можна");
       return;
@@ -606,7 +633,6 @@ export default function App() {
                   }}
                   onClick={() => { 
                     setMainMode('spreadsheet'); 
-                    setSelectedMemberId(null); 
                     setShowForm(false); 
                     // Instant load using cache, reload synced changes in background in parallel
                     Promise.all([
@@ -716,6 +742,7 @@ export default function App() {
                 onNavigateToMember={handleNavigateToMember}
                 lookups={lookups}
                 onUpdateMember={handleSpreadsheetUpdate}
+                isRestricted={isReadOnly}
               />
             </div>
           </div>
@@ -734,6 +761,7 @@ export default function App() {
                 lookups={lookups}
                 onSave={handleSaveMember}
                 onCancel={() => { setShowForm(false); setEditingMember(null); }}
+                isRestricted={isReadOnly}
               />
             </div>
           </div>

@@ -122,6 +122,16 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
       return displayAccessList.find(a => a.user === "Адміністратор" || a.position === "Адміністратор");
     }
     if (primaryType === 'district' && selectedRayon) {
+      if (selectedRayon === 'ВСІ РАЙОНИ') {
+        return {
+          user: "Єпископ",
+          rayon: "ВСІ РАЙОНИ",
+          level: "ІІІ-й",
+          position: "Єпископ",
+          password: "777",
+          isGlobalViewer: true
+        };
+      }
       if (selectedGuardian === 'ALL') {
         return findDistrictLeader(selectedRayon);
       } else if (selectedGuardian) {
@@ -228,7 +238,7 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
     : [];
 
   // Determine whether password field should be shown
-  const showPasswordField = primaryType === 'admin' || (primaryType === 'district' && !!selectedRayon && !!selectedGuardian);
+  const showPasswordField = primaryType === 'admin' || (primaryType === 'district' && !!selectedRayon && (selectedRayon === 'ВСІ РАЙОНИ' || !!selectedGuardian));
 
   return (
     <div className="fixed inset-0 bg-[#12282e] flex items-center justify-center p-4">
@@ -283,8 +293,8 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
             </div>
           )}
 
-          {/* Поле 3: Опікун (dropdown) — Відображається тільки якщо вибрано конкретний район */}
-          {primaryType === 'district' && selectedRayon && (
+          {/* Поле 3: Опікун (dropdown) — Відображається тільки якщо вибрано конкретний район, і це НЕ "ВСІ РАЙОНИ" */}
+          {primaryType === 'district' && selectedRayon && selectedRayon !== 'ВСІ РАЙОНИ' && (
             <div className="space-y-1 transition-all duration-300">
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
                 ОПІКУН

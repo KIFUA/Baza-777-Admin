@@ -156,7 +156,7 @@ export default function SpreadsheetView({
     }
   } catch (_) {}
 
-  const hasSpecificRayonLock = levelNum <= 3 && !!sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== '';
+  const hasSpecificRayonLock = levelNum <= 3 && !!sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСІ РАЙОНИ' && sessionUserRayon !== '';
 
   const [filterType, setFilterType] = useState<'active' | 'dismissed' | 'all'>('active');
   const [selectedRayonFilter, setSelectedRayonFilter] = useState<string>('');

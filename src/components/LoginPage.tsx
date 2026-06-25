@@ -123,6 +123,24 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
     }
     if (primaryType === 'district' && selectedRayon) {
       if (selectedRayon === 'ВСІ РАЙОНИ') {
+        // 1. Try to find user with rayon "ВСІ РАЙОНИ"
+        let globalUser = displayAccessList.find(a => String(a.rayon || '').trim().toUpperCase() === 'ВСІ РАЙОНИ');
+        
+        // 2. If not found, try to find the person listed as leader for "ВСІ РАЙОНИ" in opikaBindings
+        if (!globalUser) {
+          const leaderCandidates = opikaBindings.filter(b => String(b.rayon || '').trim().toUpperCase() === 'ВСІ РАЙОНИ');
+          for (const candidate of leaderCandidates) {
+            globalUser = displayAccessList.find(a => 
+              String(a.user || '').trim().toUpperCase().includes(String(candidate.name || '').trim().toUpperCase()) &&
+              (a.level === "ІІІ-й" || a.level?.includes('III') || a.level?.includes('ІІІ'))
+            );
+            if (globalUser) break;
+          }
+        }
+
+        if (globalUser) {
+          return { ...globalUser, isGlobalViewer: true };
+        }
         return {
           user: "Єпископ",
           rayon: "ВСІ РАЙОНИ",
@@ -182,7 +200,7 @@ export default function LoginPage({ onLogin, accessList, rayonList = [], opikaBi
   const isFormValid = !!primaryType && (
     primaryType === 'guest' || 
     (primaryType === 'admin' && isPasswordCorrect) ||
-    (primaryType === 'district' && !!selectedRayon && !!selectedGuardian && isPasswordCorrect)
+    (primaryType === 'district' && !!selectedRayon && (selectedRayon === 'ВСІ РАЙОНИ' || !!selectedGuardian) && isPasswordCorrect)
   );
 
   // Auto focus submit button once form becomes valid so they can instantly press Enter

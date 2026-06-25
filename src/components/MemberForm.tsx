@@ -38,7 +38,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
           };
           const levelNum = getLevelNum(sessionUser.level || 'І-й');
           const sessionUserRayon = sessionUser.rayon;
-          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== '') {
+          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== 'ВСІ РАЙОНИ' && sessionUserRayon !== '') {
             return sessionUserRayon;
           }
         }

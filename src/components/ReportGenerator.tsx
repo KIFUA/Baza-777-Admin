@@ -99,7 +99,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           };
           const levelNum = getLevelNum(sessionUser.level || 'І-й');
           const sessionUserRayon = sessionUser.rayon;
-          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== '') {
+          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== 'ВСІ РАЙОНИ' && sessionUserRayon !== '') {
             return sessionUserRayon;
           }
         }
@@ -288,7 +288,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     const baseList = lookups?.directories?.opika || Array.from(new Set(members.map(m => m.presviter).filter(Boolean)));
     const allPresviters = Array.from(new Set(baseList)).filter(Boolean);
 
-    if (!selectedRayon) {
+    if (!selectedRayon || selectedRayon === "ВСІ РАЙОНИ") {
       return (allPresviters as string[]).sort();
     }
 

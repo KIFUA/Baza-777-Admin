@@ -26,7 +26,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
           };
           const levelNum = getLevelNum(sessionUser.level || 'І-й');
           const sessionUserRayon = sessionUser.rayon;
-          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== '') {
+          if (levelNum <= 3 && sessionUserRayon && sessionUserRayon !== 'ВСІ' && sessionUserRayon !== 'ВСЕ' && sessionUserRayon !== 'ВСІ РАЙОНИ' && sessionUserRayon !== '') {
             return sessionUserRayon;
           }
         }
@@ -71,7 +71,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
   // Compute active members in selected rayon
   const rayonMembers = useMemo(() => {
     if (!selectedRayon) return [];
-    if (selectedRayon === "Всі райони") {
+    if (selectedRayon === "Всі райони" || selectedRayon === "ВСІ РАЙОНИ") {
       return members.filter(m => m.id_vybuttya === 0);
     }
     return members.filter(

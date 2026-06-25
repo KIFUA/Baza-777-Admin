@@ -512,7 +512,7 @@ export default function SpreadsheetView({
     const allPresviters = Array.from(new Set(baseList)).filter(Boolean);
 
     // If no rayon is selected, show all caretakers
-    if (!selectedRayonFilter) {
+    if (!selectedRayonFilter || selectedRayonFilter === 'ВСІ РАЙОНИ') {
       return (allPresviters as string[]).sort((a, b) => a.localeCompare(b, 'uk-UA'));
     }
 
@@ -734,7 +734,7 @@ export default function SpreadsheetView({
       if (filterType === 'dismissed' && m.id_vybuttya === 0) return false;
 
       // 2. Rayon Filter
-      if (selectedRayonFilter && m.rayon2_ukr !== selectedRayonFilter) return false;
+      if (selectedRayonFilter && selectedRayonFilter !== 'ВСІ РАЙОНИ' && m.rayon2_ukr !== selectedRayonFilter) return false;
 
       // 3. Opika Filter
       if (effectiveOpikaFilter && m.presviter !== effectiveOpikaFilter) return false;

@@ -648,30 +648,51 @@ export default function App() {
                 </button>
               )}
               {getPermission('АНКЕТИ').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Перейти до анкет"
-                  onClick={() => { 
-                    setMainMode('questionnaire'); 
-                    setSelectedMemberId(null); 
-                    setShowForm(false); 
-                    // Instant load using cache, reload synced changes in background in parallel
-                    Promise.all([
-                      fetchAllMembers(),
-                      fetchMembers(),
-                      fetchLookupsAndStats()
-                    ]).catch(err => console.error("Error updating tab data:", err));
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  АНКЕТИ
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    style={{
+                      fontSize: '12px',
+                      height: '30px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                    title="Перейти до анкет"
+                    onClick={() => { 
+                      setMainMode('questionnaire'); 
+                      setSelectedMemberId(null); 
+                      setShowForm(false); 
+                      Promise.all([
+                        fetchAllMembers(),
+                        fetchMembers(),
+                        fetchLookupsAndStats()
+                      ]).catch(err => console.error("Error updating tab data:", err));
+                    }}
+                    className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                  >
+                    АНКЕТИ
+                  </button>
+                  {/* IV-й level check based on local user data in App component */}
+                  {currentSessionUser?.level === 'IV-й' && (
+                    <button
+                      style={{
+                        fontSize: '12px',
+                        height: '30px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                      onClick={() => {
+                        setEditingMember(null);
+                        setShowForm(true);
+                        setMainMode('questionnaire');
+                      }}
+                      className="px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                    >
+                      + Додати члена
+                    </button>
+                  )}
+                </div>
               )}
               {getPermission('СТАТИСТИКА').view && (
                 <button
@@ -756,7 +777,7 @@ export default function App() {
               <ChevronLeft className="h-4 w-4" />
               <span>До списку членів</span>
             </button>
-            <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
+            <div className="bg-[#121212] text-slate-100 rounded-2xl border border-[#333333] p-6 shadow-sm">
               <MemberForm
                 member={editingMember}
                 lookups={lookups}

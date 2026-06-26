@@ -490,22 +490,30 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     </div>
 
                     {/* СЛУЖІННЯ Block (Ministry) */}
-                    <div className="border-t border-slate-250 pt-3 mt-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-slate-400 font-bold text-[11px]">Духовне служіння:</span>
+                    <div className="border-t border-slate-200 pt-3 mt-3">
+                      <div className="flex items-center justify-between gap-2 cursor-pointer" onClick={() => setShowMinistrySelect(!showMinistrySelect)}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-400">
+                             {showMinistrySelect ? '▼' : '▶'}
+                          </span>
+                          <span className="text-slate-700 font-bold text-[11px]">Духовне служіння:</span>
+                        </div>
                         {isUserAdmin && !isRestricted && (
                           <button
                             type="button"
-                            onClick={() => setShowMinistrySelect(!showMinistrySelect)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowMinistrySelect(!showMinistrySelect);
+                            }}
                             className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-extrabold text-[10px] border border-emerald-200 hover:bg-emerald-100 transition-colors uppercase outline-none"
                           >
-                            {showMinistrySelect ? "Закрити ✕" : "Змінити ✎"}
+                            {showMinistrySelect ? "Згорнути ✕" : "Змінити ✎"}
                           </button>
                         )}
                       </div>
 
-                      {!showMinistrySelect && (
-                        <div className="mt-1.5 text-slate-800 font-semibold text-[11px] leading-relaxed">
+                      {showMinistrySelect && (
+                        <div className="mt-2 text-slate-800 font-semibold text-[11px] leading-relaxed">
                           {member.s_slujinnya_spysok ? (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {member.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(term => (
@@ -517,41 +525,68 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           ) : (
                             <span className="text-slate-400 italic">Служінь не зафіксовано</span>
                           )}
-                        </div>
-                      )}
-
-                      {showMinistrySelect && isUserAdmin && !isRestricted && (
-                        <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
-                          {ministryOptions.map((opt) => {
-                            const selectedList = member.s_slujinnya_spysok 
-                              ? member.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
-                              : [];
-                            const isChecked = selectedList.includes(opt);
-                            return (
-                              <label 
-                                key={opt} 
-                                className="flex items-center gap-2 py-0.5 px-1 cursor-pointer rounded hover:bg-slate-50 select-none text-[10.5px] font-semibold text-slate-700"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={async (e) => {
-                                    let newList;
-                                    if (e.target.checked) {
-                                      newList = [...selectedList, opt];
-                                    } else {
-                                      newList = selectedList.filter(item => item !== opt);
-                                    }
-                                    const sortedNewList = ministryOptions.filter(o => newList.includes(o));
-                                    const valString = sortedNewList.join(', ');
-                                    await handleFieldUpdate('s_slujinnya_spysok', valString);
-                                  }}
-                                  className="h-3 w-3 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                />
-                                <span className={isChecked ? 'text-emerald-950 font-extrabold' : ''}>{opt}</span>
-                              </label>
-                            );
-                          })}
+                          
+                          {/* Detailed ministry records with dates */}
+                          {ministries && ministries.length > 0 && (
+                            <div className="mt-4 space-y-1.5">
+                              <h5 className="text-[10px] font-bold text-slate-400 uppercase">Історія служінь</h5>
+                              {ministries.map((m) => (
+                                <div key={m.id} className="flex items-center justify-between bg-slate-50 p-1.5 rounded text-[10px]">
+                                  <span className="font-bold text-slate-700">{m.ministryName}</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-500">
+                                      {m.startDate || '—'} / {m.endDate || '—'}
+                                    </span>
+                                    {m.isActive && (
+                                      <button 
+                                        onClick={() => handleEndMinistry(m.id)}
+                                        className="text-red-500 hover:text-red-700 font-bold"
+                                        title="Завершити служіння"
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Selector */}
+                          {isUserAdmin && !isRestricted && (
+                             <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
+                              {ministryOptions.map((opt) => {
+                                const selectedList = member.s_slujinnya_spysok 
+                                  ? member.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                                  : [];
+                                const isChecked = selectedList.includes(opt);
+                                return (
+                                  <label 
+                                    key={opt} 
+                                    className="flex items-center gap-2 py-0.5 px-1 cursor-pointer rounded hover:bg-slate-50 select-none text-[10.5px] font-semibold text-slate-700"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={isChecked}
+                                      onChange={async (e) => {
+                                        let newList;
+                                        if (e.target.checked) {
+                                          newList = [...selectedList, opt];
+                                        } else {
+                                          newList = selectedList.filter(item => item !== opt);
+                                        }
+                                        const sortedNewList = ministryOptions.filter(o => newList.includes(o));
+                                        const valString = sortedNewList.join(', ');
+                                        await handleFieldUpdate('s_slujinnya_spysok', valString);
+                                      }}
+                                      className="h-3 w-3 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                    />
+                                    <span className={isChecked ? 'text-emerald-950 font-extrabold' : ''}>{opt}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

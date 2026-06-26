@@ -1,0 +1,623 @@
+[
+  {
+    "id": 1,
+    "id_anketa": 27,
+    "id_styagnen": 0
+  },
+  {
+    "id": 2,
+    "id_anketa": 591,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "за вживання алкоголю",
+    "d_begin": 39877,
+    "d_end": 40802,
+    "d_znyato": 40802
+  },
+  {
+    "id": 3,
+    "id_anketa": 466,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "за наговори",
+    "d_begin": 40684
+  },
+  {
+    "id": 4,
+    "id_anketa": 866,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "за нехристинське жття",
+    "d_begin": 41061,
+    "d_end": 41091
+  },
+  {
+    "id": 5,
+    "id_anketa": 523,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "за нехристинське жття",
+    "d_begin": 41061,
+    "d_end": 41091
+  },
+  {
+    "id": 6,
+    "id_anketa": 342,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "за вживання алкоголю",
+    "d_begin": 41030
+  },
+  {
+    "id": 7,
+    "id_anketa": 598,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "проблеми з дружиною",
+    "d_begin": 41390,
+    "d_end": 41420,
+    "d_znyato": 41502
+  },
+  {
+    "id": 8,
+    "id_anketa": 26,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "нехристиянська поведінка",
+    "d_begin": 41516
+  },
+  {
+    "id": 9,
+    "id_anketa": 664,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "нехирситянська поведінка",
+    "d_begin": 41516
+  },
+  {
+    "id": 10,
+    "id_anketa": 79,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "не відвідує 10 років"
+  },
+  {
+    "id": 11,
+    "id_anketa": 1274,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "вчиться у Львові"
+  },
+  {
+    "id": 12,
+    "id_anketa": 369,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "ходить до Музики"
+  },
+  {
+    "id": 13,
+    "id_anketa": 266,
+    "id_styagnen": 3
+  },
+  {
+    "id": 14,
+    "id_anketa": 265,
+    "id_styagnen": 3
+  },
+  {
+    "id": 15,
+    "id_anketa": 320,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "Вийшла заміж за невіруючого"
+  },
+  {
+    "id": 17,
+    "id_anketa": 823,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "вилучити - не ходить"
+  },
+  {
+    "id": 18,
+    "id_anketa": 817,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "не ходить, не має контакту"
+  },
+  {
+    "id": 19,
+    "id_anketa": 935,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "душевно хвора, не ходить"
+  },
+  {
+    "id": 21,
+    "id_anketa": 1297,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "політичний притулок у Франції"
+  },
+  {
+    "id": 22,
+    "id_anketa": 1291,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "розїздний х-ер роботи, живе на Набережній, будується в Клузові"
+  },
+  {
+    "id": 23,
+    "id_anketa": 91,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "не виявляє ніякого інтересу до церкви, пояснюючи своєю немічністю"
+  },
+  {
+    "id": 26,
+    "id_anketa": 206,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "ходить до Деруна"
+  },
+  {
+    "id": 27,
+    "id_anketa": 207,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "немічна"
+  },
+  {
+    "id": 28,
+    "id_anketa": 165,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "немічна"
+  },
+  {
+    "id": 29,
+    "id_anketa": 784,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "на іншій (?) дільниці"
+  },
+  {
+    "id": 30,
+    "id_anketa": 1299,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "в Іспанії 3 місяці"
+  },
+  {
+    "id": 31,
+    "id_anketa": 472,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 32,
+    "id_anketa": 473,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 33,
+    "id_anketa": 465,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 34,
+    "id_anketa": 728,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 35,
+    "id_anketa": 461,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "в ХОСПІСІ"
+  },
+  {
+    "id": 36,
+    "id_anketa": 471,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "???"
+  },
+  {
+    "id": 37,
+    "id_anketa": 739,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "в США"
+  },
+  {
+    "id": 38,
+    "id_anketa": 740,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "в США"
+  },
+  {
+    "id": 39,
+    "id_anketa": 192,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "виписати (?)"
+  },
+  {
+    "id": 40,
+    "id_anketa": 194,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 41,
+    "id_anketa": 94,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "виписати (?)"
+  },
+  {
+    "id": 42,
+    "id_anketa": 182,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "виписати (?)"
+  },
+  {
+    "id": 43,
+    "id_anketa": 191,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 44,
+    "id_anketa": 187,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 45,
+    "id_anketa": 1204,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Маняві, Богородч. р-н"
+  },
+  {
+    "id": 46,
+    "id_anketa": 1197,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Маняві, Богородч. р-н"
+  },
+  {
+    "id": 47,
+    "id_anketa": 1229,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Маняві, Богородч. р-н"
+  },
+  {
+    "id": 48,
+    "id_anketa": 1241,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Маняві, Богородч. р-н"
+  },
+  {
+    "id": 49,
+    "id_anketa": 576,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "хвора"
+  },
+  {
+    "id": 50,
+    "id_anketa": 585,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "не ходить"
+  },
+  {
+    "id": 52,
+    "id_anketa": 579,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "доглядає хворого чоловіка"
+  },
+  {
+    "id": 53,
+    "id_anketa": 697,
+    "id_styagnen": 3
+  },
+  {
+    "id": 55,
+    "id_anketa": 538,
+    "id_styagnen": 0
+  },
+  {
+    "id": 56,
+    "id_anketa": 699,
+    "id_styagnen": 3
+  },
+  {
+    "id": 57,
+    "id_anketa": 698,
+    "id_styagnen": 3
+  },
+  {
+    "id": 58,
+    "id_anketa": 138,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "минулий рік була на роботі в Чехії"
+  },
+  {
+    "id": 59,
+    "id_anketa": 67,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "в США"
+  },
+  {
+    "id": 60,
+    "id_anketa": 285,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "хвора"
+  },
+  {
+    "id": 61,
+    "id_anketa": 683,
+    "id_styagnen": 3
+  },
+  {
+    "id": 62,
+    "id_anketa": 103,
+    "id_styagnen": 3
+  },
+  {
+    "id": 63,
+    "id_anketa": 1267,
+    "id_styagnen": 3
+  },
+  {
+    "id": 64,
+    "id_anketa": 494,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Галичі"
+  },
+  {
+    "id": 65,
+    "id_anketa": 515,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Єзуполі"
+  },
+  {
+    "id": 66,
+    "id_anketa": 508,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Козино"
+  },
+  {
+    "id": 67,
+    "id_anketa": 509,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Козино"
+  },
+  {
+    "id": 68,
+    "id_anketa": 510,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в Козино"
+  },
+  {
+    "id": 69,
+    "id_anketa": 1296,
+    "id_styagnen": 3
+  },
+  {
+    "id": 70,
+    "id_anketa": 870,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "в Італії"
+  },
+  {
+    "id": 71,
+    "id_anketa": 885,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "не відвідує"
+  },
+  {
+    "id": 72,
+    "id_anketa": 896,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "неділя"
+  },
+  {
+    "id": 73,
+    "id_anketa": 895,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "неділя"
+  },
+  {
+    "id": 74,
+    "id_anketa": 889,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "живе в с. Татарів"
+  },
+  {
+    "id": 75,
+    "id_anketa": 1249,
+    "id_styagnen": 3
+  },
+  {
+    "id": 77,
+    "id_anketa": 1268,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "на групу не ходить"
+  },
+  {
+    "id": 78,
+    "id_anketa": 735,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "на групу не ходить"
+  },
+  {
+    "id": 79,
+    "id_anketa": 741,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "квіти, на групу не ходить"
+  },
+  {
+    "id": 80,
+    "id_anketa": 609,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 81,
+    "id_anketa": 380,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 82,
+    "id_anketa": 849,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "?"
+  },
+  {
+    "id": 83,
+    "id_anketa": 622,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "хвора мама"
+  },
+  {
+    "id": 84,
+    "id_anketa": 435,
+    "id_styagnen": 3
+  },
+  {
+    "id": 85,
+    "id_anketa": 1210,
+    "id_styagnen": 3
+  },
+  {
+    "id": 86,
+    "id_anketa": 377,
+    "id_styagnen": 3
+  },
+  {
+    "id": 87,
+    "id_anketa": 1195,
+    "id_styagnen": 3
+  },
+  {
+    "id": 88,
+    "id_anketa": 1188,
+    "id_styagnen": 3
+  },
+  {
+    "id": 89,
+    "id_anketa": 214,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "хвороба"
+  },
+  {
+    "id": 90,
+    "id_anketa": 582,
+    "id_styagnen": 0
+  },
+  {
+    "id": 91,
+    "id_anketa": 970,
+    "id_styagnen": 0
+  },
+  {
+    "id": 92,
+    "id_anketa": 1243,
+    "id_styagnen": 3,
+    "styagnen_prychyna": "вилучити - грішить"
+  },
+  {
+    "id": 93,
+    "id_anketa": 869,
+    "id_styagnen": 0
+  },
+  {
+    "id": 94,
+    "id_anketa": 201,
+    "id_styagnen": 0
+  },
+  {
+    "id": 95,
+    "id_anketa": 198,
+    "id_styagnen": 0
+  },
+  {
+    "id": 96,
+    "id_anketa": 602,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "за нехрист. спсіб життя",
+    "d_begin": 38520
+  },
+  {
+    "id": 97,
+    "id_anketa": 419,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "не християнські стосунки з протил. статтю",
+    "d_begin": 43035
+  },
+  {
+    "id": 98,
+    "id_anketa": 1325,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "не християнські стосунки з протил. статтю",
+    "d_begin": 43035,
+    "d_end": 43091,
+    "d_znyato": 43091
+  },
+  {
+    "id": 100,
+    "id_anketa": 1239,
+    "id_styagnen": 0
+  },
+  {
+    "id": 101,
+    "id_anketa": 110,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "захоплення вченням про кабалу",
+    "d_begin": 43728
+  },
+  {
+    "id": 102,
+    "id_anketa": 135,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "одружилася з невіруючим",
+    "d_begin": 43808,
+    "d_end": 43826
+  },
+  {
+    "id": 103,
+    "id_anketa": 798,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "захланність і непослух",
+    "d_begin": 44008,
+    "d_end": 44038
+  },
+  {
+    "id": 104,
+    "id_anketa": 1170,
+    "id_styagnen": 0
+  },
+  {
+    "id": 105,
+    "id_anketa": 1348,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "сімейні проблеми",
+    "d_begin": 44757,
+    "d_end": 45291,
+    "d_znyato": 45163
+  },
+  {
+    "id": 106,
+    "id_anketa": 1539,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "сімейні проблеми",
+    "d_begin": 44757
+  },
+  {
+    "id": 107,
+    "id_anketa": 1684,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "за не християнський спосіб життя - випивка, паління, рідко ходить в церкву",
+    "d_begin": 44778,
+    "d_end": 44870
+  },
+  {
+    "id": 108,
+    "id_anketa": 1595,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "нехристиянська поведінка, непослух",
+    "d_begin": 44876,
+    "d_end": 45030
+  },
+  {
+    "id": 109,
+    "id_anketa": 1603,
+    "id_styagnen": 2,
+    "styagnen_prychyna": "куріння, вживання алкоголю",
+    "d_begin": 45310,
+    "d_end": 45695
+  },
+  {
+    "id": 110,
+    "id_anketa": 38,
+    "id_styagnen": 0
+  }
+]

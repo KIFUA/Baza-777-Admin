@@ -1,0 +1,4581 @@
+[
+  {
+    "id": 2,
+    "id_anketa": 2,
+    "id_slujinnya": 2,
+    "d_begin": 40666
+  },
+  {
+    "id": 3,
+    "id_anketa": 3,
+    "id_slujinnya": 2,
+    "d_begin": 40666
+  },
+  {
+    "id": 4,
+    "id_anketa": 4,
+    "id_slujinnya": 2,
+    "d_begin": 40666
+  },
+  {
+    "id": 6,
+    "id_anketa": 6,
+    "id_slujinnya": 3,
+    "d_begin": 40666,
+    "d_end": 42843
+  },
+  {
+    "id": 7,
+    "id_anketa": 7,
+    "id_slujinnya": 3,
+    "d_begin": 40666,
+    "d_end": 42843
+  },
+  {
+    "id": 8,
+    "id_anketa": 8,
+    "id_slujinnya": 3,
+    "d_begin": 40666
+  },
+  {
+    "id": 9,
+    "id_anketa": 9,
+    "id_slujinnya": 3,
+    "d_begin": 40666,
+    "d_end": 42843
+  },
+  {
+    "id": 10,
+    "id_anketa": 10,
+    "id_slujinnya": 3,
+    "d_begin": 40666
+  },
+  {
+    "id": 11,
+    "id_anketa": 11,
+    "id_slujinnya": 3,
+    "d_begin": 40666
+  },
+  {
+    "id": 12,
+    "id_anketa": 12,
+    "id_slujinnya": 3,
+    "d_begin": 40666
+  },
+  {
+    "id": 13,
+    "id_anketa": 13,
+    "id_slujinnya": 37,
+    "d_begin": 40666
+  },
+  {
+    "id": 14,
+    "id_anketa": 14,
+    "id_slujinnya": 3,
+    "d_begin": 40666,
+    "d_end": 43821
+  },
+  {
+    "id": 16,
+    "id_anketa": 16,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 42116
+  },
+  {
+    "id": 17,
+    "id_anketa": 17,
+    "id_slujinnya": 27,
+    "d_begin": 40666
+  },
+  {
+    "id": 18,
+    "id_anketa": 18,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 19,
+    "id_anketa": 19,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 20,
+    "id_anketa": 20,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 21,
+    "id_anketa": 21,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 42124
+  },
+  {
+    "id": 22,
+    "id_anketa": 22,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 23,
+    "id_anketa": 23,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 42124
+  },
+  {
+    "id": 24,
+    "id_anketa": 24,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 42552
+  },
+  {
+    "id": 25,
+    "id_anketa": 25,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 40909
+  },
+  {
+    "id": 26,
+    "id_anketa": 26,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 41516
+  },
+  {
+    "id": 27,
+    "id_anketa": 27,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 28,
+    "id_anketa": 28,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 42005
+  },
+  {
+    "id": 29,
+    "id_anketa": 29,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 42552
+  },
+  {
+    "id": 30,
+    "id_anketa": 30,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 31,
+    "id_anketa": 31,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 32,
+    "id_anketa": 32,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 41089
+  },
+  {
+    "id": 33,
+    "id_anketa": 33,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 34,
+    "id_anketa": 34,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 35,
+    "id_anketa": 35,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 36,
+    "id_anketa": 36,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 37,
+    "id_anketa": 37,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 39,
+    "id_anketa": 39,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 41,
+    "id_anketa": 41,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 42,
+    "id_anketa": 42,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 43,
+    "id_anketa": 43,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 44,
+    "id_anketa": 44,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 45284
+  },
+  {
+    "id": 45,
+    "id_anketa": 45,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 46,
+    "id_anketa": 46,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 41730
+  },
+  {
+    "id": 47,
+    "id_anketa": 47,
+    "id_slujinnya": 37,
+    "d_begin": 40666,
+    "d_end": 43740
+  },
+  {
+    "id": 48,
+    "id_anketa": 48,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 49,
+    "id_anketa": 49,
+    "id_slujinnya": 4,
+    "d_begin": 40666,
+    "d_end": 40909
+  },
+  {
+    "id": 50,
+    "id_anketa": 50,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 51,
+    "id_anketa": 51,
+    "id_slujinnya": 4,
+    "d_begin": 37316
+  },
+  {
+    "id": 55,
+    "id_anketa": 55,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 56,
+    "id_anketa": 56,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 57,
+    "id_anketa": 57,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 58,
+    "id_anketa": 58,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 59,
+    "id_anketa": 59,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 60,
+    "id_anketa": 60,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 61,
+    "id_anketa": 0,
+    "id_slujinnya": 3
+  },
+  {
+    "id": 63,
+    "id_anketa": 5,
+    "id_slujinnya": 3
+  },
+  {
+    "id": 64,
+    "id_anketa": 15,
+    "id_slujinnya": 4,
+    "d_end": 42682
+  },
+  {
+    "id": 65,
+    "id_anketa": 8,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 66,
+    "id_anketa": 10,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 67,
+    "id_anketa": 11,
+    "id_slujinnya": 4,
+    "d_begin": 40666
+  },
+  {
+    "id": 68,
+    "id_anketa": 61,
+    "id_slujinnya": 4,
+    "d_end": 42566
+  },
+  {
+    "id": 69,
+    "id_anketa": 51,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 70,
+    "id_anketa": 51,
+    "id_slujinnya": 16,
+    "d_begin": 38657
+  },
+  {
+    "id": 71,
+    "id_anketa": 21,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 72,
+    "id_anketa": 1,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 73,
+    "id_anketa": 6,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 74,
+    "id_anketa": 11,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 75,
+    "id_anketa": 30,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 76,
+    "id_anketa": 31,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 77,
+    "id_anketa": 22,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 78,
+    "id_anketa": 25,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 79,
+    "id_anketa": 9,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 80,
+    "id_anketa": 8,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 81,
+    "id_anketa": 2,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 82,
+    "id_anketa": 20,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 84,
+    "id_anketa": 52,
+    "id_slujinnya": 23
+  },
+  {
+    "id": 85,
+    "id_anketa": 54,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 86,
+    "id_anketa": 24,
+    "id_slujinnya": 24,
+    "d_end": 42279
+  },
+  {
+    "id": 87,
+    "id_anketa": 75,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 88,
+    "id_anketa": 85,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 89,
+    "id_anketa": 83,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 90,
+    "id_anketa": 86,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 91,
+    "id_anketa": 88,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 92,
+    "id_anketa": 88,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 93,
+    "id_anketa": 88,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 94,
+    "id_anketa": 93,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 97,
+    "id_anketa": 94,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 98,
+    "id_anketa": 93,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 99,
+    "id_anketa": 95,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 100,
+    "id_anketa": 95,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 101,
+    "id_anketa": 98,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 102,
+    "id_anketa": 98,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 103,
+    "id_anketa": 100,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 104,
+    "id_anketa": 100,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 105,
+    "id_anketa": 108,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 106,
+    "id_anketa": 108,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 107,
+    "id_anketa": 124,
+    "id_slujinnya": 5,
+    "d_begin": 40719
+  },
+  {
+    "id": 108,
+    "id_anketa": 124,
+    "id_slujinnya": 8,
+    "d_begin": 40719
+  },
+  {
+    "id": 109,
+    "id_anketa": 125,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 110,
+    "id_anketa": 126,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 111,
+    "id_anketa": 128,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 112,
+    "id_anketa": 128,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 113,
+    "id_anketa": 129,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 114,
+    "id_anketa": 130,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 115,
+    "id_anketa": 130,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 116,
+    "id_anketa": 135,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 117,
+    "id_anketa": 135,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 118,
+    "id_anketa": 136,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 119,
+    "id_anketa": 136,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 120,
+    "id_anketa": 138,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 121,
+    "id_anketa": 139,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 122,
+    "id_anketa": 140,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 124,
+    "id_anketa": 146,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 125,
+    "id_anketa": 156,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 126,
+    "id_anketa": 156,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 127,
+    "id_anketa": 157,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 128,
+    "id_anketa": 157,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 129,
+    "id_anketa": 185,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 130,
+    "id_anketa": 186,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 131,
+    "id_anketa": 201,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 132,
+    "id_anketa": 205,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 133,
+    "id_anketa": 247,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 134,
+    "id_anketa": 255,
+    "id_slujinnya": 11
+  },
+  {
+    "id": 135,
+    "id_anketa": 256,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 136,
+    "id_anketa": 72,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 137,
+    "id_anketa": 270,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 138,
+    "id_anketa": 271,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 139,
+    "id_anketa": 284,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 140,
+    "id_anketa": 293,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 141,
+    "id_anketa": 295,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 142,
+    "id_anketa": 300,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 143,
+    "id_anketa": 301,
+    "id_slujinnya": 9
+  },
+  {
+    "id": 144,
+    "id_anketa": 301,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 146,
+    "id_anketa": 304,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 147,
+    "id_anketa": 308,
+    "id_slujinnya": 37
+  },
+  {
+    "id": 148,
+    "id_anketa": 308,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 149,
+    "id_anketa": 309,
+    "id_slujinnya": 25
+  },
+  {
+    "id": 150,
+    "id_anketa": 209,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 151,
+    "id_anketa": 324,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 152,
+    "id_anketa": 352,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 153,
+    "id_anketa": 383,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 154,
+    "id_anketa": 346,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 155,
+    "id_anketa": 67,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 156,
+    "id_anketa": 393,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 157,
+    "id_anketa": 394,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 158,
+    "id_anketa": 399,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 159,
+    "id_anketa": 442,
+    "id_slujinnya": 14
+  },
+  {
+    "id": 160,
+    "id_anketa": 10,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 161,
+    "id_anketa": 445,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 162,
+    "id_anketa": 455,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 163,
+    "id_anketa": 467,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 164,
+    "id_anketa": 498,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 165,
+    "id_anketa": 502,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 166,
+    "id_anketa": 505,
+    "id_slujinnya": 26
+  },
+  {
+    "id": 167,
+    "id_anketa": 519,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 168,
+    "id_anketa": 528,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 169,
+    "id_anketa": 529,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 170,
+    "id_anketa": 529,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 171,
+    "id_anketa": 540,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 172,
+    "id_anketa": 391,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 173,
+    "id_anketa": 210,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 174,
+    "id_anketa": 590,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 175,
+    "id_anketa": 606,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 176,
+    "id_anketa": 611,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 177,
+    "id_anketa": 625,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 178,
+    "id_anketa": 629,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 179,
+    "id_anketa": 646,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 181,
+    "id_anketa": 744,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 182,
+    "id_anketa": 751,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 183,
+    "id_anketa": 768,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 184,
+    "id_anketa": 770,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 185,
+    "id_anketa": 245,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 186,
+    "id_anketa": 834,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 187,
+    "id_anketa": 94,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 188,
+    "id_anketa": 458,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 189,
+    "id_anketa": 751,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 190,
+    "id_anketa": 7,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 191,
+    "id_anketa": 21,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 192,
+    "id_anketa": 442,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 193,
+    "id_anketa": 43,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 194,
+    "id_anketa": 6,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 195,
+    "id_anketa": 47,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 196,
+    "id_anketa": 40,
+    "id_slujinnya": 27,
+    "d_end": 41275
+  },
+  {
+    "id": 197,
+    "id_anketa": 308,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 198,
+    "id_anketa": 17,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 199,
+    "id_anketa": 157,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 200,
+    "id_anketa": 16,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 201,
+    "id_anketa": 610,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 202,
+    "id_anketa": 24,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 203,
+    "id_anketa": 37,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 204,
+    "id_anketa": 30,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 205,
+    "id_anketa": 31,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 206,
+    "id_anketa": 924,
+    "id_slujinnya": 37
+  },
+  {
+    "id": 207,
+    "id_anketa": 10,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 208,
+    "id_anketa": 334,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 209,
+    "id_anketa": 19,
+    "id_slujinnya": 25
+  },
+  {
+    "id": 210,
+    "id_anketa": 19,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 211,
+    "id_anketa": 848,
+    "id_slujinnya": 27,
+    "d_end": 41502
+  },
+  {
+    "id": 212,
+    "id_anketa": 3,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 213,
+    "id_anketa": 15,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 214,
+    "id_anketa": 23,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 215,
+    "id_anketa": 41,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 216,
+    "id_anketa": 12,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 217,
+    "id_anketa": 4,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 218,
+    "id_anketa": 284,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 219,
+    "id_anketa": 28,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 220,
+    "id_anketa": 13,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 221,
+    "id_anketa": 688,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 222,
+    "id_anketa": 887,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 223,
+    "id_anketa": 48,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 224,
+    "id_anketa": 35,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 225,
+    "id_anketa": 35,
+    "id_slujinnya": 25
+  },
+  {
+    "id": 226,
+    "id_anketa": 48,
+    "id_slujinnya": 25
+  },
+  {
+    "id": 227,
+    "id_anketa": 932,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 228,
+    "id_anketa": 45,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 230,
+    "id_anketa": 248,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 231,
+    "id_anketa": 22,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 232,
+    "id_anketa": 25,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 233,
+    "id_anketa": 9,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 234,
+    "id_anketa": 34,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 235,
+    "id_anketa": 42,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 236,
+    "id_anketa": 29,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 237,
+    "id_anketa": 39,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 238,
+    "id_anketa": 8,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 239,
+    "id_anketa": 18,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 240,
+    "id_anketa": 50,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 241,
+    "id_anketa": 38,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 242,
+    "id_anketa": 26,
+    "id_slujinnya": 22
+  },
+  {
+    "id": 243,
+    "id_anketa": 5,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 244,
+    "id_anketa": 357,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 246,
+    "id_anketa": 44,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 248,
+    "id_anketa": 2,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 249,
+    "id_anketa": 20,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 250,
+    "id_anketa": 255,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 251,
+    "id_anketa": 1,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 252,
+    "id_anketa": 394,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 253,
+    "id_anketa": 329,
+    "id_slujinnya": 4,
+    "d_begin": 41640,
+    "d_end": 42278
+  },
+  {
+    "id": 255,
+    "id_anketa": 259,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 256,
+    "id_anketa": 340,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 257,
+    "id_anketa": 709,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 258,
+    "id_anketa": 646,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 259,
+    "id_anketa": 517,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 260,
+    "id_anketa": 46,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 261,
+    "id_anketa": 748,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 262,
+    "id_anketa": 294,
+    "id_slujinnya": 4,
+    "d_begin": 41640
+  },
+  {
+    "id": 263,
+    "id_anketa": 49,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 264,
+    "id_anketa": 12,
+    "id_slujinnya": 21,
+    "d_begin": 40666,
+    "d_end": 44926
+  },
+  {
+    "id": 265,
+    "id_anketa": 1,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 266,
+    "id_anketa": 6,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 267,
+    "id_anketa": 5,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 268,
+    "id_anketa": 7,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 269,
+    "id_anketa": 9,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 270,
+    "id_anketa": 10,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 271,
+    "id_anketa": 11,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 272,
+    "id_anketa": 13,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 273,
+    "id_anketa": 14,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 274,
+    "id_anketa": 2,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 275,
+    "id_anketa": 3,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 276,
+    "id_anketa": 4,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 277,
+    "id_anketa": 24,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 278,
+    "id_anketa": 8,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 279,
+    "id_anketa": 921,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 280,
+    "id_anketa": 565,
+    "id_slujinnya": 4,
+    "d_begin": 40927
+  },
+  {
+    "id": 281,
+    "id_anketa": 19,
+    "id_slujinnya": 3,
+    "d_begin": 40930
+  },
+  {
+    "id": 282,
+    "id_anketa": 24,
+    "id_slujinnya": 3,
+    "d_begin": 40930,
+    "d_end": 42843
+  },
+  {
+    "id": 283,
+    "id_anketa": 442,
+    "id_slujinnya": 3,
+    "d_begin": 40930
+  },
+  {
+    "id": 296,
+    "id_anketa": 0,
+    "id_slujinnya": 4,
+    "d_begin": 40941
+  },
+  {
+    "id": 297,
+    "id_anketa": 19,
+    "id_slujinnya": 21,
+    "d_begin": 40930
+  },
+  {
+    "id": 298,
+    "id_anketa": 442,
+    "id_slujinnya": 21,
+    "d_begin": 40930
+  },
+  {
+    "id": 300,
+    "id_anketa": 259,
+    "id_slujinnya": 4,
+    "d_begin": 40941,
+    "d_end": 41640
+  },
+  {
+    "id": 301,
+    "id_anketa": 646,
+    "id_slujinnya": 4,
+    "d_begin": 40941,
+    "d_end": 41518
+  },
+  {
+    "id": 302,
+    "id_anketa": 709,
+    "id_slujinnya": 4,
+    "d_begin": 40941,
+    "d_end": 42552
+  },
+  {
+    "id": 303,
+    "id_anketa": 848,
+    "id_slujinnya": 4,
+    "d_begin": 40941,
+    "d_end": 41502
+  },
+  {
+    "id": 305,
+    "id_anketa": 894,
+    "id_slujinnya": 4,
+    "d_begin": 41376
+  },
+  {
+    "id": 307,
+    "id_anketa": 674,
+    "id_slujinnya": 4,
+    "d_begin": 40941,
+    "d_end": 42552
+  },
+  {
+    "id": 309,
+    "id_anketa": 904,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 310,
+    "id_anketa": 14,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 311,
+    "id_anketa": 458,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 312,
+    "id_anketa": 458,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 313,
+    "id_anketa": 43,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 314,
+    "id_anketa": 528,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 315,
+    "id_anketa": 235,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 316,
+    "id_anketa": 235,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 317,
+    "id_anketa": 800,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 318,
+    "id_anketa": 580,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 319,
+    "id_anketa": 314,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 320,
+    "id_anketa": 400,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 321,
+    "id_anketa": 646,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 322,
+    "id_anketa": 39,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 323,
+    "id_anketa": 743,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 324,
+    "id_anketa": 412,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 325,
+    "id_anketa": 161,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 326,
+    "id_anketa": 641,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 327,
+    "id_anketa": 288,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 328,
+    "id_anketa": 29,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 329,
+    "id_anketa": 653,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 330,
+    "id_anketa": 387,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 331,
+    "id_anketa": 718,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 332,
+    "id_anketa": 252,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 333,
+    "id_anketa": 569,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 334,
+    "id_anketa": 612,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 335,
+    "id_anketa": 613,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 336,
+    "id_anketa": 630,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 337,
+    "id_anketa": 630,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 344,
+    "id_anketa": 617,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 345,
+    "id_anketa": 634,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 346,
+    "id_anketa": 635,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 347,
+    "id_anketa": 636,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 349,
+    "id_anketa": 415,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 350,
+    "id_anketa": 423,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 351,
+    "id_anketa": 110,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 352,
+    "id_anketa": 425,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 353,
+    "id_anketa": 426,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 354,
+    "id_anketa": 114,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 355,
+    "id_anketa": 462,
+    "id_slujinnya": 28
+  },
+  {
+    "id": 356,
+    "id_anketa": 463,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 357,
+    "id_anketa": 401,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 358,
+    "id_anketa": 398,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 359,
+    "id_anketa": 26,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 360,
+    "id_anketa": 410,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 361,
+    "id_anketa": 50,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 362,
+    "id_anketa": 408,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 364,
+    "id_anketa": 397,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 365,
+    "id_anketa": 7,
+    "id_slujinnya": 22
+  },
+  {
+    "id": 366,
+    "id_anketa": 7,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 367,
+    "id_anketa": 652,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 368,
+    "id_anketa": 644,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 369,
+    "id_anketa": 643,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 370,
+    "id_anketa": 650,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 371,
+    "id_anketa": 0,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 372,
+    "id_anketa": 642,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 373,
+    "id_anketa": 660,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 374,
+    "id_anketa": 664,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 375,
+    "id_anketa": 670,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 376,
+    "id_anketa": 670,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 377,
+    "id_anketa": 674,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 378,
+    "id_anketa": 666,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 379,
+    "id_anketa": 321,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 380,
+    "id_anketa": 70,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 381,
+    "id_anketa": 320,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 382,
+    "id_anketa": 318,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 383,
+    "id_anketa": 986,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 384,
+    "id_anketa": 327,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 385,
+    "id_anketa": 327,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 386,
+    "id_anketa": 327,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 387,
+    "id_anketa": 325,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 388,
+    "id_anketa": 322,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 389,
+    "id_anketa": 259,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 390,
+    "id_anketa": 259,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 391,
+    "id_anketa": 789,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 392,
+    "id_anketa": 790,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 393,
+    "id_anketa": 776,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 394,
+    "id_anketa": 776,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 396,
+    "id_anketa": 777,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 397,
+    "id_anketa": 897,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 398,
+    "id_anketa": 897,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 399,
+    "id_anketa": 923,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 400,
+    "id_anketa": 849,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 401,
+    "id_anketa": 53,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 402,
+    "id_anketa": 271,
+    "id_slujinnya": 4,
+    "d_begin": 41019
+  },
+  {
+    "id": 403,
+    "id_anketa": 379,
+    "id_slujinnya": 4,
+    "d_begin": 41019,
+    "d_end": 42279
+  },
+  {
+    "id": 404,
+    "id_anketa": 183,
+    "id_slujinnya": 4,
+    "d_begin": 41019
+  },
+  {
+    "id": 405,
+    "id_anketa": 808,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 406,
+    "id_anketa": 804,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 407,
+    "id_anketa": 796,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 408,
+    "id_anketa": 798,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 409,
+    "id_anketa": 807,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 410,
+    "id_anketa": 30,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 411,
+    "id_anketa": 810,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 412,
+    "id_anketa": 810,
+    "id_slujinnya": 30
+  },
+  {
+    "id": 414,
+    "id_anketa": 810,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 415,
+    "id_anketa": 799,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 416,
+    "id_anketa": 809,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 417,
+    "id_anketa": 861,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 418,
+    "id_anketa": 861,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 419,
+    "id_anketa": 298,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 420,
+    "id_anketa": 18,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 421,
+    "id_anketa": 212,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 422,
+    "id_anketa": 971,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 423,
+    "id_anketa": 211,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 424,
+    "id_anketa": 215,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 425,
+    "id_anketa": 213,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 426,
+    "id_anketa": 1118,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 427,
+    "id_anketa": 910,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 428,
+    "id_anketa": 910,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 429,
+    "id_anketa": 299,
+    "id_slujinnya": 19
+  },
+  {
+    "id": 430,
+    "id_anketa": 309,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 431,
+    "id_anketa": 309,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 432,
+    "id_anketa": 309,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 433,
+    "id_anketa": 309,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 434,
+    "id_anketa": 309,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 435,
+    "id_anketa": 1157,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 436,
+    "id_anketa": 1157,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 437,
+    "id_anketa": 1157,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 438,
+    "id_anketa": 924,
+    "id_slujinnya": 4,
+    "d_begin": 41089
+  },
+  {
+    "id": 440,
+    "id_anketa": 1159,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 441,
+    "id_anketa": 1159,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 442,
+    "id_anketa": 1159,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 443,
+    "id_anketa": 1158,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 444,
+    "id_anketa": 1158,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 445,
+    "id_anketa": 1158,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 446,
+    "id_anketa": 1160,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 447,
+    "id_anketa": 1160,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 448,
+    "id_anketa": 1162,
+    "id_slujinnya": 4,
+    "d_begin": 41518,
+    "d_end": 42552
+  },
+  {
+    "id": 449,
+    "id_anketa": 1162,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 450,
+    "id_anketa": 1163,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 451,
+    "id_anketa": 1163,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 452,
+    "id_anketa": 1165,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 453,
+    "id_anketa": 1165,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 454,
+    "id_anketa": 1165,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 455,
+    "id_anketa": 1166,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 456,
+    "id_anketa": 1166,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 457,
+    "id_anketa": 1164,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 458,
+    "id_anketa": 1164,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 459,
+    "id_anketa": 1164,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 460,
+    "id_anketa": 1164,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 461,
+    "id_anketa": 1167,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 462,
+    "id_anketa": 1168,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 463,
+    "id_anketa": 1168,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 464,
+    "id_anketa": 1168,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 465,
+    "id_anketa": 1169,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 466,
+    "id_anketa": 1169,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 467,
+    "id_anketa": 1169,
+    "id_slujinnya": 14
+  },
+  {
+    "id": 468,
+    "id_anketa": 1170,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 469,
+    "id_anketa": 1170,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 470,
+    "id_anketa": 1170,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 471,
+    "id_anketa": 1171,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 472,
+    "id_anketa": 1171,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 473,
+    "id_anketa": 1172,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 474,
+    "id_anketa": 1172,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 475,
+    "id_anketa": 1174,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 476,
+    "id_anketa": 1174,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 477,
+    "id_anketa": 1175,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 478,
+    "id_anketa": 1176,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 479,
+    "id_anketa": 1176,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 480,
+    "id_anketa": 1176,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 481,
+    "id_anketa": 1177,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 483,
+    "id_anketa": 1177,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 484,
+    "id_anketa": 1179,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 486,
+    "id_anketa": 1180,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 488,
+    "id_anketa": 1181,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 489,
+    "id_anketa": 1181,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 490,
+    "id_anketa": 1182,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 491,
+    "id_anketa": 1182,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 492,
+    "id_anketa": 1183,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 493,
+    "id_anketa": 1183,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 497,
+    "id_anketa": 1185,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 498,
+    "id_anketa": 1186,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 499,
+    "id_anketa": 1186,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 500,
+    "id_anketa": 1189,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 501,
+    "id_anketa": 1190,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 502,
+    "id_anketa": 1192,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 503,
+    "id_anketa": 442,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 504,
+    "id_anketa": 11,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 505,
+    "id_anketa": 526,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 506,
+    "id_anketa": 31,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 507,
+    "id_anketa": 197,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 508,
+    "id_anketa": 196,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 509,
+    "id_anketa": 742,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 510,
+    "id_anketa": 28,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 511,
+    "id_anketa": 887,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 512,
+    "id_anketa": 598,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 513,
+    "id_anketa": 580,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 514,
+    "id_anketa": 288,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 515,
+    "id_anketa": 22,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 516,
+    "id_anketa": 600,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 517,
+    "id_anketa": 316,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 518,
+    "id_anketa": 314,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 519,
+    "id_anketa": 826,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 520,
+    "id_anketa": 366,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 521,
+    "id_anketa": 25,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 522,
+    "id_anketa": 299,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 523,
+    "id_anketa": 34,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 524,
+    "id_anketa": 740,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 525,
+    "id_anketa": 767,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 526,
+    "id_anketa": 765,
+    "id_slujinnya": 4,
+    "d_begin": 42535
+  },
+  {
+    "id": 527,
+    "id_anketa": 42,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 528,
+    "id_anketa": 644,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 529,
+    "id_anketa": 423,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 530,
+    "id_anketa": 672,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 531,
+    "id_anketa": 29,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 532,
+    "id_anketa": 39,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 533,
+    "id_anketa": 715,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 534,
+    "id_anketa": 291,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 535,
+    "id_anketa": 18,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 536,
+    "id_anketa": 26,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 537,
+    "id_anketa": 5,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 538,
+    "id_anketa": 46,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 539,
+    "id_anketa": 894,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 540,
+    "id_anketa": 14,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 541,
+    "id_anketa": 272,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 542,
+    "id_anketa": 835,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 543,
+    "id_anketa": 771,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 544,
+    "id_anketa": 255,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 545,
+    "id_anketa": 746,
+    "id_slujinnya": 37
+  },
+  {
+    "id": 546,
+    "id_anketa": 746,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 547,
+    "id_anketa": 748,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 548,
+    "id_anketa": 748,
+    "id_slujinnya": 28
+  },
+  {
+    "id": 549,
+    "id_anketa": 809,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 550,
+    "id_anketa": 50,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 551,
+    "id_anketa": 35,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 552,
+    "id_anketa": 337,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 553,
+    "id_anketa": 701,
+    "id_slujinnya": 31
+  },
+  {
+    "id": 554,
+    "id_anketa": 580,
+    "id_slujinnya": 4,
+    "d_begin": 41124
+  },
+  {
+    "id": 555,
+    "id_anketa": 1196,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 556,
+    "id_anketa": 1196,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 557,
+    "id_anketa": 1196,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 558,
+    "id_anketa": 1196,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 560,
+    "id_anketa": 1230,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 561,
+    "id_anketa": 1230,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 562,
+    "id_anketa": 1231,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 563,
+    "id_anketa": 1231,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 564,
+    "id_anketa": 1232,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 565,
+    "id_anketa": 1232,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 566,
+    "id_anketa": 1232,
+    "id_slujinnya": 14
+  },
+  {
+    "id": 567,
+    "id_anketa": 1232,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 568,
+    "id_anketa": 1232,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 569,
+    "id_anketa": 1233,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 570,
+    "id_anketa": 1233,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 571,
+    "id_anketa": 1233,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 572,
+    "id_anketa": 1233,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 573,
+    "id_anketa": 1234,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 574,
+    "id_anketa": 1234,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 575,
+    "id_anketa": 1234,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 577,
+    "id_anketa": 1235,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 578,
+    "id_anketa": 1236,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 579,
+    "id_anketa": 1236,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 580,
+    "id_anketa": 1237,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 581,
+    "id_anketa": 1237,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 582,
+    "id_anketa": 1237,
+    "id_slujinnya": 14
+  },
+  {
+    "id": 583,
+    "id_anketa": 1237,
+    "id_slujinnya": 11
+  },
+  {
+    "id": 584,
+    "id_anketa": 1240,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 585,
+    "id_anketa": 1241,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 586,
+    "id_anketa": 1242,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 587,
+    "id_anketa": 1243,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 588,
+    "id_anketa": 1244,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 589,
+    "id_anketa": 1244,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 590,
+    "id_anketa": 1245,
+    "id_slujinnya": 11
+  },
+  {
+    "id": 591,
+    "id_anketa": 1247,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 592,
+    "id_anketa": 1247,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 593,
+    "id_anketa": 1247,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 594,
+    "id_anketa": 1250,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 595,
+    "id_anketa": 1250,
+    "id_slujinnya": 22
+  },
+  {
+    "id": 596,
+    "id_anketa": 1250,
+    "id_slujinnya": 11
+  },
+  {
+    "id": 597,
+    "id_anketa": 1250,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 598,
+    "id_anketa": 1251,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 599,
+    "id_anketa": 1253,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 602,
+    "id_anketa": 1252,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 605,
+    "id_anketa": 1252,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 606,
+    "id_anketa": 1255,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 607,
+    "id_anketa": 1255,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 608,
+    "id_anketa": 1256,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 609,
+    "id_anketa": 1257,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 610,
+    "id_anketa": 1257,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 611,
+    "id_anketa": 1257,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 612,
+    "id_anketa": 1238,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 613,
+    "id_anketa": 1238,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 614,
+    "id_anketa": 122,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 615,
+    "id_anketa": 122,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 616,
+    "id_anketa": 122,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 617,
+    "id_anketa": 1258,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 618,
+    "id_anketa": 1258,
+    "id_slujinnya": 16
+  },
+  {
+    "id": 619,
+    "id_anketa": 1258,
+    "id_slujinnya": 26
+  },
+  {
+    "id": 620,
+    "id_anketa": 1259,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 621,
+    "id_anketa": 1262,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 622,
+    "id_anketa": 1262,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 623,
+    "id_anketa": 1262,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 624,
+    "id_anketa": 1263,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 625,
+    "id_anketa": 1263,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 626,
+    "id_anketa": 1264,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 627,
+    "id_anketa": 1265,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 628,
+    "id_anketa": 1265,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 629,
+    "id_anketa": 1265,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 630,
+    "id_anketa": 1266,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 631,
+    "id_anketa": 1266,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 632,
+    "id_anketa": 1266,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 633,
+    "id_anketa": 1267,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 634,
+    "id_anketa": 1267,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 635,
+    "id_anketa": 1269,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 636,
+    "id_anketa": 1269,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 637,
+    "id_anketa": 1270,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 638,
+    "id_anketa": 1270,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 639,
+    "id_anketa": 1271,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 640,
+    "id_anketa": 1272,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 641,
+    "id_anketa": 1272,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 642,
+    "id_anketa": 1272,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 643,
+    "id_anketa": 1273,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 644,
+    "id_anketa": 1273,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 645,
+    "id_anketa": 1273,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 646,
+    "id_anketa": 1274,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 647,
+    "id_anketa": 1274,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 648,
+    "id_anketa": 1274,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 649,
+    "id_anketa": 1274,
+    "id_slujinnya": 29
+  },
+  {
+    "id": 650,
+    "id_anketa": 400,
+    "id_slujinnya": 4,
+    "d_begin": 41516
+  },
+  {
+    "id": 653,
+    "id_anketa": 86,
+    "id_slujinnya": 4,
+    "d_begin": 41502
+  },
+  {
+    "id": 654,
+    "id_anketa": 1276,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 655,
+    "id_anketa": 1276,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 656,
+    "id_anketa": 1276,
+    "id_slujinnya": 7
+  },
+  {
+    "id": 657,
+    "id_anketa": 1276,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 658,
+    "id_anketa": 363,
+    "id_slujinnya": 4,
+    "d_begin": 41600
+  },
+  {
+    "id": 659,
+    "id_anketa": 1,
+    "id_slujinnya": 4,
+    "d_begin": 41604
+  },
+  {
+    "id": 660,
+    "id_anketa": 1275,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 663,
+    "id_anketa": 1214,
+    "id_slujinnya": 4,
+    "d_begin": 41553,
+    "d_end": 42552
+  },
+  {
+    "id": 664,
+    "id_anketa": 1279,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 665,
+    "id_anketa": 1279,
+    "id_slujinnya": 24
+  },
+  {
+    "id": 666,
+    "id_anketa": 641,
+    "id_slujinnya": 4,
+    "d_begin": 41659
+  },
+  {
+    "id": 668,
+    "id_anketa": 1231,
+    "id_slujinnya": 32
+  },
+  {
+    "id": 669,
+    "id_anketa": 1193,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 670,
+    "id_anketa": 142,
+    "id_slujinnya": 32
+  },
+  {
+    "id": 671,
+    "id_anketa": 878,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 673,
+    "id_anketa": 1263,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 674,
+    "id_anketa": 528,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 675,
+    "id_anketa": 129,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 676,
+    "id_anketa": 1267,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 677,
+    "id_anketa": 709,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 678,
+    "id_anketa": 1232,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 679,
+    "id_anketa": 1237,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 680,
+    "id_anketa": 1273,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 682,
+    "id_anketa": 0,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 683,
+    "id_anketa": 790,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 684,
+    "id_anketa": 521,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 685,
+    "id_anketa": 110,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 686,
+    "id_anketa": 138,
+    "id_slujinnya": 33
+  },
+  {
+    "id": 687,
+    "id_anketa": 1227,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 688,
+    "id_anketa": 776,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 689,
+    "id_anketa": 7,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 690,
+    "id_anketa": 185,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 691,
+    "id_anketa": 676,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 692,
+    "id_anketa": 394,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 693,
+    "id_anketa": 6,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 694,
+    "id_anketa": 329,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 695,
+    "id_anketa": 842,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 696,
+    "id_anketa": 331,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 697,
+    "id_anketa": 524,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 698,
+    "id_anketa": 40,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 699,
+    "id_anketa": 528,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 700,
+    "id_anketa": 24,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 701,
+    "id_anketa": 818,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 702,
+    "id_anketa": 517,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 703,
+    "id_anketa": 260,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 704,
+    "id_anketa": 203,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 705,
+    "id_anketa": 336,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 706,
+    "id_anketa": 282,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 707,
+    "id_anketa": 617,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 708,
+    "id_anketa": 618,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 709,
+    "id_anketa": 616,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 710,
+    "id_anketa": 28,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 711,
+    "id_anketa": 709,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 712,
+    "id_anketa": 641,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 713,
+    "id_anketa": 580,
+    "id_slujinnya": 36,
+    "d_begin": 44479
+  },
+  {
+    "id": 714,
+    "id_anketa": 288,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 715,
+    "id_anketa": 247,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 716,
+    "id_anketa": 45,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 717,
+    "id_anketa": 706,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 718,
+    "id_anketa": 735,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 719,
+    "id_anketa": 397,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 720,
+    "id_anketa": 25,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 721,
+    "id_anketa": 400,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 722,
+    "id_anketa": 644,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 723,
+    "id_anketa": 190,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 724,
+    "id_anketa": 18,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 725,
+    "id_anketa": 379,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 726,
+    "id_anketa": 86,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 727,
+    "id_anketa": 894,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 728,
+    "id_anketa": 467,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 729,
+    "id_anketa": 834,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 730,
+    "id_anketa": 294,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 731,
+    "id_anketa": 938,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 732,
+    "id_anketa": 412,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 733,
+    "id_anketa": 11,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 734,
+    "id_anketa": 157,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 735,
+    "id_anketa": 13,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 736,
+    "id_anketa": 1,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 737,
+    "id_anketa": 19,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 738,
+    "id_anketa": 5,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 739,
+    "id_anketa": 2,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 740,
+    "id_anketa": 8,
+    "id_slujinnya": 34
+  },
+  {
+    "id": 741,
+    "id_anketa": 1282,
+    "id_slujinnya": 6
+  },
+  {
+    "id": 742,
+    "id_anketa": 1282,
+    "id_slujinnya": 8
+  },
+  {
+    "id": 743,
+    "id_anketa": 1282,
+    "id_slujinnya": 13
+  },
+  {
+    "id": 744,
+    "id_anketa": 810,
+    "id_slujinnya": 4,
+    "d_end": 43644
+  },
+  {
+    "id": 746,
+    "id_anketa": 572,
+    "id_slujinnya": 4,
+    "d_begin": 41730,
+    "d_end": 42552
+  },
+  {
+    "id": 747,
+    "id_anketa": 1284,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 748,
+    "id_anketa": 1284,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 749,
+    "id_anketa": 1284,
+    "id_slujinnya": 17
+  },
+  {
+    "id": 751,
+    "id_anketa": 46,
+    "id_slujinnya": 4,
+    "d_begin": 41799
+  },
+  {
+    "id": 752,
+    "id_anketa": 1329,
+    "id_slujinnya": 2,
+    "d_begin": 42017
+  },
+  {
+    "id": 754,
+    "id_anketa": 1329,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 755,
+    "id_anketa": 157,
+    "id_slujinnya": 21,
+    "d_begin": 41487,
+    "d_end": 43466
+  },
+  {
+    "id": 757,
+    "id_anketa": 21,
+    "id_slujinnya": 4,
+    "d_begin": 42124
+  },
+  {
+    "id": 758,
+    "id_anketa": 31,
+    "id_slujinnya": 21
+  },
+  {
+    "id": 759,
+    "id_anketa": 31,
+    "id_slujinnya": 3,
+    "d_begin": 42211
+  },
+  {
+    "id": 760,
+    "id_anketa": 1329,
+    "id_slujinnya": 3,
+    "d_begin": 42195,
+    "d_end": 42678
+  },
+  {
+    "id": 761,
+    "id_anketa": 13,
+    "id_slujinnya": 4,
+    "d_begin": 42195
+  },
+  {
+    "id": 762,
+    "id_anketa": 1353,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 763,
+    "id_anketa": 1367,
+    "id_slujinnya": 3
+  },
+  {
+    "id": 764,
+    "id_anketa": 182,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 765,
+    "id_anketa": 506,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 766,
+    "id_anketa": 577,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 767,
+    "id_anketa": 145,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 768,
+    "id_anketa": 393,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 769,
+    "id_anketa": 1325,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 770,
+    "id_anketa": 273,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 771,
+    "id_anketa": 90,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 772,
+    "id_anketa": 652,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 773,
+    "id_anketa": 536,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 774,
+    "id_anketa": 1167,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 775,
+    "id_anketa": 735,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 776,
+    "id_anketa": 42,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 777,
+    "id_anketa": 419,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 778,
+    "id_anketa": 819,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 779,
+    "id_anketa": 20,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 780,
+    "id_anketa": 1255,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 781,
+    "id_anketa": 271,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 782,
+    "id_anketa": 1302,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 784,
+    "id_anketa": 1368,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 785,
+    "id_anketa": 1367,
+    "id_slujinnya": 35
+  },
+  {
+    "id": 786,
+    "id_anketa": 24,
+    "id_slujinnya": 13,
+    "d_begin": 42279
+  },
+  {
+    "id": 787,
+    "id_anketa": 646,
+    "id_slujinnya": 21,
+    "d_begin": 42279
+  },
+  {
+    "id": 788,
+    "id_anketa": 371,
+    "id_slujinnya": 4,
+    "d_begin": 42279
+  },
+  {
+    "id": 789,
+    "id_anketa": 9,
+    "id_slujinnya": 20,
+    "d_begin": 42279
+  },
+  {
+    "id": 790,
+    "id_anketa": 1378,
+    "id_slujinnya": 3,
+    "d_begin": 42412
+  },
+  {
+    "id": 791,
+    "id_anketa": 427,
+    "id_slujinnya": 4,
+    "d_begin": 42363
+  },
+  {
+    "id": 793,
+    "id_anketa": 1157,
+    "id_slujinnya": 4,
+    "d_begin": 42496
+  },
+  {
+    "id": 796,
+    "id_anketa": 1255,
+    "id_slujinnya": 4,
+    "d_begin": 42566
+  },
+  {
+    "id": 797,
+    "id_anketa": 61,
+    "id_slujinnya": 27
+  },
+  {
+    "id": 799,
+    "id_anketa": 1367,
+    "id_slujinnya": 4,
+    "d_begin": 42578
+  },
+  {
+    "id": 800,
+    "id_anketa": 1169,
+    "id_slujinnya": 4,
+    "d_begin": 42583
+  },
+  {
+    "id": 802,
+    "id_anketa": 1389,
+    "id_slujinnya": 21,
+    "d_begin": 42461
+  },
+  {
+    "id": 803,
+    "id_anketa": 1389,
+    "id_slujinnya": 2,
+    "d_begin": 42370
+  },
+  {
+    "id": 805,
+    "id_anketa": 1389,
+    "id_slujinnya": 4,
+    "d_begin": 42529
+  },
+  {
+    "id": 806,
+    "id_anketa": 1172,
+    "id_slujinnya": 4,
+    "d_begin": 42682,
+    "d_end": 42917
+  },
+  {
+    "id": 807,
+    "id_anketa": 1367,
+    "id_slujinnya": 21,
+    "d_begin": 42664
+  },
+  {
+    "id": 808,
+    "id_anketa": 1370,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 809,
+    "id_anketa": 810,
+    "id_slujinnya": 3,
+    "d_begin": 42843,
+    "d_end": 43644
+  },
+  {
+    "id": 810,
+    "id_anketa": 1169,
+    "id_slujinnya": 3,
+    "d_begin": 42843
+  },
+  {
+    "id": 811,
+    "id_anketa": 20,
+    "id_slujinnya": 3,
+    "d_begin": 42843
+  },
+  {
+    "id": 812,
+    "id_anketa": 1157,
+    "id_slujinnya": 3,
+    "d_begin": 42843
+  },
+  {
+    "id": 813,
+    "id_anketa": 39,
+    "id_slujinnya": 3,
+    "d_begin": 42843,
+    "d_end": 45235
+  },
+  {
+    "id": 814,
+    "id_anketa": 28,
+    "id_slujinnya": 3,
+    "d_begin": 42843
+  },
+  {
+    "id": 815,
+    "id_anketa": 48,
+    "id_slujinnya": 3,
+    "d_begin": 42843
+  },
+  {
+    "id": 817,
+    "id_anketa": 40,
+    "id_slujinnya": 3,
+    "d_begin": 42843
+  },
+  {
+    "id": 818,
+    "id_anketa": 9,
+    "id_slujinnya": 2,
+    "d_begin": 42843
+  },
+  {
+    "id": 819,
+    "id_anketa": 6,
+    "id_slujinnya": 2,
+    "d_begin": 42843
+  },
+  {
+    "id": 820,
+    "id_anketa": 24,
+    "id_slujinnya": 2,
+    "d_begin": 42843
+  },
+  {
+    "id": 821,
+    "id_anketa": 7,
+    "id_slujinnya": 2,
+    "d_begin": 42843
+  },
+  {
+    "id": 822,
+    "id_anketa": 1157,
+    "id_slujinnya": 21,
+    "d_begin": 42843
+  },
+  {
+    "id": 823,
+    "id_anketa": 40,
+    "id_slujinnya": 21,
+    "d_begin": 42843
+  },
+  {
+    "id": 824,
+    "id_anketa": 1169,
+    "id_slujinnya": 21,
+    "d_begin": 42843
+  },
+  {
+    "id": 825,
+    "id_anketa": 28,
+    "id_slujinnya": 21,
+    "d_begin": 42843
+  },
+  {
+    "id": 826,
+    "id_anketa": 48,
+    "id_slujinnya": 21,
+    "d_begin": 42843
+  },
+  {
+    "id": 827,
+    "id_anketa": 39,
+    "id_slujinnya": 21,
+    "d_begin": 42843
+  },
+  {
+    "id": 828,
+    "id_anketa": 20,
+    "id_slujinnya": 21,
+    "d_begin": 42843
+  },
+  {
+    "id": 829,
+    "id_anketa": 810,
+    "id_slujinnya": 21,
+    "d_begin": 42843,
+    "d_end": 43644
+  },
+  {
+    "id": 830,
+    "id_anketa": 1378,
+    "id_slujinnya": 21,
+    "d_begin": 42491,
+    "d_end": 43483
+  },
+  {
+    "id": 833,
+    "id_anketa": 9,
+    "id_slujinnya": 3,
+    "d_begin": 42867
+  },
+  {
+    "id": 835,
+    "id_anketa": 24,
+    "id_slujinnya": 3,
+    "d_begin": 42867
+  },
+  {
+    "id": 836,
+    "id_anketa": 6,
+    "id_slujinnya": 4,
+    "d_begin": 42867
+  },
+  {
+    "id": 837,
+    "id_anketa": 674,
+    "id_slujinnya": 4,
+    "d_begin": 42867
+  },
+  {
+    "id": 841,
+    "id_anketa": 1331,
+    "id_slujinnya": 4,
+    "d_begin": 42908
+  },
+  {
+    "id": 842,
+    "id_anketa": 40,
+    "id_slujinnya": 4,
+    "d_begin": 42908
+  },
+  {
+    "id": 843,
+    "id_anketa": 748,
+    "id_slujinnya": 4,
+    "d_begin": 42908
+  },
+  {
+    "id": 844,
+    "id_anketa": 7,
+    "id_slujinnya": 4,
+    "d_begin": 42913
+  },
+  {
+    "id": 845,
+    "id_anketa": 2,
+    "id_slujinnya": 4,
+    "d_begin": 42913
+  },
+  {
+    "id": 846,
+    "id_anketa": 1329,
+    "id_slujinnya": 4,
+    "d_begin": 42913
+  },
+  {
+    "id": 847,
+    "id_anketa": 4,
+    "id_slujinnya": 4,
+    "d_begin": 42913
+  },
+  {
+    "id": 848,
+    "id_anketa": 1326,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 849,
+    "id_anketa": 1254,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 850,
+    "id_anketa": 731,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 851,
+    "id_anketa": 420,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 852,
+    "id_anketa": 1340,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 853,
+    "id_anketa": 1340,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 854,
+    "id_anketa": 184,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 855,
+    "id_anketa": 754,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 856,
+    "id_anketa": 844,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 857,
+    "id_anketa": 96,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 858,
+    "id_anketa": 879,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 859,
+    "id_anketa": 901,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 860,
+    "id_anketa": 712,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 861,
+    "id_anketa": 738,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 862,
+    "id_anketa": 603,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 863,
+    "id_anketa": 378,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 864,
+    "id_anketa": 558,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 865,
+    "id_anketa": 561,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 866,
+    "id_anketa": 983,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 867,
+    "id_anketa": 1344,
+    "id_slujinnya": 4,
+    "d_begin": 43179
+  },
+  {
+    "id": 868,
+    "id_anketa": 1493,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 869,
+    "id_anketa": 1467,
+    "id_slujinnya": 4,
+    "d_begin": 43282,
+    "d_end": 45383
+  },
+  {
+    "id": 870,
+    "id_anketa": 1302,
+    "id_slujinnya": 4,
+    "d_begin": 43390
+  },
+  {
+    "id": 871,
+    "id_anketa": 1426,
+    "id_slujinnya": 5,
+    "d_begin": 43405
+  },
+  {
+    "id": 872,
+    "id_anketa": 1427,
+    "id_slujinnya": 5,
+    "d_begin": 43405
+  },
+  {
+    "id": 873,
+    "id_anketa": 570,
+    "id_slujinnya": 5,
+    "d_begin": 43405
+  },
+  {
+    "id": 874,
+    "id_anketa": 1321,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 875,
+    "id_anketa": 1473,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 876,
+    "id_anketa": 1520,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 877,
+    "id_anketa": 1348,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 878,
+    "id_anketa": 1310,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 879,
+    "id_anketa": 695,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 880,
+    "id_anketa": 1306,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 881,
+    "id_anketa": 549,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 882,
+    "id_anketa": 1368,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 883,
+    "id_anketa": 1400,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 884,
+    "id_anketa": 597,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 885,
+    "id_anketa": 689,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 886,
+    "id_anketa": 764,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 887,
+    "id_anketa": 1239,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 888,
+    "id_anketa": 1397,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 889,
+    "id_anketa": 1519,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 890,
+    "id_anketa": 520,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 891,
+    "id_anketa": 1467,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 892,
+    "id_anketa": 294,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 893,
+    "id_anketa": 1465,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 894,
+    "id_anketa": 1421,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 895,
+    "id_anketa": 847,
+    "id_slujinnya": 5
+  },
+  {
+    "id": 896,
+    "id_anketa": 748,
+    "id_slujinnya": 3,
+    "d_begin": 43821
+  },
+  {
+    "id": 897,
+    "id_anketa": 1426,
+    "id_slujinnya": 4,
+    "d_begin": 43532
+  },
+  {
+    "id": 900,
+    "id_anketa": 1516,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 901,
+    "id_anketa": 291,
+    "id_slujinnya": 4,
+    "d_begin": 43579
+  },
+  {
+    "id": 902,
+    "id_anketa": 876,
+    "id_slujinnya": 0
+  },
+  {
+    "id": 903,
+    "id_anketa": 1515,
+    "id_slujinnya": 37,
+    "d_begin": 43740
+  },
+  {
+    "id": 904,
+    "id_anketa": 329,
+    "id_slujinnya": 4,
+    "d_begin": 43794
+  },
+  {
+    "id": 905,
+    "id_anketa": 288,
+    "id_slujinnya": 4
+  },
+  {
+    "id": 906,
+    "id_anketa": 748,
+    "id_slujinnya": 21,
+    "d_begin": 43532
+  },
+  {
+    "id": 907,
+    "id_anketa": 294,
+    "id_slujinnya": 21,
+    "d_begin": 43532
+  },
+  {
+    "id": 908,
+    "id_anketa": 294,
+    "id_slujinnya": 3,
+    "d_begin": 43820,
+    "d_end": 45235
+  },
+  {
+    "id": 909,
+    "id_anketa": 14,
+    "id_slujinnya": 2,
+    "d_begin": 43821
+  },
+  {
+    "id": 910,
+    "id_anketa": 1543,
+    "id_slujinnya": 4,
+    "d_begin": 43839
+  },
+  {
+    "id": 911,
+    "id_anketa": 1378,
+    "id_slujinnya": 3,
+    "d_begin": 43842
+  },
+  {
+    "id": 912,
+    "id_anketa": 3,
+    "id_slujinnya": 4,
+    "d_begin": 43893
+  },
+  {
+    "id": 913,
+    "id_anketa": 1585,
+    "id_slujinnya": 4,
+    "d_begin": 44463
+  },
+  {
+    "id": 914,
+    "id_anketa": 15,
+    "id_slujinnya": 4,
+    "d_begin": 43998
+  },
+  {
+    "id": 915,
+    "id_anketa": 170,
+    "id_slujinnya": 4,
+    "d_begin": 44243
+  },
+  {
+    "id": 916,
+    "id_anketa": 1463,
+    "id_slujinnya": 4,
+    "d_begin": 44258
+  },
+  {
+    "id": 917,
+    "id_anketa": 1162,
+    "id_slujinnya": 4,
+    "d_begin": 44259
+  },
+  {
+    "id": 918,
+    "id_anketa": 1530,
+    "id_slujinnya": 4,
+    "d_begin": 44272
+  },
+  {
+    "id": 919,
+    "id_anketa": 1258,
+    "id_slujinnya": 4,
+    "d_begin": 44272
+  },
+  {
+    "id": 920,
+    "id_anketa": 1555,
+    "id_slujinnya": 4,
+    "d_begin": 44272
+  },
+  {
+    "id": 921,
+    "id_anketa": 1363,
+    "id_slujinnya": 4,
+    "d_begin": 44313
+  },
+  {
+    "id": 922,
+    "id_anketa": 641,
+    "id_slujinnya": 36,
+    "d_begin": 44479
+  },
+  {
+    "id": 923,
+    "id_anketa": 641,
+    "id_slujinnya": 3,
+    "d_begin": 44745
+  },
+  {
+    "id": 924,
+    "id_anketa": 641,
+    "id_slujinnya": 21,
+    "d_begin": 44745
+  },
+  {
+    "id": 925,
+    "id_anketa": 1378,
+    "id_slujinnya": 4,
+    "d_begin": 44815
+  },
+  {
+    "id": 926,
+    "id_anketa": 458,
+    "id_slujinnya": 4,
+    "d_begin": 44929
+  },
+  {
+    "id": 927,
+    "id_anketa": 1548,
+    "id_slujinnya": 4,
+    "d_begin": 44929
+  },
+  {
+    "id": 928,
+    "id_anketa": 14,
+    "id_slujinnya": 3,
+    "d_begin": 44931
+  },
+  {
+    "id": 929,
+    "id_anketa": 665,
+    "id_slujinnya": 4,
+    "d_begin": 44973
+  },
+  {
+    "id": 930,
+    "id_anketa": 570,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 931,
+    "id_anketa": 616,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 932,
+    "id_anketa": 298,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 933,
+    "id_anketa": 618,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 934,
+    "id_anketa": 1311,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 935,
+    "id_anketa": 1474,
+    "id_slujinnya": 18
+  },
+  {
+    "id": 936,
+    "id_anketa": 39,
+    "id_slujinnya": 2,
+    "d_begin": 45235
+  },
+  {
+    "id": 937,
+    "id_anketa": 294,
+    "id_slujinnya": 2,
+    "d_begin": 45235
+  },
+  {
+    "id": 938,
+    "id_anketa": 1504,
+    "id_slujinnya": 4,
+    "d_begin": 45284
+  },
+  {
+    "id": 939,
+    "id_anketa": 1406,
+    "id_slujinnya": 37
+  },
+  {
+    "id": 940,
+    "id_anketa": 47,
+    "id_slujinnya": 4,
+    "d_begin": 45383
+  },
+  {
+    "id": 941,
+    "id_anketa": 1515,
+    "id_slujinnya": 4,
+    "d_begin": 45390
+  },
+  {
+    "id": 942,
+    "id_anketa": 291,
+    "id_slujinnya": 3,
+    "d_begin": 45515
+  },
+  {
+    "id": 943,
+    "id_anketa": 1613,
+    "id_slujinnya": 21,
+    "d_begin": 45515
+  },
+  {
+    "id": 944,
+    "id_anketa": 1613,
+    "id_slujinnya": 3,
+    "d_begin": 45515
+  },
+  {
+    "id": 945,
+    "id_anketa": 1395,
+    "id_slujinnya": 21,
+    "d_begin": 45515
+  },
+  {
+    "id": 946,
+    "id_anketa": 1395,
+    "id_slujinnya": 3,
+    "d_begin": 45515
+  },
+  {
+    "id": 947,
+    "id_anketa": 1585,
+    "id_slujinnya": 3,
+    "d_begin": 45515
+  },
+  {
+    "id": 948,
+    "id_anketa": 1458,
+    "id_slujinnya": 21,
+    "d_begin": 45515
+  },
+  {
+    "id": 949,
+    "id_anketa": 1458,
+    "id_slujinnya": 3,
+    "d_begin": 45515
+  },
+  {
+    "id": 952,
+    "id_anketa": 1,
+    "id_slujinnya": 1,
+    "d_begin": 45686
+  },
+  {
+    "id": 953,
+    "id_anketa": 1585,
+    "id_slujinnya": 21,
+    "d_begin": 45515
+  },
+  {
+    "id": 954,
+    "id_anketa": 291,
+    "id_slujinnya": 21,
+    "d_begin": 45515
+  },
+  {
+    "id": 955,
+    "id_anketa": 1,
+    "id_slujinnya": 2,
+    "d_begin": 46031
+  }
+]

@@ -281,7 +281,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       return [hasSpecificRayonLock];
     }
     const raw = lookups?.directories?.rayon || Array.from(new Set(members.map(m => m.rayon2_ukr).filter(Boolean)));
-    return sortRayonsList(raw);
+    const filteredRaw = raw.filter((r: string) => r.trim().toUpperCase() !== 'ВСІ РАЙОНИ');
+    return sortRayonsList(filteredRaw);
   }, [lookups, members, hasSpecificRayonLock]);
 
   const uniquePresviters = useMemo(() => {
@@ -289,7 +290,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     const allPresviters = Array.from(new Set(baseList)).filter(Boolean);
 
     if (!selectedRayon || selectedRayon === "ВСІ РАЙОНИ") {
-      return (allPresviters as string[]).sort();
+      return (allPresviters as string[]).sort((a, b) => a.localeCompare(b, 'uk-UA'));
     }
 
     const targetRayonNorm = selectedRayon.trim().toUpperCase();
@@ -358,7 +359,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         return String(foundMember.rayon2_ukr || "").trim().toUpperCase() === targetRayonNorm;
       }
       return false;
-    }).sort();
+    }).sort((a, b) => a.localeCompare(b, 'uk-UA'));
   }, [lookups, members, selectedRayon]);
 
   useEffect(() => {

@@ -189,13 +189,13 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
     });
   })();
 
-  const caregiversList = lookups?.directories?.opika || [
+  const caregiversList = (lookups?.directories?.opika || [
     "Бевзюк В.", "Бурчак Ю.", "Галюк Б.", "Дмитраш М.", "Євстратов О.", 
     "Ільницький О.", "Луцак М.", "Марунчак В.", "Мельничук В.", "Несен Ю.", 
     "Прохніцький Б.", "Решетило Р.", "Самелюк О.", "Скіцко І.", "Скриник М.", 
     "Стасінчук В.", "Стафіїв М.", "Стефурак Д.", "Факас О.", "Черняк Вал.", 
     "Черняк Вікт.", "Шегда П.", "Шпарман Ю.", "Черняк Вас."
-  ];
+  ]).sort((a, b) => a.localeCompare(b, 'uk-UA'));
 
   const vidviduvanistOptions = [
     "Постійно", "Періодично", "Рідко", "Ніколи"

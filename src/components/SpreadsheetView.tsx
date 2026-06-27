@@ -164,7 +164,7 @@ export default function SpreadsheetView({
   const [selectedSlujinnyaFilter, setSelectedSlujinnyaFilter] = useState<string>('');
   const [selectedVidviduvanistFilter, setSelectedVidviduvanistFilter] = useState<string>('');
   const [selectedPrysutnistFilter, setSelectedPrysutnistFilter] = useState<string>('');
-  const [activeFilterDropdown, setActiveFilterDropdown] = useState<'slujinnya' | 'vidviduvanist' | 'prysutnist' | null>(null);
+  const [activeFilterDropdown, setActiveFilterDropdown] = useState<'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'opika' | null>(null);
 
   const lastTapRef = React.useRef<{ [key: number]: number }>({});
 
@@ -413,13 +413,14 @@ export default function SpreadsheetView({
   };
 
   const caregivers = useMemo(() => {
-    return (lookups?.directories?.opika as string[]) || [
+    const list = (lookups?.directories?.opika as string[]) || [
       "Бевзюк В.", "Бурчак Ю.", "Галюк Б.", "Дмитраш М.", "Євстратов О.", 
       "Ільницький О.", "Луцак М.", "Марунчак В.", "Мельничук В.", "Несен Ю.", 
       "Прохніцький Б.", "Решетило Р.", "Самелюк О.", "Скіцко І.", "Скриник М.", 
       "Стасінчук В.", "Стафіїв М.", "Стефурак Д.", "Факас О.", "Черняк Вал.", 
       "Черняк Вікт.", "Шпарман Ю.", "Черняк Вас."
     ];
+    return list.sort((a, b) => a.localeCompare(b, 'uk-UA'));
   }, [lookups]);
 
   const fallbackMinistries = useMemo(() => [
@@ -500,8 +501,10 @@ export default function SpreadsheetView({
   // Dynamically computed list of unique Rayons
   const rayonList = useMemo(() => {
     const list = (lookups?.directories?.rayon2 as string[]) || [];
-    if (list.length > 0) return list.filter(Boolean);
-    const unique = Array.from(new Set(members.map(m => m.rayon2_ukr).filter(Boolean)));
+    const unique = Array.from(new Set(
+      (list.length > 0 ? list : members.map(m => m.rayon2_ukr))
+      .filter(r => r && r !== 'ВСІ РАЙОНИ')
+    ));
     return unique.sort((a, b) => a.localeCompare(b, 'uk-UA'));
   }, [lookups, members]);
 
@@ -512,7 +515,7 @@ export default function SpreadsheetView({
     const allPresviters = Array.from(new Set(baseList)).filter(Boolean);
 
     // If no rayon is selected, show all caretakers
-    if (!selectedRayonFilter || selectedRayonFilter === 'ВСІ РАЙОНИ') {
+    if (!selectedRayonFilter || selectedRayonFilter === 'ВСІ РАЙОНИ' || isAdmin) {
       return (allPresviters as string[]).sort((a, b) => a.localeCompare(b, 'uk-UA'));
     }
 
@@ -594,7 +597,7 @@ export default function SpreadsheetView({
 
       return false;
     }).sort((a, b) => a.localeCompare(b, 'uk-UA'));
-  }, [lookups, members, selectedRayonFilter]);
+  }, [lookups, members, selectedRayonFilter, isAdmin]);
 
   // Adjust selected caretaker filter if it's no longer present in the updated options
   useEffect(() => {
@@ -1324,50 +1327,7 @@ export default function SpreadsheetView({
           </div>
         )}
 
-        {getPermission('Поле опіка').view && (
-          <div className="flex items-center shrink-0 relative">
-            <select
-              id="filter_opika_select"
-              title={!selectedRayonFilter ? "Спочатку виберіть район" : undefined}
-              value={selectedOpikaFilter}
-              onChange={(e) => {
-                if (!selectedRayonFilter) {
-                  setShowRayonWarning(true);
-                  setTimeout(() => setShowRayonWarning(false), 2500);
-                  return;
-                }
-                setSelectedOpikaFilter(e.target.value);
-              }}
-              onMouseDown={(e) => {
-                if (!selectedRayonFilter) {
-                  e.preventDefault();
-                  setShowRayonWarning(true);
-                  setTimeout(() => setShowRayonWarning(false), 2500);
-                }
-              }}
-              className={`rounded border px-1.5 sm:px-3 text-[10px] sm:text-[11px] font-bold uppercase h-[24px] sm:h-[32px] focus:outline-none focus:border-[#387d7a] cursor-pointer shadow-sm ${
-                selectedOpikaFilter 
-                  ? "bg-[#387d7a] border-[#387d7a] text-white font-semibold" 
-                  : "bg-[#1a3843] border-[#1b3642] text-slate-300 hover:text-white"
-              } ${!selectedRayonFilter ? "opacity-70 cursor-not-allowed" : ""}`}
-            >
-              <option value="" className="bg-[#1a3843]">ОПІКА (ВСІ)</option>
-              {selectedRayonFilter && opikaList.map((o, i) => (
-                <option key={i} value={o} className="bg-[#1a3843]">{o}</option>
-              ))}
-            </select>
 
-            {showRayonWarning && (
-              <div 
-                id="rayon_warning_tooltip"
-                className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 bg-rose-600 text-white text-[9px] sm:text-[10px] font-bold px-2 py-1 rounded shadow-md whitespace-nowrap z-[999] animate-bounce pr-1.5 flex items-center space-x-1"
-              >
-                <AlertTriangle className="h-3 w-3 shrink-0" />
-                <span>Спочатку виберіть район</span>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Filters (Фільтри) */}
         {getPermission('Поле пошук').view && (
@@ -1455,7 +1415,50 @@ export default function SpreadsheetView({
                {getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>}
                {getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>}
                {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>}
-               {getPermission('ОПІКА').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ОПІКА</th>}
+               {getPermission('ОПІКА').view && (
+                 <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative">
+                   <div className="flex items-center justify-center space-x-1">
+                     <span className="font-bold">ОПІКА</span>
+                     <button
+                       type="button"
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         setActiveFilterDropdown(activeFilterDropdown === 'opika' ? null : 'opika');
+                       }}
+                       className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedOpikaFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
+                       title="Фільтр опіки"
+                     >
+                       <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                     </button>
+                   </div>
+ 
+                   {activeFilterDropdown === 'opika' && (
+                     <>
+                       <div className="fixed inset-0 z-[120]" onClick={() => setActiveFilterDropdown(null)} />
+                       <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[130] bg-[#e4efe5] border border-[#8fba94] rounded-md shadow-xl p-1.5 min-w-[140px] max-w-[200px] font-sans normal-case text-left">
+                         <div className="max-h-56 overflow-y-auto space-y-0.5 text-[8.5px] sm:text-[10px] text-emerald-950 font-semibold select-none">
+                           <div
+                             onClick={() => { setSelectedOpikaFilter(''); setActiveFilterDropdown(null); }}
+                             className={`px-2 py-1 rounded cursor-pointer ${!selectedOpikaFilter ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                           >
+                             (ВСІ ОПІКУНИ)
+                           </div>
+                           {opikaList.map((o) => (
+                             <div
+                               key={o}
+                               onClick={() => { setSelectedOpikaFilter(o); setActiveFilterDropdown(null); }}
+                               className={`px-2 py-1 rounded cursor-pointer truncate ${selectedOpikaFilter === o ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                               title={o}
+                             >
+                               {o}
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     </>
+                   )}
+                 </th>
+               )}
                {getPermission('СЛУЖІННЯ').view && (
                   <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]">
                     <div className="flex items-center justify-center space-x-1">
@@ -1929,7 +1932,7 @@ export default function SpreadsheetView({
                             : [];
                           return selectedList.length > 0 ? (
                             <div className="grid grid-cols-2 gap-1 w-full p-0.5">
-                              {selectedList.map(name => {
+                              {selectedList.filter(name => !selectedSlujinnyaFilter || name === selectedSlujinnyaFilter).map(name => {
                                 const style = getSlujStyle(name);
                                 return (
                                   <span 

@@ -56,7 +56,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
         if (r && r.trim() && r !== '—') rs.add(r.trim());
       });
     }
-    return ["Всі райони", ...Array.from(rs).sort()];
+    const sorted = Array.from(rs).filter(r => r.trim().toUpperCase() !== 'ВСІ РАЙОНИ').sort();
+    return ["Всі райони", ...sorted];
   }, [members, lookups, hasSpecificRayonLock]);
 
   // Default to first rayon (which will be "Всі райони") once available

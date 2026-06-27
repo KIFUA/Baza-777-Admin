@@ -1461,20 +1461,25 @@ export default function SpreadsheetView({
                )}
                {getPermission('СЛУЖІННЯ').view && (
                   <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]">
-                    <div className="flex items-center justify-center space-x-1">
-                      <span className="font-bold">СЛУЖІННЯ</span>
+                    <div className="flex items-center justify-center space-x-0.5">
+                      <span className="font-bold truncate">СЛУЖІННЯ</span>
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilterDropdown(activeFilterDropdown === 'slujinnya' ? null : 'slujinnya');
                         }}
-                        className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedSlujinnyaFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`rounded transition-all focus:outline-none cursor-pointer ${selectedSlujinnyaFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Фільтр служіння"
                       >
-                        <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                        <Filter size={4} className="h-1.5 w-1.5 sm:h-1.5 sm:w-1.5" />
                       </button>
                     </div>
+                    {selectedSlujinnyaFilter && (
+                      <div className="mt-0 text-[5.5px] sm:text-[6.5px] font-bold text-emerald-900 border-t border-[#8fba94]/50 pt-0.5 whitespace-nowrap truncate leading-none">
+                        {selectedSlujinnyaFilter} - {filteredMembers.filter(m => m.s_slujinnya_spysok?.includes(selectedSlujinnyaFilter)).length}
+                      </div>
+                    )}
 
                     {activeFilterDropdown === 'slujinnya' && (
                       <>
@@ -1505,20 +1510,25 @@ export default function SpreadsheetView({
                 )}
                 {getPermission('ВІДВІДУВАННЯ').view && (
                   <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]">
-                    <div className="flex items-center justify-center space-x-1">
-                      <span className="font-bold">ВІДВІДУВАННЯ</span>
+                    <div className="flex items-center justify-center space-x-0.5">
+                      <span className="font-bold truncate">ВІДВІДУВАННЯ</span>
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilterDropdown(activeFilterDropdown === 'vidviduvanist' ? null : 'vidviduvanist');
                         }}
-                        className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedVidviduvanistFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`rounded transition-all focus:outline-none cursor-pointer ${selectedVidviduvanistFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Фільтр відвідування"
                       >
-                        <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                        <Filter size={6} className="h-2 w-2 sm:h-2 sm:w-2" />
                       </button>
                     </div>
+                    {selectedVidviduvanistFilter && (
+                      <div className="mt-0 text-[5.5px] sm:text-[6.5px] font-bold text-emerald-900 border-t border-[#8fba94]/50 pt-0.5 whitespace-nowrap truncate">
+                        {selectedVidviduvanistFilter} - {filteredMembers.filter(m => m.vidviduvanist === selectedVidviduvanistFilter).length}
+                      </div>
+                    )}
 
                     {activeFilterDropdown === 'vidviduvanist' && (
                       <>
@@ -1551,20 +1561,25 @@ export default function SpreadsheetView({
                 )}
                 {getPermission('ПРИЧ. ВІДСУТНОСТІ').view && (
                   <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]" title="ПРИЧИНА ВІДСУТНОСТІ">
-                    <div className="flex items-center justify-center space-x-1">
-                      <span className="font-bold">ПРИЧ. ВІДСУТНОСТІ</span>
+                    <div className="flex items-center justify-center space-x-0.5">
+                      <span className="font-bold truncate">ПРИЧ. ВІДСУТНОСТІ</span>
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveFilterDropdown(activeFilterDropdown === 'prysutnist' ? null : 'prysutnist');
                         }}
-                        className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedPrysutnistFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`rounded transition-all focus:outline-none cursor-pointer ${selectedPrysutnistFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Фільтр причини відсутності"
                       >
-                        <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                        <Filter size={6} className="h-2 w-2 sm:h-2 sm:w-2" />
                       </button>
                     </div>
+                    {selectedPrysutnistFilter && (
+                      <div className="mt-0 text-[5.5px] sm:text-[6.5px] font-bold text-emerald-900 border-t border-[#8fba94]/50 pt-0.5 whitespace-nowrap truncate">
+                        {selectedPrysutnistFilter} - {filteredMembers.filter(m => m.prysutnist === selectedPrysutnistFilter).length}
+                      </div>
+                    )}
 
                     {activeFilterDropdown === 'prysutnist' && (
                       <>

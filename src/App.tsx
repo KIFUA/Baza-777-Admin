@@ -648,51 +648,29 @@ export default function App() {
                 </button>
               )}
               {getPermission('АНКЕТИ').view && (
-                <div className="flex gap-2">
-                  <button
-                    style={{
-                      fontSize: '12px',
-                      height: '30px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="Перейти до анкет"
-                    onClick={() => { 
-                      setMainMode('questionnaire'); 
-                      setSelectedMemberId(null); 
-                      setShowForm(false); 
-                      Promise.all([
-                        fetchAllMembers(),
-                        fetchMembers(),
-                        fetchLookupsAndStats()
-                      ]).catch(err => console.error("Error updating tab data:", err));
-                    }}
-                    className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                  >
-                    АНКЕТИ
-                  </button>
-                  {/* IV-й level check based on local user data in App component */}
-                  {currentSessionUser?.level === 'IV-й' && (
-                    <button
-                      style={{
-                        fontSize: '12px',
-                        height: '30px',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                      onClick={() => {
-                        setEditingMember(null);
-                        setShowForm(true);
-                        setMainMode('questionnaire');
-                      }}
-                      className="px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-                    >
-                      + Додати члена
-                    </button>
-                  )}
-                </div>
+                <button
+                  style={{
+                    fontSize: '12px',
+                    height: '30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Перейти до анкет"
+                  onClick={() => { 
+                    setMainMode('questionnaire'); 
+                    setSelectedMemberId(null); 
+                    setShowForm(false); 
+                    Promise.all([
+                      fetchAllMembers(),
+                      fetchMembers(),
+                      fetchLookupsAndStats()
+                    ]).catch(err => console.error("Error updating tab data:", err));
+                  }}
+                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                >
+                  АНКЕТИ
+                </button>
               )}
               {getPermission('СТАТИСТИКА').view && (
                 <button
@@ -822,6 +800,20 @@ export default function App() {
             ) : mainMode === 'questionnaire' ? (
               /* Questionnaire Legacy Embedded View */
               <div className="flex-1 flex flex-col min-h-[450px] bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
+                {currentSessionUser?.level === 'IV-й' && (
+                  <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
+                    <button
+                      onClick={() => {
+                        setEditingMember(null);
+                        setShowForm(true);
+                      }}
+                      className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                    >
+                      + Додати члена
+                    </button>
+                  </div>
+                )}
                 {false ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
                     <p className="text-zinc-500 text-[11px] font-normal tracking-wide">

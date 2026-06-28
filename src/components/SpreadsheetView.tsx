@@ -1412,27 +1412,37 @@ export default function SpreadsheetView({
               >
                 ПІБ
               </th>
-               {getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">ДАТИ КОНТАКТІВ З ПРЕСВ.</th>}
+               {getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">Дати контактів</th>}
                {getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>}
                {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>}
                {getPermission('ОПІКА').view && (
-                 <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative">
-                   <div className="flex items-center justify-center space-x-1">
-                     <span className="font-bold">ОПІКА</span>
+                 <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]">
+                   <div className="flex items-center justify-center space-x-0.5">
+                     <span className="font-bold truncate">ОПІКА</span>
                      <button
                        type="button"
                        onClick={(e) => {
                          e.stopPropagation();
                          setActiveFilterDropdown(activeFilterDropdown === 'opika' ? null : 'opika');
                        }}
-                       className={`p-0.5 rounded transition-all focus:outline-none cursor-pointer ${selectedOpikaFilter ? 'bg-emerald-700 text-white p-1' : 'text-slate-600 hover:text-slate-900'}`}
+                       className={`rounded transition-all focus:outline-none cursor-pointer ${selectedOpikaFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-slate-600 hover:text-slate-900'}`}
                        title="Фільтр опіки"
+                      >
+                        <Filter size={4} className="h-1.5 w-1.5 sm:h-1.5 sm:w-1.5" />
+                      </button>
+                    </div>
+                    {selectedOpikaFilter && (
+                      <div className="mt-0 text-[5.5px] sm:text-[6.5px] font-bold text-emerald-900 border-t border-[#8fba94]/50 pt-0.5 whitespace-nowrap truncate leading-none">
+                        {selectedOpikaFilter} - {filteredMembers.filter(m => m.presviter === selectedOpikaFilter).length}
+                      </div>
+                    )}
+                    {/*
                      >
-                       <Filter size={8} className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
+                       <Filter size={4} className="h-1.5 w-1.5 sm:h-1.5 sm:w-1.5" />
                      </button>
                    </div>
  
-                   {activeFilterDropdown === 'opika' && (
+                   */} {activeFilterDropdown === 'opika' && (
                      <>
                        <div className="fixed inset-0 z-[120]" onClick={() => setActiveFilterDropdown(null)} />
                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[130] bg-[#e4efe5] border border-[#8fba94] rounded-md shadow-xl p-1.5 min-w-[140px] max-w-[200px] font-sans normal-case text-left">

@@ -118,6 +118,26 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         (updated as any)[name] = value;
       }
 
+      if (name === 'pib') {
+        const pibVal = value.trim();
+        const parts = pibVal.split(/\s+/).filter(Boolean);
+        if (parts.length >= 3) {
+          const patronymic = parts[2].toLowerCase();
+          if (patronymic.endsWith('на') || patronymic.endsWith('ва')) {
+            updated.stat = 'сестра';
+          } else if (patronymic.endsWith('ич')) {
+            updated.stat = 'брат';
+          }
+        } else if (parts.length >= 2) {
+          const secondWord = parts[1].toLowerCase();
+          if (secondWord.endsWith('на') || secondWord.endsWith('ва')) {
+            updated.stat = 'сестра';
+          } else if (secondWord.endsWith('ич')) {
+            updated.stat = 'брат';
+          }
+        }
+      }
+
       // Sync lookup labels if ID changes
       if (name === 'id_simeyniy' && lookups?.simeyniy) {
         const idNum = Number(value);
@@ -163,7 +183,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
   // Pre-compiled list of standard church structural areas to clean up data entry
   const STRUCTURAL_AREAS = (() => {
-    const rawAreas = lookups?.directories?.rayon2 || [
+    const rawAreas = (lookups?.directories?.rayon2 || [
       "ЦЕНТР",
       "АЕРОПОРТ",
       "КАСКАД",
@@ -177,7 +197,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
       "ВОВЧИНЕЦЬ",
       "ПАСІЧНА",
       "ДІБРОВА"
-    ];
+    ]).filter((a: string) => a && a.trim() !== "" && a.trim().toUpperCase() !== "ВСІ РАЙОНИ" && a.trim().toUpperCase() !== "ВСІ" && a.trim().toUpperCase() !== "ВСЕ");
     const customOrder = ["АЕРОПОРТ", "КАСКАД", "ОБ'ЇЗНА", "ЦЕНТР"];
     return [...rawAreas].sort((a, b) => {
       const idxA = customOrder.indexOf(a.trim().toUpperCase());
@@ -224,13 +244,26 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
   const ministryOptions = (lookups?.directories?.slujinnya || fallbackMinistries).filter(Boolean);
 
-  const VYBUV_STATUS_ID = Number(formData.id_vybuttya || 0);
-  const VYBUV_STATUS_TEXT = formData.s_vybuv_ukr || '';
+  const skypeString = formData.skype || '';
+  let currentLabel = 'Telegram';
+  let currentHandle = skypeString;
+  for (const l of ['Telegram', 'Viber', 'WhatsApp', 'Skype', 'Інше']) {
+    if (skypeString.startsWith(l + ': ')) {
+      currentLabel = l;
+      currentHandle = skypeString.substring(l.length + 2);
+      break;
+    }
+  }
 
-  // Check conditional fields based on "Vybuttya" details (Request 06)
-  // відп. = 2 or emicgr = 3 etc. Let's make it robust based on both ID and Ukrainian word
-  const isSentOrEmigrated = VYBUV_STATUS_ID === 2 || VYBUV_STATUS_ID === 3 || VYBUV_STATUS_TEXT.includes("відп") || VYBUV_STATUS_TEXT.includes("емігр");
-  const isExcommunicated = VYBUV_STATUS_ID === 4 || VYBUV_STATUS_TEXT.includes("вилуч") || VYBUV_STATUS_TEXT.includes("вивед");
+  const handleMessengerLabelChange = (lbl: string) => {
+    const newSkype = lbl + ': ' + currentHandle;
+    setFormData(prev => ({ ...prev, skype: newSkype }));
+  };
+
+  const handleMessengerHandleChange = (val: string) => {
+    const newSkype = currentLabel + ': ' + val;
+    setFormData(prev => ({ ...prev, skype: newSkype }));
+  };
 
   return (
     <form id="member_edit_form" onSubmit={handleSubmit} className="space-y-6">
@@ -264,7 +297,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         
         {/* SECTION 1: Personal info */}
         <div className="space-y-4 rounded-xl border border-[#333333] bg-[#1a1a1a] p-5 shadow-sm text-slate-100">
@@ -284,48 +317,32 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Стать / Роль</label>
-              <select
-                name="stat"
-                disabled={!!isRestricted}
-                value={formData.stat}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              >
-                <option value="брат">брат</option>
-                <option value="сестра">сестра</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Дата народження</label>
-              <input
-                type="date"
-                name="d_narodjennya"
-                disabled={!!isRestricted}
-                value={formData.d_narodjennya || ''}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
-            </div>
-          </div>
-
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Мобільний телефон</label>
+            <label className="text-xs font-medium text-slate-300">Дата народж.</label>
             <input
-              type="text"
-              name="tel_mob"
+              type="date"
+              name="d_narodjennya"
               disabled={!!isRestricted}
-              value={formData.tel_mob || ''}
+              value={formData.d_narodjennya || ''}
               onChange={handleChange}
-              placeholder="067 XX XX XXX"
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Мобільний телефон</label>
+              <input
+                type="text"
+                name="tel_mob"
+                disabled={!!isRestricted}
+                value={formData.tel_mob || ''}
+                onChange={handleChange}
+                placeholder="067 XX XX XXX"
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-300">Додатковий тел.</label>
               <input
@@ -338,17 +355,30 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
+          </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Скайп / Месенджер</label>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-300">Месенджери</label>
+            <div className="flex gap-1.5">
+              <select
+                value={currentLabel}
+                onChange={(e) => handleMessengerLabelChange(e.target.value)}
+                disabled={!!isRestricted}
+                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 w-28 shrink-0"
+              >
+                <option value="Telegram">Telegram</option>
+                <option value="Viber">Viber</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Skype">Skype</option>
+                <option value="Інше">Інше</option>
+              </select>
               <input
                 type="text"
-                name="skype"
                 disabled={!!isRestricted}
-                value={formData.skype || ''}
-                onChange={handleChange}
-                placeholder="skype username"
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                value={currentHandle}
+                onChange={(e) => handleMessengerHandleChange(e.target.value)}
+                placeholder="@username або телефон"
+                className="flex-1 min-w-0 rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
           </div>
@@ -360,7 +390,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               disabled={!!isRestricted}
               value={formData.id_osvita}
               onChange={handleChange}
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              className="w-fit min-w-[160px] max-w-full block rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
             >
               {lookups?.osvita?.map((o: any) => (
                 <option key={o.ID} value={o.ID}>{o.Value}</option>
@@ -375,7 +405,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               disabled={!!isRestricted}
               value={formData.id_profesiya}
               onChange={handleChange}
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              className="w-fit min-w-[160px] max-w-full block rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
             >
               {lookups?.profesiya?.map((p: any) => (
                 <option key={p.ID} value={p.ID}>{p.Value}</option>
@@ -390,7 +420,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               disabled={!!isRestricted}
               value={formData.id_simeyniy}
               onChange={handleChange}
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              className="w-fit min-w-[160px] max-w-full block rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
             >
               {lookups?.simeyniy?.map((s: any) => (
                 <option key={s.ID} value={s.ID}>{s.Value}</option>
@@ -405,7 +435,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Покаяння дата</label>
+              <label className="text-xs font-medium text-slate-300">Дата покаяння</label>
               <input
                 type="date"
                 name="d_pokayannya"
@@ -416,7 +446,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Водне хрещення</label>
+              <label className="text-xs font-medium text-slate-300">Дата В.Х.</label>
               <input
                 type="date"
                 name="d_vodnogo"
@@ -429,7 +459,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
           <div className="grid grid-cols-2 gap-4 pt-1">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Дата членства</label>
+              <label className="text-xs font-medium text-slate-300">Дата прийняття в члени</label>
               <input
                 type="date"
                 name="d_vstupu"
@@ -449,14 +479,36 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className="h-4 w-4 rounded border-[#333333] bg-[#262626] text-[#387d7a] focus:ring-[#387d7a]"
               />
               <label htmlFor="hsd" className="text-xs font-semibold text-slate-300 select-none">
-                Є Духовний дар (ХСД)
+                Хр. С.Д.
               </label>
             </div>
           </div>
 
           <div className="border-t border-[#333333] pt-3 space-y-4">
+            {/* РАЙОН СТРУКТУРИ - Перенесено перед Опікун */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300">Опікун (призначений служитель громади)</label>
+              <label className="text-xs font-medium text-slate-300">Район структури</label>
+              {hasSpecificRayonLock ? (
+                <div className="w-full rounded-lg border border-[#387d7a]/30 bg-[#387d7a]/10 p-2 text-xs font-bold text-teal-400">
+                  {hasSpecificRayonLock}
+                </div>
+              ) : (
+                <select
+                  name="rayon2_ukr"
+                  value={formData.rayon2_ukr || ''}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                >
+                  <option value="">Не вказано</option>
+                  {STRUCTURAL_AREAS.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-300">Опікун (Призначений служитель)</label>
               <select
                 name="presviter"
                 value={formData.presviter || ''}
@@ -472,7 +524,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300 block font-bold">Духовні служіння (вибрані активні служіння)</label>
+              <label className="text-xs font-semibold text-slate-300 block font-bold">Служіння, в яких може брати участь</label>
               {levelNum <= 3 ? (
                 <div className="border border-[#333333] rounded-lg p-2.5 bg-[#262626] max-h-40 overflow-y-auto space-y-1.5 balance-scroll text-white">
                   {(() => {
@@ -531,7 +583,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300">Дати контактів з пресвітером</label>
+              <label className="text-xs font-semibold text-slate-300">Дати контактів</label>
               <input
                 type="text"
                 name="d_kontaktiv"
@@ -545,28 +597,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Район структури</label>
-                {hasSpecificRayonLock ? (
-                  <div className="w-full rounded-lg border border-[#387d7a]/30 bg-[#387d7a]/10 p-2 text-xs font-bold text-teal-400">
-                    {hasSpecificRayonLock}
-                  </div>
-                ) : (
-                  <select
-                    name="rayon2_ukr"
-                    value={formData.rayon2_ukr || ''}
-                    onChange={handleChange}
-                    className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-                  >
-                    <option value="">Не вказано</option>
-                    {STRUCTURAL_AREAS.map(a => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Дільниця (Група Акцесс)</label>
+                <label className="text-xs font-medium text-slate-300">Дільниця</label>
                 <input
                   type="text"
                   name="n_dilyci"
@@ -576,134 +607,22 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                   className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
                 />
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Відповідальний за групу</label>
-              <input
-                type="text"
-                name="vidpov_grupy"
-                value={formData.vidpov_grupy || ''}
-                onChange={handleChange}
-                placeholder="Керівник дільниці"
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* SECTION 3: Custom characteristics & Dismissal vybuttya with conditional notes */}
-        <div className="space-y-4 rounded-xl border border-[#333333] bg-[#1a1a1a] p-5 shadow-sm text-slate-100">
-          <h3 className="text-sm font-bold text-[#387d7a] uppercase tracking-wider">3. Ознаки та Зняття з обліку</h3>
-          
-          {/* Custom user attributes (Requests 8 and 9) */}
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300">Характеристика Відвідуваності (вимоги 8)</label>
-            <select
-              name="vidviduvanist"
-              value={formData.vidviduvanist || ''}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-            >
-              <option value="">-- Оберіть характеристику --</option>
-              {vidviduvanistOptions.map((o: string) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300">Причина відсутності</label>
-            <select
-              name="prysutnist"
-              value={formData.prysutnist || ''}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-            >
-              <option value="">-- Оберіть причину відсутності --</option>
-              {prysutnistOptions.map((o: string) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-slate-300">Дія адміністратора (дільничі/дияконські переміщення - di_admin)</label>
-            <select
-              name="di_admin"
-              value={formData.di_admin || ''}
-              onChange={handleChange}
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-            >
-              <option value="">-- Оберіть дію адміністратора --</option>
-              {diAdminOptions.map((o: string) => (
-                <option key={o} value={o}>{o}</option>
-              ))}
-            </select>
-            <p className="text-[10px] text-slate-400">Дільничі або дияконські адміністративні одиниці (переведення на каскади та центри). Тільки для адміністративних переміщень членів церкви, які виконує адміністратор.</p>
-          </div>
-
-          <div className="border-t border-[#333333] pt-3 space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-rose-400">Дисциплінарний статус обліку (06_VYBUTTYA)</label>
-              <select
-                name="id_vybuttya"
-                value={formData.id_vybuttya}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-rose-900/50 bg-[#2b1616] text-rose-200 p-1.5 text-xs font-semibold focus:border-rose-500 focus:outline-none"
-              >
-                <option value="0">Активний член церкви (на обліку)</option>
-                {lookups?.vybuv?.map((v: any) => (
-                  <option key={v.ID} value={v.ID}>{v.Value}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* CONDITIONAL FIELD TRIGGERING BASED ON OBTAINED VYBUTTYA CHOICE (User Request 06) */}
-            {isSentOrEmigrated && (
-              <div className="rounded-lg bg-teal-950/40 border border-teal-900/60 p-4 space-y-2 animate-fade-in text-teal-100">
-                <div className="flex items-center space-x-1.5 text-teal-400 text-xs font-bold uppercase">
-                   <Info className="h-4 w-4" />
-                  <span>Куди саме вибув?</span>
-                </div>
-                <label className="text-[11px] font-medium text-teal-300">
-                  Вкажіть країну, місто або іншу релігійну громаду, в яку відпущено або емігрував член:
-                </label>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-slate-300">Відповідальний за групу</label>
                 <input
                   type="text"
-                  name="vybutty_prymitka"
-                  value={formData.vybutty_prymitka || ''}
+                  name="vidpov_grupy"
+                  value={formData.vidpov_grupy || ''}
                   onChange={handleChange}
-                  placeholder="напр., емігрував в США, Сакраменто; або перейшов до громади м. Львів"
-                  className="w-full rounded-lg border border-[#333333] bg-[#262626] text-white placeholder-slate-500 p-2 text-xs focus:border-[#387d7a] focus:outline-none focus:ring-1 focus:ring-teal-200"
-                  required
+                  placeholder="Керівник дільниці"
+                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
                 />
               </div>
-            )}
+            </div>
 
-            {isExcommunicated && (
-              <div className="rounded-lg bg-rose-950/40 border border-rose-900/60 p-4 space-y-2 animate-fade-in text-rose-100">
-                <div className="flex items-center space-x-1.5 text-rose-400 text-xs font-bold uppercase">
-                  <Info className="h-4 w-4" />
-                  <span>За що саме вилучено/виведено?</span>
-                </div>
-                <label className="text-[11px] font-medium text-rose-300">
-                  Вкажіть точну канонічну чи дисциплінарну причину вилучення:
-                </label>
-                <textarea
-                  name="vybutty_prymitka"
-                  value={formData.vybutty_prymitka || ''}
-                  onChange={handleChange}
-                  placeholder="напр., вилучено за гріх алкоголізму, або регулярне невідвідування зібрань"
-                  rows={2}
-                  className="w-full rounded-lg border border-[#333333] bg-[#262626] text-white placeholder-slate-500 p-2 text-xs focus:border-[#387d7a] focus:outline-none focus:ring-1 focus:ring-rose-200"
-                  required
-                />
-              </div>
-            )}
-
-            {/* General notes */}
-            <div className="space-y-1">
+            {/* General notes moved here from Section 3 */}
+            <div className="space-y-1 border-t border-[#333333] pt-3">
               <label className="text-xs font-medium text-slate-300">Загальна Примітка</label>
               <textarea
                 name="primitka"
@@ -714,8 +633,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
-          </div>
 
+          </div>
         </div>
 
       </div>

@@ -135,6 +135,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
     tel1: '',
     skype: '',
     d_narodjennya: '',
+    email: '',
     presviter: '',
     rayon2_ukr: hasSpecificRayonLock || '',
     id_rayon2: '',
@@ -512,6 +513,19 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-300">Е-мейл</label>
+            <input
+              type="email"
+              name="email"
+              disabled={!!isRestricted}
+              value={formData.email || ''}
+              onChange={handleChange}
+              placeholder="не вказ."
+              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-3">

@@ -735,7 +735,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
               {/* Standard contact specifications */}
               <div className="space-y-3">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest block border-b border-slate-50 pb-2">Адреса та Контакти</h4>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 text-xs text-slate-700">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4 text-xs text-slate-700">
                   <div className="space-y-1">
                     <div className="text-slate-400">Мобільний зв'язок:</div>
                     <div className="font-semibold flex items-center space-x-1.5">
@@ -750,6 +750,21 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <div className="space-y-1">
                     <div className="text-slate-400">Skype ID:</div>
                     <div className="font-mono">{member.skype ? member.skype : <span className="text-slate-400">не вказ.</span>}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-slate-400">Е-мейл:</div>
+                    <div className="font-semibold flex items-center space-x-1.5">
+                      <Mail className="h-3.5 w-3.5 text-slate-400" />
+                      <span>
+                        {member.email ? (
+                          <a href={`mailto:${member.email}`} className="text-teal-600 hover:underline">
+                            {member.email}
+                          </a>
+                        ) : (
+                          <span className="text-slate-400">не вказ.</span>
+                        )}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -82,6 +82,7 @@ export interface Member {
   tel_mob: string;
   tel1: string;
   skype: string;
+  email?: string;
   vik_rokiv1?: number; // age in years
   
   // Spiritual details

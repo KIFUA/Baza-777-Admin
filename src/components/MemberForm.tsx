@@ -312,7 +312,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               value={formData.pib}
               onChange={handleChange}
               placeholder="Прізвище Ім'я По-батькові"
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              style={{ width: '200.793px' }}
+              className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               required
             />
           </div>
@@ -325,7 +326,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               disabled={!!isRestricted}
               value={formData.d_narodjennya || ''}
               onChange={handleChange}
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              style={{ width: '100.793px' }}
+              className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
             />
           </div>
 
@@ -339,7 +341,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 value={formData.tel_mob || ''}
                 onChange={handleChange}
                 placeholder="067 XX XX XXX"
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                style={{ width: '115.575px' }}
+                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
 
@@ -352,7 +355,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 value={formData.tel1 || ''}
                 onChange={handleChange}
                 placeholder="Додатковий контакт"
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                style={{ width: '115.583px' }}
+                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
           </div>
@@ -364,7 +368,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 value={currentLabel}
                 onChange={(e) => handleMessengerLabelChange(e.target.value)}
                 disabled={!!isRestricted}
-                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 w-28 shrink-0"
+                style={{ width: '59.995px' }}
+                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 shrink-0"
               >
                 <option value="Telegram">Telegram</option>
                 <option value="Viber">Viber</option>
@@ -378,7 +383,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 value={currentHandle}
                 onChange={(e) => handleMessengerHandleChange(e.target.value)}
                 placeholder="@username або телефон"
-                className="flex-1 min-w-0 rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                style={{ width: '130.175px' }}
+                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
           </div>

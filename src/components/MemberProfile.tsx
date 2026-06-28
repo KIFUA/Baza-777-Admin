@@ -18,6 +18,14 @@ interface MemberProfileProps {
 export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToMember, lookups, onUpdateMember, isRestricted }: MemberProfileProps) {
   const [data, setData] = useState<MemberDetailExtended | null>(null);
   const [loading, setLoading] = useState(true);
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'дд.мм.рррр';
+    if (dateStr.includes('.')) return dateStr;
+    const [y, m, d] = dateStr.split('-');
+    if (!y || !m || !d) return dateStr;
+    return `${d}.${m}.${y}`;
+  };
+
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');
 
   const rawUser = localStorage.getItem("baza_current_session_user") || sessionStorage.getItem("baza_current_session_user");
@@ -319,7 +327,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                 {member.d_narodjennya && (
                   <span className="flex items-center space-x-1">
                     <Calendar className="h-3.5 w-3.5" />
-                    <span>{member.d_narodjennya} ({member.vik_rokiv1 || '?'} років)</span>
+                    <span>{formatDate(member.d_narodjennya)} ({member.vik_rokiv1 || '?'} років)</span>
                   </span>
                 )}
                 <span className="flex items-center space-x-1"><MapPin className="h-3.5 w-3.5" /><span>{member.rayon2_ukr || "Район не вказано"} | {member.n_dilyci || "Дільниця"}</span></span>
@@ -441,11 +449,11 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Водне хрещення:</span>
-                      <span>{member.d_vodnogo ? member.d_vodnogo : <span className="text-slate-400">дд.мм.рррр</span>}</span>
+                      <span>{formatDate(member.d_vodnogo)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Вступ у членство:</span>
-                      <span>{member.d_vstupu ? member.d_vstupu : <span className="text-slate-400">дд.мм.рррр</span>}</span>
+                      <span>{formatDate(member.d_vstupu)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Духовні дари (ХСД):</span>
@@ -766,6 +774,10 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                       </span>
                     </div>
                   </div>
+                  <div className="space-y-1">
+                    <div className="text-slate-400">Адреса:</div>
+                    <div className="font-medium">{member.address ? member.address : <span className="text-slate-400">не вказ.</span>}</div>
+                  </div>
                 </div>
               </div>
 
@@ -938,6 +950,11 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <Briefcase className="h-4 w-4" />
                   <span>Журнал духовних та церковних служінь</span>
                 </h4>
+                {member.insha_gromada && (
+                    <div className="bg-amber-50 p-2 rounded text-[10px] text-amber-900 border border-amber-200">
+                        <b>З іншої громади:</b> {member.insha_gromada}
+                    </div>
+                )}
                 {isUserAdmin && !isRestricted && (
                   <button
                     onClick={() => setShowAddMinistry(!showAddMinistry)}

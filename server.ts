@@ -1848,6 +1848,13 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "04_STRUCTURA/8_vidviduvanist": member.vidviduvanist || "",
     "04_STRUCTURA/9_prysutnist": member.prysutnist || "",
     "04_STRUCTURA/7_d_kontaktiv": member.d_kontaktiv || "",
+    "02_OSOBYSTE/address": member.address || "",
+    "02_OSOBYSTE/nas_punkt": member.nas_punkt || "",
+    "02_OSOBYSTE/vulitsya": member.vulitsya || "",
+    "02_OSOBYSTE/budynok": member.budynok || "",
+    "02_OSOBYSTE/korpus": member.korpus || "",
+    "02_OSOBYSTE/kvartyra": member.kvartyra || "",
+    "04_STRUCTURA/insha_gromada": member.insha_gromada || "",
     "04_STRUCTURA/d_kontaktiv": member.d_kontaktiv || "",
     "d_kontaktiv": member.d_kontaktiv || "",
     "05_ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
@@ -1901,7 +1908,8 @@ app.post("/api/members/:id", async (req, res) => {
   const fieldsToCheck: (keyof Member)[] = [
     "pib", "tel_mob", "s_osvita_ukr", "s_socialniy_ukr", "s_simeyniy_ukr", 
     "s_profesiya_ukr", "s_slujinnya_spysok", "zaklad_osv", "d_narodjennya", "presviter", 
-    "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "di_admin"
+    "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "di_admin",
+    "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada"
   ];
 
   fieldsToCheck.forEach(key => {
@@ -2305,10 +2313,16 @@ app.post("/api/members", async (req, res) => {
     d_vybuttya_excel: 0,
     vybutty_prymitka: "",
 
-    hvoryi: "",
-    insha_gromada: "",
-    primitka: "",
-    efile: true
+    hvoryi: String(newMemberData.hvoryi || "").trim(),
+    insha_gromada: String(newMemberData.insha_gromada || "").trim(),
+    primitka: String(newMemberData.primitka || "").trim(),
+    efile: true,
+    address: String(newMemberData.address || "").trim(),
+    nas_punkt: String(newMemberData.nas_punkt || "").trim(),
+    vulitsya: String(newMemberData.vulitsya || "").trim(),
+    budynok: String(newMemberData.budynok || "").trim(),
+    korpus: String(newMemberData.korpus || "").trim(),
+    kvartyra: String(newMemberData.kvartyra || "").trim()
   };
 
   members.push(newMember);

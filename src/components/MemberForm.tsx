@@ -2,6 +2,67 @@ import React, { useState, useEffect } from 'react';
 import { Member } from '../types';
 import { Save, X, Info } from 'lucide-react';
 
+const parseAddress = (addressStr: string | undefined | null) => {
+  const result = {
+    nas_punkt: '',
+    vulitsya: '',
+    budynok: '',
+    korpus: '',
+    kvartyra: ''
+  };
+
+  if (!addressStr) return result;
+
+  const str = String(addressStr).trim();
+  const parts = str.split(',').map(p => p.trim());
+
+  if (parts.length === 0) return result;
+
+  let currentPartIndex = 0;
+
+  // 1. Parse nas_punkt if the first part looks like city/village or contains typical prefixes
+  const first = parts[0];
+  if (/^(м\.|с\.|смт)\s+/i.test(first) || first.toLowerCase().includes('івано-франківськ')) {
+    result.nas_punkt = first;
+    currentPartIndex++;
+  }
+
+  // 2. Parse street (vulitsya)
+  if (currentPartIndex < parts.length) {
+    const second = parts[currentPartIndex];
+    result.vulitsya = second;
+    currentPartIndex++;
+  }
+
+  // 3. Parse house/building/apartment from remaining parts
+  for (let i = currentPartIndex; i < parts.length; i++) {
+    const p = parts[i];
+    const pLower = p.toLowerCase();
+    
+    // Check for kvartyra
+    if (pLower.startsWith('кв.') || pLower.includes('кв. ')) {
+      result.kvartyra = p.replace(/кв\.\s*/i, '').trim();
+    }
+    // Check for korpus
+    else if (pLower.includes('корп.')) {
+      const korpMatch = p.match(/корп\.\s*(.+)/i);
+      if (korpMatch) {
+        result.korpus = korpMatch[1].trim();
+      }
+      const budMatch = p.match(/^([^\s]+)\s+корп\./i);
+      if (budMatch) {
+        result.budynok = budMatch[1].trim();
+      }
+    }
+    // Else it might be budynok
+    else {
+      result.budynok = p.replace(/буд\.\s*/i, '').trim();
+    }
+  }
+
+  return result;
+};
+
 interface MemberFormProps {
   member: Member | null; // null for adding new member
   lookups: any;
@@ -68,6 +129,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
     s_osvita_ukr: 'н/д',
     id_profesiya: 41,
     s_profesiya_ukr: 'н/д',
+    sluj_uchast: '',
     zaklad_osv: '',
     tel_mob: '',
     tel1: '',
@@ -76,10 +138,9 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
     presviter: '',
     rayon2_ukr: hasSpecificRayonLock || '',
     id_rayon2: '',
-    n_dilyci: 'Дільниця №1',
-    id_dilnicya: '1',
+    n_dilyci: '',
+    id_dilnicya: '',
     vidpov_grupy: '',
-    d_pokayannya: '',
     d_vodnogo: '',
     hsd: false,
     d_vstupu: '',
@@ -91,14 +152,46 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
     vybutty_prymitka: '',
     hvoryi: '',
     insha_gromada: '',
-    primitka: ''
+    primitka: '',
+    nas_punkt: '',
+    vulitsya: '',
+    budynok: '',
+    korpus: '',
+    kvartyra: '',
+    d_shlyubu: '',
+    pib_partnera: '',
+    dity: ''
   });
 
   useEffect(() => {
     if (member) {
-      setFormData({ ...member });
+      const parsed = parseAddress(member.address);
+      setFormData({
+        ...member,
+        nas_punkt: member.nas_punkt || parsed.nas_punkt,
+        vulitsya: member.vulitsya || parsed.vulitsya,
+        budynok: member.budynok || parsed.budynok,
+        korpus: member.korpus || parsed.korpus,
+        kvartyra: member.kvartyra || parsed.kvartyra,
+        d_shlyubu: (member as any).d_shlyubu || '',
+        pib_partnera: (member as any).pib_partnera || '',
+        dity: (member as any).dity || '',
+        sluj_uchast: member.sluj_uchast || ''
+      });
     } else if (hasSpecificRayonLock) {
-      setFormData(prev => ({ ...prev, rayon2_ukr: hasSpecificRayonLock }));
+      setFormData(prev => ({
+        ...prev,
+        rayon2_ukr: hasSpecificRayonLock,
+        nas_punkt: '',
+        vulitsya: '',
+        budynok: '',
+        korpus: '',
+        kvartyra: '',
+        d_shlyubu: '',
+        pib_partnera: '',
+        dity: '',
+        sluj_uchast: ''
+      }));
     }
   }, [member, hasSpecificRayonLock]);
 
@@ -116,6 +209,28 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         (updated as any)[name] = checked;
       } else {
         (updated as any)[name] = value;
+      }
+
+      // Auto compile address if any address parts change
+      if (['nas_punkt', 'vulitsya', 'budynok', 'korpus', 'kvartyra'].includes(name)) {
+        const nas = name === 'nas_punkt' ? value : (prev.nas_punkt || '');
+        const vul = name === 'vulitsya' ? value : (prev.vulitsya || '');
+        const bud = name === 'budynok' ? value : (prev.budynok || '');
+        const korp = name === 'korpus' ? value : (prev.korpus || '');
+        const kv = name === 'kvartyra' ? value : (prev.kvartyra || '');
+
+        const parts = [];
+        if (nas.trim()) parts.push(nas.trim());
+        if (vul.trim()) parts.push(vul.trim());
+        
+        let bPart = '';
+        if (bud.trim()) bPart += bud.trim();
+        if (korp.trim()) bPart += ` корп. ${korp.trim()}`;
+        if (bPart) parts.push(bPart);
+        
+        if (kv.trim()) parts.push(`кв. ${kv.trim()}`);
+        
+        updated.address = parts.join(', ');
       }
 
       if (name === 'pib') {
@@ -244,6 +359,21 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
   const ministryOptions = (lookups?.directories?.slujinnya || fallbackMinistries).filter(Boolean);
 
+  const PARTICIPATION_MINISTRIES = [
+    "ГОСПОДАРСЬКЕ",
+    "ГРУПА ПОРЯДКУ",
+    "ДИТЯЧЕ",
+    "ЄВАНГЕЛІЗАЦІЙНЕ",
+    "ЖІНОЧЕ",
+    "МЕДІА",
+    "МИЛОСЕРДЯ",
+    "МОЛИТОВНЕ",
+    "МОЛОДІЖНЕ",
+    "МУЗИЧНЕ",
+    "ПРОПВІДІ",
+    "СОЦІАЛЬНЕ"
+  ];
+
   const skypeString = formData.skype || '';
   let currentLabel = 'Telegram';
   let currentHandle = skypeString;
@@ -301,7 +431,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         
         {/* SECTION 1: Personal info */}
         <div className="space-y-4 rounded-xl border border-[#333333] bg-[#1a1a1a] p-5 shadow-sm text-slate-100">
-          <h3 className="text-sm font-bold text-[#387d7a] uppercase tracking-wider">1. Персональні дані</h3>
+          <h3 className="text-sm font-bold text-[#387d7a] uppercase tracking-wider">1. ПЕРСОНАЛЬНІ ДАНІ</h3>
           
           <div className="space-y-1">
             <label className="text-xs font-medium text-slate-300">Повне ПІБ *</label>
@@ -309,11 +439,10 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               type="text"
               name="pib"
               disabled={!!isRestricted}
-              value={formData.pib}
+              value={formData.pib || ''}
               onChange={handleChange}
-              placeholder="Прізвище Ім'я По-батькові"
-              style={{ width: '200.793px' }}
-              className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              placeholder="не вказ."
+              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               required
             />
           </div>
@@ -326,37 +455,35 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               disabled={!!isRestricted}
               value={formData.d_narodjennya || ''}
               onChange={handleChange}
-              style={{ width: '100.793px' }}
-              className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              placeholder="дд.мм.рррр"
+              className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_narodjennya ? 'text-slate-400 font-normal' : 'text-white'}`}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Мобільний телефон</label>
+              <label className="text-xs font-medium text-slate-300">№ тел.</label>
               <input
                 type="text"
                 name="tel_mob"
                 disabled={!!isRestricted}
                 value={formData.tel_mob || ''}
                 onChange={handleChange}
-                placeholder="067 XX XX XXX"
-                style={{ width: '115.575px' }}
-                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Додатковий тел.</label>
+              <label className="text-xs font-medium text-slate-300">Дод. тел.</label>
               <input
                 type="text"
                 name="tel1"
                 disabled={!!isRestricted}
                 value={formData.tel1 || ''}
                 onChange={handleChange}
-                placeholder="Додатковий контакт"
-                style={{ width: '115.583px' }}
-                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
           </div>
@@ -368,8 +495,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 value={currentLabel}
                 onChange={(e) => handleMessengerLabelChange(e.target.value)}
                 disabled={!!isRestricted}
-                style={{ width: '59.995px' }}
-                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 shrink-0"
+                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 shrink-0 w-24"
               >
                 <option value="Telegram">Telegram</option>
                 <option value="Viber">Viber</option>
@@ -382,75 +508,209 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 disabled={!!isRestricted}
                 value={currentHandle}
                 onChange={(e) => handleMessengerHandleChange(e.target.value)}
-                placeholder="@username або телефон"
-                style={{ width: '130.175px' }}
-                className="rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Освіта</label>
-            <select
-              name="id_osvita"
-              disabled={!!isRestricted}
-              value={formData.id_osvita}
-              onChange={handleChange}
-              className="w-fit min-w-[160px] max-w-full block rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-            >
-              {lookups?.osvita?.map((o: any) => (
-                <option key={o.ID} value={o.ID}>{o.Value}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Освіта</label>
+              <select
+                name="id_osvita"
+                disabled={!!isRestricted}
+                value={formData.id_osvita || ''}
+                onChange={handleChange}
+                className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${(!formData.id_osvita || formData.id_osvita === 0 || String(formData.id_osvita) === '0' || String(formData.id_osvita) === '4') ? 'text-slate-400 font-normal' : 'text-white'}`}
+              >
+                <option value="" className="text-slate-400">не вказ.</option>
+                {lookups?.osvita?.map((o: any) => (
+                  <option key={o.ID} value={o.ID} className="text-white font-semibold">{o.Value}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Соц. стан</label>
+              <select
+                name="id_socialniy"
+                disabled={!!isRestricted}
+                value={formData.id_socialniy || ''}
+                onChange={handleChange}
+                className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${(!formData.id_socialniy || formData.id_socialniy === 0 || String(formData.id_socialniy) === '0' || String(formData.id_socialniy) === '6') ? 'text-slate-400 font-normal' : 'text-white'}`}
+              >
+                <option value="" className="text-slate-400">не вказ.</option>
+                {lookups?.socialniy?.map((s: any) => (
+                  <option key={s.ID} value={s.ID} className="text-white font-semibold">{s.Value}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Професія</label>
+              <select
+                name="id_profesiya"
+                disabled={!!isRestricted}
+                value={formData.id_profesiya || ''}
+                onChange={handleChange}
+                className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${(!formData.id_profesiya || formData.id_profesiya === 0 || String(formData.id_profesiya) === '0' || String(formData.id_profesiya) === '41') ? 'text-slate-400 font-normal' : 'text-white'}`}
+              >
+                <option value="" className="text-slate-400">не вказ.</option>
+                {lookups?.profesiya?.map((p: any) => (
+                  <option key={p.ID} value={p.ID} className="text-white font-semibold">{p.Value}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Професія</label>
-            <select
-              name="id_profesiya"
-              disabled={!!isRestricted}
-              value={formData.id_profesiya}
-              onChange={handleChange}
-              className="w-fit min-w-[160px] max-w-full block rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-            >
-              {lookups?.profesiya?.map((p: any) => (
-                <option key={p.ID} value={p.ID}>{p.Value}</option>
-              ))}
-            </select>
-          </div>
+          {/* Marital status logic */}
+          {(() => {
+            const statusStr = String(formData.s_simeyniy_ukr || '').toLowerCase();
+            const isMarried = statusStr.includes('одруж') || statusStr.includes('заміж');
+            
+            return (
+              <div className="space-y-4">
+                <div className={isMarried ? "grid grid-cols-2 gap-4" : "w-full"}>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-300">Сім. стан</label>
+                    <select
+                      name="id_simeyniy"
+                      disabled={!!isRestricted}
+                      value={formData.id_simeyniy || ''}
+                      onChange={handleChange}
+                      className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${(!formData.id_simeyniy || formData.id_simeyniy === 0 || String(formData.id_simeyniy) === '0' || String(formData.id_simeyniy) === '5') ? 'text-slate-400 font-normal' : 'text-white'}`}
+                    >
+                      <option value="" className="text-slate-400">не вказ.</option>
+                      {lookups?.simeyniy?.map((s: any) => (
+                        <option key={s.ID} value={s.ID} className="text-white font-semibold">{s.Value}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {isMarried && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-slate-300">Дата шлюбу</label>
+                      <input
+                        type="date"
+                        name="d_shlyubu"
+                        disabled={!!isRestricted}
+                        value={formData.d_shlyubu || ''}
+                        onChange={handleChange}
+                        placeholder="дд.мм.рррр"
+                        className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_shlyubu ? 'text-slate-400 font-normal' : 'text-white'}`}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {isMarried && (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-slate-300">ПІБ партнера</label>
+                    <input
+                      type="text"
+                      name="pib_partnera"
+                      disabled={!!isRestricted}
+                      value={formData.pib_partnera || ''}
+                      onChange={handleChange}
+                      placeholder="не вказ."
+                      className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Сімейний стан</label>
-            <select
-              name="id_simeyniy"
+            <label className="text-xs font-medium text-slate-300">Діти</label>
+            <input
+              type="text"
+              name="dity"
               disabled={!!isRestricted}
-              value={formData.id_simeyniy}
+              value={formData.dity || ''}
               onChange={handleChange}
-              className="w-fit min-w-[160px] max-w-full block rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-            >
-              {lookups?.simeyniy?.map((s: any) => (
-                <option key={s.ID} value={s.ID}>{s.Value}</option>
-              ))}
-            </select>
+              placeholder="не вказ."
+              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+            />
           </div>
-        </div>
 
-        {/* SECTION 2: Spiritual life, caregiver & area */}
-        <div className="space-y-4 rounded-xl border border-[#333333] bg-[#1a1a1a] p-5 shadow-sm text-slate-100">
-          <h3 className="text-sm font-bold text-[#387d7a] uppercase tracking-wider">2. Духовне служіння й Адреса</h3>
-          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Дата покаяння</label>
+              <label className="text-xs font-medium text-slate-300">Нас. пункт</label>
               <input
-                type="date"
-                name="d_pokayannya"
-                value={formData.d_pokayannya || ''}
+                type="text"
+                name="nas_punkt"
+                disabled={!!isRestricted}
+                value={formData.nas_punkt || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
 
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Вулиця</label>
+              <input
+                type="text"
+                name="vulitsya"
+                disabled={!!isRestricted}
+                value={formData.vulitsya || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Буд.</label>
+              <input
+                type="text"
+                name="budynok"
+                disabled={!!isRestricted}
+                value={formData.budynok || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Корп.</label>
+              <input
+                type="text"
+                name="korpus"
+                disabled={!!isRestricted}
+                value={formData.korpus || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-300">Кв.</label>
+              <input
+                type="text"
+                name="kvartyra"
+                disabled={!!isRestricted}
+                value={formData.kvartyra || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+          </div>
+
+        </div>
+
+        {/* SECTION 2: Church info */}
+        <div className="space-y-4 rounded-xl border border-[#333333] bg-[#1a1a1a] p-5 shadow-sm text-slate-100">
+          <h3 className="text-sm font-bold text-[#387d7a] uppercase tracking-wider">2. ЦЕРКВА</h3>
+          
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-300">Дата В.Х.</label>
               <input
@@ -458,147 +718,160 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 name="d_vodnogo"
                 value={formData.d_vodnogo || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                placeholder="дд.мм.рррр"
+                className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vodnogo ? 'text-slate-400 font-normal' : 'text-white'}`}
               />
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4 pt-1">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Дата прийняття в члени</label>
+              <label className="text-xs font-medium text-slate-300">Дата прийн. в чл.</label>
               <input
                 type="date"
                 name="d_vstupu"
                 value={formData.d_vstupu || ''}
                 onChange={handleChange}
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                placeholder="дд.мм.рррр"
+                className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vstupu ? 'text-slate-400 font-normal' : 'text-white'}`}
               />
-            </div>
-            
-            <div className="flex items-center space-x-2 pt-6">
-              <input
-                type="checkbox"
-                id="hsd"
-                name="hsd"
-                checked={!!formData.hsd}
-                onChange={handleChange}
-                className="h-4 w-4 rounded border-[#333333] bg-[#262626] text-[#387d7a] focus:ring-[#387d7a]"
-              />
-              <label htmlFor="hsd" className="text-xs font-semibold text-slate-300 select-none">
-                Хр. С.Д.
-              </label>
             </div>
           </div>
 
+          {(() => {
+            const showInshaGromada = formData.d_vodnogo && formData.d_vstupu && formData.d_vodnogo !== formData.d_vstupu;
+            
+            return (
+              <div className="grid grid-cols-2 gap-4 items-center">
+                <div className="flex items-center space-x-2 pt-2">
+                  <input
+                    type="checkbox"
+                    id="hsd"
+                    name="hsd"
+                    checked={!!formData.hsd}
+                    onChange={handleChange}
+                    className="h-4 w-4 rounded border-[#333333] bg-[#262626] text-[#387d7a] focus:ring-[#387d7a]"
+                  />
+                  <label htmlFor="hsd" className="text-xs font-semibold text-slate-300 select-none">
+                    Хр. С.Д.
+                  </label>
+                </div>
+
+                {showInshaGromada && (
+                  <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-medium text-slate-300">З інш. гром.</label>
+                    <input
+                      type="text"
+                      name="insha_gromada"
+                      value={formData.insha_gromada || ''}
+                      onChange={handleChange}
+                      placeholder="не вказ."
+                      className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <div className="border-t border-[#333333] pt-3 space-y-4">
-            {/* РАЙОН СТРУКТУРИ - Перенесено перед Опікун */}
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Район структури</label>
-              {hasSpecificRayonLock ? (
-                <div className="w-full rounded-lg border border-[#387d7a]/30 bg-[#387d7a]/10 p-2 text-xs font-bold text-teal-400">
-                  {hasSpecificRayonLock}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+              {/* Left Column: Rayon and Caregiver */}
+              <div className="md:col-span-5 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-slate-300">Район структури</label>
+                  {hasSpecificRayonLock ? (
+                    <div className="w-full rounded-lg border border-[#387d7a]/30 bg-[#387d7a]/10 p-2 text-xs font-bold text-teal-400">
+                      {hasSpecificRayonLock}
+                    </div>
+                  ) : (
+                    <select
+                      name="rayon2_ukr"
+                      value={formData.rayon2_ukr || ''}
+                      onChange={handleChange}
+                      className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.rayon2_ukr ? 'text-slate-400 font-normal' : 'text-white'}`}
+                    >
+                      <option value="" className="text-slate-400">не вказ.</option>
+                      {STRUCTURAL_AREAS.map(a => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
-              ) : (
-                <select
-                  name="rayon2_ukr"
-                  value={formData.rayon2_ukr || ''}
-                  onChange={handleChange}
-                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-                >
-                  <option value="">Не вказано</option>
-                  {STRUCTURAL_AREAS.map(a => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              )}
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300">Опікун (Призначений служитель)</label>
-              <select
-                name="presviter"
-                value={formData.presviter || ''}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              >
-                <option value="">-- Оберіть опікуна --</option>
-                {caregiversList.map((c: string) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-              <p className="text-[10px] text-slate-400">Розподіл опікунів, призначених пресвітерами з числа служителів нашої єдиної церковної громади (ст. пастор, пресвітери, диякони, відповідальні за служіння).</p>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300 block font-bold">Служіння, в яких може брати участь</label>
-              {levelNum <= 3 ? (
-                <div className="border border-[#333333] rounded-lg p-2.5 bg-[#262626] max-h-40 overflow-y-auto space-y-1.5 balance-scroll text-white">
-                  {(() => {
-                    const selectedList = formData.s_slujinnya_spysok 
-                      ? formData.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
-                      : [];
-                    if (selectedList.length === 0) {
-                      return <span className="text-slate-500 italic text-xs">Служінь не вибрано</span>;
-                    }
-                    return selectedList.map((opt) => (
-                      <div key={opt} className="flex items-center gap-2 text-xs font-bold text-[#387d7a] bg-[#387d7a]/10 rounded px-2 py-1 border border-[#387d7a]/30">
-                        <span>• {opt}</span>
-                      </div>
-                    ));
-                  })()}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300 block">Опікун (Призначений служитель)</label>
+                  <select
+                    name="presviter"
+                    value={formData.presviter || ''}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.presviter ? 'text-slate-400 font-normal' : 'text-white'}`}
+                  >
+                    <option value="" className="text-slate-400">не вказ.</option>
+                    {caregiversList.map((c: string) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                <div className="border border-[#333333] rounded-lg p-2.5 bg-[#262626] max-h-40 overflow-y-auto space-y-1.5 balance-scroll text-white">
-                  {ministryOptions.map((opt) => {
-                    const selectedList = formData.s_slujinnya_spysok 
-                      ? formData.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
-                      : [];
-                    const isChecked = selectedList.includes(opt);
-                    return (
-                      <label 
-                        key={opt} 
-                        className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white font-bold"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            let newList;
-                            if (e.target.checked) {
-                              newList = [...selectedList, opt];
-                            } else {
-                              newList = selectedList.filter(item => item !== opt);
-                            }
-                            const sortedNewList = ministryOptions.filter(o => newList.includes(o));
-                            setFormData(prev => ({
-                              ...prev,
-                              s_slujinnya_spysok: sortedNewList.join(', ')
-                            }));
-                          }}
-                          className="h-3.5 w-3.5 rounded border-[#333333] bg-[#1a1a1a] text-[#387d7a] focus:ring-[#387d7a] cursor-pointer"
-                        />
-                        <span className={isChecked ? 'font-bold text-[#387d7a] border-b border-[#387d7a]/30' : ''}>{opt}</span>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-              {levelNum > 3 && (
-                <p className="text-[10px] text-slate-400">Швидкий вибір активних служінь для списку (синхронізується з колонкою "СЛУЖІННЯ" в таблиці та базою даних).</p>
-              )}
-            </div>
+              </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300">Дати контактів</label>
-              <input
-                type="text"
-                name="d_kontaktiv"
-                value={formData.d_kontaktiv || ''}
-                onChange={handleChange}
-                placeholder="напр. 25.03.26 / 17.10.25"
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
-              <p className="text-[10px] text-slate-400">Дати духовних та опікунських бесіди з пресвітерами (відображається в таблиці та картках).</p>
+              {/* Right Column: Ministry List */}
+              <div className="md:col-span-7 space-y-1">
+                <label className="text-xs font-semibold text-slate-300 block font-bold">Служіння, в яких може брати участь</label>
+                {levelNum <= 3 ? (
+                  <div className="border border-[#333333] rounded-lg p-2.5 bg-[#262626] h-[116px] overflow-y-auto space-y-1.5 balance-scroll text-white">
+                    {(() => {
+                      const selectedList = formData.sluj_uchast 
+                        ? formData.sluj_uchast.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                        : [];
+                      if (selectedList.length === 0) {
+                        return <span className="text-slate-500 italic text-xs">Служінь не вибрано</span>;
+                      }
+                      return selectedList.map((opt) => (
+                        <div key={opt} className="flex items-center gap-2 text-xs font-bold text-[#387d7a] bg-[#387d7a]/10 rounded px-2 py-1 border border-[#387d7a]/30">
+                          <span>• {opt}</span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                ) : (
+                  <div className="border border-[#333333] rounded-lg p-2.5 bg-[#262626] h-[116px] overflow-y-auto space-y-1.5 balance-scroll text-white">
+                    {PARTICIPATION_MINISTRIES.map((opt) => {
+                      const selectedList = formData.sluj_uchast 
+                        ? formData.sluj_uchast.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                        : [];
+                      const isChecked = selectedList.includes(opt);
+                      return (
+                        <label 
+                          key={opt} 
+                          className="flex items-center gap-2 cursor-pointer select-none text-xs text-slate-300 hover:text-white font-bold"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              let newList;
+                              if (e.target.checked) {
+                                newList = [...selectedList, opt];
+                              } else {
+                                newList = selectedList.filter(item => item !== opt);
+                              }
+                              const sortedNewList = PARTICIPATION_MINISTRIES.filter(o => newList.includes(o));
+                              setFormData(prev => ({
+                                ...prev,
+                                sluj_uchast: sortedNewList.join(', ')
+                              }));
+                            }}
+                            className="h-3.5 w-3.5 rounded border-[#333333] bg-[#1a1a1a] text-[#387d7a] focus:ring-[#387d7a] cursor-pointer"
+                          />
+                          <span className={isChecked ? 'font-bold text-[#387d7a] border-b border-[#387d7a]/30' : ''}>{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {levelNum > 3 && (
+                  <p className="text-[10px] text-slate-400">Швидкий вибір активних служінь для списку.</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -609,32 +882,32 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                   name="n_dilyci"
                   value={formData.n_dilyci || ''}
                   onChange={handleChange}
-                  placeholder="напр. Дільниця №1"
+                  placeholder="не вказ."
                   className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-slate-300">Відповідальний за групу</label>
+                <label className="text-xs font-medium text-slate-300">Відповідальний</label>
                 <input
                   type="text"
                   name="vidpov_grupy"
                   value={formData.vidpov_grupy || ''}
                   onChange={handleChange}
-                  placeholder="Керівник дільниці"
+                  placeholder="не вказ."
                   className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
                 />
               </div>
             </div>
 
-            {/* General notes moved here from Section 3 */}
+            {/* General notes */}
             <div className="space-y-1 border-t border-[#333333] pt-3">
-              <label className="text-xs font-medium text-slate-300">Загальна Примітка</label>
+              <label className="text-xs font-medium text-slate-300">Загальна примітка</label>
               <textarea
                 name="primitka"
                 value={formData.primitka || ''}
                 onChange={handleChange}
-                placeholder="Будь-які інші архівні замітки про цього члена церкви..."
+                placeholder="не вказ."
                 rows={3}
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />

@@ -119,6 +119,15 @@ export interface Member {
   di_admin?: string;
   efile?: boolean | number;
   address?: string;
+  nas_punkt?: string;
+  vulitsya?: string;
+  budynok?: string;
+  korpus?: string;
+  kvartyra?: string;
+  d_shlyubu?: string;
+  pib_partnera?: string;
+  dity?: string;
+  sluj_uchast?: string;
 }
 
 export interface MemberDetailExtended {

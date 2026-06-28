@@ -37,6 +37,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const [showMinistrySelect, setShowMinistrySelect] = useState(false);
+  const [showPotentialSelect, setShowPotentialSelect] = useState(false);
 
   const caregivers = lookups?.directories?.opika || [
     "Бевзюк В.", "Бурчак Ю.", "Галюк Б.", "Дмитраш М.", "Євстратов О.", 
@@ -83,6 +84,21 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   ];
 
   const ministryOptions = (lookups?.directories?.slujinnya || fallbackMinistries).filter(Boolean);
+
+  const PARTICIPATION_MINISTRIES = [
+    "ГОСПОДАРСЬКЕ",
+    "ГРУПА ПОРЯДКУ",
+    "ДИТЯЧЕ",
+    "ЄВАНГЕЛІЗАЦІЙНЕ",
+    "ЖІНОЧЕ",
+    "МЕДІА",
+    "МИЛОСЕРДЯ",
+    "МОЛИТОВНЕ",
+    "МОЛОДІЖНЕ",
+    "МУЗИЧНЕ",
+    "ПРОПВІДІ",
+    "СОЦІАЛЬНЕ"
+  ];
 
   // Input forms states for adding new timeline logs
   const [showAddChild, setShowAddChild] = useState(false);
@@ -421,15 +437,15 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <div className="space-y-3 font-medium text-xs text-slate-700">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Покаяння:</span>
-                      <span>{member.d_pokayannya || "не вказано"}</span>
+                      <span>{member.d_pokayannya ? member.d_pokayannya : <span className="text-slate-400">дд.мм.рррр</span>}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Водне хрещення:</span>
-                      <span>{member.d_vodnogo || "не вказано"}</span>
+                      <span>{member.d_vodnogo ? member.d_vodnogo : <span className="text-slate-400">дд.мм.рррр</span>}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Вступ у членство:</span>
-                      <span>{member.d_vstupu || "не вказано"}</span>
+                      <span>{member.d_vstupu ? member.d_vstupu : <span className="text-slate-400">дд.мм.рррр</span>}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Духовні дари (ХСД):</span>
@@ -455,21 +471,21 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           await handleFieldUpdate('presviter', val);
                         }}
                         disabled={!isUserAdmin || isRestricted}
-                        className={`font-bold text-blue-800 bg-white border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] text-[11px] ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                        className={`font-bold border border-slate-200 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] text-[11px] ${!member.presviter ? 'text-slate-400 bg-white font-normal' : 'text-blue-800 bg-white'} ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                       >
-                        <option value="">-- не встановлено --</option>
+                        <option value="" className="text-slate-400">не вказ.</option>
                         {caregivers.map((c: string) => (
-                          <option key={c} value={c}>{c}</option>
+                          <option key={c} value={c} className="text-slate-800 font-semibold">{c}</option>
                         ))}
                       </select>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Сектор / Дільниця:</span>
-                      <span>{member.n_dilyci || "Дільниця №1"}</span>
+                      <span>{member.n_dilyci ? member.n_dilyci : <span className="text-slate-400">не вказ.</span>}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Староста / Керівник групи:</span>
-                      <span>{member.vidpov_grupy || "не вказано"}</span>
+                      <span>{member.vidpov_grupy ? member.vidpov_grupy : <span className="text-slate-400">не вказ.</span>}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">Район громади:</span>
@@ -480,11 +496,11 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           await handleFieldUpdate('rayon2_ukr', val);
                         }}
                         disabled={!isUserAdmin || isRestricted}
-                        className={`px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold uppercase text-[10px] border border-blue-200/50 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                        className={`px-2 py-0.5 rounded text-[10px] border focus:outline-none focus:border-blue-500 cursor-pointer max-w-[180px] ${!member.rayon2_ukr ? 'bg-white border-slate-200 text-slate-400 font-normal' : 'bg-blue-50 text-blue-700 font-bold uppercase border-blue-200/50'} ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
                       >
-                        <option value="">Не вказано</option>
+                        <option value="" className="text-slate-400">не вказ.</option>
                         {rayonOptions.map((r: string) => (
-                          <option key={r} value={r}>{r}</option>
+                          <option key={r} value={r} className="text-slate-800 font-semibold">{r}</option>
                         ))}
                       </select>
                     </div>
@@ -590,6 +606,79 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         </div>
                       )}
                     </div>
+
+                    {/* СЛУЖІННЯ, В ЯКИХ МОЖЕ БРАТИ УЧАСТЬ Block */}
+                    <div className="border-t border-slate-200 pt-3 mt-3">
+                      <div className="flex items-center justify-between gap-2 cursor-pointer" onClick={() => setShowPotentialSelect(!showPotentialSelect)}>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-400">
+                             {showPotentialSelect ? '▼' : '▶'}
+                          </span>
+                          <span className="text-slate-700 font-bold text-[11px]">Може брати участь:</span>
+                        </div>
+                        {isUserAdmin && !isRestricted && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowPotentialSelect(!showPotentialSelect);
+                            }}
+                            className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 font-extrabold text-[10px] border border-amber-200 hover:bg-amber-100 transition-colors uppercase outline-none"
+                          >
+                            {showPotentialSelect ? "Згорнути ✕" : "Змінити ✎"}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="mt-2 text-slate-800 font-semibold text-[11px] leading-relaxed">
+                        {member.sluj_uchast ? (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {member.sluj_uchast.split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(term => (
+                              <span key={term} className="inline-block bg-amber-50 text-amber-800 border border-amber-100/80 rounded px-1.5 py-0.5 text-[9.5px] font-bold">
+                                {term}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Служінь не вибрано</span>
+                        )}
+
+                        {showPotentialSelect && isUserAdmin && !isRestricted && (
+                          <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
+                            {PARTICIPATION_MINISTRIES.map((opt) => {
+                              const selectedList = member.sluj_uchast 
+                                ? member.sluj_uchast.split(/[,;]+/).map(s => s.trim()).filter(Boolean) 
+                                : [];
+                              const isChecked = selectedList.includes(opt);
+                              return (
+                                <label 
+                                  key={opt} 
+                                  className="flex items-center gap-2 py-0.5 px-1 cursor-pointer rounded hover:bg-slate-50 select-none text-[10.5px] font-semibold text-slate-700"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={async (e) => {
+                                      let newList;
+                                      if (e.target.checked) {
+                                        newList = [...selectedList, opt];
+                                      } else {
+                                        newList = selectedList.filter(item => item !== opt);
+                                      }
+                                      const sortedNewList = PARTICIPATION_MINISTRIES.filter(o => newList.includes(o));
+                                      const valString = sortedNewList.join(', ');
+                                      await handleFieldUpdate('sluj_uchast', valString);
+                                    }}
+                                    className="h-3 w-3 rounded border-slate-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                  />
+                                  <span className={isChecked ? 'text-amber-950 font-extrabold' : ''}>{opt}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -611,11 +700,11 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         await handleFieldUpdate('vidviduvanist', val);
                       }}
                       disabled={!isUserAdmin || isRestricted}
-                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 cursor-pointer ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                      className={`font-bold text-xs w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-blue-500 cursor-pointer ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""} ${!member.vidviduvanist ? 'text-slate-400 font-normal' : 'text-slate-700'}`}
                     >
-                      <option value="">-- не внесено --</option>
+                      <option value="" className="text-slate-400">не вказ.</option>
                       {vidviduvanistOptions.map((o: string) => (
-                        <option key={o} value={o}>{o}</option>
+                        <option key={o} value={o} className="text-slate-700 font-semibold">{o}</option>
                       ))}
                     </select>
                   </div>
@@ -632,11 +721,11 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         await handleFieldUpdate('prysutnist', val);
                       }}
                       disabled={!isUserAdmin || isRestricted}
-                      className={`font-bold text-xs text-slate-700 w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-emerald-500 cursor-pointer ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""}`}
+                      className={`font-bold text-xs w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 focus:outline-none focus:border-emerald-500 cursor-pointer ${(!isUserAdmin || isRestricted) ? "opacity-70 !cursor-not-allowed bg-slate-100" : ""} ${!member.prysutnist ? 'text-slate-400 font-normal' : 'text-slate-700'}`}
                     >
-                      <option value="">-- не внесено --</option>
+                      <option value="" className="text-slate-400">не вказ.</option>
                       {prysutnistOptions.map((o: string) => (
-                        <option key={o} value={o}>{o}</option>
+                        <option key={o} value={o} className="text-slate-700 font-semibold">{o}</option>
                       ))}
                     </select>
                   </div>
@@ -649,15 +738,18 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 text-xs text-slate-700">
                   <div className="space-y-1">
                     <div className="text-slate-400">Мобільний зв'язок:</div>
-                    <div className="font-semibold flex items-center space-x-1.5"><Phone className="h-3.5 w-3.5 text-slate-400" /><span>{member.tel_mob || "не вказано"}</span></div>
+                    <div className="font-semibold flex items-center space-x-1.5">
+                      <Phone className="h-3.5 w-3.5 text-slate-400" />
+                      <span>{member.tel_mob ? member.tel_mob : <span className="text-slate-400">не вказ.</span>}</span>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-slate-400">Додатковий зв'язок:</div>
-                    <div className="font-medium">{member.tel1 || "не має"}</div>
+                    <div className="font-medium">{member.tel1 ? member.tel1 : <span className="text-slate-400">не вказ.</span>}</div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-slate-400">Skype ID:</div>
-                    <div className="font-mono">{member.skype || "—"}</div>
+                    <div className="font-mono">{member.skype ? member.skype : <span className="text-slate-400">не вказ.</span>}</div>
                   </div>
                 </div>
               </div>
@@ -668,11 +760,19 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 text-xs text-slate-700">
                   <div className="space-y-1">
                     <div className="text-slate-400 font-medium">Освіта / Заклад:</div>
-                    <div className="font-semibold">{member.s_osvita_ukr} {member.zaklad_osv ? `(${member.zaklad_osv})` : ''}</div>
+                    <div className="font-semibold">
+                      {member.s_osvita_ukr ? (
+                        <span>{member.s_osvita_ukr} {member.zaklad_osv ? `(${member.zaklad_osv})` : ''}</span>
+                      ) : (
+                        <span className="text-slate-400">не вказ.</span>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-slate-400 font-medium">Професійна діяльність:</div>
-                    <div className="font-semibold capitalize">{member.s_profesiya_ukr || "н/д або безробітний"}</div>
+                    <div className="font-semibold capitalize">
+                      {member.s_profesiya_ukr ? member.s_profesiya_ukr : <span className="text-slate-400">не вказ.</span>}
+                    </div>
                   </div>
                 </div>
               </div>

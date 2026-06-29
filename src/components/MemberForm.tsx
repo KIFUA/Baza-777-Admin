@@ -449,20 +449,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">E-mail</label>
-            <input
-              type="email"
-              name="email"
-              disabled={!!isRestricted}
-              value={formData.email || ''}
-              onChange={handleChange}
-              placeholder="не вказ."
-              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-slate-300">Дата народж.</label>
+            <label className="block text-xs font-medium text-slate-300 mb-1">Дата народж.</label>
             <input
               type="date"
               name="d_narodjennya"
@@ -470,13 +457,13 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               value={formData.d_narodjennya || ''}
               onChange={handleChange}
               placeholder="дд.мм.рррр"
-              className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_narodjennya ? 'text-slate-400 font-normal' : 'text-white'}`}
+              className={`w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_narodjennya ? 'text-slate-400 font-normal' : 'text-white'}`}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">№ тел.</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">№ тел.</label>
               <input
                 type="text"
                 name="tel_mob"
@@ -489,7 +476,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Дод. тел.</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Дод. тел.</label>
               <input
                 type="text"
                 name="tel1"
@@ -501,29 +488,136 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               />
             </div>
           </div>
-          
-          {/* Address fields */}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Нас. пункт</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">E-mail</label>
               <input
-                type="text"
-                name="nas_punkt"
+                type="email"
+                name="email"
                 disabled={!!isRestricted}
-                value={formData.nas_punkt || ''}
+                value={formData.email || ''}
                 onChange={handleChange}
                 placeholder="не вказ."
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
-
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Вулиця</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Месенджери</label>
+              <div className="flex gap-1.5">
+                <select
+                  value={currentLabel}
+                  onChange={(e) => handleMessengerLabelChange(e.target.value)}
+                  disabled={!!isRestricted}
+                  className="w-1/3 rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                >
+                  <option value="Telegram">Telegram</option>
+                  <option value="Viber">Viber</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Skype">Skype</option>
+                  <option value="Інше">Інше</option>
+                </select>
+                <input
+                  type="text"
+                  value={currentHandle}
+                  onChange={(e) => handleMessengerHandleChange(e.target.value)}
+                  disabled={!!isRestricted}
+                  placeholder="не вказ."
+                  className="w-2/3 rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                />
+              </div>
+            </div>
+          </div>
+          
+          
+          {/* Marital status block - ANKETA style */}
+          <div className="rounded-xl border border-[#333333] p-4 bg-[#1a1a1a] shadow-sm space-y-4">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-[#333333] pb-2 flex items-center space-x-1.5">
+              <span>Сім'я</span>
+            </h4>
+            {(() => {
+              const simeyniyLookup = lookups?.simeyniy?.find((s: any) => String(s.ID) === String(formData.id_simeyniy));
+              const statusStr = String(simeyniyLookup?.Value || formData.s_simeyniy_ukr || '').toLowerCase();
+              const isMarried = statusStr.includes('одруж') || statusStr.includes('заміж') || statusStr.includes('одр');
+              
+              return (
+                <div className="space-y-4">
+                  <div className={isMarried ? "grid grid-cols-2 gap-4" : "w-full"}>
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-slate-300 mb-1">Сім. стан</label>
+                      <select
+                        name="id_simeyniy"
+                        disabled={!!isRestricted}
+                        value={formData.id_simeyniy || ''}
+                        onChange={handleChange}
+                        className={`w-32 rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${(!formData.id_simeyniy || formData.id_simeyniy === 0 || String(formData.id_simeyniy) === '0' || String(formData.id_simeyniy) === '5') ? 'text-slate-400 font-normal' : 'text-white'}`}
+                      >
+                        <option value="" className="text-slate-400">не вказ.</option>
+                        {lookups?.simeyniy?.map((s: any) => (
+                          <option key={s.ID} value={s.ID} className="text-white font-semibold">{s.Value}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {isMarried && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-slate-300 mb-1">Дата шлюбу</label>
+                        <input
+                          type="date"
+                          name="d_shlyubu"
+                          disabled={!!isRestricted}
+                          value={formData.d_shlyubu || ''}
+                          onChange={handleChange}
+                          placeholder="дд.мм.рррр"
+                          className={`w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_shlyubu ? 'text-slate-400 font-normal' : 'text-white'}`}
+                        />
+                      </div>
+                    )}
+                    {isMarried && (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-slate-300 mb-1">К-ть років</label>
+                        <div className="w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold text-white">
+                          {(() => {
+                            if (!formData.d_shlyubu) return '---';
+                            const birthDate = new Date(formData.d_shlyubu);
+                            const today = new Date();
+                            let years = today.getFullYear() - birthDate.getFullYear();
+                            const monthDiff = today.getMonth() - birthDate.getMonth();
+                            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                              years--;
+                            }
+                            return years >= 0 ? years : 0;
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {isMarried && (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-slate-300 mb-1">ПІБ партнера</label>
+                      <input
+                        type="text"
+                        name="pib_partnera"
+                        disabled={!!isRestricted}
+                        value={formData.pib_partnera || ''}
+                        onChange={handleChange}
+                        placeholder="не вказ."
+                        className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-300 mb-1">Діти</label>
               <input
                 type="text"
-                name="vulitsya"
+                name="dity"
                 disabled={!!isRestricted}
-                value={formData.vulitsya || ''}
+                value={formData.dity || ''}
                 onChange={handleChange}
                 placeholder="не вказ."
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
@@ -531,50 +625,84 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Буд.</label>
-              <input
-                type="text"
-                name="budynok"
-                disabled={!!isRestricted}
-                value={formData.budynok || ''}
-                onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
+          {/* Address fields */}
+          <div className="rounded-xl border border-[#333333] p-4 bg-[#1a1a1a] shadow-sm space-y-4">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-[#333333] pb-2 flex items-center space-x-1.5">
+              <span>Адреса</span>
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-slate-300 mb-1">Нас. пункт</label>
+                <input
+                  type="text"
+                  name="nas_punkt"
+                  disabled={!!isRestricted}
+                  value={formData.nas_punkt || ''}
+                  onChange={handleChange}
+                  placeholder="не вказ."
+                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-slate-300 mb-1">Вулиця</label>
+                <input
+                  type="text"
+                  name="vulitsya"
+                  disabled={!!isRestricted}
+                  value={formData.vulitsya || ''}
+                  onChange={handleChange}
+                  placeholder="не вказ."
+                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                />
+              </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Корп.</label>
-              <input
-                type="text"
-                name="korpus"
-                disabled={!!isRestricted}
-                value={formData.korpus || ''}
-                onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
-            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-slate-300 mb-1">Буд.</label>
+                <input
+                  type="text"
+                  name="budynok"
+                  disabled={!!isRestricted}
+                  value={formData.budynok || ''}
+                  onChange={handleChange}
+                  placeholder="не вказ."
+                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Кв.</label>
-              <input
-                type="text"
-                name="kvartyra"
-                disabled={!!isRestricted}
-                value={formData.kvartyra || ''}
-                onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-slate-300 mb-1">Корп.</label>
+                <input
+                  type="text"
+                  name="korpus"
+                  disabled={!!isRestricted}
+                  value={formData.korpus || ''}
+                  onChange={handleChange}
+                  placeholder="не вказ."
+                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-slate-300 mb-1">Кв.</label>
+                <input
+                  type="text"
+                  name="kvartyra"
+                  disabled={!!isRestricted}
+                  value={formData.kvartyra || ''}
+                  onChange={handleChange}
+                  placeholder="не вказ."
+                  className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                />
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Освіта</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Освіта</label>
               <select
                 name="id_osvita"
                 disabled={!!isRestricted}
@@ -588,6 +716,32 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 ))}
               </select>
             </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-300 mb-1">Соц. стан</label>
+              <input
+                type="text"
+                name="soc_stan"
+                disabled={!!isRestricted}
+                value={formData.soc_stan || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-300 mb-1">Професія</label>
+              <input
+                type="text"
+                name="profesiya"
+                disabled={!!isRestricted}
+                value={formData.profesiya || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
             {/* Omitted other education fields for brevity as requested */}
           </div>
         </div>
@@ -598,14 +752,14 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-slate-300">Дата В.Х.</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Дата В.Х.</label>
               <input
                 type="date"
                 name="d_vodnogo"
                 value={formData.d_vodnogo || ''}
                 onChange={handleChange}
                 placeholder="дд.мм.рррр"
-                className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vodnogo ? 'text-slate-400 font-normal' : 'text-white'}`}
+                className={`w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vodnogo ? 'text-slate-400 font-normal' : 'text-white'}`}
               />
             </div>
 
@@ -617,7 +771,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 value={formData.d_vstupu || ''}
                 onChange={handleChange}
                 placeholder="дд.мм.рррр"
-                className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vstupu ? 'text-slate-400 font-normal' : 'text-white'}`}
+                className={`w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vstupu ? 'text-slate-400 font-normal' : 'text-white'}`}
               />
             </div>
           </div>

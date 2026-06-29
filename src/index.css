@@ -10,7 +10,6 @@ body {
   font-family: var(--font-sans);
   background-color: #f8fafc; /* bg-slate-50 */
   color: #0f172a; /* text-slate-900 */
-  color-scheme: light;
 }
 
 /* Custom gorgeous scrollbar */
@@ -62,4 +61,3 @@ body {
     margin-bottom: -1%;
   }
 }
-

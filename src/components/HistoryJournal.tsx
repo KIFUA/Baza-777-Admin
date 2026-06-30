@@ -62,7 +62,7 @@ export default function HistoryJournal({ onSelectMember }: HistoryJournalProps) 
       {/* Title section */}
       <div className="flex items-center justify-between flex-wrap gap-4 pb-2 border-b border-slate-100">
         <div className="space-y-1">
-          <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900">Історичний Журнал (05_ISTORIJA)</h2>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-slate-900">Історичний Журнал (ISTORIJA)</h2>
           <p className="text-sm text-slate-500">Повна хронологічна фіксація всіх канонічних та адміністративних змін у базі даних</p>
         </div>
         <button

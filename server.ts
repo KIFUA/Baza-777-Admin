@@ -399,7 +399,8 @@ function loadDatabase() {
         return {
           id: Number(row.id),
           pib: String(row.pib || "").trim(),
-          stat: String(row.stat || "н/д").trim(),
+          gender: String(row.gender || row.stat || "н/д").trim(),
+          stat: String(row.gender || row.stat || "н/д").trim(),
           
           s_simeyniy_ukr: String(row.s_simeyniy_ukr || "н/д").trim(),
           id_simeyniy: Number(row.id_simeyniy || 5),
@@ -1050,7 +1051,7 @@ app.post("/api/sync-sheets", async (req, res) => {
                   const slujList = mVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
                   firebaseUpdates[`members/${memId}/s_slujinnya_spysok`] = mVal;
                   firebaseUpdates[`members/${memId}/04_STRUCTURA/slujinnya`] = slujList;
-                  firebaseUpdates[`members/${memId}/05_ISTORIJA/1_slujinnya`] = slujList;
+                  firebaseUpdates[`members/${memId}/ISTORIJA/1_slujinnya`] = slujList;
                   firebaseUpdates[`members/${memId}/slujinnya`] = slujList;
                   rowUpdated = true;
                 }
@@ -1289,7 +1290,7 @@ app.post("/api/sync-sheets", async (req, res) => {
                 const slujList = newMember.s_slujinnya_spysok.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
                 firebaseUpdates[`members/${nextId}/s_slujinnya_spysok`] = newMember.s_slujinnya_spysok;
                 firebaseUpdates[`members/${nextId}/04_STRUCTURA/slujinnya`] = slujList;
-                firebaseUpdates[`members/${nextId}/05_ISTORIJA/1_slujinnya`] = slujList;
+                firebaseUpdates[`members/${nextId}/ISTORIJA/1_slujinnya`] = slujList;
                 firebaseUpdates[`members/${nextId}/slujinnya`] = slujList;
               }
 
@@ -1416,7 +1417,8 @@ function getBirthdaysForThisWeek() {
         dayOfWeekNum: birthdayThisYear.getDay(), // 0 = Sunday, 1 = Monday etc.
         age,
         isJubilee,
-        stat: m.stat,
+        gender: m.gender,
+        stat: m.gender,
         tel_mob: m.tel_mob,
         rayon2_ukr: m.rayon2_ukr,
         presviter: m.presviter
@@ -1633,7 +1635,7 @@ app.get("/api/members", async (req, res) => {
 
   // Filter Gender
   if (gender) {
-    result = result.filter(m => m.stat === gender);
+    result = result.filter(m => (m.gender || m.stat) === gender);
   }
 
   // Filter Area
@@ -1672,8 +1674,8 @@ app.get("/api/stats", async (req, res) => {
     totalMembers: members.length,
     activeMembers: activeOnly.length,
     dismissedMembers: members.length - activeOnly.length,
-    malesCount: activeOnly.filter(m => m.stat === "брат").length,
-    femalesCount: activeOnly.filter(m => m.stat === "сестра").length,
+    malesCount: activeOnly.filter(m => (m.gender || m.stat) === "брат").length,
+    femalesCount: activeOnly.filter(m => (m.gender || m.stat) === "сестра").length,
     maritalStats: {},
     socialStats: {},
     educationStats: {},
@@ -1826,28 +1828,38 @@ async function syncMemberToFirebase(id: number, member: Member) {
 
   const updates: any = {
     "01_PIB": member.pib,
-    "pib": member.pib,
-    "stat": member.stat,
+    "pib": null, // Delete legacy
+    "gender": member.gender || member.stat,
+    "stat": null, // Delete legacy
     "02_OSOBYSTE/1_d_narodjennya": member.d_narodjennya || "",
     "02_OSOBYSTE/3_d_nar": member.d_narodjennya || "",
     "02_OSOBYSTE/2_tel": member.tel_mob || "",
     "02_OSOBYSTE/phone": member.tel_mob || "",
     "02_OSOBYSTE/tel": member.tel_mob || "",
-    "02_OSOBYSTE/2_stat": member.stat || "н/д",
+    "02_OSOBYSTE/gender": member.gender || member.stat || "н/д",
+    "02_OSOBYSTE/2_stat": null, // Delete legacy
     "02_OSOBYSTE/7_osvita": member.s_osvita_ukr || "н/д",
     "02_OSOBYSTE/8_profesiya": member.s_profesiya_ukr || "н/д",
     "02_OSOBYSTE/6_socialniy": member.s_socialniy_ukr || "н/д",
-    "02_OSOBYSTE/13_status": statusStr,
+    "02_OSOBYSTE/13_status": null, // Delete legacy
     "02_OSOBYSTE/s_simeyniy_ukr": member.s_simeyniy_ukr || "неодружений",
     
     "04_STRUCTURA/1_rayon": member.rayon2_ukr || "",
-    "04_STRUCTURA/4_opika": member.presviter || "",
-    "04_STRUCTURA/2_grupa": member.n_dilyci || "",
+    "04_STRUCTURA/opika": member.presviter || "",
+    "04_STRUCTURA/4_opika": null, // Delete legacy
+    "04_STRUCTURA/grupa": member.n_dilyci || "",
+    "04_STRUCTURA/2_grupa": null, // Delete legacy
     "04_STRUCTURA/5_d_vodnogo": member.d_vodnogo || "",
     "04_STRUCTURA/6_d_vstupu": member.d_vstupu || "",
-    "04_STRUCTURA/8_vidviduvanist": member.vidviduvanist || "",
-    "04_STRUCTURA/9_prysutnist": member.prysutnist || "",
+    "04_STRUCTURA/vidviduvanist": member.vidviduvanist || "",
+    "04_STRUCTURA/8_vidviduvanist": null, // Delete legacy
+    "04_STRUCTURA/prysutnist": member.prysutnist || "",
+    "04_STRUCTURA/9_prysutnist": null, // Delete legacy
     "04_STRUCTURA/7_d_kontaktiv": member.d_kontaktiv || "",
+    "04_STRUCTURA/status": statusStr,
+    "04_STRUCTURA/id_dilnytsia": member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ""),
+    "04_STRUCTURA/id_dilnicya": null, // Delete legacy
+
     "02_OSOBYSTE/address": member.address || "",
     "02_OSOBYSTE/nas_punkt": member.nas_punkt || "",
     "02_OSOBYSTE/vulitsya": member.vulitsya || "",
@@ -1857,11 +1869,12 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "04_STRUCTURA/insha_gromada": member.insha_gromada || "",
     "04_STRUCTURA/d_kontaktiv": member.d_kontaktiv || "",
     "d_kontaktiv": member.d_kontaktiv || "",
-    "05_ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
+    "ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
     "04_STRUCTURA/3_san": member.di_admin || "",
     "04_STRUCTURA/hsd": !!member.hsd,
     
-    "05_ISTORIJA/1_slujinnya": slujList,
+    "ISTORIJA/slujinnya": slujList,
+    "ISTORIJA/1_slujinnya": null, // Delete legacy
     "04_STRUCTURA/slujinnya": slujList,
     "slujinnya": slujList,
     
@@ -1869,7 +1882,13 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "06_VYBUTTYA/1_d_vybuttya": member.d_vybuttya || "",
     "06_VYBUTTYA/1_d_vybyttya": member.d_vybuttya || "",
     "06_VYBUTTYA/3_primitka": member.vybutty_prymitka || "",
-    "06_VYBUTTYA/vybuv_prymitka": member.vybutty_prymitka || ""
+    "06_VYBUTTYA/vybuv_prymitka": member.vybutty_prymitka || "",
+
+    "hvoryi": member.hvoryi || "",
+    "insha_gromada": member.insha_gromada || "",
+    "prymitka": member.prymitka || member.primitka || "",
+    "primitka": null, // Delete legacy
+    "efile": member.efile !== undefined ? member.efile : ""
   };
 
   try {
@@ -1909,7 +1928,7 @@ app.post("/api/members/:id", async (req, res) => {
     "pib", "tel_mob", "s_osvita_ukr", "s_socialniy_ukr", "s_simeyniy_ukr", 
     "s_profesiya_ukr", "s_slujinnya_spysok", "zaklad_osv", "d_narodjennya", "presviter", 
     "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "di_admin",
-    "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada"
+    "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada", "hvoryi", "prymitka"
   ];
 
   fieldsToCheck.forEach(key => {
@@ -2267,7 +2286,7 @@ app.post("/api/members", async (req, res) => {
   const newMember: Member = {
     id: nextId,
     pib: cleanPibOfParens(String(newMemberData.pib || "")).trim(),
-    stat: String(newMemberData.stat || "брат").trim(),
+    gender: String(newMemberData.gender || newMemberData.stat || "брат").trim(),
     
     s_simeyniy_ukr: String(newMemberData.s_simeyniy_ukr || "неодружений").trim(),
     id_simeyniy: Number(newMemberData.id_simeyniy || 1),
@@ -2303,7 +2322,7 @@ app.post("/api/members", async (req, res) => {
     presviter: String(newMemberData.presviter || "").trim(),
     rayon2_ukr: String(newMemberData.rayon2_ukr || "").trim(),
     id_rayon2: newMemberData.id_rayon2 ? String(newMemberData.id_rayon2) : "",
-    id_dilnicya: newMemberData.id_dilnicya ? String(newMemberData.id_dilnicya) : "",
+    id_dilnytsia: newMemberData.id_dilnytsia !== undefined ? String(newMemberData.id_dilnytsia) : (newMemberData.id_dilnicya ? String(newMemberData.id_dilnicya) : ""),
     n_dilyci: String(newMemberData.n_dilyci || "").trim(),
     vidpov_grupy: String(newMemberData.vidpov_grupy || "").trim(),
 
@@ -2315,7 +2334,7 @@ app.post("/api/members", async (req, res) => {
 
     hvoryi: String(newMemberData.hvoryi || "").trim(),
     insha_gromada: String(newMemberData.insha_gromada || "").trim(),
-    primitka: String(newMemberData.primitka || "").trim(),
+    prymitka: String(newMemberData.prymitka || newMemberData.primitka || "").trim(),
     efile: true,
     address: String(newMemberData.address || "").trim(),
     nas_punkt: String(newMemberData.nas_punkt || "").trim(),
@@ -2340,7 +2359,7 @@ app.post("/api/members", async (req, res) => {
     memberId: nextId,
     memberName: newMember.pib,
     action: "create",
-    details: `Додано новий профайл члена церкви: <b>${newMember.pib}</b> (${newMember.stat}).`
+    details: `Додано новий профайл члена церкви: <b>${newMember.pib}</b> (${newMember.gender}).`
   });
 
   saveDatabaseToCache();
@@ -2819,33 +2838,46 @@ async function syncDatabaseWithFirebase() {
       const вибуття = parent["06_VYBUTTYA"] || {};
       const структура = parent["04_STRUCTURA"] || {};
       
-      if (особисте["13_status"] === "активний") {
-        statusMigrationUpdates[`${stringId}/02_OSOBYSTE/13_status`] = "наявний";
-        особисте["13_status"] = "наявний"; // Update in-memory reference immediately for current loop load
+      const currentStatus = структура["status"] || особисте["13_status"] || "наявний";
+      if (currentStatus === "активний" || особисте["13_status"] === "активний") {
+        statusMigrationUpdates[`${stringId}/04_STRUCTURA/status`] = "наявний";
+        структура["status"] = "наявний";
+        if (особисте["13_status"] !== undefined) {
+          statusMigrationUpdates[`${stringId}/02_OSOBYSTE/13_status`] = null;
+          delete особисте["13_status"];
+        }
       }
 
-      const hasLeftStatus = особисте["13_status"] === "вибув";
+      const hasLeftStatus = currentStatus === "вибув";
       const hasVybuttyaReason = !!вибуття["2_prichina"];
       const hasVybuttyaDate = !!(вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"]);
       const id_vybuttya = (hasLeftStatus || hasVybuttyaReason || hasVybuttyaDate) ? 1 : 0;
 
       // Active / existing ("наявних") members only
       if (id_vybuttya === 0) {
+        if (структура["grupa"] && структура["grupa"] !== "") {
+          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/grupa`] = "";
+          структура["grupa"] = "";
+        }
         if (структура["2_grupa"] && структура["2_grupa"] !== "") {
-          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/2_grupa`] = "";
-          структура["2_grupa"] = "";
+          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/2_grupa`] = null;
+          delete структура["2_grupa"];
+        }
+        if (структура["id_dilnytsia"] && структура["id_dilnytsia"] !== "") {
+          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/id_dilnytsia`] = "";
+          структура["id_dilnytsia"] = "";
         }
         if (структура["id_dilnicya"] && структура["id_dilnicya"] !== "") {
-          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/id_dilnicya`] = "";
-          структура["id_dilnicya"] = "";
+          dilyciaCleanupUpdates[`${stringId}/04_STRUCTURA/id_dilnicya`] = null;
+          delete структура["id_dilnicya"];
         }
         if (parent["id_dilnicya"] && parent["id_dilnicya"] !== "") {
-          dilyciaCleanupUpdates[`${stringId}/id_dilnicya`] = "";
-          parent["id_dilnicya"] = "";
+          dilyciaCleanupUpdates[`${stringId}/id_dilnicya`] = null;
+          delete parent["id_dilnicya"];
         }
         if (parent["n_dilyci"] && parent["n_dilyci"] !== "") {
-          dilyciaCleanupUpdates[`${stringId}/n_dilyci`] = "";
-          parent["n_dilyci"] = "";
+          dilyciaCleanupUpdates[`${stringId}/n_dilyci`] = null;
+          delete parent["n_dilyci"];
         }
       }
     });
@@ -2914,7 +2946,7 @@ async function syncDatabaseWithFirebase() {
         const адреса = raw["03_ADRESA"] || {};
         const структура = raw["04_STRUCTURA"] || {};
         const вибуття = raw["06_VYBUTTYA"] || {};
-        const історія_вилучень = raw["07_ISTORIYA"] || [];
+        const історія_вилучень = raw["ISTORIYA_VYLUCHEN"] || [];
 
         let calculatedAge = undefined;
         const birthDate = особисте["1_d_narodjennya"] || особисте["3_d_nar"] || "";
@@ -2929,14 +2961,15 @@ async function syncDatabaseWithFirebase() {
           } catch (_) {}
         }
 
-        const hasLeftStatus = особисте["13_status"] === "вибув";
+        const statusField = структура["status"] || особисте["13_status"] || "наявний";
+        const hasLeftStatus = statusField === "вибув";
         const hasVybuttyaReason = !!вибуття["2_prichina"];
         const hasVybuttyaDate = !!(вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"]);
         const id_vybuttya = (hasLeftStatus || hasVybuttyaReason || hasVybuttyaDate) ? 1 : 0;
 
         // Normalize gender/role stat classification to strictly "брат" or "сестра" to clean up typos (like "неокруж.")
         const pibName = String(raw["01_PIB"] || raw["pib"] || `Користувач №${id}`).trim();
-        let rawStat = String(особисте["2_stat"] || raw["stat"] || "").trim().toLowerCase();
+        let rawStat = String(особисте["gender"] || особисте["2_stat"] || raw["gender"] || raw["stat"] || "").trim().toLowerCase();
         let normStat = "брат";
         if (rawStat.includes("сестр") || rawStat.includes("сес")) {
           normStat = "сестра";
@@ -2968,7 +3001,7 @@ async function syncDatabaseWithFirebase() {
         // Parse ministries (slujinnya) list from Firebase paths
         let ministriesStr = "";
         const rawHistory =
-          (raw["05_ISTORIJA"] && raw["05_ISTORIJA"]["1_slujinnya"]) ||
+          (raw["ISTORIJA"] && raw["ISTORIJA"]["1_slujinnya"]) ||
           (структура && структура["slujinnya"]) ||
           raw["slujinnya"];
 
@@ -3005,7 +3038,7 @@ async function syncDatabaseWithFirebase() {
         const mapped: Member = {
           id: id,
           pib: pibName,
-          stat: normStat,
+          gender: normStat,
 
           s_simeyniy_ukr: simeyniyVal,
           id_simeyniy: Number(особисте["id_simeyniy"] || 5),
@@ -3033,23 +3066,23 @@ async function syncDatabaseWithFirebase() {
           d_vstupu: структура["6_d_vstupu"] || структура["d_vstupu"] || "",
           d_vstupu_excel: dateToExcelSerialNumber(структура["6_d_vstupu"] || структура["d_vstupu"] || ""),
 
-          vidviduvanist: String(структура["8_vidviduvanist"] || "").trim(),
-          prysutnist: String(структура["9_prysutnist"] || "").trim(),
+          vidviduvanist: String(структура["vidviduvanist"] || структура["8_vidviduvanist"] || "").trim(),
+          prysutnist: String(структура["prysutnist"] || структура["9_prysutnist"] || "").trim(),
           di_admin: String(структура["3_san"] || raw["di_admin"] || "").trim(),
           d_kontaktiv: String(
             raw["d_kontaktiv"] || 
-            (raw["05_ISTORIJA"] && raw["05_ISTORIJA"]["d_kontaktiv"]) || 
-            (raw["05_ISTORIJA"] && raw["05_ISTORIJA"]["7_d_kontaktiv"]) || 
+            (raw["ISTORIJA"] && raw["ISTORIJA"]["d_kontaktiv"]) || 
+            (raw["ISTORIJA"] && raw["ISTORIJA"]["7_d_kontaktiv"]) || 
             структура["7_d_kontaktiv"] || 
             структура["d_kontaktiv"] || 
             ""
           ).trim(),
 
-          presviter: String(структура["4_opika"] || "").trim(),
+          presviter: String(структура["opika"] || структура["4_opika"] || "").trim(),
           rayon2_ukr: String(структура["1_rayon"] || "").trim(),
           id_rayon2: структура["id_rayon2"] ? String(структура["id_rayon2"]) : "",
-          id_dilnicya: структура["id_dilnicya"] ? String(структура["id_dilnicya"]) : "",
-          n_dilyci: String(структура["2_grupa"] || "").trim(),
+          id_dilnytsia: (структура["id_dilnytsia"] !== undefined ? String(структура["id_dilnytsia"]) : (структура["id_dilnicya"] !== undefined ? String(структура["id_dilnicya"]) : "")),
+          n_dilyci: String(структура["grupa"] || структура["2_grupa"] || "").trim(),
           vidpov_grupy: String(структура["vidpov_grupy"] || "").trim(),
 
           id_vybuttya: id_vybuttya,
@@ -3060,7 +3093,7 @@ async function syncDatabaseWithFirebase() {
 
           hvoryi: String(raw["hvoryi"] || "").trim(),
           insha_gromada: String(raw["insha_gromada"] || "").trim(),
-          primitka: String(raw["primitka"] || "").trim(),
+          prymitka: String(raw["prymitka"] || raw["primitka"] || "").trim(),
           efile: raw["efile"],
           address: formatAddress(адреса)
         };

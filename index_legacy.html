@@ -1235,7 +1235,7 @@
 
         let ministriesList = [];
         const rawHistory =
-          member.rawData["05_ISTORIJA"]?.["1_slujinnya"] ||
+          member.rawData["ISTORIJA"]?.["1_slujinnya"] ||
           member.rawData["04_STRUCTURA"]?.["slujinnya"] ||
           member.rawData["slujinnya"];
 
@@ -1637,7 +1637,7 @@
         const explanationInp = document.getElementById("exit_explanation");
         const statusInp = document.getElementById("status");
 
-        // Зберігаємо оригінальні деталі вибуття для підбору та видалення з історії (07_ISTORIYA) при збереженні
+        // Зберігаємо оригінальні деталі вибуття для підбору та видалення з історії (ISTORIYA_VYLUCHEN) при збереженні
         window.lastCancelledExitDetails = {
           date: dateInp ? dateInp.value.trim() : "",
           reason: reasonInp ? reasonInp.value.trim() : ""
@@ -1645,7 +1645,7 @@
 
         // ОБЕРЕЖНЕ СКИДАННЯ ТІЛЬКИ АКТИВНИХ ПОЛІВ ВИБУТТЯ:
         // Ми змінюємо виключно поточні поля форми ("н/д" автоматично конвертується у порожнє значення при збереженні).
-        // Це гарантує, що інші історичні записи (наприклад, у таблиці 07_ISTORIYA чи окремі масиви переміщень)
+        // Це гарантує, що інші історичні записи (наприклад, у таблиці ISTORIYA_VYLUCHEN чи окремі масиви переміщень)
         // залишаються абсолютно неушкодженими і не зачіпаються ніяким чином.
         if (reasonInp) {
           reasonInp.value = "н/д";
@@ -2592,7 +2592,7 @@
         memberForm.classList.remove("hidden");
 
         window.lastCancelledExitDetails = null; // Скидаємо тимчасовий стан
-        const dbHistory = member.rawData["07_ISTORIYA"];
+        const dbHistory = member.rawData["ISTORIYA_VYLUCHEN"];
         const hasHistory =
           dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0;
         const historyBadge = document.getElementById("historyBadge");
@@ -2742,14 +2742,14 @@
         );
 
         setAndStyleField("rayon", structura["1_rayon"] || personal["rayon"]);
-        setAndStyleField("opika", structura["4_opika"] || personal["opika"]);
-        setAndStyleField("group_name", structura["2_grupa"]);
+        setAndStyleField("opika", structura["opika"] || structura["4_opika"] || personal["opika"]);
+        setAndStyleField("group_name", structura["grupa"] || structura["2_grupa"]);
         setAndStyleField("d_vodnogo", structura["5_d_vodnogo"]);
         setAndStyleField("d_vstupu", structura["6_d_vstupu"]);
         setAndStyleField("san", structura["3_san"]);
         setAndStyleField("zvidky", structura["7_zvidky_primitka"]);
-        setAndStyleField("vidviduvanist", structura["8_vidviduvanist"]);
-        setAndStyleField("prysutnist", structura["9_prysutnist"]);
+        setAndStyleField("vidviduvanist", structura["vidviduvanist"] || structura["8_vidviduvanist"]);
+        setAndStyleField("prysutnist", structura["prysutnist"] || structura["9_prysutnist"]);
         const contactDates = structura["7_d_kontaktiv"] || structura["d_kontaktiv"] || member["d_kontaktiv"] || "";
         setAndStyleField("d_kontaktiv", contactDates);
         loadSelectedMinistries(member);
@@ -2810,7 +2810,7 @@
           if (rawBegin) {
             initBegin = window.formatExcelDateClient(rawBegin);
           }
-          const initGroup = structura["2_grupa"] || "";
+          const initGroup = structura["grupa"] || structura["2_grupa"] || "";
           const initAddrStr = [
             address["2_vulycja"] || address["2_vulitsya"] || "",
             address["3_budynok"] || address["3_budinok"] || "",
@@ -2838,7 +2838,7 @@
         );
         const eventsPart = document.getElementById("dynamicTimelineEventsPart");
 
-        const dbHistory = member.rawData["07_ISTORIYA"];
+        const dbHistory = member.rawData["ISTORIYA_VYLUCHEN"];
         if (dbHistory && Array.isArray(dbHistory) && dbHistory.length > 0) {
           if (eventsPart) eventsPart.classList.remove("hidden");
           const titleEl = timelineSection.querySelector("h3");
@@ -3267,24 +3267,28 @@
         updates[`02_OSOBYSTE/13_status`] = getVal("status");
 
         updates[`04_STRUCTURA/1_rayon`] = getVal("rayon");
+        updates[`04_STRUCTURA/opika`] = getVal("opika");
         updates[`04_STRUCTURA/4_opika`] = getVal("opika");
+        updates[`04_STRUCTURA/grupa`] = getVal("group_name");
         updates[`04_STRUCTURA/2_grupa`] = getVal("group_name");
         updates[`04_STRUCTURA/5_d_vodnogo`] = getVal("d_vodnogo");
         updates[`04_STRUCTURA/6_d_vstupu`] = getVal("d_vstupu");
         updates[`04_STRUCTURA/3_san`] = getVal("san");
         updates[`04_STRUCTURA/7_zvidky_primitka`] = getVal("zvidky");
+        updates[`04_STRUCTURA/vidviduvanist`] = getVal("vidviduvanist");
         updates[`04_STRUCTURA/8_vidviduvanist`] = getVal("vidviduvanist");
+        updates[`04_STRUCTURA/prysutnist`] = getVal("prysutnist");
         updates[`04_STRUCTURA/9_prysutnist`] = getVal("prysutnist");
         const contactDatesVal = getVal("d_kontaktiv");
         updates[`04_STRUCTURA/7_d_kontaktiv`] = contactDatesVal;
         updates[`04_STRUCTURA/d_kontaktiv`] = contactDatesVal;
         updates[`d_kontaktiv`] = contactDatesVal;
         try {
-          updates[`05_ISTORIJA/1_slujinnya`] = JSON.parse(
+          updates[`ISTORIJA/1_slujinnya`] = JSON.parse(
             document.getElementById("slujinnya").value || "[]",
           );
         } catch (e) {
-          updates[`05_ISTORIJA/1_slujinnya`] = [];
+          updates[`ISTORIJA/1_slujinnya`] = [];
         }
 
         updates[`03_ADRESA/1_misto`] = getVal("addr_city");
@@ -3357,9 +3361,9 @@
         });
         updates[`04_STRUCTURA/movement_history`] = movementHistory;
 
-        // Особлива логіка для скасування вибуття з історії (07_ISTORIYA) без пошкодження інших записів
-        if (currentMember && currentMember.rawData && Array.isArray(currentMember.rawData["07_ISTORIYA"]) && window.lastCancelledExitDetails) {
-          const history = [...currentMember.rawData["07_ISTORIYA"]];
+        // Особлива логіка для скасування вибуття з історії (ISTORIYA_VYLUCHEN) без пошкодження інших записів
+        if (currentMember && currentMember.rawData && Array.isArray(currentMember.rawData["ISTORIYA_VYLUCHEN"]) && window.lastCancelledExitDetails) {
+          const history = [...currentMember.rawData["ISTORIYA_VYLUCHEN"]];
           const dateToMatch = String(window.lastCancelledExitDetails.date || "").trim();
           const reasonToMatch = String(window.lastCancelledExitDetails.reason || "").trim().toLowerCase();
 
@@ -3400,7 +3404,7 @@
 
           if (matchIndex !== -1) {
             history.splice(matchIndex, 1);
-            updates[`07_ISTORIYA`] = history;
+            updates[`ISTORIYA_VYLUCHEN`] = history;
           }
           window.lastCancelledExitDetails = null; // очищаємо
         }

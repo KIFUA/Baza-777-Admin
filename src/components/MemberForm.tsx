@@ -169,6 +169,12 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
       const parsed = parseAddress(member.address);
       setFormData({
         ...member,
+        gender: member.gender || member.stat || 'брат',
+        stat: member.gender || member.stat || 'брат',
+        id_dilnytsia: member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ''),
+        id_dilnicya: member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ''),
+        prymitka: member.prymitka || member.primitka || '',
+        primitka: member.prymitka || member.primitka || '',
         nas_punkt: member.nas_punkt || parsed.nas_punkt,
         vulitsya: member.vulitsya || parsed.vulitsya,
         budynok: member.budynok || parsed.budynok,
@@ -240,15 +246,19 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         if (parts.length >= 3) {
           const patronymic = parts[2].toLowerCase();
           if (patronymic.endsWith('на') || patronymic.endsWith('ва')) {
+            updated.gender = 'сестра';
             updated.stat = 'сестра';
           } else if (patronymic.endsWith('ич')) {
+            updated.gender = 'брат';
             updated.stat = 'брат';
           }
         } else if (parts.length >= 2) {
           const secondWord = parts[1].toLowerCase();
           if (secondWord.endsWith('на') || secondWord.endsWith('ва')) {
+            updated.gender = 'сестра';
             updated.stat = 'сестра';
           } else if (secondWord.endsWith('ич')) {
+            updated.gender = 'брат';
             updated.stat = 'брат';
           }
         }
@@ -376,6 +386,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
   ];
 
   const skypeString = formData.skype || '';
+  const hasEfile = !!formData.efile;
+  const efileValue = typeof formData.efile === 'string' ? formData.efile : '';
   let currentLabel = 'Telegram';
   let currentHandle = skypeString;
   for (const l of ['Telegram', 'Viber', 'WhatsApp', 'Skype', 'Інше']) {
@@ -538,7 +550,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             {(() => {
               const simeyniyLookup = lookups?.simeyniy?.find((s: any) => String(s.ID) === String(formData.id_simeyniy));
               const statusStr = String(simeyniyLookup?.Value || formData.s_simeyniy_ukr || '').toLowerCase();
-              const isMarried = statusStr.includes('одруж') || statusStr.includes('заміж') || statusStr.includes('одр');
+              const isMarried = (statusStr.includes('одруж') || statusStr.includes('заміж') || statusStr.includes('одр')) && !statusStr.includes('неодруж');
+              const isNotUnmarried = !statusStr.includes('неодруж');
               
               return (
                 <div className="space-y-4">
@@ -553,9 +566,11 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                         className={`w-32 rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${(!formData.id_simeyniy || formData.id_simeyniy === 0 || String(formData.id_simeyniy) === '0' || String(formData.id_simeyniy) === '5') ? 'text-slate-400 font-normal' : 'text-white'}`}
                       >
                         <option value="" className="text-slate-400">не вказ.</option>
-                        {lookups?.simeyniy?.map((s: any) => (
-                          <option key={s.ID} value={s.ID} className="text-white font-semibold">{s.Value}</option>
-                        ))}
+                        {lookups?.simeyniy
+                          ?.filter((s: any) => s.Value !== 'н/д')
+                          .map((s: any) => (
+                            <option key={s.ID} value={s.ID} className="text-white font-semibold">{s.Value}</option>
+                          ))}
                       </select>
                     </div>
 
@@ -607,22 +622,24 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                       />
                     </div>
                   )}
+                  {isNotUnmarried && (
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-slate-300 mb-1">Діти</label>
+                      <input
+                        type="text"
+                        name="dity"
+                        disabled={!!isRestricted}
+                        value={formData.dity || ''}
+                        onChange={handleChange}
+                        placeholder="не вказ."
+                        className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })()}
             
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-300 mb-1">Діти</label>
-              <input
-                type="text"
-                name="dity"
-                disabled={!!isRestricted}
-                value={formData.dity || ''}
-                onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
-            </div>
           </div>
 
           {/* Address fields */}
@@ -742,8 +759,60 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
               />
             </div>
-            {/* Omitted other education fields for brevity as requested */}
+
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-emerald-400 mb-1">ХВОРИЙ (Опис хвороби / Примітка по здоров'ю)</label>
+              <input
+                type="text"
+                name="hvoryi"
+                disabled={!!isRestricted}
+                value={formData.hvoryi || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+
+
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2 pt-5">
+                <input
+                  type="checkbox"
+                  id="efile_checkbox"
+                  checked={hasEfile}
+                  onChange={(e) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      efile: e.target.checked ? true : ''
+                    }));
+                  }}
+                  className="h-4 w-4 rounded border-[#333333] bg-[#262626] text-[#387d7a] focus:ring-[#387d7a] cursor-pointer"
+                />
+                <label htmlFor="efile_checkbox" className="text-xs font-semibold text-slate-300 select-none cursor-pointer">
+                  Електронна папка (Google Drive)
+                </label>
+              </div>
+            </div>
           </div>
+
+          {hasEfile && (
+            <div className="space-y-1 mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <label className="text-xs font-medium text-slate-300 block mb-1">Посилання на папку Google Drive</label>
+              <input
+                type="text"
+                name="efile"
+                value={efileValue}
+                onChange={(e) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    efile: e.target.value
+                  }));
+                }}
+                placeholder="https://drive.google.com/..."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+          )}
         </div>
 
         {/* SECTION 2: Church info */}
@@ -762,6 +831,30 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className={`w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vodnogo ? 'text-slate-400 font-normal' : 'text-white'}`}
               />
             </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-300 mb-1">Перехід з іншої громади</label>
+              <input
+                type="text"
+                name="insha_gromada"
+                disabled={!!isRestricted}
+                value={formData.insha_gromada || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-xs font-medium text-slate-300 mb-1">Примітка / Коментар</label>
+              <input
+                type="text"
+                name="prymitka"
+                disabled={!!isRestricted}
+                value={formData.prymitka || ''}
+                onChange={handleChange}
+                placeholder="не вказ."
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
 
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-300">Дата прийн. в чл.</label>
@@ -776,11 +869,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             </div>
           </div>
 
-          {(() => {
-            const showInshaGromada = formData.d_vodnogo && formData.d_vstupu && formData.d_vodnogo !== formData.d_vstupu;
-            
-            return (
-              <div className="grid grid-cols-2 gap-4 items-center">
+            <div className="grid grid-cols-2 gap-4 items-center">
                 <div className="flex items-center space-x-2 pt-2">
                   <input
                     type="checkbox"
@@ -795,22 +884,33 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                   </label>
                 </div>
 
-                {showInshaGromada && (
-                  <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <label className="text-xs font-medium text-slate-300">З інш. гром.</label>
+                <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-xs font-medium text-slate-300">Перехід з іншої громади</label>
+                  <input
+                    type="text"
+                    name="insha_gromada"
+                    disabled={!!isRestricted}
+                    value={formData.insha_gromada || ''}
+                    onChange={handleChange}
+                    placeholder="не вказ."
+                    className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                  />
+                </div>
+                
+                <div className="col-span-2 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-medium text-slate-300">Примітка / Коментар</label>
                     <input
                       type="text"
-                      name="insha_gromada"
-                      value={formData.insha_gromada || ''}
+                      name="prymitka"
+                      disabled={!!isRestricted}
+                      value={formData.prymitka || ''}
                       onChange={handleChange}
                       placeholder="не вказ."
                       className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
                     />
-                  </div>
-                )}
+                </div>
+
               </div>
-            );
-          })()}
 
           <div className="border-t border-[#333333] pt-3 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">

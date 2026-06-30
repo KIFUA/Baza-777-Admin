@@ -63,7 +63,8 @@ export interface AuditLogItem {
 export interface Member {
   id: number;
   pib: string;
-  stat: string; // 'брат' | 'сестра' | etc.
+  gender?: string; // 'брат' | 'сестра' | etc.
+  stat?: string;  // backwards compatibility
   
   // Demographics & Statuses
   s_simeyniy_ukr: string;
@@ -102,7 +103,8 @@ export interface Member {
   presviter: string; // Caretaker/pastor responsible
   rayon2_ukr: string; // Structural Area: "АЕРОПОРТ", "ЦЕНТР", "КАСКАД", etc.
   id_rayon2: number | string;
-  id_dilnicya: number | string;
+  id_dilnytsia?: number | string;
+  id_dilnicya?: number | string; // backwards compatibility
   n_dilyci: string; // "Дільниця №1"
   vidpov_grupy: string; // Group representative
   
@@ -115,7 +117,8 @@ export interface Member {
   
   hvoryi: string;
   insha_gromada: string;
-  primitka: string;
+  prymitka?: string;
+  primitka?: string; // backwards compatibility
   d_kontaktiv?: string; // presbyter contact dates migrated from Church Management CSS spreadsheet
   di_admin?: string;
   efile?: boolean | number;

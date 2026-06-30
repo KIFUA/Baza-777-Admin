@@ -105,8 +105,8 @@ export default function PastoralCareManager({ members, onSelectMember }: Pastora
                           <div className="text-[10px] font-medium text-slate-400">{m.tel_mob || 'Телефон відсутній'}</div>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5">
-                          <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${m.stat === 'брат' ? 'bg-blue-50 text-blue-700' : 'bg-rose-50 text-rose-700'}`}>
-                            {m.stat}
+                          <span className={`inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${(m.gender || m.stat) === 'брат' ? 'bg-blue-50 text-blue-700' : 'bg-rose-50 text-rose-700'}`}>
+                            {m.gender || m.stat}
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5 px-4 font-mono font-semibold text-slate-600">

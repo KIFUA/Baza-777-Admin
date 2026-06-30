@@ -728,7 +728,7 @@ export default function DirectoriesManager({
                                   <span className="text-[10px] text-slate-400 font-normal italic leading-none truncate max-w-[120px]">(дівоче: {item.fullName.split('(')[1]?.replace(')', '')})</span>
                                 )}
                               </div>
-                              <span className="text-[10px] font-medium text-slate-400">{item.stat}</span>
+                              <span className="text-[10px] font-medium text-slate-400">{item.gender || item.stat}</span>
                             </td>
                             <td className="p-2 px-2.5">
                               <div className="flex items-center space-x-2">
@@ -1082,7 +1082,7 @@ export default function DirectoriesManager({
                                     {(() => {
                                       const candidates = members.filter(m => {
                                         const isActive = Number(m.id_vybuttya || 0) === 0;
-                                        const isBrother = m.stat === 'брат';
+                                        const isBrother = (m.gender || m.stat) === 'брат';
                                         const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер") || (m.di_admin || "").toLowerCase().includes("єпископ");
                                         return isActive && isBrother && isPresbyter;
                                       }).sort((a,b) => (a.pib || "").localeCompare(b.pib || ""));

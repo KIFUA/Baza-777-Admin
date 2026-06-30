@@ -435,7 +435,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         if (String(m.prysutnist || "").trim().toLowerCase() !== selectedPrysutnist.trim().toLowerCase()) return false;
       }
       if (selectedStat) {
-        if (String(m.stat || "").trim().toLowerCase() !== selectedStat.trim().toLowerCase()) return false;
+        if (String(m.gender || m.stat || "").trim().toLowerCase() !== selectedStat.trim().toLowerCase()) return false;
       }
 
       if (internalSearch) {

@@ -83,8 +83,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
   // Compute stats for the selected rayon
   const rayonStats = useMemo(() => {
     const total = rayonMembers.length;
-    const brothers = rayonMembers.filter(m => String(m.stat).trim().toLowerCase().includes('брат')).length;
-    const sisters = rayonMembers.filter(m => String(m.stat).trim().toLowerCase().includes('сестра') || String(m.stat).trim().toLowerCase().includes('сес')).length;
+    const brothers = rayonMembers.filter(m => String(m.gender || m.stat || '').trim().toLowerCase().includes('брат')).length;
+    const sisters = rayonMembers.filter(m => String(m.gender || m.stat || '').trim().toLowerCase().includes('сестра') || String(m.gender || m.stat || '').trim().toLowerCase().includes('сес')).length;
     const others = total - brothers - sisters;
 
     // Marital Status counts

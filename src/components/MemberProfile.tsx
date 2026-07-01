@@ -441,6 +441,14 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
               
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 
+                <div className="rounded-xl border border-rose-100 p-5 bg-rose-50/30 shadow-sm">
+                  <h4 className="text-xs font-bold text-rose-800 uppercase tracking-widest border-b border-rose-100 pb-2 mb-3">
+                    Примітка по здоров'ю
+                  </h4>
+                  <p className="text-rose-900 font-semibold text-xs">
+                    {member.hvoryi || "—"}
+                  </p>
+                </div>
                 {/* Spiritual history card */}
                 <div className="rounded-xl bg-slate-50 p-5 space-y-4">
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-200/50 pb-2 flex items-center space-x-1.5">
@@ -465,8 +473,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         {member.hsd ? "є духовні дари" : "ні"}
                       </span>
                     </div>
+                    </div>
                   </div>
-                </div>
 
                 {/* Parish & Oversight (Opika) card */}
                 <div className="rounded-xl bg-slate-50 p-5 space-y-4">
@@ -706,7 +714,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
               </div>
 
-              {/* Attendance parameters (Requests 8 & 9) */}
+              
               <div className="rounded-xl border border-slate-100 p-5 bg-blue-50/10 space-y-3">
                 <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider block">Оцінка відвідуваності та статусу відсутності членів</h4>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

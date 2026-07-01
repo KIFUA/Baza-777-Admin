@@ -426,6 +426,20 @@
             </div>
           </div>
 
+          <!-- ХВОРИЙ / ПРИМІТКА ПО ЗДОРОВ'Ю -->
+          <div class="border-t border-borderClr pt-2 mb-2">
+            <div>
+              <label class="block text-[11px] text-rose-400 font-bold uppercase tracking-wider mb-1">Примітка по здоров'ю (Хворий)</label>
+              <input
+                type="text"
+                id="hvoryi"
+                placeholder="Вкажіть примітки по здоров'ю..."
+                class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-rose-500 outline-none text-xs px-2.5 py-1.5"
+                oninput="applyGrayForNA(this)"
+              />
+            </div>
+          </div>
+
           <!-- БЛОК СІМ'Я -->
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
@@ -2719,6 +2733,7 @@
         setAndStyleField("profession", personal["8_profesiya"]);
         setAndStyleField("social_status", personal["6_socialniy"]);
         setAndStyleField("messengers", personal["3_messengers"]);
+        setAndStyleField("hvoryi", member.hvoryi || member.rawData["hvoryi"] || "");
         setAndStyleField("dity", formatDityJson(personal["9_dity"]));
         window.autoResizeDity();
         setAndStyleField("status", personal["13_status"]);
@@ -3265,6 +3280,7 @@
           document.getElementById("dity").value,
         );
         updates[`02_OSOBYSTE/13_status`] = getVal("status");
+        updates[`hvoryi`] = getVal("hvoryi");
 
         updates[`04_STRUCTURA/1_rayon`] = getVal("rayon");
         updates[`04_STRUCTURA/opika`] = getVal("opika");

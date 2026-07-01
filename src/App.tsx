@@ -575,10 +575,10 @@ export default function App() {
           style={{ fontSize: '16px' }}
           className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0 scale-interface-down-33"
         >
-          <div className="flex gap-1.5 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
+          <div className="flex gap-3 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
             <div 
-              style={{ fontWeight: 'normal', fontStyle: 'italic', fontSize: '8px' }}
-              className="text-[8px] sm:text-[10px] font-bold text-slate-300 leading-tight shrink-0"
+              style={{ fontWeight: 'normal', fontStyle: 'italic', fontSize: '12px' }}
+              className="text-[11px] sm:text-xs font-bold text-slate-300 leading-tight shrink-0"
             >
               СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
               ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
@@ -586,8 +586,8 @@ export default function App() {
             
             {getPermission('ВСЬОГО ЧЛЕНІВ ЦЕРКВИ').view && (
               <div 
-                style={{ height: '30px', width: '245px' }}
-                className="bg-[#1a3843] border border-[#142d36] rounded px-1 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[7.5px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap"
+                style={{ height: '30px' }}
+                className="bg-[#1a3843] border border-[#142d36] rounded px-3 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap shrink-0 min-w-fit"
               >
                 <span 
                   style={{ fontSize: '12px', lineHeight: '18px' }}

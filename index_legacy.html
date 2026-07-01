@@ -225,7 +225,7 @@
                 <input
                   type="text"
                   id="d_nar"
-                  class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none px-1.5 py-0.5"
+                  class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none px-1.5 py-0.5"
                 />
               </div>
               <div id="ageFieldContainer" class="hidden">
@@ -478,7 +478,7 @@
                   <input
                     type="text"
                     id="d_shlyub_from"
-                    class="w-[125px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="w-[135px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div id="marriage_years_container" class="hidden">
@@ -635,7 +635,7 @@
                   <input
                     type="text"
                     id="d_vodnogo"
-                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div>
@@ -645,7 +645,7 @@
                   <input
                     type="text"
                     id="d_vstupu"
-                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
+                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none"
                   />
                 </div>
                 <div>
@@ -780,7 +780,7 @@
                   <input
                     type="text"
                     id="exit_date"
-                    class="w-[115px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
+                    class="w-[130px] bg-inputBg border border-borderClr rounded text-white focus:border-amber-500 outline-none"
                   />
                 </div>
               </div>
@@ -1824,9 +1824,11 @@
         } else if (id === "profession") {
           minWidth = 80;
         } else if (id === "d_shlyub_from" || id === "d_shlyub_end" || id === "d_nar" || id === "exit_date" || id === "d_vodnogo" || id === "d_vstupu") {
-          minWidth = 85;
+          minWidth = 115;
+          el.style.textAlign = "left";
         } else if (id === "d_kontaktiv") {
           minWidth = 130;
+          el.style.textAlign = "left";
         } else if (id === "addr_city") {
           minWidth = 120;
         } else if (id === "san") {

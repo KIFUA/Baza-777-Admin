@@ -170,8 +170,8 @@ export default function App() {
     };
   };
 
-  // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'generator' (ГЕНЕРАТОР) or 'settings' (НАЛАШТУВАННЯ)
-  const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'generator' | 'settings' | 'stats'>('spreadsheet');
+  // High level UI Modes: 'spreadsheet' (СПИСОК) or 'questionnaire' (АНКЕТИ) or 'generator' (ГЕНЕРАТОР) or 'settings' (НАЛАШТУВАННЯ) or 'journal' (ЖУРНАЛ)
+  const [mainMode, setMainMode] = useState<'spreadsheet' | 'questionnaire' | 'generator' | 'settings' | 'stats' | 'journal'>('spreadsheet');
   const [activeTab, setActiveTab] = useState<'members' | 'pastoral' | 'history' | 'stats'>('members');
 
   // Directory Filter State
@@ -210,7 +210,8 @@ export default function App() {
       'spreadsheet': 'СПИСОК',
       'questionnaire': 'АНКЕТИ',
       'stats': 'СТАТИСТИКА',
-      'settings': 'НАЛАШТУВАННЯ'
+      'settings': 'НАЛАШТУВАННЯ',
+      'journal': 'ЖУРНАЛ'
     };
     const currentElemName = modeToElement[mainMode];
     if (currentElemName && !getPermission(currentElemName).view) {
@@ -447,7 +448,10 @@ export default function App() {
     try {
       const resp = await fetch(`/api/members/${id}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-User-Pib': encodeURIComponent(currentSessionUser?.user || 'Адміністратор')
+        },
         body: JSON.stringify(updatedFields)
       });
       if (resp.ok) {
@@ -489,7 +493,8 @@ export default function App() {
       const resp = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-User-Pib': encodeURIComponent(currentSessionUser?.user || 'Адміністратор')
         },
         body: JSON.stringify(data)
       });
@@ -672,6 +677,26 @@ export default function App() {
                   АНКЕТИ
                 </button>
               )}
+              {getPermission('АНКЕТИ').view && (
+                <button
+                  style={{
+                    fontSize: '12px',
+                    height: '30px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Журнал змін бази даних"
+                  onClick={() => { 
+                    setMainMode('journal'); 
+                    setSelectedMemberId(null); 
+                    setShowForm(false); 
+                  }}
+                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'journal' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
+                >
+                  ЖУРНАЛ
+                </button>
+              )}
               {getPermission('СТАТИСТИКА').view && (
                 <button
                   style={{
@@ -849,6 +874,15 @@ export default function App() {
                   currentSessionUser={currentSessionUser}
                   onSetSessionUser={handleUpdateSessionUser}
                   members={allMembers}
+                />
+              </div>
+            ) : mainMode === 'journal' ? (
+              <div className="flex-1 overflow-y-auto min-h-0 pb-2 bg-[#0e2128] p-4 sm:p-6 rounded-2xl border border-[#1f424f] shadow-lg">
+                <HistoryJournal
+                  onSelectMember={(id) => {
+                    setSelectedMemberId(id);
+                    setMainMode('questionnaire');
+                  }}
                 />
               </div>
             ) : null}

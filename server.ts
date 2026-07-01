@@ -504,6 +504,19 @@ function saveDatabaseToCache() {
   }
 }
 
+async function saveAuditLogToFirebase(log: AuditLogItem) {
+  try {
+    const url = `${FIREBASE_URL}/audit_logs/${log.id}.json?auth=${FIREBASE_SECRET}`;
+    await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(log)
+    });
+  } catch (err: any) {
+    console.error(`[Firebase Audit] Failed to save audit log: ${err.message}`);
+  }
+}
+
 
 // --- API REST ROUTES ---
 
@@ -1998,17 +2011,60 @@ app.post("/api/members/:id", async (req, res) => {
   }
 
   // Insert change audit log (user request 05 - History Audit/Journal tracking)
-  if (changes.length > 0) {
-    const changeLogId = "chg_" + Date.now();
-    auditLogs.push({
-      id: changeLogId,
-      timestamp: new Date().toISOString(),
-      memberId: id,
-      memberName: orig.pib,
-      action: "update",
-      details: `Редагування профілю. Зміни: ${changes.join(", ")}`
-    });
-  }
+  const fieldLabels: Record<string, string> = {
+    pib: "ПІБ",
+    tel_mob: "Моб. телефон",
+    s_osvita_ukr: "Освіта",
+    s_socialniy_ukr: "Соціальний стан",
+    s_simeyniy_ukr: "Сімейний стан",
+    s_profesiya_ukr: "Професія",
+    s_slujinnya_spysok: "Служіння",
+    zaklad_osv: "Заклад освіти",
+    d_narodjennya: "Дата народження",
+    presviter: "Опіка",
+    rayon2_ukr: "Район",
+    n_dilyci: "Група",
+    vidviduvanist: "Відвідуваність",
+    prysutnist: "Присутність",
+    id_vybuttya: "Статус вибуття",
+    di_admin: "Посада",
+    address: "Адреса",
+    nas_punkt: "Населений пункт",
+    vulitsya: "Вулиця",
+    budynok: "Будинок",
+    korpus: "Корпус",
+    kvartyra: "Квартира",
+    insha_gromada: "Інша громада",
+    hvoryi: "Хворий/Потребує уваги",
+    prymitka: "Примітка"
+  };
+
+  const userPibHeader = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "Адміністратор";
+
+  fieldsToCheck.forEach(key => {
+    if (updatedData[key] !== undefined && String(updatedData[key]).trim() !== String(orig[key] || '').trim()) {
+      const label = fieldLabels[key] || String(key);
+      const oldVal = orig[key] || "порожньо";
+      const newVal = updatedData[key] || "порожньо";
+      
+      const changeLogId = "chg_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+      const logItem: AuditLogItem = {
+        id: changeLogId,
+        timestamp: new Date().toISOString(),
+        memberId: id,
+        memberName: orig.pib,
+        action: "update",
+        userPib: userPibHeader,
+        field: label,
+        oldValue: String(oldVal),
+        newValue: String(newVal),
+        details: `Оновлено поле "${label}" від "${oldVal}" до "${newVal}"`
+      };
+      
+      auditLogs.push(logItem);
+      saveAuditLogToFirebase(logItem);
+    }
+  });
 
   saveDatabaseToCache();
   res.json({ success: true, member: mergedMember });
@@ -2353,14 +2409,22 @@ app.post("/api/members", async (req, res) => {
     console.error(`[Firebase Member Sync] Error creating member ${nextId}:`, err);
   }
 
-  auditLogs.push({
-    id: "add_mem_" + Date.now(),
+  const userPib = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "Адміністратор";
+  const logId = "add_mem_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
+  const logItem: AuditLogItem = {
+    id: logId,
     timestamp: new Date().toISOString(),
     memberId: nextId,
     memberName: newMember.pib,
     action: "create",
+    userPib: userPib,
+    field: "Створення профайлу",
+    oldValue: "-",
+    newValue: `Додано новий профайл члена церкви: ${newMember.pib} (${newMember.gender})`,
     details: `Додано новий профайл члена церкви: <b>${newMember.pib}</b> (${newMember.gender}).`
-  });
+  };
+  auditLogs.push(logItem);
+  saveAuditLogToFirebase(logItem);
 
   saveDatabaseToCache();
   res.json({ success: true, memberId: nextId, member: newMember });
@@ -2797,6 +2861,23 @@ async function syncDatabaseWithFirebase() {
   await fetchCustomColorsFromFirebase().catch(() => {});
 
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+
+  // Load audit logs from Firebase RTDB
+  try {
+    const auditRes = await fetch(`${FIREBASE_URL}/audit_logs.json?auth=${DB_SECRET}`);
+    if (auditRes.ok) {
+      const auditData = await auditRes.json();
+      if (auditData) {
+        auditLogs = Object.values(auditData) as AuditLogItem[];
+        console.log(`[Firebase Startup Sync] Successfully loaded ${auditLogs.length} audit logs from Firebase.`);
+      } else {
+        auditLogs = [];
+      }
+    }
+  } catch (err: any) {
+    console.error(`[Firebase Startup Sync] Failed to load audit logs from Firebase: ${err.message}`);
+  }
+
   const url = `${FIREBASE_URL}/members.json?auth=${DB_SECRET}`;
 
   try {

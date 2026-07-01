@@ -3452,6 +3452,84 @@
 
           if (!res.ok) throw new Error("Помилка збереження через REST");
 
+          // Log field changes
+          try {
+            const cachedUserStr = localStorage.getItem("baza_current_session_user");
+            const sessionUser = cachedUserStr ? JSON.parse(cachedUserStr) : null;
+            const actorPib = sessionUser ? sessionUser.user : "Адміністратор";
+            const currentMember = allMembers.find((m) => m.id === targetId);
+
+            const fieldLabels = {
+              "01_PIB": "ПІБ",
+              "02_OSOBYSTE/1_d_narodjennya": "Дата народження",
+              "02_OSOBYSTE/2_tel": "Телефон",
+              "02_OSOBYSTE/7_osvita": "Освіта",
+              "02_OSOBYSTE/8_profesiya": "Професія",
+              "02_OSOBYSTE/6_socialniy": "Соціальний стан",
+              "02_OSOBYSTE/s_simeyniy_ukr": "Сімейний стан",
+              "04_STRUCTURA/1_rayon": "Район",
+              "04_STRUCTURA/opika": "Опіка",
+              "04_STRUCTURA/grupa": "Група",
+              "04_STRUCTURA/5_d_vodnogo": "Дата водного хрещення",
+              "04_STRUCTURA/6_d_vstupu": "Дата вступу",
+              "04_STRUCTURA/vidviduvanist": "Відвідуваність",
+              "04_STRUCTURA/prysutnist": "Присутність",
+              "04_STRUCTURA/7_d_kontaktiv": "Дата контактів з пресвітером",
+              "02_OSOBYSTE/address": "Адреса",
+              "06_VYBUTTYA/2_prichina": "Причина вибуття",
+              "06_VYBUTTYA/1_d_vybuttya": "Дата вибуття",
+              "06_VYBUTTYA/3_primitka": "Примітка вибуття",
+              "prymitka": "Примітка",
+              "hvoryi": "Хворий/Потребує уваги",
+              "insha_gromada": "Інша громада"
+            };
+
+            for (const path of Object.keys(updates)) {
+              if (updates[path] === undefined) continue;
+
+              // Find the human-readable label
+              let label = fieldLabels[path];
+              if (!label) {
+                const matchedKey = Object.keys(fieldLabels).find(k => path.startsWith(k));
+                label = matchedKey ? fieldLabels[matchedKey] : path;
+              }
+
+              // Get original value
+              let origVal = "порожньо";
+              if (currentMember) {
+                const parts = path.split('/');
+                if (parts.length === 1) {
+                  origVal = currentMember[parts[0]] || (currentMember.rawData && currentMember.rawData[parts[0]]) || "порожньо";
+                } else if (parts.length === 2) {
+                  origVal = (currentMember.rawData && currentMember.rawData[parts[0]] && currentMember.rawData[parts[0]][parts[1]]) || "порожньо";
+                } else if (parts.length === 3) {
+                  origVal = (currentMember.rawData && currentMember.rawData[parts[0]] && currentMember.rawData[parts[0]][parts[1]] && currentMember.rawData[parts[0]][parts[1]][parts[2]]) || "порожньо";
+                }
+              }
+
+              const newVal = updates[path] || "порожньо";
+
+              if (String(origVal).trim() === String(newVal).trim()) continue;
+
+              await fetch('/api/audit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  memberId: targetId,
+                  memberName: currentMember ? currentMember.pib : ("Член #" + targetId),
+                  action: "update",
+                  userPib: actorPib,
+                  field: label,
+                  oldValue: String(origVal),
+                  newValue: String(newVal),
+                  details: `Оновлено поле "${label}" від "${origVal}" до "${newVal}"`
+                })
+              });
+            }
+          } catch (auditErr) {
+            console.error("Помилка відправки аудиту:", auditErr);
+          }
+
           // Sync parent frame state if possible to grant instant real-time reactivity!
           if (window.parent && window.parent !== window) {
             if (window.parent.__bazaRawFirebaseData) {

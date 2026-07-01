@@ -58,6 +58,10 @@ export interface AuditLogItem {
   memberName: string;
   action: string; // 'create' | 'update' | 'dismiss' | 'discipline' | 'add_ministry'
   details: string;
+  userPib?: string;
+  field?: string;
+  oldValue?: string;
+  newValue?: string;
 }
 
 export interface Member {

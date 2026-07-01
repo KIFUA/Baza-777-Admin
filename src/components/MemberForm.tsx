@@ -760,7 +760,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="col-span-2 space-y-1">
               <label className="block text-xs font-bold text-emerald-400 mb-1">ХВОРИЙ (Опис хвороби / Примітка по здоров'ю)</label>
               <input
                 type="text"
@@ -773,8 +773,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               />
             </div>
 
-
-            <div className="space-y-1">
+            <div className="col-span-2 space-y-1">
               <div className="flex items-center space-x-2 pt-5">
                 <input
                   type="checkbox"
@@ -793,6 +792,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 </label>
               </div>
             </div>
+
+
           </div>
 
           {hasEfile && (
@@ -831,31 +832,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className={`w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vodnogo ? 'text-slate-400 font-normal' : 'text-white'}`}
               />
             </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-300 mb-1">Перехід з іншої громади</label>
-              <input
-                type="text"
-                name="insha_gromada"
-                disabled={!!isRestricted}
-                value={formData.insha_gromada || ''}
-                onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-300 mb-1">Примітка / Коментар</label>
-              <input
-                type="text"
-                name="prymitka"
-                disabled={!!isRestricted}
-                value={formData.prymitka || ''}
-                onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
-            </div>
-
+            
             <div className="space-y-1">
               <label className="text-xs font-medium text-slate-300">Дата прийн. в чл.</label>
               <input
@@ -867,10 +844,39 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 className={`w-max rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.d_vstupu ? 'text-slate-400 font-normal' : 'text-white'}`}
               />
             </div>
+
+            {formData.d_vodnogo && formData.d_vstupu && formData.d_vodnogo !== formData.d_vstupu && (
+              <>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Перехід з іншої громади</label>
+                  <input
+                    type="text"
+                    name="insha_gromada"
+                    disabled={!!isRestricted}
+                    value={formData.insha_gromada || ''}
+                    onChange={handleChange}
+                    placeholder="не вказ."
+                    className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Примітка / Коментар</label>
+                  <input
+                    type="text"
+                    name="prymitka"
+                    disabled={!!isRestricted}
+                    value={formData.prymitka || ''}
+                    onChange={handleChange}
+                    placeholder="не вказ."
+                    className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
-            <div className="grid grid-cols-2 gap-4 items-center">
-                <div className="flex items-center space-x-2 pt-2">
+
+          <div className="flex items-center space-x-2 pt-2 pb-4">
                   <input
                     type="checkbox"
                     id="hsd"
@@ -883,34 +889,6 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                     Хр. С.Д.
                   </label>
                 </div>
-
-                <div className="space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <label className="text-xs font-medium text-slate-300">Перехід з іншої громади</label>
-                  <input
-                    type="text"
-                    name="insha_gromada"
-                    disabled={!!isRestricted}
-                    value={formData.insha_gromada || ''}
-                    onChange={handleChange}
-                    placeholder="не вказ."
-                    className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-                  />
-                </div>
-                
-                <div className="col-span-2 space-y-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                    <label className="text-xs font-medium text-slate-300">Примітка / Коментар</label>
-                    <input
-                      type="text"
-                      name="prymitka"
-                      disabled={!!isRestricted}
-                      value={formData.prymitka || ''}
-                      onChange={handleChange}
-                      placeholder="не вказ."
-                      className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-                    />
-                </div>
-
-              </div>
 
           <div className="border-t border-[#333333] pt-3 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4">

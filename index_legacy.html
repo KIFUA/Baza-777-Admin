@@ -429,7 +429,7 @@
           <!-- ХВОРИЙ / ПРИМІТКА ПО ЗДОРОВ'Ю -->
           <div class="border-t border-borderClr pt-2 mb-2">
             <div>
-              <label class="block text-[11px] text-rose-400 font-bold uppercase tracking-wider mb-1">Примітка по здоров'ю (Хворий)</label>
+              <label id="hvoryi_label" class="block text-[11px] text-lime-400 font-bold uppercase tracking-wider mb-1">Примітка по здоров'ю</label>
               <input
                 type="text"
                 id="hvoryi"
@@ -443,7 +443,7 @@
           <!-- БЛОК СІМ'Я -->
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
-              class="text-[10px] uppercase font-bold text-pink-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
+              class="text-[15px] uppercase font-bold text-pink-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
               onclick="
                 document
                   .getElementById('family_content')
@@ -548,7 +548,7 @@
           <!-- БЛОК АДРЕСА - ПІСЛЯ СІМ'Ї -->
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
-              class="text-[10px] uppercase font-bold text-teal-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
+              class="text-[15px] uppercase font-bold text-teal-400 tracking-wider cursor-pointer select-none flex items-center gap-1"
               onclick="
                 document
                   .getElementById('address_content')
@@ -614,7 +614,7 @@
 
           <div class="border-t border-borderClr pt-2 space-y-2">
             <h3
-              class="text-[10px] uppercase font-bold text-purple-400 tracking-wider select-none cursor-pointer flex items-center gap-1"
+              class="text-[15px] uppercase font-bold text-purple-400 tracking-wider select-none cursor-pointer flex items-center gap-1"
               onclick="
                 document
                   .getElementById('structure_content')
@@ -749,7 +749,7 @@
           <!-- БЛОК ВИБУТТЯ -->
           <div id="exit_block" class="border-t border-borderClr pt-2 space-y-2">
             <h3
-              class="text-[10px] uppercase font-bold text-amber-500 tracking-wider cursor-pointer flex items-center gap-1 select-none"
+              class="text-[15px] uppercase font-bold text-amber-500 tracking-wider cursor-pointer flex items-center gap-1 select-none"
               onclick="
                 document
                   .getElementById('exit_fields')
@@ -813,7 +813,7 @@
             class="border-t border-borderClr pt-2 space-y-2"
           >
             <h3
-              class="text-[10px] uppercase font-bold text-sky-400 tracking-wider cursor-pointer flex items-center gap-1 select-none"
+              class="text-[15px] uppercase font-bold text-sky-400 tracking-wider cursor-pointer flex items-center gap-1 select-none"
               onclick="
                 document
                   .getElementById('timelineContent')
@@ -2495,6 +2495,16 @@
           return;
         }
         const val = element.value || "";
+        if (element.id === "hvoryi") {
+          const label = document.getElementById("hvoryi_label");
+          if (label) {
+            if (val.trim() === "н/д" || val.trim() === "") {
+              label.className = "block text-[11px] text-lime-400 font-bold uppercase tracking-wider mb-1";
+            } else {
+              label.className = "block text-[11px] text-rose-400 font-bold uppercase tracking-wider mb-1";
+            }
+          }
+        }
         if (val.trim() === "н/д" || val.trim() === "") {
           element.style.color = "#71717a"; // zinc-500 gray color
         } else {

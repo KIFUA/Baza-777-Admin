@@ -550,8 +550,16 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
             {(() => {
               const simeyniyLookup = lookups?.simeyniy?.find((s: any) => String(s.ID) === String(formData.id_simeyniy));
               const statusStr = String(simeyniyLookup?.Value || formData.s_simeyniy_ukr || '').toLowerCase();
-              const isMarried = (statusStr.includes('одруж') || statusStr.includes('заміж') || statusStr.includes('одр')) && !statusStr.includes('неодруж');
-              const isNotUnmarried = !statusStr.includes('неодруж');
+              const hasSimeyniy = statusStr && 
+                statusStr !== 'не вказ.' && 
+                statusStr !== 'н/д' && 
+                !statusStr.includes('не вказ') && 
+                !statusStr.includes('н/д') &&
+                formData.id_simeyniy !== 0 &&
+                String(formData.id_simeyniy) !== '0' &&
+                String(formData.id_simeyniy) !== '5';
+              const isMarried = hasSimeyniy && (statusStr.includes('одруж') || statusStr.includes('заміж') || statusStr.includes('одр')) && !statusStr.includes('неодр');
+              const isNotUnmarried = hasSimeyniy && !statusStr.includes('неодр');
               
               return (
                 <div className="space-y-4">

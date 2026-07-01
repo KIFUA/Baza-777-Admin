@@ -927,10 +927,14 @@
       }
 
       window.addEventListener('error', function(event) {
+        const msg = String(event.message || '');
+        if (msg.toLowerCase().includes('websocket') || msg.toLowerCase().includes('vite') || msg.toLowerCase().includes('hmr')) return;
         addLog('err', `Error: ${event.message} at ${event.filename}:${event.lineno}`);
         document.body.insertAdjacentHTML('afterbegin', '<div style="background:red;color:white;padding:10px;z-index:9999;position:absolute;top:0;left:0;right:0;">' + event.message + ' at ' + event.filename + ':' + event.lineno + '</div>');
       });
       window.addEventListener('unhandledrejection', function(event) {
+        const reason = String(event.reason || '');
+        if (reason.toLowerCase().includes('websocket') || reason.toLowerCase().includes('vite') || reason.toLowerCase().includes('hmr')) return;
         addLog('err', `Reject: ${event.reason}`);
         document.body.insertAdjacentHTML('afterbegin', '<div style="background:red;color:white;padding:10px;z-index:9999;position:absolute;top:0;left:0;right:0;">Promise Rejection: ' + event.reason + '</div>');
       });

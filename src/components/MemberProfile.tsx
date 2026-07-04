@@ -32,12 +32,23 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   const userObj = rawUser ? JSON.parse(rawUser) : null;
   const isUserAdmin = userObj?.level === 'IV-й' || (userObj?.rayon === 'ЦЕНТР' && userObj?.user?.includes('Черняк Вал.'));
 
+  const levelNum = (() => {
+    const lvl = userObj?.level || 'І-й';
+    const s = lvl.toUpperCase();
+    if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+    if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+    if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+    return 1;
+  })();
+
+  const canEdit = (isUserAdmin || levelNum === 3) && !isRestricted;
+
   const checkAdminPermission = (): boolean => {
     if (isRestricted) {
       alert("Доступ лише для перегляду");
       return false;
     }
-    if (!isUserAdmin) {
+    if (!isUserAdmin && levelNum !== 3) {
       alert("Тимчасово вносити зміни не можна");
       return false;
     }
@@ -340,7 +351,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
           </div>
 
           <div className="flex space-x-2">
-            {isUserAdmin && !isRestricted && (
+            {canEdit && (
               <button
                 onClick={() => onEdit(member)}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
@@ -484,7 +495,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <div className="space-y-3 font-medium text-xs text-slate-700">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">Відповідальний Провідник:</span>
-                      {isUserAdmin && !isRestricted ? (
+                      {canEdit ? (
                         <select
                           value={member.presviter || ''}
                           onChange={async (e) => {
@@ -514,7 +525,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">Район громади:</span>
-                      {isUserAdmin && !isRestricted ? (
+                      {canEdit ? (
                         <select
                           value={member.rayon2_ukr || ''}
                           onChange={async (e) => {
@@ -544,7 +555,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </span>
                           <span className="text-slate-700 font-bold text-[11px]">Духовне служіння:</span>
                         </div>
-                        {isUserAdmin && !isRestricted && (
+                        {canEdit && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -599,7 +610,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           )}
                           
                           {/* Selector */}
-                          {isUserAdmin && !isRestricted && (
+                          {canEdit && (
                              <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
                               {ministryOptions.map((opt) => {
                                 const selectedList = member.s_slujinnya_spysok 
@@ -673,7 +684,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           <span className="text-slate-400 italic">Служінь не вибрано</span>
                         )}
 
-                        {showPotentialSelect && isUserAdmin && !isRestricted && (
+                        {showPotentialSelect && canEdit && (
                           <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
                             {PARTICIPATION_MINISTRIES.map((opt) => {
                               const selectedList = member.sluj_uchast 
@@ -723,7 +734,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                       <div className="h-3.5 w-3.5 rounded-full bg-blue-500 animate-pulse"></div>
                       <div className="text-[10px] font-semibold text-slate-400 uppercase">Характеристика Відвідуваності</div>
                     </div>
-                    {isUserAdmin && !isRestricted ? (
+                    {canEdit ? (
                       <select
                         value={member.vidviduvanist || ''}
                         onChange={async (e) => {
@@ -749,7 +760,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                       <div className="h-3.5 w-3.5 rounded-full bg-emerald-500"></div>
                       <div className="text-[10px] font-semibold text-slate-400 uppercase">Причина відсутності (перебування)</div>
                     </div>
-                    {isUserAdmin && !isRestricted ? (
+                    {canEdit ? (
                       <select
                         value={member.prysutnist || ''}
                         onChange={async (e) => {
@@ -893,7 +904,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     <Baby className="h-4 w-4 text-blue-500" />
                     <span>Неповнолітні та дорослі діти ({children.length})</span>
                   </h4>
-                  {isUserAdmin && !isRestricted && (
+                  {canEdit && (
                     <button
                       onClick={() => setShowAddChild(!showAddChild)}
                       className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
@@ -987,7 +998,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         <b>З іншої громади:</b> {member.insha_gromada}
                     </div>
                 )}
-                {isUserAdmin && !isRestricted && (
+                {canEdit && (
                   <button
                     onClick={() => setShowAddMinistry(!showAddMinistry)}
                     className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
@@ -1062,7 +1073,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                               </div>
                               <div className="whitespace-nowrap text-right text-xs text-slate-500 font-medium">
                                 <div><b>{min.startDate || "Давня дата"}</b> — {min.endDate ? <span className="text-slate-400">{min.endDate}</span> : <span className="text-emerald-600 font-bold uppercase text-[9px]">Активно</span>}</div>
-                                {min.isActive && isUserAdmin && !isRestricted && (
+                                {min.isActive && canEdit && (
                                   <button
                                     onClick={() => handleEndMinistry(min.id)}
                                     className="text-[10px] text-red-500 font-bold mt-1.5 hover:underline"
@@ -1094,7 +1105,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <AlertCircle className="h-4 w-4 text-rose-500" />
                   <span>Дисциплінарний Стан та Зауваження (ISTORIJA)</span>
                 </h4>
-                {isUserAdmin && !isRestricted && (
+                {canEdit && (
                   <button
                     onClick={() => setShowAddDisc(!showAddDisc)}
                     className="flex items-center space-x-1 text-xs font-bold text-rose-600 hover:opacity-80"
@@ -1176,7 +1187,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </div>
                         </div>
 
-                        {disc.isActive && isUserAdmin && !isRestricted && (
+                        {disc.isActive && canEdit && (
                           <button
                             onClick={() => handleResolveDiscipline(disc.id)}
                             className="bg-white hover:bg-emerald-50 border border-slate-200 text-emerald-600 text-[10px] font-bold px-3 py-1 rounded-lg shadow-sm"

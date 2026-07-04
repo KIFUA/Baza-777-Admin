@@ -837,13 +837,13 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
               </div>
 
               {/* Notes boxes */}
-              {(member.primitka || member.hvoryi || member.insha_gromada) && (
+              {(member.prymitka || member.hvoryi || member.insha_gromada) && (
                 <div className="space-y-3 border-t border-slate-50 pt-3 text-xs">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block">Архіваріус примітки</span>
                   <div className="space-y-2 text-slate-600 font-medium">
                     {member.hvoryi && <p><b>Примітка по здоров'ю:</b> {member.hvoryi}</p>}
                     {member.insha_gromada && <p><b>Перехід з іншої громади:</b> {member.insha_gromada}</p>}
-                    {member.primitka && <p className="bg-slate-50 rounded-lg p-3 italic"><b>Коментар:</b> "{member.primitka}"</p>}
+                    {member.prymitka && <p className="bg-slate-50 rounded-lg p-3 italic"><b>Коментар:</b> "{member.prymitka}"</p>}
                   </div>
                 </div>
               )}

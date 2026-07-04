@@ -443,7 +443,7 @@ export default function App() {
     }
     
     // Allow updating remarks if the user has permission, even if not global admin
-    const isRemarkUpdate = updatedFields.primitka !== undefined && Object.keys(updatedFields).length === 1;
+    const isRemarkUpdate = updatedFields.prymitka !== undefined && Object.keys(updatedFields).length === 1;
     if (!isCurrentUserAdmin && !isRemarkUpdate) {
       alert("Тимчасово вносити зміни не можна");
       return false;
@@ -458,16 +458,9 @@ export default function App() {
         body: JSON.stringify(updatedFields)
       });
       if (resp.ok) {
-        const syncFields = { ...updatedFields };
-        if ('primitka' in updatedFields) {
-          syncFields.prymitka = updatedFields.primitka;
-        } else if ('prymitka' in updatedFields) {
-          syncFields.primitka = updatedFields.prymitka;
-        }
-
         // Optimistically update both sets of data in react state
-        setAllMembers(prev => prev.map(m => m.id === id ? { ...m, ...syncFields } : m));
-        setMembers(prev => prev.map(m => m.id === id ? { ...m, ...syncFields } : m));
+        setAllMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
+        setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
         await fetchLookupsAndStats();
         await preloadRawFirebase();
         return true;

@@ -1793,17 +1793,17 @@ export default function SpreadsheetView({
                             value={editingRemarkValue}
                             onChange={(e) => setEditingRemarkValue(e.target.value)}
                             onBlur={async () => {
-                              const originalVal = m.primitka || '';
+                              const originalVal = m.prymitka || '';
                               if (editingRemarkValue !== originalVal) {
-                                await onUpdateMember(m.id, { primitka: editingRemarkValue });
+                                await onUpdateMember(m.id, { prymitka: editingRemarkValue });
                               }
                               setEditingRemarkId(null);
                             }}
                             onKeyDown={async (e) => {
                               if (e.key === 'Enter') {
-                                const originalVal = m.primitka || '';
+                                const originalVal = m.prymitka || '';
                                 if (editingRemarkValue !== originalVal) {
-                                  await onUpdateMember(m.id, { primitka: editingRemarkValue });
+                                  await onUpdateMember(m.id, { prymitka: editingRemarkValue });
                                 }
                                 setEditingRemarkId(null);
                               } else if (e.key === 'Escape') {
@@ -1840,14 +1840,14 @@ export default function SpreadsheetView({
                               return;
                             }
                             setEditingRemarkId(m.id);
-                            setEditingRemarkValue(m.primitka || m.prymitka || '');
+                            setEditingRemarkValue(m.prymitka || '');
                             setActiveRemarkTooltipId(null);
                           }}
                         >
                           <div className="remark-text-div truncate max-w-[128px]">
-                            {m.primitka || m.prymitka || '—'}
+                            {m.prymitka || '—'}
                           </div>
-                          {activeRemarkTooltipId === m.id && (m.primitka || m.prymitka) && (
+                          {activeRemarkTooltipId === m.id && m.prymitka && (
                             <div 
                               className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 w-72 sm:w-96 bg-emerald-950 text-white border border-emerald-700 rounded-lg shadow-xl p-3 z-[300] text-left font-sans text-xs not-italic font-semibold whitespace-normal normal-case leading-relaxed animate-in fade-in zoom-in-95 duration-100"
                               onClick={(e) => e.stopPropagation()}

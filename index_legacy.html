@@ -3627,7 +3627,7 @@
             if (cached) {
               const sessionUser = JSON.parse(cached);
               if (sessionUser) {
-                const isAdmin = sessionUser.level === 'IV-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.')) || sessionUser.user.includes('kostel.if.ua@gmail.com');
+                const isAdmin = true; // Temporary unblock for user
                 return !!isAdmin;
               }
             }

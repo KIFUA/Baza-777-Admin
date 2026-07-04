@@ -122,7 +122,6 @@ export interface Member {
   hvoryi: string;
   insha_gromada: string;
   prymitka?: string;
-  primitka?: string; // backwards compatibility
   d_kontaktiv?: string; // presbyter contact dates migrated from Church Management CSS spreadsheet
   di_admin?: string;
   efile?: boolean | number;

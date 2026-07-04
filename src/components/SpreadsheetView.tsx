@@ -1833,10 +1833,6 @@ export default function SpreadsheetView({
                           }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
-                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit) {
-                              alert("Тимчасово вносити зміни не можна");
-                              return;
-                            }
                             setEditingRemarkId(m.id);
                             setEditingRemarkValue(m.primitka || '');
                             setActiveRemarkTooltipId(null);

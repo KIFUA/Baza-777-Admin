@@ -1900,7 +1900,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "hvoryi": member.hvoryi || "",
     "insha_gromada": member.insha_gromada || "",
     "prymitka": member.prymitka || member.primitka || "",
-    "primitka": null, // Delete legacy
+    "primitka": member.primitka || member.prymitka || "",
     "efile": member.efile !== undefined ? member.efile : ""
   };
 
@@ -1941,7 +1941,7 @@ app.post("/api/members/:id", async (req, res) => {
     "pib", "tel_mob", "s_osvita_ukr", "s_socialniy_ukr", "s_simeyniy_ukr", 
     "s_profesiya_ukr", "s_slujinnya_spysok", "zaklad_osv", "d_narodjennya", "presviter", 
     "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "di_admin",
-    "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada", "hvoryi", "prymitka"
+    "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada", "hvoryi", "prymitka", "primitka"
   ];
 
   fieldsToCheck.forEach(key => {
@@ -2036,7 +2036,8 @@ app.post("/api/members/:id", async (req, res) => {
     kvartyra: "Квартира",
     insha_gromada: "Інша громада",
     hvoryi: "Хворий/Потребує уваги",
-    prymitka: "Примітка"
+    prymitka: "Примітка",
+    primitka: "Примітка"
   };
 
   const userPibHeader = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "Адміністратор";

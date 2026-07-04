@@ -441,7 +441,10 @@ export default function App() {
       alert("У вас лише права перегляду.");
       return false;
     }
-    if (!isCurrentUserAdmin) {
+    
+    // Allow updating remarks if the user has permission, even if not global admin
+    const isRemarkUpdate = updatedFields.primitka !== undefined && Object.keys(updatedFields).length === 1;
+    if (!isCurrentUserAdmin && !isRemarkUpdate) {
       alert("Тимчасово вносити зміни не можна");
       return false;
     }
@@ -820,6 +823,7 @@ export default function App() {
                       fetchLookupsAndStats()
                     ]).catch(err => console.error("Error updating tab data:", err));
                   }}
+                  isUserAdmin={isCurrentUserAdmin}
                 />
               )
             ) : mainMode === 'questionnaire' ? (

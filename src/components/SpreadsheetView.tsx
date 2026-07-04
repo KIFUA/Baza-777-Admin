@@ -13,6 +13,7 @@ interface SpreadsheetViewProps {
   onOpenProfile: (id: number) => void;
   onUpdateMember: (id: number, updatedFields: Partial<Member>) => Promise<boolean>;
   onOpenGenerator: () => void;
+  isUserAdmin?: boolean;
 }
 
 export default function SpreadsheetView({ 
@@ -22,7 +23,8 @@ export default function SpreadsheetView({
   selectedMemberId, 
   onOpenProfile, 
   onUpdateMember, 
-  onOpenGenerator 
+  onOpenGenerator,
+  isUserAdmin
 }: SpreadsheetViewProps) {
   const getPermission = (fieldName: string): { view: boolean, edit: boolean } => {
     const level = userLevel || 'І-й';
@@ -1833,7 +1835,7 @@ export default function SpreadsheetView({
                           }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
-                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit && !isAdmin) {
+                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit && !isUserAdmin) {
                               alert("Тимчасово вносити зміни не можна");
                               return;
                             }

@@ -433,16 +433,11 @@ export default function App() {
   const assignedRayon = currentSessionUser?.rayon;
   const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
   
-  const isCurrentUserAdmin = true; // Temporary unblock for user
-  const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserAdmin) || isGlobalViewer;
+  const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !currentSessionUser?.user?.includes('kostel.if.ua@gmail.com')) || isGlobalViewer;
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
     if (isReadOnly) {
       alert("У вас лише права перегляду.");
-      return false;
-    }
-    if (!isCurrentUserAdmin) {
-      alert("Тимчасово вносити зміни не можна");
       return false;
     }
     try {
@@ -482,10 +477,6 @@ export default function App() {
   const handleSaveMember = async (data: Partial<Member>) => {
     if (isReadOnly) {
       alert("У вас лише права перегляду.");
-      return;
-    }
-    if (!isCurrentUserAdmin) {
-      alert("Тимчасово вносити зміни не можна");
       return;
     }
     try {

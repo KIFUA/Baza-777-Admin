@@ -878,6 +878,7 @@ export default function App() {
                   currentSessionUser={currentSessionUser}
                   onSetSessionUser={handleUpdateSessionUser}
                   members={allMembers}
+                  onUpdateMember={handleSpreadsheetUpdate}
                 />
               </div>
             ) : mainMode === 'journal' ? (

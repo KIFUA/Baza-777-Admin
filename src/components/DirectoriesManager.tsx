@@ -13,6 +13,7 @@ interface DirectoriesManagerProps {
   currentSessionUser: any;
   onSetSessionUser: (user: any) => void;
   members: Member[];
+  onUpdateMember: (id: number, updatedFields: Partial<Member>) => Promise<boolean>;
 }
 
 export default function DirectoriesManager({ 
@@ -20,7 +21,8 @@ export default function DirectoriesManager({
   onRefreshLookups, 
   currentSessionUser, 
   onSetSessionUser,
-  members
+  members,
+  onUpdateMember
 }: DirectoriesManagerProps) {
   const [activeSubTab, setActiveSubTab] = useState<'birthdays' | 'dicts' | 'access' | 'sync' | 'colors'>('birthdays');
   const [activeAccessSubTab, setActiveAccessSubTab] = useState<'sectors' | 'levels'>('sectors');
@@ -502,6 +504,37 @@ export default function DirectoriesManager({
         body: JSON.stringify(payload)
       });
       if (resp.ok) {
+        // Propagate renames for simple string lists
+        if (selectedDictKey !== 'rayon' && selectedDictKey !== 'opika') {
+          const oldList = lookups?.directories[selectedDictKey] || [];
+          const newList = finalVal;
+          if (oldList.length === newList.length) {
+            const renames = [];
+            for (let i = 0; i < oldList.length; i++) {
+              if (oldList[i] !== newList[i]) {
+                renames.push({ oldVal: oldList[i], newVal: newList[i] });
+              }
+            }
+            
+            if (renames.length > 0) {
+              const fieldMap: Record<string, string> = {
+                'prysutnist': 'prysutnist',
+                'vidviduvanist': 'vidviduvanist',
+                'slujinnya': 's_slujinnya_spysok'
+              };
+              const fieldName = fieldMap[selectedDictKey];
+              if (fieldName) {
+                for (const { oldVal, newVal } of renames) {
+                  const affectedMembers = members.filter(m => (m as any)[fieldName] === oldVal);
+                  for (const m of affectedMembers) {
+                    await onUpdateMember(m.id, { [fieldName]: newVal } as any);
+                  }
+                }
+              }
+            }
+          }
+        }
+
         setSaveStatus(true);
         await onRefreshLookups();
         setTimeout(() => setSaveStatus(false), 2000);

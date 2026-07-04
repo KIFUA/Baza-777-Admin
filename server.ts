@@ -1899,8 +1899,8 @@ async function syncMemberToFirebase(id: number, member: Member) {
 
     "hvoryi": member.hvoryi || "",
     "insha_gromada": member.insha_gromada || "",
-    "prymitka": member.prymitka !== undefined ? member.prymitka : (member.primitka || ""),
-    "primitka": member.primitka !== undefined ? member.primitka : (member.prymitka || ""),
+    "prymitka": (member.prymitka || member.primitka) || null,
+    "primitka": (member.primitka || member.prymitka) || null,
     "efile": member.efile !== undefined ? member.efile : ""
   };
 

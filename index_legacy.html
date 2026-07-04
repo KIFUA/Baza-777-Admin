@@ -1384,7 +1384,23 @@
       // (Assuming addr_street input logic needs update)
 
       function applyAdminRestrictions() {
-        const isAdmin = (localStorage.getItem("user_tg_id") === ALLOWED_TG_ID);
+        let isAdmin = (localStorage.getItem("user_tg_id") === ALLOWED_TG_ID);
+        if (!isAdmin) {
+          try {
+            const cached = localStorage.getItem("baza_current_session_user");
+            if (cached) {
+              const sessionUser = JSON.parse(cached);
+              if (sessionUser) {
+                const isSessionAdmin = sessionUser.level === 'IV-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
+                if (isSessionAdmin) {
+                  isAdmin = true;
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Error checking session user in applyAdminRestrictions:", e);
+          }
+        }
         const quickFilterContainer = document.getElementById("quickFilterContainer");
         const btnNewCard = document.getElementById("btnNewCard");
         

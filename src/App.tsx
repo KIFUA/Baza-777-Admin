@@ -458,9 +458,16 @@ export default function App() {
         body: JSON.stringify(updatedFields)
       });
       if (resp.ok) {
+        const syncFields = { ...updatedFields };
+        if ('primitka' in updatedFields) {
+          syncFields.prymitka = updatedFields.primitka;
+        } else if ('prymitka' in updatedFields) {
+          syncFields.primitka = updatedFields.prymitka;
+        }
+
         // Optimistically update both sets of data in react state
-        setAllMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
-        setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
+        setAllMembers(prev => prev.map(m => m.id === id ? { ...m, ...syncFields } : m));
+        setMembers(prev => prev.map(m => m.id === id ? { ...m, ...syncFields } : m));
         await fetchLookupsAndStats();
         await preloadRawFirebase();
         return true;

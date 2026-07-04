@@ -433,9 +433,11 @@ export default function App() {
   const assignedRayon = currentSessionUser?.rayon;
   const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
   
-  const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !currentSessionUser?.user?.includes('kostel.if.ua@gmail.com')) || isGlobalViewer;
+  const isCurrentUserKostel = currentSessionUser?.user?.includes('kostel.if.ua@gmail.com');
+  const isReadOnly = isCurrentUserKostel ? false : ((currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserKostel) || isGlobalViewer);
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
+    console.log("Saving member update:", id, updatedFields, "isReadOnly:", isReadOnly, "user:", currentSessionUser?.user);
     if (isReadOnly) {
       alert("У вас лише права перегляду.");
       return false;

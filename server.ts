@@ -2323,6 +2323,12 @@ app.post("/api/members/:id/disciplines/:recId/resolve", (req, res) => {
   res.status(404).json({ error: "Discipline record not found" });
 });
 
+// Helper for admin check
+const isAdmin = (req: any) => {
+  const userPib = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "";
+  return userPib.includes("kostel.if.ua@gmail.com");
+};
+
 // 14. Create a completely New Member Profile
 app.post("/api/members", async (req, res) => {
   const newMemberData = req.body as Partial<Member>;

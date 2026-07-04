@@ -3619,6 +3619,114 @@
 
       checkAuth();
 
+      // Block edits in the form for non-admin users
+      (function() {
+        function isUserAdmin() {
+          try {
+            const cached = localStorage.getItem("baza_current_session_user");
+            if (cached) {
+              const sessionUser = JSON.parse(cached);
+              if (sessionUser) {
+                const isAdmin = sessionUser.level === 'IV-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
+                return !!isAdmin;
+              }
+            }
+          } catch (e) {
+            console.error("Error checking isUserAdmin:", e);
+          }
+          return false;
+        }
+
+        let lastAlertTime = 0;
+        function showAlert() {
+          const now = Date.now();
+          if (now - lastAlertTime > 2000) {
+            alert("Тимчасово вносити зміни не можна");
+            lastAlertTime = now;
+          }
+        }
+
+        const formContainer = document.getElementById("memberForm");
+        if (formContainer) {
+          const blockEvent = (e) => {
+            if (isUserAdmin()) {
+              return; // Allow admin to edit
+            }
+
+            const target = e.target;
+            if (!target) return;
+
+            // Allow all interactions for the search input
+            if (target.id === 'searchInput' || target.closest('#searchInput')) {
+              return;
+            }
+            
+            // Allow clicking H3 block headers, Ministry dropdown toggle triggers, and Children toggle trigger to view collapsed blocks/data
+            if (target.closest('h3') || 
+                (target.closest('#ministryDropdownWrapper') && !target.closest('#ministryDropdownContainer')) ||
+                target.closest('[onclick*="toggleChildren"]')) {
+              return;
+            }
+            
+            const isInteractive = target.tagName === 'INPUT' || 
+                                  target.tagName === 'SELECT' || 
+                                  target.tagName === 'TEXTAREA' || 
+                                  target.tagName === 'BUTTON' || 
+                                  target.closest('button') ||
+                                  target.closest('label') ||
+                                  target.classList.contains('cursor-pointer') ||
+                                  target.closest('.cursor-pointer');
+                                  
+            if (isInteractive) {
+              if (e.type === 'click' || e.type === 'mousedown' || e.type === 'pointerdown') {
+                const isSelectOrBtn = target.tagName === 'SELECT' || 
+                                      target.tagName === 'BUTTON' || 
+                                      target.closest('button') || 
+                                      (!['INPUT', 'TEXTAREA'].includes(target.tagName) && (target.classList.contains('cursor-pointer') || target.closest('.cursor-pointer')));
+                
+                if (isSelectOrBtn) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  showAlert();
+                  return;
+                }
+
+                if (e.type === 'click' && (target.type === 'checkbox' || target.type === 'radio')) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  showAlert();
+                  return;
+                }
+              } else if (e.type === 'keydown') {
+                const allowedKeys = ['Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', 'Home', 'End', 'Escape'];
+                const isCopyMode = (e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'C');
+                if (!allowedKeys.includes(e.key) && !isCopyMode) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  showAlert();
+                }
+              } else if (e.type === 'submit') {
+                e.preventDefault();
+                e.stopPropagation();
+                showAlert();
+              } else if (e.type === 'change' || e.type === 'focusin') {
+                if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') {
+                  if (e.type === 'change') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }
+                  target.blur();
+                  showAlert();
+                }
+              }
+            }
+          };
+
+          ['click', 'mousedown', 'pointerdown', 'keydown', 'submit', 'change', 'focusin'].forEach(evtName => {
+            formContainer.addEventListener(evtName, blockEvent, true); // capture-phase!
+          });
+        }
+      })();
     </script>
   </body>
 </html>

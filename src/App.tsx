@@ -433,13 +433,16 @@ export default function App() {
   const assignedRayon = currentSessionUser?.rayon;
   const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
   
-  const isCurrentUserKostel = currentSessionUser?.user?.includes('kostel.if.ua@gmail.com');
-  const isReadOnly = isCurrentUserKostel ? false : ((currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserKostel) || isGlobalViewer);
+  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.'));
+  const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserAdmin) || isGlobalViewer;
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
-    console.log("Saving member update:", id, updatedFields, "isReadOnly:", isReadOnly, "user:", currentSessionUser?.user);
     if (isReadOnly) {
       alert("У вас лише права перегляду.");
+      return false;
+    }
+    if (!isCurrentUserAdmin) {
+      alert("Тимчасово вносити зміни не можна");
       return false;
     }
     try {
@@ -479,6 +482,10 @@ export default function App() {
   const handleSaveMember = async (data: Partial<Member>) => {
     if (isReadOnly) {
       alert("У вас лише права перегляду.");
+      return;
+    }
+    if (!isCurrentUserAdmin) {
+      alert("Тимчасово вносити зміни не можна");
       return;
     }
     try {
@@ -818,7 +825,7 @@ export default function App() {
             ) : mainMode === 'questionnaire' ? (
               /* Questionnaire Legacy Embedded View */
               <div className="flex-1 flex flex-col min-h-[450px] bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
-                {(currentSessionUser?.level === 'IV-й' || currentSessionUser?.user?.includes('kostel.if.ua@gmail.com')) && (
+                {currentSessionUser?.level === 'IV-й' && (
                   <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
                     <button

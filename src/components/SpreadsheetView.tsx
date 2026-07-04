@@ -25,18 +25,6 @@ export default function SpreadsheetView({
   onOpenGenerator 
 }: SpreadsheetViewProps) {
   const getPermission = (fieldName: string): { view: boolean, edit: boolean } => {
-    try {
-      const userStr = localStorage.getItem("baza_current_session_user");
-      if (userStr) {
-        const userObj = JSON.parse(userStr);
-        if (userObj && userObj.user === 'kostel.if.ua@gmail.com') {
-          return { view: true, edit: true };
-        }
-      }
-    } catch (e) {
-      console.error("Error checking user for permissions", e);
-    }
-
     const level = userLevel || 'І-й';
     
     const getLevelNum = (lvl: string): number => {
@@ -1845,6 +1833,10 @@ export default function SpreadsheetView({
                           }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
+                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit) {
+                              alert("Тимчасово вносити зміни не можна");
+                              return;
+                            }
                             setEditingRemarkId(m.id);
                             setEditingRemarkValue(m.primitka || '');
                             setActiveRemarkTooltipId(null);

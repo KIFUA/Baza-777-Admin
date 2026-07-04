@@ -2331,6 +2331,7 @@ const isAdmin = (req: any) => {
 
 // 14. Create a completely New Member Profile
 app.post("/api/members", async (req, res) => {
+  if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
   const newMemberData = req.body as Partial<Member>;
   const nextId = Math.max(...members.map(m => m.id)) + 1;
 

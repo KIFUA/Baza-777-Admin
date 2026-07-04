@@ -1833,7 +1833,7 @@ export default function SpreadsheetView({
                           }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
-                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit) {
+                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit && !isAdmin) {
                               alert("Тимчасово вносити зміни не можна");
                               return;
                             }

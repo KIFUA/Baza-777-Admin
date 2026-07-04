@@ -433,7 +433,7 @@ export default function App() {
   const assignedRayon = currentSessionUser?.rayon;
   const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
   
-  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.'));
+  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.')) || isAdmin;
   const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserAdmin) || isGlobalViewer;
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {

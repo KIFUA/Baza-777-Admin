@@ -4,6 +4,7 @@ import {
   Search, Edit2, Check, X, FileText, CheckCircle, AlertTriangle, 
   HelpCircle, Sparkles, Filter 
 } from 'lucide-react';
+import { isSemanticMatch } from '../accessLevels';
 
 interface SpreadsheetViewProps {
   members: Member[];
@@ -88,10 +89,12 @@ export default function SpreadsheetView({
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
-      const dbRole = normalizeStr(item.role || "");
-      return dbRole === targetNorm || 
-             dbRole === 'кнопка' + targetNorm || 
-             dbRole === 'поле' + targetNorm;
+      const roleName = item.role || "";
+      return isSemanticMatch(roleName, mappedName, 'Т') ||
+             isSemanticMatch(roleName, 'кнопка ' + mappedName, 'Т') ||
+             isSemanticMatch(roleName, 'поле ' + mappedName, 'Т') ||
+             isSemanticMatch(roleName, 'кнопка' + mappedName, 'Т') ||
+             isSemanticMatch(roleName, 'поле' + mappedName, 'Т');
     });
 
     if (!row) {

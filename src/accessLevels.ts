@@ -33,6 +33,80 @@ export const parseAccessLevelsCSV = (csvData: string) => {
   return parsedData;
 };
 
+export function normalizeSemantic(name: string): string {
+  if (!name) return "";
+  let s = String(name).toLowerCase().trim();
+  
+  // Replace Cyrillic/Latin homoglyphs for safety:
+  const replacements: Record<string, string> = {
+    'а': 'a', 'с': 'c', 'е': 'e', 'і': 'i', 'о': 'o', 'р': 'p', 'х': 'x', 'у': 'y',
+    'в': 'b', 'н': 'h', 'к': 'k', 'м': 'm', 'т': 't'
+  };
+  let res = "";
+  for (let i = 0; i < s.length; i++) {
+    const char = s[i];
+    res += replacements[char] || char;
+  }
+  
+  // Remove non-alphanumeric characters
+  res = res.replace(/[^a-z0-9]/g, '');
+  return res;
+}
+
+export function parsePrefixAndClean(rawName: string): { prefix: string, clean: string } {
+  if (!rawName) return { prefix: "", clean: "" };
+  let s = String(rawName).trim();
+  
+  // Support prefixes starting with a letter T/A (Latin or Cyrillic) followed by underscores
+  const match = s.match(/^([tTaAтТаА])_+([\s\S]+)$/);
+  if (match) {
+    let pref = match[1].toUpperCase();
+    if (pref === 'T' || pref === 'Т') pref = 'Т';
+    if (pref === 'A' || pref === 'А') pref = 'А';
+    return { prefix: pref, clean: match[2].trim() };
+  }
+  return { prefix: "", clean: s };
+}
+
+export function isSemanticMatch(roleName: string, targetName: string, context?: 'Т' | 'А'): boolean {
+  const { prefix: rolePrefix, clean: roleCleanRaw } = parsePrefixAndClean(roleName);
+  const { prefix: targetPrefix, clean: targetCleanRaw } = parsePrefixAndClean(targetName);
+
+  // If a context is provided and the role specifies a prefix, they must match!
+  if (context && rolePrefix && rolePrefix !== context) {
+    return false;
+  }
+
+  // If both have prefixes, they must match
+  if (rolePrefix && targetPrefix && rolePrefix !== targetPrefix) {
+    return false;
+  }
+
+  const roleClean = normalizeSemantic(roleCleanRaw);
+  const targetClean = normalizeSemantic(targetCleanRaw);
+
+  if (roleClean === targetClean) return true;
+  if (roleClean && targetClean && (roleClean.includes(targetClean) || targetClean.includes(roleClean))) return true;
+
+  // Specific synonyms for safety
+  const synonyms = [
+    ['вх', 'вхр', 'воднехрещення'],
+    ['сімстан', 'сімейнийстан', 'шлюб', 'роківвшлюбі', 'даташлюб', 'пібпартнера'],
+    ['телефон', 'додатиномер', 'додатиномертелефону', 'tel', 'phone', 'номер'],
+    ['переміщ', 'переміщеннятазміниадр', 'переміщеннятазміниадрес', 'переміщення', 'movement'],
+    ['адрес', 'адреса'],
+    ['примітки', 'примітка', 'здоров', 'приміткапоздоровю']
+  ];
+
+  for (const syn of synonyms) {
+    const hasRole = syn.some(s => roleClean.includes(s) || s.includes(roleClean));
+    const hasTarget = syn.some(s => targetClean.includes(s) || s.includes(targetClean));
+    if (hasRole && hasTarget) return true;
+  }
+
+  return false;
+}
+
 export const ACCESS_LEVELS_CSV_DATA = `Елемент;І-бачить;І-змінювати;ІІ-бачить;ІІ-змінювати;ІІІ-бачить;ІІІ-змінювати;ІV-бачить;ІV-змінювати
 Дані синхронізації;;;V;;V;;V;V
 ВСЬОГО ЧЛЕНІВ ЦЕРКВИ;V;V;V;V;V;V;V;V

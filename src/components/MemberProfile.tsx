@@ -4,6 +4,7 @@ import {
   User, Phone, Mail, MapPin, Calendar, Heart, Baby, 
   Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink
 } from 'lucide-react';
+import { isSemanticMatch } from '../accessLevels';
 
 interface MemberProfileProps {
   memberId: number;
@@ -93,10 +94,12 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
-      const dbRole = normalizeStr(item.role || "");
-      return dbRole === targetNorm || 
-             dbRole === 'кнопка' + targetNorm || 
-             dbRole === 'поле' + targetNorm;
+      const roleName = item.role || "";
+      return isSemanticMatch(roleName, mappedName, 'А') ||
+             isSemanticMatch(roleName, 'кнопка ' + mappedName, 'А') ||
+             isSemanticMatch(roleName, 'поле ' + mappedName, 'А') ||
+             isSemanticMatch(roleName, 'кнопка' + mappedName, 'А') ||
+             isSemanticMatch(roleName, 'поле' + mappedName, 'А');
     });
 
     if (!row) {

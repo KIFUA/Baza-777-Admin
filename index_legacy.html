@@ -3679,9 +3679,35 @@
           return res;
         }
 
-        function isSemanticMatch(a, b) {
-          const normA = normalizeSemantic(a);
-          const normB = normalizeSemantic(b);
+        function parsePrefixAndClean(rawName) {
+          if (!rawName) return { prefix: "", clean: "" };
+          let s = String(rawName).trim();
+          const match = s.match(/^([tTaAтТаА])_+([\s\S]+)$/);
+          if (match) {
+            let pref = match[1].toUpperCase();
+            if (pref === 'T' || pref === 'Т') pref = 'Т';
+            if (pref === 'A' || pref === 'А') pref = 'А';
+            return { prefix: pref, clean: match[2].trim() };
+          }
+          return { prefix: "", clean: s };
+        }
+
+        function isSemanticMatch(roleName, targetName, context) {
+          if (context === undefined) {
+            context = 'А';
+          }
+          const resRole = parsePrefixAndClean(roleName);
+          const resTarget = parsePrefixAndClean(targetName);
+
+          if (context && resRole.prefix && resRole.prefix !== context) {
+            return false;
+          }
+          if (resRole.prefix && resTarget.prefix && resRole.prefix !== resTarget.prefix) {
+            return false;
+          }
+
+          const normA = normalizeSemantic(resRole.clean);
+          const normB = normalizeSemantic(resTarget.clean);
           if (normA === normB) return true;
           if (normA && normB && (normA.includes(normB) || normB.includes(normA))) return true;
           
@@ -3689,7 +3715,7 @@
           const synonyms = [
             ['вх', 'вхр', 'воднехрещення'],
             ['сімстан', 'сімейнийстан', 'шлюб', 'роківвшлюбі', 'даташлюб', 'пібпартнера'],
-            ['телефон', 'додатиномер', 'додатиномертелефону', 'tel', 'phone'],
+            ['телефон', 'додатиномер', 'додатиномертелефону', 'tel', 'phone', 'номер'],
             ['переміщ', 'переміщеннятазміниадр', 'переміщеннятазміниадрес', 'переміщення', 'movement'],
             ['адрес', 'адреса'],
             ['примітки', 'примітка', 'здоров', 'приміткапоздоровю']

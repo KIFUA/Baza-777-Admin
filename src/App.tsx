@@ -9,6 +9,7 @@ import SpreadsheetView from './components/SpreadsheetView';
 import DirectoriesManager from './components/DirectoriesManager';
 import ReportGenerator from './components/ReportGenerator';
 import LoginPage from './components/LoginPage';
+import { isSemanticMatch } from './accessLevels';
 import { 
   Users, UserCheck, Heart, Shield, History, BarChart3, Search, 
   MapPin, Phone, UserPlus, Filter, RotateCcw, ChevronLeft, ChevronRight, BookOpen,
@@ -121,10 +122,12 @@ export default function App() {
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
-      const dbRole = normalizeStr(item.role || "");
-      return dbRole === targetNorm || 
-             dbRole === 'кнопка' + targetNorm || 
-             dbRole === 'поле' + targetNorm;
+      const roleName = item.role || "";
+      return isSemanticMatch(roleName, mappedName) ||
+             isSemanticMatch(roleName, 'кнопка ' + mappedName) ||
+             isSemanticMatch(roleName, 'поле ' + mappedName) ||
+             isSemanticMatch(roleName, 'кнопка' + mappedName) ||
+             isSemanticMatch(roleName, 'поле' + mappedName);
     });
 
     if (!row) {

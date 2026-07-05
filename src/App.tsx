@@ -118,14 +118,6 @@ export default function App() {
     }
     
     const targetNorm = normalizeStr(mappedName);
-
-    if (levelNum <= 2) {
-      const normOpika = normalizeStr('Опіка');
-      const normPoleOpika = normalizeStr('Поле опіка');
-      if (targetNorm === normOpika || targetNorm === normPoleOpika) {
-        return { view: false, edit: false };
-      }
-    }
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {

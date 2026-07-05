@@ -27,7 +27,6 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');
-
   const rawUser = localStorage.getItem("baza_current_session_user") || sessionStorage.getItem("baza_current_session_user");
   const userObj = rawUser ? JSON.parse(rawUser) : null;
   const isUserAdmin = userObj?.level === 'IV-й' || (userObj?.rayon === 'ЦЕНТР' && userObj?.user?.includes('Черняк Вал.'));
@@ -41,14 +40,108 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     return 1;
   })();
 
-  const canEdit = (isUserAdmin || levelNum === 3) && !isRestricted;
+  const getPermission = (fieldName: string): { view: boolean, edit: boolean } => {
+    if (isRestricted) {
+      return { view: true, edit: false };
+    }
+    const level = userObj?.level || 'І-й';
+    const roleMapping: Record<string, string> = {
+      'дати контактів з пресв.': 'Дата контакт.',
+      'примітки і пояснення': 'Примітки',
+      'завдання для адмін.': 'Завд. для адм.',
+      'опіка': 'Опіка',
+      'служіння': 'Служіння',
+      'відвідування': 'Відвідув.',
+      'прич. відсутності': 'Прич. відсутн.',
+      'вік': 'Вік',
+      'адреса': 'Адрес',
+      'телефон': 'Телефон',
+      'дата народж.': 'Дата народж.',
+      'ос-та': 'Освіта',
+      'хр. с.д.': 'Хр. С.Д.',
+      'сім. стан': 'Сім. стан',
+      'соц. стан': 'Соц. стан',
+      'в.х.': 'В.Х.',
+      'в_церкві_з': 'В церкві з',
+      'років в ц.': 'К-ть рок. в Ц.',
+      'район': 'РАЙОН',
+      'піб': 'ПІБ',
+      'всего членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
+      'всього членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
+      'список': 'Кнопка СПИСОК',
+      'анкети': 'Кнопка АНКЕТИ',
+      'статистика': 'Кнопка СТАТИСТИКА',
+      'налаштування': 'Кнопка НАЛАШТУВАННЯ',
+      'pole statusів': 'Поле статусів',
+      'поле статусів': 'Поле статусів',
+      'поле районів': 'Поле районів',
+      'поле опіка': 'Поле опіка',
+      'поле пошук': 'Поле пошук',
+      'кнопка власні списки': 'Кнопка ВЛАСНІ СПИСКИ',
+      'кнопка район у таблиці': 'Кнопка РАЙОН У ТАБЛИЦІ'
+    };
 
-  const checkAdminPermission = (): boolean => {
+    const normalizeStr = (s: string) => s.replace(/[^a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]/g, '').toLowerCase().trim();
+    
+    let mappedName = fieldName;
+    const cleanFieldName = fieldName.toLowerCase().trim();
+    if (roleMapping[cleanFieldName]) {
+      mappedName = roleMapping[cleanFieldName];
+    }
+    
+    const targetNorm = normalizeStr(mappedName);
+
+    const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
+    const row = list.find((item: any) => {
+      const dbRole = normalizeStr(item.role || "");
+      return dbRole === targetNorm || 
+             dbRole === 'кнопка' + targetNorm || 
+             dbRole === 'поле' + targetNorm;
+    });
+
+    if (!row) {
+      const isPublic = ['№', 'піб', 'в_церкві_з', 'років в ц.', 'rayon2_ukr', 'поле пошук'].includes(targetNorm);
+      const isVisible = isPublic || (levelNum > 1);
+      const isEditable = isVisible && (levelNum === 4 || levelNum === 3);
+      return { view: isVisible, edit: isEditable };
+    }
+
+    const findAccessValue = (access: Record<string, boolean>, lvlNum: number, action: 'view' | 'edit'): boolean => {
+      const keys = Object.keys(access || {});
+      for (const k of keys) {
+        const rawKey = k.toLowerCase().trim();
+        let keyLvl = 1;
+        if (rawKey.includes('iv') || rawKey.includes('іv')) keyLvl = 4;
+        else if (rawKey.includes('iii') || rawKey.includes('ііі')) keyLvl = 3;
+        else if (rawKey.includes('ii') || rawKey.includes('іі')) keyLvl = 2;
+        else keyLvl = 1;
+
+        const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
+        const isView = rawKey.includes('бач') || rawKey.includes('view');
+
+        if (keyLvl === lvlNum) {
+          if (action === 'view' && isView) return !!access[k];
+          if (action === 'edit' && isEdit) return !!access[k];
+        }
+      }
+      return false;
+    };
+
+    return {
+      view: findAccessValue(row.access, levelNum, 'view'),
+      edit: findAccessValue(row.access, levelNum, 'edit')
+    };
+  };
+
+  const canEdit = getPermission('ПІБ').edit && !isRestricted;
+
+  const checkAdminPermission = (role: string = 'ПІБ'): boolean => {
     if (isRestricted) {
       alert("Доступ лише для перегляду");
       return false;
     }
-    if (!isUserAdmin && levelNum !== 3) {
+    const perm = getPermission(role);
+    if (!perm.edit) {
       alert("Тимчасово вносити зміни не можна");
       return false;
     }

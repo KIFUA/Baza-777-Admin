@@ -85,14 +85,6 @@ export default function SpreadsheetView({
     }
     
     const targetNorm = normalizeStr(mappedName);
-
-    if (levelNum <= 2) {
-      const normOpika = normalizeStr('Опіка');
-      const normPoleOpika = normalizeStr('Поле опіка');
-      if (targetNorm === normOpika || targetNorm === normPoleOpika) {
-        return { view: false, edit: false };
-      }
-    }
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
@@ -132,7 +124,7 @@ export default function SpreadsheetView({
 
     return {
       view: findAccessValue(row.access, levelNum, 'view'),
-      edit: (levelNum === 4 || levelNum === 3) ? findAccessValue(row.access, levelNum, 'edit') : false
+      edit: findAccessValue(row.access, levelNum, 'edit')
     };
   };
 

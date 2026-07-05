@@ -34,10 +34,14 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
   const levelNum = (() => {
     const lvl = userObj?.level || 'І-й';
-    const s = lvl.toUpperCase();
-    if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
-    if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
-    if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+    const s = lvl.toLowerCase()
+      .replace(/і/g, 'i')
+      .replace(/І/g, 'i')
+      .replace(/I/g, 'i')
+      .trim();
+    if (s.includes('iv') || s.includes('4')) return 4;
+    if (s.includes('iii') || s.includes('3')) return 3;
+    if (s.includes('ii') || s.includes('2')) return 2;
     return 1;
   })();
 
@@ -47,20 +51,24 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     }
     const level = userObj?.level || 'І-й';
     const roleMapping: Record<string, string> = {
-      'дати контактів з пресв.': 'Дата контакт.',
-      'примітки і пояснення': 'Примітки',
-      'завдання для адмін.': 'Завд. для адм.',
-      'опіка': 'Опіка',
-      'служіння': 'Служіння',
-      'відвідування': 'Відвідув.',
-      'прич. відсутності': 'Прич. відсутн.',
+      'дати контактів з пресв.': 'Дати контактів',
+      'дати контактів': 'Дати контактів',
+      'дата контактів': 'Дати контактів',
+      'примітки і пояснення': 'ПРИМІТКИ І ПОЯСНЕННЯ',
+      'примітки': 'ПРИМІТКИ І ПОЯСНЕННЯ',
+      'завдання для адмін.': 'ЗАВДАННЯ ДЛЯ АДМІН.',
+      'завдання для адмін': 'ЗАВДАННЯ ДЛЯ АДМІН.',
+      'опіка': 'ОПІКА',
+      'служіння': 'СЛУЖІННЯ',
+      'відвідування': 'ВІДВІДУВАННЯ',
+      'прич. відсутності': 'ПРИЧ. ВІДСУТНОСТІ',
       'вік': 'Вік',
       'адреса': 'Адрес',
       'телефон': 'Телефон',
       'дата народж.': 'Дата народж.',
       'ос-та': 'Освіта',
       'хр. с.д.': 'Хр. С.Д.',
-      'сім. стан': 'Сім. стан',
+      'сім. стан': 'Сімейни стан',
       'соц. стан': 'Соц. стан',
       'в.х.': 'В.Х.',
       'в_церкві_з': 'В церкві з',
@@ -112,11 +120,15 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     const findAccessValue = (access: Record<string, boolean>, lvlNum: number, action: 'view' | 'edit'): boolean => {
       const keys = Object.keys(access || {});
       for (const k of keys) {
-        const rawKey = k.toLowerCase().trim();
+        const rawKey = k.toLowerCase()
+          .replace(/і/g, 'i')
+          .replace(/І/g, 'i')
+          .replace(/I/g, 'i')
+          .trim();
         let keyLvl = 1;
-        if (rawKey.includes('iv') || rawKey.includes('іv')) keyLvl = 4;
-        else if (rawKey.includes('iii') || rawKey.includes('ііі')) keyLvl = 3;
-        else if (rawKey.includes('ii') || rawKey.includes('іі')) keyLvl = 2;
+        if (rawKey.includes('iv') || rawKey.includes('4')) keyLvl = 4;
+        else if (rawKey.includes('iii') || rawKey.includes('3')) keyLvl = 3;
+        else if (rawKey.includes('ii') || rawKey.includes('2')) keyLvl = 2;
         else keyLvl = 1;
 
         const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');

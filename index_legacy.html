@@ -1058,6 +1058,8 @@
             data = await res.json();
           }
 
+          window.__bazaLookupsCache = data;
+
           const dirs = data.directories || {};
 
            // 1. Populate Rayon (District) Select
@@ -3637,6 +3639,210 @@
 
       // Block edits in the form for non-admin users
       (function() {
+        function getUserLevelNum() {
+          try {
+            const cached = localStorage.getItem("baza_current_session_user");
+            if (cached) {
+              const sessionUser = JSON.parse(cached);
+              if (sessionUser) {
+                const lvl = sessionUser.level || 'І-й';
+                const s = lvl.toUpperCase();
+                if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+                if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+                if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
+                return 1;
+              }
+            }
+          } catch (e) {
+            console.error("Error reading user level:", e);
+          }
+          return 1;
+        }
+
+        function mapInputToFieldName(target) {
+          if (!target) return null;
+          
+          let element = target;
+          if (element.tagName === 'LABEL') {
+            const htmlFor = element.getAttribute('for');
+            if (htmlFor) {
+              const linkedInput = document.getElementById(htmlFor);
+              if (linkedInput) {
+                element = linkedInput;
+              }
+            } else {
+              const nestedInput = element.querySelector('input, select, textarea');
+              if (nestedInput) {
+                element = nestedInput;
+              }
+            }
+          }
+          
+          const id = element.id || '';
+          const name = element.name || '';
+
+          // Address fields
+          if (id.startsWith('addr_') || id === 'addr_city' || id === 'addr_street' || id === 'addr_house' || id === 'addr_korpus' || id === 'addr_flat') {
+            return 'Адрес';
+          }
+          // Phone fields
+          if (id === 'tel' || id === 'tel_extra' || id === 'tel2' || id.startsWith('tel_') || name === 'main_phone_select' || element.classList.contains('extra-phone-input') || element.closest('.extra-phone-row')) {
+            return 'Телефон';
+          }
+          // Messengers / contacts
+          if (id === 'messengers') {
+            return 'Телефон';
+          }
+          // Birth date / age
+          if (id === 'd_nar') {
+            return 'Дата народж.';
+          }
+          // Education
+          if (id === 'education') {
+            return 'Освіта';
+          }
+          // Profession
+          if (id === 'profession') {
+            return 'Професія';
+          }
+          // Baptism / Water date
+          if (id === 'd_vodnogo') {
+            return 'Хр. С.Д.';
+          }
+          // Date joined church
+          if (id === 'd_vstupu') {
+            return 'В церкві з';
+          }
+          // San (Church rank)
+          if (id === 'san') {
+            return 'Служіння';
+          }
+          // Caregiver/Opika
+          if (id === 'opika' || id === 'presviter') {
+            return 'Опіка';
+          }
+          // District/Rayon
+          if (id === 'rayon') {
+            return 'РАЙОН';
+          }
+          // Marriage fields
+          if (id === 'd_shlyub_from') {
+            return 'Дата шлюб.';
+          }
+          if (id === 'd_shlyub_end') {
+            return 'К-ть рок.в шлюбі';
+          }
+          // If the element is within the marriage history or spouse block
+          if (element.closest('#marriage_history_block') || element.closest('[id*="shlyub"]') || id === 'family_status') {
+            return 'Сім. стан';
+          }
+          if (id === 'partner_pib' || id.includes('podruzhzhya') || id.includes('podrujya') || id === 'partner_name_input') {
+            return 'ПІБ партнера';
+          }
+          // Children block
+          if (element.closest('#children_container') || id === 'dity' || id.includes('child_')) {
+            return 'Діти';
+          }
+          // Ministries / slujinnya
+          if (element.closest('#ministries_container') || id.startsWith('chk_min_') || id.startsWith('min_') || element.closest('#ministryDropdownWrapper') || element.closest('#ministryDropdownContainer')) {
+            return 'Служіння';
+          }
+          // Discipline / history of changes
+          if (element.closest('#discipline_container') || id.startsWith('disc_')) {
+            return 'Історія змін';
+          }
+          // Movements
+          if (element.closest('#movementsContent') || element.closest('#movement_fields_container')) {
+            return 'Переміщ. та зміни адр.';
+          }
+          // Social status
+          if (id === 'social_status' || id === 'social') {
+            return 'Соц. стан';
+          }
+          // Illness / V.H.
+          if (id === 'hvoryi') {
+            return 'В.Х.';
+          }
+          // Exit fields
+          if (id === 'exit_date' || id === 'exit_reason' || id === 'id_vybuttya' || id === 'vybuv_prymitka') {
+            return 'Дата вибуття';
+          }
+          if (id === 'exit_explanation' || id === 'exit_note') {
+            return 'Примітка вибуття';
+          }
+          // Contact dates
+          if (id === 'contact_dates' || id === 'd_kontaktiv') {
+            return 'Дата контакт.';
+          }
+          // Comments/Remarks
+          if (id === 'prymitka' || id === 'comment') {
+            return 'Примітки';
+          }
+          // Admin tasks
+          if (id === 'di_admin') {
+            return 'Завд. для адм.';
+          }
+          // Gender / Stat
+          if (id === 'stat') {
+            return 'ПІБ';
+          }
+          
+          return null;
+        }
+
+        function canEditField(target) {
+          if (!target) return false;
+          
+          const levelNum = getUserLevelNum();
+          if (levelNum === 4) {
+            return true; // Level 4 can edit everything
+          }
+          if (levelNum !== 3) {
+            return false; // Levels 1 and 2 cannot edit anything on questionnaire tab
+          }
+          
+          // Submit button can always be clicked by Level 3 to save their edits
+          if (target.type === 'submit' || (target.tagName === 'BUTTON' && target.textContent && target.textContent.includes('ЗБЕРЕГТИ'))) {
+            return true;
+          }
+          
+          const fieldName = mapInputToFieldName(target);
+          if (!fieldName) {
+            return false;
+          }
+          
+          const lookups = window.__bazaLookupsCache || (window.parent && window.parent.__bazaLookupsData);
+          const list = (lookups && lookups.permission_levels) || [];
+          
+          const normalizeStr = (s) => String(s || '').replace(/[^a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]/g, '').toLowerCase().trim();
+          const targetNorm = normalizeStr(fieldName);
+          
+          const row = list.find((item) => {
+            const dbRole = normalizeStr(item.role || "");
+            return dbRole === targetNorm || 
+                   dbRole === 'кнопка' + targetNorm || 
+                   dbRole === 'поле' + targetNorm;
+          });
+          
+          if (!row) {
+            return false;
+          }
+          
+          // Check 'ІІІ-змінювати' permission
+          const access = row.access || {};
+          const keys = Object.keys(access);
+          for (const k of keys) {
+            const rawKey = k.toLowerCase().trim();
+            const isLevel3Key = rawKey.includes('iii') || rawKey.includes('ііі') || rawKey.includes('3');
+            const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
+            if (isLevel3Key && isEdit) {
+              return !!access[k];
+            }
+          }
+          
+          return false;
+        }
+
         function isUserAdmin() {
           try {
             const cached = localStorage.getItem("baza_current_session_user");
@@ -3666,7 +3872,7 @@
         if (formContainer) {
           const blockEvent = (e) => {
             if (isUserAdmin()) {
-              return; // Allow admin to edit
+              return; // Allow admin to edit everything
             }
 
             const target = e.target;
@@ -3677,10 +3883,16 @@
               return;
             }
             
-            // Allow clicking H3 block headers, Ministry dropdown toggle triggers, and Children toggle trigger to view collapsed blocks/data
+            // Allow clicking H3 block headers, Ministry dropdown toggle triggers, label toggles, and Children toggle trigger to view collapsed blocks/data
             if (target.closest('h3') || 
+                target.closest('label[onclick]') ||
                 (target.closest('#ministryDropdownWrapper') && !target.closest('#ministryDropdownContainer')) ||
                 target.closest('[onclick*="toggleChildren"]')) {
+              return;
+            }
+
+            // Allow interaction with allowed fields
+            if (canEditField(target)) {
               return;
             }
             

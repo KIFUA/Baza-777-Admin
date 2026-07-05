@@ -145,7 +145,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     }
     const perm = getPermission(role);
     if (!perm.edit) {
-      alert("Тимчасово вносити зміни не можна");
+      alert("Немає прав доступу для редагування цього поля");
       return false;
     }
     return true;

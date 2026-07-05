@@ -437,12 +437,6 @@ export default function App() {
       return false;
     }
     
-    // Allow Level III and Level IV to make changes, other levels can only update remarks if permitted
-    const isRemarkUpdate = updatedFields.prymitka !== undefined && Object.keys(updatedFields).length === 1;
-    if (!isCurrentUserAdmin && levelNum !== 3 && !isRemarkUpdate) {
-      alert("Тимчасово вносити зміни не можна");
-      return false;
-    }
     try {
       const resp = await fetch(`/api/members/${id}`, {
         method: 'POST',
@@ -480,10 +474,6 @@ export default function App() {
   const handleSaveMember = async (data: Partial<Member>) => {
     if (isReadOnly) {
       alert("У вас лише права перегляду.");
-      return;
-    }
-    if (!isCurrentUserAdmin && levelNum !== 3) {
-      alert("Тимчасово вносити зміни не можна");
       return;
     }
     try {

@@ -1112,7 +1112,7 @@ export default function SpreadsheetView({
           if (mappedRole) {
             const perm = getPermission(mappedRole);
             if (!perm.edit) {
-              alert("Тимчасово вносити зміни не можна");
+              alert("Немає прав доступу для редагування цього поля");
               return;
             }
           }
@@ -1740,7 +1740,7 @@ export default function SpreadsheetView({
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (!getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').edit) {
-                              alert("Тимчасово вносити зміни не можна");
+                              alert("Немає прав доступу для редагування цього поля");
                               return;
                             }
                             handleOpenContactModal(m);
@@ -1831,7 +1831,7 @@ export default function SpreadsheetView({
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit && !isUserAdmin) {
-                              alert("Тимчасово вносити зміни не можна");
+                              alert("Немає прав доступу для редагування цього поля");
                               return;
                             }
                             setEditingRemarkId(m.id);
@@ -1868,7 +1868,7 @@ export default function SpreadsheetView({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!getPermission('СЛУЖІННЯ').edit) {
-                            alert("Тимчасово вносити зміни не можна");
+                            alert("Немає прав доступу для редагування цього поля");
                             return;
                           }
                           setEditingCell({ id: m.id, field: 's_slujinnya_spysok' });

@@ -3909,11 +3909,8 @@
           if (levelNum === 4) {
             return true; // Level 4 can edit everything
           }
-          if (levelNum !== 3) {
-            return false; // Levels 1 and 2 cannot edit anything on questionnaire tab
-          }
           
-          // Submit button can always be clicked by Level 3 to save their edits
+          // Submit button can always be clicked by permitted levels to save their edits
           if (target.type === 'submit' || (target.tagName === 'BUTTON' && target.textContent && target.textContent.includes('ЗБЕРЕГТИ'))) {
             return true;
           }
@@ -3939,14 +3936,19 @@
             return true; // Allow editing of unlisted fields (matches React app)
           }
           
-          // Check 'ІІІ-змінювати' permission
+          // Check role/field's edit permission for current level
           const access = row.access || {};
           const keys = Object.keys(access);
           for (const k of keys) {
             const rawKey = k.toLowerCase().trim();
-            const isLevel3Key = rawKey.includes('iii') || rawKey.includes('ііі') || rawKey.includes('3');
+            let keyLvl = 1;
+            if (rawKey.includes('iv') || rawKey.includes('іv') || rawKey.includes('4')) keyLvl = 4;
+            else if (rawKey.includes('iii') || rawKey.includes('ііі') || rawKey.includes('3')) keyLvl = 3;
+            else if (rawKey.includes('ii') || rawKey.includes('іі') || rawKey.includes('2')) keyLvl = 2;
+            else keyLvl = 1;
+
             const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
-            if (isLevel3Key && isEdit) {
+            if (keyLvl === levelNum && isEdit) {
               return !!access[k];
             }
           }
@@ -3974,7 +3976,7 @@
         function showAlert() {
           const now = Date.now();
           if (now - lastAlertTime > 2000) {
-            alert("Тимчасово вносити зміни не можна");
+            alert("Немає прав доступу для редагування цього поля");
             lastAlertTime = now;
           }
         }

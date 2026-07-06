@@ -38,7 +38,19 @@ let initialSyncPromise: Promise<void> | null = null;
 function ensureInitialSync() {
   if (!initialSyncPromise) {
     initialSyncPromise = syncDatabaseWithFirebase()
-      .then(() => {
+      .then(async () => {
+        // One-time cleanup for di_admin (Request 5)
+        let cleanedCount = 0;
+        for (const m of members) {
+          if (m.di_admin === "Пресвітер") {
+            m.di_admin = "";
+            await syncMemberToFirebase(m.id, m);
+            cleanedCount++;
+          }
+        }
+        if (cleanedCount > 0) {
+          console.log(`[ensureInitialSync] Cleaned ${cleanedCount} members with invalid di_admin.`);
+        }
         console.log("[ensureInitialSync] Initial Firebase sync finished successfully.");
       })
       .catch((err) => {
@@ -1952,6 +1964,11 @@ app.post("/api/members/:id", async (req, res) => {
 
   // Apply updates on server state
   const mergedMember = { ...orig, ...updatedData };
+  
+  // Validation for di_admin (Request 5)
+  if (mergedMember.di_admin && !directories_di_admin.includes(mergedMember.di_admin)) {
+      mergedMember.di_admin = "";
+  }
   
   // Conditionally process vybuttya note parameters ("відп.", "емігр.", "вилуч.") (user request 06)
   if (updatedData.id_vybuttya !== undefined) {

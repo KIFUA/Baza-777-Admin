@@ -105,7 +105,7 @@ export default function SpreadsheetView({
     if (!row) {
       const isPublic = ['№', 'піб', 'в_церкві_з', 'років в ц.', 'rayon2_ukr', 'поле пошук'].includes(targetNorm);
       const isVisible = isPublic || (levelNum > 1);
-      const isEditable = isVisible && (levelNum === 4);
+      const isEditable = isVisible && (levelNum === 4 || levelNum === 3);
       return { view: isVisible, edit: isEditable };
     }
 
@@ -132,7 +132,7 @@ export default function SpreadsheetView({
 
     return {
       view: findAccessValue(row.access, levelNum, 'view'),
-      edit: levelNum === 4 ? findAccessValue(row.access, levelNum, 'edit') : false
+      edit: (levelNum === 4 || levelNum === 3) ? findAccessValue(row.access, levelNum, 'edit') : false
     };
   };
 
@@ -751,7 +751,7 @@ export default function SpreadsheetView({
         const phoneMatch = m.tel_mob?.toLowerCase().includes(q);
         const presvMatch = m.presviter?.toLowerCase().includes(q);
         const rayonMatch = m.rayon2_ukr?.toLowerCase().includes(q);
-        const primitkaMatch = m.primitka?.toLowerCase().includes(q);
+        const primitkaMatch = m.prymitka?.toLowerCase().includes(q);
         const addressMatch = m.address?.toLowerCase().includes(q);
         
         return pibMatch || phoneMatch || presvMatch || rayonMatch || primitkaMatch || addressMatch;

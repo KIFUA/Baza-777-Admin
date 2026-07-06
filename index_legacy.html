@@ -1391,7 +1391,7 @@
             if (cached) {
               const sessionUser = JSON.parse(cached);
               if (sessionUser) {
-                const isSessionAdmin = sessionUser.level === 'IV-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
+                const isSessionAdmin = sessionUser.level === 'IV-й' || sessionUser.level === 'ІІІ-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
                 if (isSessionAdmin) {
                   isAdmin = true;
                 }

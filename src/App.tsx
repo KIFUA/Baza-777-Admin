@@ -442,9 +442,9 @@ export default function App() {
       return false;
     }
     
-    // Allow updating remarks if the user has permission, even if not global admin
+    // Allow Level III and Level IV to make changes, other levels can only update remarks if permitted
     const isRemarkUpdate = updatedFields.prymitka !== undefined && Object.keys(updatedFields).length === 1;
-    if (!isCurrentUserAdmin && !isRemarkUpdate) {
+    if (!isCurrentUserAdmin && levelNum !== 3 && !isRemarkUpdate) {
       alert("Тимчасово вносити зміни не можна");
       return false;
     }
@@ -487,7 +487,7 @@ export default function App() {
       alert("У вас лише права перегляду.");
       return;
     }
-    if (!isCurrentUserAdmin) {
+    if (!isCurrentUserAdmin && levelNum !== 3) {
       alert("Тимчасово вносити зміни не можна");
       return;
     }
@@ -829,7 +829,7 @@ export default function App() {
             ) : mainMode === 'questionnaire' ? (
               /* Questionnaire Legacy Embedded View */
               <div className="flex-1 flex flex-col min-h-[450px] bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
-                {currentSessionUser?.level === 'IV-й' && (
+                {(currentSessionUser?.level === 'IV-й' || currentSessionUser?.level === 'ІІІ-й') && (
                   <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
                     <button

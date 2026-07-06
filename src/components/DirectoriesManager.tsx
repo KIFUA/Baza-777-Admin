@@ -387,6 +387,7 @@ export default function DirectoriesManager({
         await onRefreshLookups();
         setIsAddListModalOpen(false);
         setNewListName('');
+        setSelectedDictKey(newListName.trim());
       }
     } catch (err) {
       console.error("Failed to add list:", err);

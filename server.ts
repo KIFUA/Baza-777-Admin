@@ -1570,9 +1570,13 @@ app.post("/api/directories/save", async (req, res) => {
   if (Array.isArray(data.prysutnist)) directories_prysutnist = data.prysutnist;
   if (Array.isArray(data.di_admin)) directories_di_admin = data.di_admin;
   
+  console.log("Saving directories data:", Object.keys(data));
+  console.log("Full payload data:", JSON.stringify(data));
+  
   if (Array.isArray(data.custom_lists)) {
     directories_custom = {};
     data.custom_lists.forEach((listName: string) => {
+      console.log("Processing list:", listName, "Data found:", Array.isArray(data[listName]));
       if (Array.isArray(data[listName])) {
         directories_custom[listName] = data[listName];
       }

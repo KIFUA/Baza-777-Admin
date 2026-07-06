@@ -1572,11 +1572,12 @@ app.post("/api/directories/save", async (req, res) => {
   
   console.log("Saving directories data:", Object.keys(data));
   console.log("Full payload data:", JSON.stringify(data));
+  console.log("Payload custom_lists:", JSON.stringify(data.custom_lists));
   
   if (Array.isArray(data.custom_lists)) {
     directories_custom = {};
     data.custom_lists.forEach((listName: string) => {
-      console.log("Processing list:", listName, "Data found:", Array.isArray(data[listName]));
+      console.log("Processing list:", listName, "Data found:", Array.isArray(data[listName]), "Data length:", Array.isArray(data[listName]) ? data[listName].length : "N/A");
       if (Array.isArray(data[listName])) {
         directories_custom[listName] = data[listName];
       }
@@ -1586,8 +1587,10 @@ app.post("/api/directories/save", async (req, res) => {
   const targetRayons = Array.isArray(data.rayon) ? data.rayon : data.rayon2;
   if (Array.isArray(targetRayons)) directories_rayon2 = targetRayons;
   
+  let isPermissionsArray = false;
   if (Array.isArray(data.access)) {
     if (data.access.length > 0 && data.access[0] && (data.access[0].role !== undefined || data.access[0].headers !== undefined)) {
+      isPermissionsArray = true;
       permission_levels = data.access;
     } else {
       access_dostup = data.access;
@@ -1606,7 +1609,7 @@ app.post("/api/directories/save", async (req, res) => {
   saveDatabaseToCache();
   try {
     await syncDirectoriesToFirebase();
-    if (Array.isArray(access)) {
+    if (Array.isArray(data.access)) {
       if (isPermissionsArray) {
         await syncPermissionLevelsToFirebase();
       } else {

@@ -166,7 +166,8 @@ export default function SpreadsheetView({
   const [selectedSlujinnyaFilter, setSelectedSlujinnyaFilter] = useState<string>('');
   const [selectedVidviduvanistFilter, setSelectedVidviduvanistFilter] = useState<string>('');
   const [selectedPrysutnistFilter, setSelectedPrysutnistFilter] = useState<string>('');
-  const [activeFilterDropdown, setActiveFilterDropdown] = useState<'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'opika' | null>(null);
+  const [selectedDiAdminFilter, setSelectedDiAdminFilter] = useState<string>('');
+  const [activeFilterDropdown, setActiveFilterDropdown] = useState<'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'opika' | 'di_admin' | null>(null);
 
   const lastTapRef = React.useRef<{ [key: number]: number }>({});
 
@@ -782,12 +783,20 @@ export default function SpreadsheetView({
         }
       }
 
+      // 8. Di Admin Filter
+      if (selectedDiAdminFilter) {
+        const val = m.di_admin || '';
+        if (val.trim().toUpperCase() !== selectedDiAdminFilter.trim().toUpperCase()) {
+          return false;
+        }
+      }
+
       return true;
     });
 
     // Sort alphabetically by full name (pib)
     return [...list].sort((a, b) => (a.pib || '').localeCompare(b.pib || '', 'uk-UA'));
-  }, [members, filterType, selectedRayonFilter, selectedOpikaFilter, searchQuery, selectedSlujinnyaFilter, selectedVidviduvanistFilter, selectedPrysutnistFilter]);
+  }, [members, filterType, selectedRayonFilter, selectedOpikaFilter, searchQuery, selectedSlujinnyaFilter, selectedVidviduvanistFilter, selectedPrysutnistFilter, selectedDiAdminFilter]);
 
   // Calculate dynamic ПІБ column width based on the longest record, optimized for mobile screens
   const pibColumnWidth = useMemo(() => {
@@ -1416,7 +1425,16 @@ export default function SpreadsheetView({
               </th>
                {getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').view && <th className="py-0 px-0.5 border border-[#8fba94] text-center text-[5.5px] sm:text-[6.5px] font-bold bg-[#b2cfb6] uppercase leading-none">Дати контактів</th>}
                {getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').view && <th className="py-0 px-1 border border-[#8fba94] text-left font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ПРИМІТКИ І ПОЯСНЕННЯ</th>}
-               {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none">ЗАВДАННЯ<br/>ДЛЯ АДМІН.</th>}
+               {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && (
+                 <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative">
+                   ЗАВДАННЯ<br/>ДЛЯ АДМІН.
+                   {isUserAdmin && (
+                     <span className="absolute top-0 right-0 text-[5px] text-red-600 font-bold">
+                       {filteredMembers.filter(m => m.di_admin && m.di_admin !== '').length}
+                     </span>
+                   )}
+                 </th>
+               )}
                {getPermission('ОПІКА').view && (
                  <th className="py-1 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative min-w-[75px]">
                    <div className="flex items-center justify-center space-x-0.5">

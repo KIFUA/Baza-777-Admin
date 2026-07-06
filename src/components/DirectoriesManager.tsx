@@ -964,6 +964,12 @@ export default function DirectoriesManager({
                       {x.title}
                     </button>
                   ))}
+                  <button
+                    onClick={() => alert("Функція додавання нового списку буде реалізована найближчим часом.")}
+                    className="text-left p-2 text-[11px] font-bold rounded-lg transition-all outline-none bg-[#1a3843]/50 border border-dashed border-[#224853] text-slate-400 hover:text-white hover:border-emerald-500/50 flex items-center gap-2"
+                  >
+                    <Plus className="h-3 w-3" /> Додати список
+                  </button>
                 </div>
               </div>
 

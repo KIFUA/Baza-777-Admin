@@ -1428,10 +1428,51 @@ export default function SpreadsheetView({
                {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && (
                  <th className="py-0 px-1 border border-[#8fba94] text-center font-bold bg-[#b2cfb6] text-[5.5px] sm:text-[6.5px] uppercase leading-none relative">
                    ЗАВДАННЯ<br/>ДЛЯ АДМІН.
+                   <button
+                     type="button"
+                     onClick={(e) => {
+                       e.stopPropagation();
+                       setActiveFilterDropdown(activeFilterDropdown === 'di_admin' ? null : 'di_admin');
+                     }}
+                     className={`rounded transition-all focus:outline-none cursor-pointer absolute bottom-0.5 left-0.5 ${selectedDiAdminFilter ? 'bg-emerald-700 text-white p-0.5' : 'text-slate-600 hover:text-slate-900'}`}
+                     title="Фільтр завдання для адміна"
+                   >
+                     <Filter size={4} className="h-1.5 w-1.5 sm:h-1.5 sm:w-1.5" />
+                   </button>
                    {isUserAdmin && (
                      <span className="absolute top-0 right-0 text-[5px] text-red-600 font-bold">
                        {filteredMembers.filter(m => m.di_admin && m.di_admin !== '').length}
                      </span>
+                   )}
+                   {selectedDiAdminFilter && (
+                     <div className="mt-0 text-[5.5px] sm:text-[6.5px] font-bold text-emerald-900 border-t border-[#8fba94]/50 pt-0.5 whitespace-nowrap truncate">
+                       {selectedDiAdminFilter} - {filteredMembers.filter(m => m.di_admin === selectedDiAdminFilter).length}
+                     </div>
+                   )}
+                   {activeFilterDropdown === 'di_admin' && (
+                     <>
+                       <div className="fixed inset-0 z-[120]" onClick={() => setActiveFilterDropdown(null)} />
+                       <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-[130] bg-[#e4efe5] border border-[#8fba94] rounded-md shadow-xl p-1.5 min-w-[130px] max-w-[180px] font-sans normal-case text-left">
+                         <div className="max-h-56 overflow-y-auto space-y-0.5 text-[8.5px] sm:text-[10px] text-emerald-950 font-semibold select-none">
+                           <div 
+                             onClick={() => { setSelectedDiAdminFilter(''); setActiveFilterDropdown(null); }}
+                             className={`px-2 py-1 rounded cursor-pointer ${!selectedDiAdminFilter ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                           >
+                             (ВСІ ЧЛЕНИ)
+                           </div>
+                           {(lookups?.directories?.di_admin || []).map((opt: string) => (
+                             <div 
+                               key={opt}
+                               onClick={() => { setSelectedDiAdminFilter(opt); setActiveFilterDropdown(null); }}
+                               className={`px-2 py-1 rounded cursor-pointer truncate ${selectedDiAdminFilter === opt ? 'bg-[#387d7a] text-white' : 'hover:bg-[#d5e6d8]'}`}
+                               title={opt}
+                             >
+                               {opt}
+                             </div>
+                           ))}
+                         </div>
+                       </div>
+                     </>
                    )}
                  </th>
                )}

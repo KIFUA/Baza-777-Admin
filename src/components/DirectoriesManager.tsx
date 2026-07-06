@@ -1080,7 +1080,9 @@ export default function DirectoriesManager({
                                   ? "Новий статус відвідування..."
                                   : selectedDictKey === 'prysutnist'
                                     ? "Нова причина відсутності..."
-                                    : "Нове завдання для адміна..."
+                                    : !['rayon', 'opika', 'slujinnya', 'vidviduvanist', 'prysutnist', 'di_admin'].includes(selectedDictKey)
+                                      ? "Введіть назву..."
+                                      : "Нове завдання для адміна..."
                         }
                       />
                       <button 

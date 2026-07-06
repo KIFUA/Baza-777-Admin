@@ -42,7 +42,7 @@ function ensureInitialSync() {
         // One-time cleanup for di_admin (Request 5)
         let cleanedCount = 0;
         for (const m of members) {
-          if (m.di_admin === "Пресвітер") {
+          if (m.di_admin === "Пресвітер" || m.di_admin === "єпископ") {
             m.di_admin = "";
             await syncMemberToFirebase(m.id, m);
             cleanedCount++;

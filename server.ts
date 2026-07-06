@@ -163,6 +163,7 @@ let directories_vidviduvanist: string[] = [...DEFAULT_VIDVIDUVANIST_PARAMS];
 let directories_prysutnist: string[] = [...DEFAULT_PRYSUTNIST_PARAMS];
 let directories_di_admin: string[] = [...DEFAULT_DI_ADMIN];
 let directories_rayon2: string[] = [...DEFAULT_RAYON2];
+let directories_custom: Record<string, string[]> = {};
 let directories_rayon_bindings: any[] = [];
 let directories_opika_bindings: any[] = [];
 let access_dostup: any[] = [...DEFAULT_DOSTUP];
@@ -339,6 +340,7 @@ function loadDatabase() {
       if (directories_vidviduvanist.length === 0) directories_vidviduvanist = [...DEFAULT_VIDVIDUVANIST_PARAMS];
       directories_prysutnist = db.directories_prysutnist || [...DEFAULT_PRYSUTNIST_PARAMS];
       directories_di_admin = db.directories_di_admin || [...DEFAULT_DI_ADMIN];
+      directories_custom = db.directories_custom || {};
       directories_rayon2 = ((db as any).directories_rayon2 || [...DEFAULT_RAYON2])
         .map((r: string) => String(r || "").replace(/\s*-\s*SOS/gi, "").trim())
         .filter((r: string, idx: number, arr: string[]) => r && arr.indexOf(r) === idx);
@@ -499,6 +501,7 @@ function saveDatabaseToCache() {
       directories_vidviduvanist,
       directories_prysutnist,
       directories_di_admin,
+      directories_custom,
       directories_rayon2,
       directories_rayon_bindings,
       directories_opika_bindings,
@@ -807,6 +810,8 @@ app.get("/api/lookups", async (req, res) => {
       di_admin: directories_di_admin,
       rayon2: sortRayonsArray(directories_rayon2),
       rayon: sortRayonsArray(directories_rayon2),
+      custom: directories_custom,
+      custom_lists: Object.keys(directories_custom),
       rayon_bindings: directories_rayon_bindings,
       opika_bindings: directories_opika_bindings
     },
@@ -1552,28 +1557,36 @@ app.post("/api/birthdays/send", async (req, res) => {
 
 // 2.4 API: Save Custom Directories manually edited in directories tab
 app.post("/api/directories/save", async (req, res) => {
-  const { opika, slujinnya, vidviduvanist, prysutnist, di_admin, rayon, rayon2, access, rayon_bindings, opika_bindings } = req.body;
+  const data = req.body;
   
-  if (Array.isArray(opika)) directories_opika = opika;
-  if (Array.isArray(rayon_bindings)) directories_rayon_bindings = rayon_bindings;
-  if (Array.isArray(opika_bindings)) directories_opika_bindings = opika_bindings;
-  if (Array.isArray(slujinnya)) directories_slujinnya = slujinnya;
-  if (Array.isArray(vidviduvanist)) {
-    directories_vidviduvanist = vidviduvanist.filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
+  if (Array.isArray(data.opika)) directories_opika = data.opika;
+  if (Array.isArray(data.rayon_bindings)) directories_rayon_bindings = data.rayon_bindings;
+  if (Array.isArray(data.opika_bindings)) directories_opika_bindings = data.opika_bindings;
+  if (Array.isArray(data.slujinnya)) directories_slujinnya = data.slujinnya;
+  if (Array.isArray(data.vidviduvanist)) {
+    directories_vidviduvanist = data.vidviduvanist.filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
     if (directories_vidviduvanist.length === 0) directories_vidviduvanist = [...DEFAULT_VIDVIDUVANIST_PARAMS];
   }
-  if (Array.isArray(prysutnist)) directories_prysutnist = prysutnist;
-  if (Array.isArray(di_admin)) directories_di_admin = di_admin;
+  if (Array.isArray(data.prysutnist)) directories_prysutnist = data.prysutnist;
+  if (Array.isArray(data.di_admin)) directories_di_admin = data.di_admin;
   
-  const targetRayons = Array.isArray(rayon) ? rayon : rayon2;
+  if (Array.isArray(data.custom_lists)) {
+    directories_custom = {};
+    data.custom_lists.forEach((listName: string) => {
+      if (Array.isArray(data[listName])) {
+        directories_custom[listName] = data[listName];
+      }
+    });
+  }
+  
+  const targetRayons = Array.isArray(data.rayon) ? data.rayon : data.rayon2;
   if (Array.isArray(targetRayons)) directories_rayon2 = targetRayons;
-  let isPermissionsArray = false;
-  if (Array.isArray(access)) {
-    if (access.length > 0 && access[0] && (access[0].role !== undefined || access[0].headers !== undefined)) {
-      isPermissionsArray = true;
-      permission_levels = access;
+  
+  if (Array.isArray(data.access)) {
+    if (data.access.length > 0 && data.access[0] && (data.access[0].role !== undefined || data.access[0].headers !== undefined)) {
+      permission_levels = data.access;
     } else {
-      access_dostup = access;
+      access_dostup = data.access;
     }
   }
 

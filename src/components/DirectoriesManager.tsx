@@ -498,7 +498,11 @@ export default function DirectoriesManager({
 
   // Save changes to directories lists back to server
   const handleSaveDictionary = async () => {
-    if (!lookups?.directories) return;
+    console.log("Saving dictionary:", selectedDictKey, dictItems);
+    if (!lookups?.directories) {
+      console.error("No lookups.directories found");
+      return;
+    }
     try {
       let finalVal: any = dictItems;
       let extraPayload: any = {};
@@ -525,11 +529,14 @@ export default function DirectoriesManager({
         ...extraPayload
       };
       
+      console.log("Saving payload:", payload);
+      
       const resp = await fetch('/api/directories/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      console.log("Save response status:", resp.status);
       if (resp.ok) {
         // Propagate renames for simple string lists
         if (selectedDictKey !== 'rayon' && selectedDictKey !== 'opika') {
@@ -565,8 +572,12 @@ export default function DirectoriesManager({
         setSaveStatus(true);
         await onRefreshLookups();
         setTimeout(() => setSaveStatus(false), 2000);
+      } else {
+        console.error("Save failed:", await resp.text());
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error("Failed to save dictionary:", err);
+    }
   };
 
   const handleAddDictItem = () => {
@@ -1347,7 +1358,7 @@ export default function DirectoriesManager({
                     </div>
                   )}
                 </div>
-
+                
                 {/* Save actions */}
                 <div className="flex justify-end pt-1">
                   <button

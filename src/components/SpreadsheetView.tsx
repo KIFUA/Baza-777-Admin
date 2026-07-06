@@ -4,7 +4,6 @@ import {
   Search, Edit2, Check, X, FileText, CheckCircle, AlertTriangle, 
   HelpCircle, Sparkles, Filter 
 } from 'lucide-react';
-import { isSemanticMatch } from '../accessLevels';
 
 interface SpreadsheetViewProps {
   members: Member[];
@@ -32,38 +31,30 @@ export default function SpreadsheetView({
     
     const getLevelNum = (lvl: string): number => {
       if (!lvl) return 1;
-      const s = lvl.toLowerCase()
-        .replace(/і/g, 'i')
-        .replace(/І/g, 'i')
-        .replace(/I/g, 'i')
-        .trim();
-      if (s.includes('iv') || s.includes('4')) return 4;
-      if (s.includes('iii') || s.includes('3')) return 3;
-      if (s.includes('ii') || s.includes('2')) return 2;
+      const s = lvl.toUpperCase();
+      if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+      if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+      if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
       return 1;
     };
 
     const levelNum = getLevelNum(level);
 
     const roleMapping: Record<string, string> = {
-      'дати контактів з пресв.': 'Дати контактів',
-      'дати контактів': 'Дати контактів',
-      'дата контактів': 'Дати контактів',
-      'примітки і пояснення': 'ПРИМІТКИ І ПОЯСНЕННЯ',
-      'примітки': 'ПРИМІТКИ І ПОЯСНЕННЯ',
-      'завдання для адмін.': 'ЗАВДАННЯ ДЛЯ АДМІН.',
-      'завдання для адмін': 'ЗАВДАННЯ ДЛЯ АДМІН.',
-      'опіка': 'ОПІКА',
-      'служіння': 'СЛУЖІННЯ',
-      'відвідування': 'ВІДВІДУВАННЯ',
-      'прич. відсутності': 'ПРИЧ. ВІДСУТНОСТІ',
+      'дати контактів з пресв.': 'Дата контакт.',
+      'примітки і пояснення': 'Примітки',
+      'завдання для адмін.': 'Завд. для адм.',
+      'опіка': 'Опіка',
+      'служіння': 'Служіння',
+      'відвідування': 'Відвідув.',
+      'прич. відсутності': 'Прич. відсутн.',
       'вік': 'Вік',
       'адреса': 'Адрес',
       'телефон': 'Телефон',
       'дата народж.': 'Дата народж.',
       'ос-та': 'Освіта',
       'хр. с.д.': 'Хр. С.Д.',
-      'сім. стан': 'Сімейни стан',
+      'сім. стан': 'Сім. стан',
       'соц. стан': 'Соц. стан',
       'в.х.': 'В.Х.',
       'в_церкві_з': 'В церкві з',
@@ -94,36 +85,38 @@ export default function SpreadsheetView({
     }
     
     const targetNorm = normalizeStr(mappedName);
+
+    if (levelNum <= 2) {
+      const normOpika = normalizeStr('Опіка');
+      const normPoleOpika = normalizeStr('Поле опіка');
+      if (targetNorm === normOpika || targetNorm === normPoleOpika) {
+        return { view: false, edit: false };
+      }
+    }
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
-      const roleName = item.role || "";
-      return isSemanticMatch(roleName, mappedName, 'Т') ||
-             isSemanticMatch(roleName, 'кнопка ' + mappedName, 'Т') ||
-             isSemanticMatch(roleName, 'поле ' + mappedName, 'Т') ||
-             isSemanticMatch(roleName, 'кнопка' + mappedName, 'Т') ||
-             isSemanticMatch(roleName, 'поле' + mappedName, 'Т');
+      const dbRole = normalizeStr(item.role || "");
+      return dbRole === targetNorm || 
+             dbRole === 'кнопка' + targetNorm || 
+             dbRole === 'поле' + targetNorm;
     });
 
     if (!row) {
       const isPublic = ['№', 'піб', 'в_церкві_з', 'років в ц.', 'rayon2_ukr', 'поле пошук'].includes(targetNorm);
       const isVisible = isPublic || (levelNum > 1);
-      const isEditable = isVisible && (levelNum === 4 || levelNum === 3);
+      const isEditable = isVisible && (levelNum === 4);
       return { view: isVisible, edit: isEditable };
     }
 
     const findAccessValue = (access: Record<string, boolean>, lvlNum: number, action: 'view' | 'edit'): boolean => {
       const keys = Object.keys(access || {});
       for (const k of keys) {
-        const rawKey = k.toLowerCase()
-          .replace(/і/g, 'i')
-          .replace(/І/g, 'i')
-          .replace(/I/g, 'i')
-          .trim();
+        const rawKey = k.toLowerCase().trim();
         let keyLvl = 1;
-        if (rawKey.includes('iv') || rawKey.includes('4')) keyLvl = 4;
-        else if (rawKey.includes('iii') || rawKey.includes('3')) keyLvl = 3;
-        else if (rawKey.includes('ii') || rawKey.includes('2')) keyLvl = 2;
+        if (rawKey.includes('iv') || rawKey.includes('іv')) keyLvl = 4;
+        else if (rawKey.includes('iii') || rawKey.includes('ііі')) keyLvl = 3;
+        else if (rawKey.includes('ii') || rawKey.includes('іі')) keyLvl = 2;
         else keyLvl = 1;
 
         const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
@@ -139,20 +132,16 @@ export default function SpreadsheetView({
 
     return {
       view: findAccessValue(row.access, levelNum, 'view'),
-      edit: findAccessValue(row.access, levelNum, 'edit')
+      edit: levelNum === 4 ? findAccessValue(row.access, levelNum, 'edit') : false
     };
   };
 
   const getLevelNum = (lvl: string): number => {
     if (!lvl) return 1;
-    const s = lvl.toLowerCase()
-      .replace(/і/g, 'i')
-      .replace(/І/g, 'i')
-      .replace(/I/g, 'i')
-      .trim();
-    if (s.includes('iv') || s.includes('4')) return 4;
-    if (s.includes('iii') || s.includes('3')) return 3;
-    if (s.includes('ii') || s.includes('2')) return 2;
+    const s = lvl.toUpperCase();
+    if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+    if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+    if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
     return 1;
   };
 
@@ -762,7 +751,7 @@ export default function SpreadsheetView({
         const phoneMatch = m.tel_mob?.toLowerCase().includes(q);
         const presvMatch = m.presviter?.toLowerCase().includes(q);
         const rayonMatch = m.rayon2_ukr?.toLowerCase().includes(q);
-        const primitkaMatch = m.prymitka?.toLowerCase().includes(q);
+        const primitkaMatch = m.primitka?.toLowerCase().includes(q);
         const addressMatch = m.address?.toLowerCase().includes(q);
         
         return pibMatch || phoneMatch || presvMatch || rayonMatch || primitkaMatch || addressMatch;
@@ -1128,7 +1117,7 @@ export default function SpreadsheetView({
           if (mappedRole) {
             const perm = getPermission(mappedRole);
             if (!perm.edit) {
-              alert("Немає прав доступу для редагування цього поля");
+              alert("Тимчасово вносити зміни не можна");
               return;
             }
           }
@@ -1756,7 +1745,7 @@ export default function SpreadsheetView({
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (!getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').edit) {
-                              alert("Немає прав доступу для редагування цього поля");
+                              alert("Тимчасово вносити зміни не можна");
                               return;
                             }
                             handleOpenContactModal(m);
@@ -1847,7 +1836,7 @@ export default function SpreadsheetView({
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit && !isUserAdmin) {
-                              alert("Немає прав доступу для редагування цього поля");
+                              alert("Тимчасово вносити зміни не можна");
                               return;
                             }
                             setEditingRemarkId(m.id);
@@ -1884,7 +1873,7 @@ export default function SpreadsheetView({
                         onClick={(e) => {
                           e.stopPropagation();
                           if (!getPermission('СЛУЖІННЯ').edit) {
-                            alert("Немає прав доступу для редагування цього поля");
+                            alert("Тимчасово вносити зміни не можна");
                             return;
                           }
                           setEditingCell({ id: m.id, field: 's_slujinnya_spysok' });

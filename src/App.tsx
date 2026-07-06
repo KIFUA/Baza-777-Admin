@@ -9,7 +9,6 @@ import SpreadsheetView from './components/SpreadsheetView';
 import DirectoriesManager from './components/DirectoriesManager';
 import ReportGenerator from './components/ReportGenerator';
 import LoginPage from './components/LoginPage';
-import { isSemanticMatch } from './accessLevels';
 import { 
   Users, UserCheck, Heart, Shield, History, BarChart3, Search, 
   MapPin, Phone, UserPlus, Filter, RotateCcw, ChevronLeft, ChevronRight, BookOpen,
@@ -65,38 +64,30 @@ export default function App() {
     
     const getLevelNum = (lvl: string): number => {
       if (!lvl) return 1;
-      const s = lvl.toLowerCase()
-        .replace(/і/g, 'i')
-        .replace(/І/g, 'i')
-        .replace(/I/g, 'i')
-        .trim();
-      if (s.includes('iv') || s.includes('4')) return 4;
-      if (s.includes('iii') || s.includes('3')) return 3;
-      if (s.includes('ii') || s.includes('2')) return 2;
+      const s = lvl.toUpperCase();
+      if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
+      if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
+      if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
       return 1;
     };
 
     const levelNum = getLevelNum(level);
 
     const roleMapping: Record<string, string> = {
-      'дати контактів з пресв.': 'Дати контактів',
-      'дати контактів': 'Дати контактів',
-      'дата контактів': 'Дати контактів',
-      'примітки і пояснення': 'ПРИМІТКИ І ПОЯСНЕННЯ',
-      'примітки': 'ПРИМІТКИ І ПОЯСНЕННЯ',
-      'завдання для адмін.': 'ЗАВДАННЯ ДЛЯ АДМІН.',
-      'завдання для адмін': 'ЗАВДАННЯ ДЛЯ АДМІН.',
-      'опіка': 'ОПІКА',
-      'служіння': 'СЛУЖІННЯ',
-      'відвідування': 'ВІДВІДУВАННЯ',
-      'прич. відсутності': 'ПРИЧ. ВІДСУТНОСТІ',
+      'дати контактів з пресв.': 'Дата контакт.',
+      'примітки і пояснення': 'Примітки',
+      'завдання для адмін.': 'Завд. для адм.',
+      'опіка': 'Опіка',
+      'служіння': 'Служіння',
+      'відвідування': 'Відвідув.',
+      'прич. відсутності': 'Прич. відсутн.',
       'вік': 'Вік',
       'адреса': 'Адрес',
       'телефон': 'Телефон',
       'дата народж.': 'Дата народж.',
       'ос-та': 'Освіта',
       'хр. с.д.': 'Хр. С.Д.',
-      'сім. стан': 'Сімейни стан',
+      'сім. стан': 'Сім. стан',
       'соц. стан': 'Соц. стан',
       'в.х.': 'В.Х.',
       'в_церкві_з': 'В церкві з',
@@ -127,15 +118,21 @@ export default function App() {
     }
     
     const targetNorm = normalizeStr(mappedName);
+
+    if (levelNum <= 2) {
+      const normOpika = normalizeStr('Опіка');
+      const normPoleOpika = normalizeStr('Поле опіка');
+      if (targetNorm === normOpika || targetNorm === normPoleOpika) {
+        return { view: false, edit: false };
+      }
+    }
     
     const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
     const row = list.find((item: any) => {
-      const roleName = item.role || "";
-      return isSemanticMatch(roleName, mappedName) ||
-             isSemanticMatch(roleName, 'кнопка ' + mappedName) ||
-             isSemanticMatch(roleName, 'поле ' + mappedName) ||
-             isSemanticMatch(roleName, 'кнопка' + mappedName) ||
-             isSemanticMatch(roleName, 'поле' + mappedName);
+      const dbRole = normalizeStr(item.role || "");
+      return dbRole === targetNorm || 
+             dbRole === 'кнопка' + targetNorm || 
+             dbRole === 'поле' + targetNorm;
     });
 
     if (!row) {
@@ -149,15 +146,11 @@ export default function App() {
     const findAccessValue = (access: Record<string, boolean>, lvlNum: number, action: 'view' | 'edit'): boolean => {
       const keys = Object.keys(access || {});
       for (const k of keys) {
-        const rawKey = k.toLowerCase()
-          .replace(/і/g, 'i')
-          .replace(/І/g, 'i')
-          .replace(/I/g, 'i')
-          .trim();
+        const rawKey = k.toLowerCase().trim();
         let keyLvl = 1;
-        if (rawKey.includes('iv') || rawKey.includes('4')) keyLvl = 4;
-        else if (rawKey.includes('iii') || rawKey.includes('3')) keyLvl = 3;
-        else if (rawKey.includes('ii') || rawKey.includes('2')) keyLvl = 2;
+        if (rawKey.includes('iv') || rawKey.includes('іv')) keyLvl = 4;
+        else if (rawKey.includes('iii') || rawKey.includes('ііі')) keyLvl = 3;
+        else if (rawKey.includes('ii') || rawKey.includes('іі')) keyLvl = 2;
         else keyLvl = 1;
 
         const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
@@ -449,6 +442,12 @@ export default function App() {
       return false;
     }
     
+    // Allow updating remarks if the user has permission, even if not global admin
+    const isRemarkUpdate = updatedFields.prymitka !== undefined && Object.keys(updatedFields).length === 1;
+    if (!isCurrentUserAdmin && !isRemarkUpdate) {
+      alert("Тимчасово вносити зміни не можна");
+      return false;
+    }
     try {
       const resp = await fetch(`/api/members/${id}`, {
         method: 'POST',
@@ -486,6 +485,10 @@ export default function App() {
   const handleSaveMember = async (data: Partial<Member>) => {
     if (isReadOnly) {
       alert("У вас лише права перегляду.");
+      return;
+    }
+    if (!isCurrentUserAdmin) {
+      alert("Тимчасово вносити зміни не можна");
       return;
     }
     try {
@@ -826,7 +829,7 @@ export default function App() {
             ) : mainMode === 'questionnaire' ? (
               /* Questionnaire Legacy Embedded View */
               <div className="flex-1 flex flex-col min-h-[450px] bg-[#333333] overflow-hidden -mx-2 -mb-2 rounded-t-lg border-t border-[#1a3843]">
-                {(currentSessionUser?.level === 'IV-й' || currentSessionUser?.level === 'ІІІ-й') && (
+                {currentSessionUser?.level === 'IV-й' && (
                   <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
                     <button

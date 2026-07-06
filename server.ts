@@ -287,8 +287,8 @@ function healDatabaseWithAnketa() {
             healedCount++;
           }
           // Also set general note if it is currently empty
-          if (!member.prymitka) {
-            member.prymitka = rawPrimitka;
+          if (!member.primitka) {
+            member.primitka = rawPrimitka;
             healedCount++;
           }
         }
@@ -1269,7 +1269,7 @@ app.post("/api/sync-sheets", async (req, res) => {
                 vybutty_prymitka: "",
                 hvoryi: "",
                 insha_gromada: "",
-                prymitka: "",
+                primitka: "",
                 efile: true,
                 address: addressColIdx !== -1 && row[addressColIdx] ? row[addressColIdx].trim() : ""
               };
@@ -1899,8 +1899,8 @@ async function syncMemberToFirebase(id: number, member: Member) {
 
     "hvoryi": member.hvoryi || "",
     "insha_gromada": member.insha_gromada || "",
-    "prymitka": member.prymitka || null,
-    "primitka": member.prymitka || null,
+    "prymitka": (member.prymitka || member.primitka) || null,
+    "primitka": (member.primitka || member.prymitka) || null,
     "efile": member.efile !== undefined ? member.efile : ""
   };
 
@@ -1941,7 +1941,7 @@ app.post("/api/members/:id", async (req, res) => {
     "pib", "tel_mob", "s_osvita_ukr", "s_socialniy_ukr", "s_simeyniy_ukr", 
     "s_profesiya_ukr", "s_slujinnya_spysok", "zaklad_osv", "d_narodjennya", "presviter", 
     "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "di_admin",
-    "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada", "hvoryi", "prymitka"
+    "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada", "hvoryi", "prymitka", "primitka"
   ];
 
   fieldsToCheck.forEach(key => {
@@ -2398,7 +2398,7 @@ app.post("/api/members", async (req, res) => {
 
     hvoryi: String(newMemberData.hvoryi || "").trim(),
     insha_gromada: String(newMemberData.insha_gromada || "").trim(),
-    prymitka: String(newMemberData.prymitka || (newMemberData as any).primitka || "").trim(),
+    prymitka: String(newMemberData.prymitka || newMemberData.primitka || "").trim(),
     efile: true,
     address: String(newMemberData.address || "").trim(),
     nas_punkt: String(newMemberData.nas_punkt || "").trim(),

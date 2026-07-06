@@ -4,7 +4,6 @@ import {
   User, Phone, Mail, MapPin, Calendar, Heart, Baby, 
   Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink
 } from 'lucide-react';
-import { isSemanticMatch } from '../accessLevels';
 
 interface MemberProfileProps {
   memberId: number;
@@ -28,136 +27,18 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');
+
   const rawUser = localStorage.getItem("baza_current_session_user") || sessionStorage.getItem("baza_current_session_user");
   const userObj = rawUser ? JSON.parse(rawUser) : null;
   const isUserAdmin = userObj?.level === 'IV-й' || (userObj?.rayon === 'ЦЕНТР' && userObj?.user?.includes('Черняк Вал.'));
 
-  const levelNum = (() => {
-    const lvl = userObj?.level || 'І-й';
-    const s = lvl.toLowerCase()
-      .replace(/і/g, 'i')
-      .replace(/І/g, 'i')
-      .replace(/I/g, 'i')
-      .trim();
-    if (s.includes('iv') || s.includes('4')) return 4;
-    if (s.includes('iii') || s.includes('3')) return 3;
-    if (s.includes('ii') || s.includes('2')) return 2;
-    return 1;
-  })();
-
-  const getPermission = (fieldName: string): { view: boolean, edit: boolean } => {
-    if (isRestricted) {
-      return { view: true, edit: false };
-    }
-    const level = userObj?.level || 'І-й';
-    const roleMapping: Record<string, string> = {
-      'дати контактів з пресв.': 'Дати контактів',
-      'дати контактів': 'Дати контактів',
-      'дата контактів': 'Дати контактів',
-      'примітки і пояснення': 'ПРИМІТКИ І ПОЯСНЕННЯ',
-      'примітки': 'ПРИМІТКИ І ПОЯСНЕННЯ',
-      'завдання для адмін.': 'ЗАВДАННЯ ДЛЯ АДМІН.',
-      'завдання для адмін': 'ЗАВДАННЯ ДЛЯ АДМІН.',
-      'опіка': 'ОПІКА',
-      'служіння': 'СЛУЖІННЯ',
-      'відвідування': 'ВІДВІДУВАННЯ',
-      'прич. відсутності': 'ПРИЧ. ВІДСУТНОСТІ',
-      'вік': 'Вік',
-      'адреса': 'Адрес',
-      'телефон': 'Телефон',
-      'дата народж.': 'Дата народж.',
-      'ос-та': 'Освіта',
-      'хр. с.д.': 'Хр. С.Д.',
-      'сім. стан': 'Сімейни стан',
-      'соц. стан': 'Соц. стан',
-      'в.х.': 'В.Х.',
-      'в_церкві_з': 'В церкві з',
-      'років в ц.': 'К-ть рок. в Ц.',
-      'район': 'РАЙОН',
-      'піб': 'ПІБ',
-      'всего членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
-      'всього членів церкви': 'ВСЬОГО ЧЛЕНІВ ЦЕРКВИ',
-      'список': 'Кнопка СПИСОК',
-      'анкети': 'Кнопка АНКЕТИ',
-      'статистика': 'Кнопка СТАТИСТИКА',
-      'налаштування': 'Кнопка НАЛАШТУВАННЯ',
-      'pole statusів': 'Поле статусів',
-      'поле статусів': 'Поле статусів',
-      'поле районів': 'Поле районів',
-      'поле опіка': 'Поле опіка',
-      'поле пошук': 'Поле пошук',
-      'кнопка власні списки': 'Кнопка ВЛАСНІ СПИСКИ',
-      'кнопка район у таблиці': 'Кнопка РАЙОН У ТАБЛИЦІ'
-    };
-
-    const normalizeStr = (s: string) => s.replace(/[^a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]/g, '').toLowerCase().trim();
-    
-    let mappedName = fieldName;
-    const cleanFieldName = fieldName.toLowerCase().trim();
-    if (roleMapping[cleanFieldName]) {
-      mappedName = roleMapping[cleanFieldName];
-    }
-    
-    const targetNorm = normalizeStr(mappedName);
-
-    const list = lookups?.permission_levels || (window as any).__bazaDefaultPermissionLevels || [];
-    const row = list.find((item: any) => {
-      const roleName = item.role || "";
-      return isSemanticMatch(roleName, mappedName, 'А') ||
-             isSemanticMatch(roleName, 'кнопка ' + mappedName, 'А') ||
-             isSemanticMatch(roleName, 'поле ' + mappedName, 'А') ||
-             isSemanticMatch(roleName, 'кнопка' + mappedName, 'А') ||
-             isSemanticMatch(roleName, 'поле' + mappedName, 'А');
-    });
-
-    if (!row) {
-      const isPublic = ['№', 'піб', 'в_церкві_з', 'років в ц.', 'rayon2_ukr', 'поле пошук'].includes(targetNorm);
-      const isVisible = isPublic || (levelNum > 1);
-      const isEditable = isVisible && (levelNum === 4 || levelNum === 3);
-      return { view: isVisible, edit: isEditable };
-    }
-
-    const findAccessValue = (access: Record<string, boolean>, lvlNum: number, action: 'view' | 'edit'): boolean => {
-      const keys = Object.keys(access || {});
-      for (const k of keys) {
-        const rawKey = k.toLowerCase()
-          .replace(/і/g, 'i')
-          .replace(/І/g, 'i')
-          .replace(/I/g, 'i')
-          .trim();
-        let keyLvl = 1;
-        if (rawKey.includes('iv') || rawKey.includes('4')) keyLvl = 4;
-        else if (rawKey.includes('iii') || rawKey.includes('3')) keyLvl = 3;
-        else if (rawKey.includes('ii') || rawKey.includes('2')) keyLvl = 2;
-        else keyLvl = 1;
-
-        const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
-        const isView = rawKey.includes('бач') || rawKey.includes('view');
-
-        if (keyLvl === lvlNum) {
-          if (action === 'view' && isView) return !!access[k];
-          if (action === 'edit' && isEdit) return !!access[k];
-        }
-      }
-      return false;
-    };
-
-    return {
-      view: findAccessValue(row.access, levelNum, 'view'),
-      edit: findAccessValue(row.access, levelNum, 'edit')
-    };
-  };
-
-  const canEdit = getPermission('ПІБ').edit && !isRestricted;
-
-  const checkAdminPermission = (role: string = 'ПІБ'): boolean => {
+  const checkAdminPermission = (): boolean => {
     if (isRestricted) {
       alert("Доступ лише для перегляду");
       return false;
     }
-    const perm = getPermission(role);
-    if (!perm.edit) {
-      alert("Немає прав доступу для редагування цього поля");
+    if (!isUserAdmin) {
+      alert("Тимчасово вносити зміни не можна");
       return false;
     }
     return true;
@@ -257,19 +138,8 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     }
   };
 
-  const getRoleForField = (field: string): string => {
-    const f = field.toLowerCase().trim();
-    if (f === 'presviter') return 'опіка';
-    if (f === 'rayon2_ukr') return 'район';
-    if (f === 's_slujinnya_spysok' || f === 'sluj_uchast') return 'служіння';
-    if (f === 'vidviduvanist') return 'відвідування';
-    if (f === 'prysutnist') return 'прич. відсутності';
-    return 'піб';
-  };
-
   const handleFieldUpdate = async (field: string, val: any) => {
-    const role = getRoleForField(field);
-    if (!checkAdminPermission(role)) return;
+    if (!checkAdminPermission()) return;
     if (!data || !data.member) return;
     try {
       const resp = await fetch(`/api/members/${memberId}`, {
@@ -314,7 +184,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
   const handleAddChild = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkAdminPermission('діти')) return;
+    if (!checkAdminPermission()) return;
     if (!newChildName) return;
     try {
       const resp = await fetch(`/api/members/${memberId}/children`, {
@@ -341,7 +211,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
   const handleAddMinistry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkAdminPermission('служіння')) return;
+    if (!checkAdminPermission()) return;
     try {
       const resp = await fetch(`/api/members/${memberId}/ministries`, {
         method: 'POST',
@@ -362,7 +232,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const handleEndMinistry = async (recId: number) => {
-    if (!checkAdminPermission('служіння')) return;
+    if (!checkAdminPermission()) return;
     const dStr = prompt("Введіть дату завершення служіння (РРРР-ММ-ДД):", new Date().toISOString().split('T')[0]);
     if (!dStr) return;
     try {
@@ -381,7 +251,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
   const handleAddDiscipline = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!checkAdminPermission('піб')) return;
+    if (!checkAdminPermission()) return;
     if (!newDiscReason) return;
     try {
       const resp = await fetch(`/api/members/${memberId}/disciplines`, {
@@ -405,7 +275,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   };
 
   const handleResolveDiscipline = async (recId: number) => {
-    if (!checkAdminPermission('піб')) return;
+    if (!checkAdminPermission()) return;
     const dStr = prompt("Введіть дату зняття стягнення (РРРР-ММ-ДД):", new Date().toISOString().split('T')[0]);
     if (!dStr) return;
     try {
@@ -470,7 +340,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
           </div>
 
           <div className="flex space-x-2">
-            {canEdit && (
+            {isUserAdmin && !isRestricted && (
               <button
                 onClick={() => onEdit(member)}
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
@@ -614,7 +484,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <div className="space-y-3 font-medium text-xs text-slate-700">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">Відповідальний Провідник:</span>
-                      {(getPermission('Опіка').edit && !isRestricted) ? (
+                      {isUserAdmin && !isRestricted ? (
                         <select
                           value={member.presviter || ''}
                           onChange={async (e) => {
@@ -644,7 +514,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">Район громади:</span>
-                      {(getPermission('РАЙОН').edit && !isRestricted) ? (
+                      {isUserAdmin && !isRestricted ? (
                         <select
                           value={member.rayon2_ukr || ''}
                           onChange={async (e) => {
@@ -674,7 +544,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </span>
                           <span className="text-slate-700 font-bold text-[11px]">Духовне служіння:</span>
                         </div>
-                        {(getPermission('Служіння').edit && !isRestricted) && (
+                        {isUserAdmin && !isRestricted && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -729,7 +599,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           )}
                           
                           {/* Selector */}
-                          {(getPermission('Служіння').edit && !isRestricted) && (
+                          {isUserAdmin && !isRestricted && (
                              <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
                               {ministryOptions.map((opt) => {
                                 const selectedList = member.s_slujinnya_spysok 
@@ -776,7 +646,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </span>
                           <span className="text-slate-700 font-bold text-[11px]">Може брати участь:</span>
                         </div>
-                        {(getPermission('Служіння').edit && !isRestricted) && (
+                        {isUserAdmin && !isRestricted && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -803,7 +673,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           <span className="text-slate-400 italic">Служінь не вибрано</span>
                         )}
 
-                        {showPotentialSelect && (getPermission('Служіння').edit && !isRestricted) && (
+                        {showPotentialSelect && isUserAdmin && !isRestricted && (
                           <div className="mt-2 border border-slate-200 rounded-lg bg-white p-2.5 max-h-40 overflow-y-auto space-y-1">
                             {PARTICIPATION_MINISTRIES.map((opt) => {
                               const selectedList = member.sluj_uchast 
@@ -853,7 +723,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                       <div className="h-3.5 w-3.5 rounded-full bg-blue-500 animate-pulse"></div>
                       <div className="text-[10px] font-semibold text-slate-400 uppercase">Характеристика Відвідуваності</div>
                     </div>
-                    {(getPermission('Відвідув.').edit && !isRestricted) ? (
+                    {isUserAdmin && !isRestricted ? (
                       <select
                         value={member.vidviduvanist || ''}
                         onChange={async (e) => {
@@ -879,7 +749,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                       <div className="h-3.5 w-3.5 rounded-full bg-emerald-500"></div>
                       <div className="text-[10px] font-semibold text-slate-400 uppercase">Причина відсутності (перебування)</div>
                     </div>
-                    {(getPermission('Прич. відсутн.').edit && !isRestricted) ? (
+                    {isUserAdmin && !isRestricted ? (
                       <select
                         value={member.prysutnist || ''}
                         onChange={async (e) => {
@@ -1023,7 +893,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                     <Baby className="h-4 w-4 text-blue-500" />
                     <span>Неповнолітні та дорослі діти ({children.length})</span>
                   </h4>
-                  {(getPermission('Діти').edit && !isRestricted) && (
+                  {isUserAdmin && !isRestricted && (
                     <button
                       onClick={() => setShowAddChild(!showAddChild)}
                       className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
@@ -1117,7 +987,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                         <b>З іншої громади:</b> {member.insha_gromada}
                     </div>
                 )}
-                {(getPermission('Служіння').edit && !isRestricted) && (
+                {isUserAdmin && !isRestricted && (
                   <button
                     onClick={() => setShowAddMinistry(!showAddMinistry)}
                     className="flex items-center space-x-1 text-xs font-bold text-blue-600 hover:opacity-80"
@@ -1192,7 +1062,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                               </div>
                               <div className="whitespace-nowrap text-right text-xs text-slate-500 font-medium">
                                 <div><b>{min.startDate || "Давня дата"}</b> — {min.endDate ? <span className="text-slate-400">{min.endDate}</span> : <span className="text-emerald-600 font-bold uppercase text-[9px]">Активно</span>}</div>
-                                {min.isActive && (getPermission('Служіння').edit && !isRestricted) && (
+                                {min.isActive && isUserAdmin && !isRestricted && (
                                   <button
                                     onClick={() => handleEndMinistry(min.id)}
                                     className="text-[10px] text-red-500 font-bold mt-1.5 hover:underline"
@@ -1224,7 +1094,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   <AlertCircle className="h-4 w-4 text-rose-500" />
                   <span>Дисциплінарний Стан та Зауваження (ISTORIJA)</span>
                 </h4>
-                {(getPermission('ПІБ').edit && !isRestricted) && (
+                {isUserAdmin && !isRestricted && (
                   <button
                     onClick={() => setShowAddDisc(!showAddDisc)}
                     className="flex items-center space-x-1 text-xs font-bold text-rose-600 hover:opacity-80"
@@ -1306,7 +1176,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </div>
                         </div>
 
-                        {disc.isActive && (getPermission('ПІБ').edit && !isRestricted) && (
+                        {disc.isActive && isUserAdmin && !isRestricted && (
                           <button
                             onClick={() => handleResolveDiscipline(disc.id)}
                             className="bg-white hover:bg-emerald-50 border border-slate-200 text-emerald-600 text-[10px] font-bold px-3 py-1 rounded-lg shadow-sm"

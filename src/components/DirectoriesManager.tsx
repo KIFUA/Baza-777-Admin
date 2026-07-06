@@ -61,9 +61,9 @@ export default function DirectoriesManager({
     }
   }, [lookups]);
 
-  const handleToggleAccessLevel = async (index: number, level: string) => {
-    const updatedAccessLevels = parsedAccessLevels.map((item, idx) => {
-      if (idx === index) {
+  const handleToggleAccessLevel = async (role: string, level: string) => {
+    const updatedAccessLevels = parsedAccessLevels.map(item => {
+      if (item.role === role) {
         return {
           ...item,
           access: {
@@ -91,41 +91,6 @@ export default function DirectoriesManager({
     } catch (error) {
       console.error("Failed to save checkbox permissions list:", error);
     }
-  };
-
-  const handleUpdateRoleName = (index: number, newName: string) => {
-    const updatedAccessLevels = parsedAccessLevels.map((item, idx) => {
-      if (idx === index) {
-        return { ...item, role: newName };
-      }
-      return item;
-    });
-    setParsedAccessLevels(updatedAccessLevels);
-  };
-
-  const handleDeleteRoleField = (index: number) => {
-    const updatedAccessLevels = parsedAccessLevels.filter((_, idx) => idx !== index);
-    setParsedAccessLevels(updatedAccessLevels);
-  };
-
-  const handleAddNewRoleField = () => {
-    const defaultHeaders = [
-      'І-бачить', 'І-змінювати', 
-      'ІІ-бачить', 'ІІ-змінювати', 
-      'ІІІ-бачить', 'ІІІ-змінювати', 
-      'ІV-бачить', 'ІV-змінювати'
-    ];
-    
-    const newField = {
-      role: 'А__Нове поле',
-      access: defaultHeaders.reduce((acc, h) => {
-        acc[h] = false;
-        return acc;
-      }, {} as Record<string, boolean>),
-      headers: defaultHeaders
-    };
-    
-    setParsedAccessLevels([...parsedAccessLevels, newField]);
   };
 
   const [sectorsSaveLoading, setSectorsSaveLoading] = useState(false);
@@ -1404,25 +1369,15 @@ export default function DirectoriesManager({
                     )}
 
                     {activeAccessSubTab === 'levels' && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleAddNewRoleField}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow transition-all outline-none"
-                        >
-                          <Plus className="h-3.5 w-3.5" />
-                          <span>Додати поле</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSaveLevelsToFirebase}
-                          disabled={levelsSaveLoading}
-                          className="bg-[#2a6d8c] hover:bg-[#20536c] text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow transition-all outline-none"
-                        >
-                          <Save className={`h-3.5 w-3.5 ${levelsSaveLoading ? "animate-spin" : ""}`} />
-                          <span>{levelsSaveLoading ? "Збереження..." : "Зберегти в базі"}</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={handleSaveLevelsToFirebase}
+                        disabled={levelsSaveLoading}
+                        className="bg-[#2a6d8c] hover:bg-[#20536c] text-white font-bold text-xs px-3 py-1.5 rounded-lg flex items-center space-x-1.5 shadow transition-all outline-none"
+                      >
+                        <Save className={`h-3.5 w-3.5 ${levelsSaveLoading ? "animate-spin" : ""}`} />
+                        <span>{levelsSaveLoading ? "Збереження..." : "Зберегти в базі"}</span>
+                      </button>
                     )}
                   </div>
                 )}
@@ -1672,31 +1627,13 @@ export default function DirectoriesManager({
                       <tbody className="divide-y divide-[#224853]/30 text-xs">
                         {parsedAccessLevels.map((item, idx) => (
                           <tr key={idx} className="hover:bg-[#1a3843]/30 transition-colors">
-                            <td className="p-1 px-2 border-b border-[#224853]/20">
-                              <div className="flex items-center space-x-1 min-w-[200px]">
-                                <input
-                                  type="text"
-                                  value={item.role}
-                                  onChange={(e) => handleUpdateRoleName(idx, e.target.value)}
-                                  placeholder="Наприклад: Т__ПІБ чи А__Примітки"
-                                  className="bg-slate-900 border border-[#224853] text-slate-100 px-2 py-1 text-xs rounded outline-none focus:border-sky-500 w-full font-bold"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteRoleField(idx)}
-                                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/40 p-1.5 rounded transition-colors shrink-0"
-                                  title="Видалити поле"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            </td>
+                            <td className="p-2 px-3 font-bold text-slate-100">{item.role}</td>
                             {item.headers.map((h: string) => (
                               <td key={h} className="p-2 px-1 text-center border-l border-[#224853]/30">
                                 <input
                                   type="checkbox"
                                   checked={item.access[h]}
-                                  onChange={() => handleToggleAccessLevel(idx, h)}
+                                  onChange={() => handleToggleAccessLevel(item.role, h)}
                                   className="h-3.5 w-3.5 rounded-sm border-[#224853] bg-slate-900 checked:bg-emerald-600 outline-none cursor-pointer"
                                 />
                               </td>

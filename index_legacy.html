@@ -1058,8 +1058,6 @@
             data = await res.json();
           }
 
-          window.__bazaLookupsCache = data;
-
           const dirs = data.directories || {};
 
            // 1. Populate Rayon (District) Select
@@ -1393,7 +1391,7 @@
             if (cached) {
               const sessionUser = JSON.parse(cached);
               if (sessionUser) {
-                const isSessionAdmin = sessionUser.level === 'IV-й' || sessionUser.level === 'ІІІ-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
+                const isSessionAdmin = sessionUser.level === 'IV-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
                 if (isSessionAdmin) {
                   isAdmin = true;
                 }
@@ -3639,323 +3637,6 @@
 
       // Block edits in the form for non-admin users
       (function() {
-        function getUserLevelNum() {
-          try {
-            const cached = localStorage.getItem("baza_current_session_user");
-            if (cached) {
-              const sessionUser = JSON.parse(cached);
-              if (sessionUser) {
-                const lvl = sessionUser.level || 'І-й';
-                const s = lvl.toUpperCase();
-                if (s.includes('IV') || s.includes('ІV') || s.includes('4')) return 4;
-                if (s.includes('III') || s.includes('ІІІ') || s.includes('3')) return 3;
-                if (s.includes('II') || s.includes('ІІ') || s.includes('2')) return 2;
-                return 1;
-              }
-            }
-          } catch (e) {
-            console.error("Error reading user level:", e);
-          }
-          return 1;
-        }
-
-        function normalizeSemantic(name) {
-          if (!name) return "";
-          let s = String(name).toLowerCase().trim();
-          
-          // Replace Cyrillic/Latin homoglyphs for safety:
-          const replacements = {
-            'а': 'a', 'с': 'c', 'е': 'e', 'і': 'i', 'о': 'o', 'р': 'p', 'х': 'x', 'у': 'y',
-            'в': 'b', 'н': 'h', 'к': 'k', 'м': 'm', 'т': 't'
-          };
-          let res = "";
-          for (let i = 0; i < s.length; i++) {
-            const char = s[i];
-            res += replacements[char] || char;
-          }
-          
-          // Remove non-alphanumeric characters
-          res = res.replace(/[^a-z0-9]/g, '');
-          return res;
-        }
-
-        function parsePrefixAndClean(rawName) {
-          if (!rawName) return { prefix: "", clean: "" };
-          let s = String(rawName).trim();
-          const match = s.match(/^([tTaAтТаА])_+([\s\S]+)$/);
-          if (match) {
-            let pref = match[1].toUpperCase();
-            if (pref === 'T' || pref === 'Т') pref = 'Т';
-            if (pref === 'A' || pref === 'А') pref = 'А';
-            return { prefix: pref, clean: match[2].trim() };
-          }
-          return { prefix: "", clean: s };
-        }
-
-        function isSemanticMatch(roleName, targetName, context) {
-          if (context === undefined) {
-            context = 'А';
-          }
-          const resRole = parsePrefixAndClean(roleName);
-          const resTarget = parsePrefixAndClean(targetName);
-
-          if (context && resRole.prefix && resRole.prefix !== context) {
-            return false;
-          }
-          if (resRole.prefix && resTarget.prefix && resRole.prefix !== resTarget.prefix) {
-            return false;
-          }
-
-          const normA = normalizeSemantic(resRole.clean);
-          const normB = normalizeSemantic(resTarget.clean);
-          if (normA === normB) return true;
-          if (normA && normB && (normA.includes(normB) || normB.includes(normA))) return true;
-          
-          // Specific hardcoded synonyms for safety
-          const synonyms = [
-            ['вх', 'вхр', 'воднехрещення'],
-            ['сімстан', 'сімейнийстан', 'шлюб', 'роківвшлюбі', 'даташлюб', 'пібпартнера'],
-            ['телефон', 'додатиномер', 'додатиномертелефону', 'tel', 'phone', 'номер'],
-            ['переміщ', 'переміщеннятазміниадр', 'переміщеннятазміниадрес', 'переміщення', 'movement'],
-            ['адрес', 'адреса'],
-            ['примітки', 'примітка', 'здоров', 'приміткапоздоровю']
-          ];
-          for (const syn of synonyms) {
-            const hasA = syn.some(s => normA.includes(s) || s.includes(normA));
-            const hasB = syn.some(s => normB.includes(s) || s.includes(normB));
-            if (hasA && hasB) return true;
-          }
-          return false;
-        }
-
-        function mapInputToFieldName(target) {
-          if (!target) return null;
-          
-          let element = target;
-          if (element.tagName === 'LABEL') {
-            const htmlFor = element.getAttribute('for');
-            if (htmlFor) {
-              const linkedInput = document.getElementById(htmlFor);
-              if (linkedInput) {
-                element = linkedInput;
-              }
-            } else {
-              const nestedInput = element.querySelector('input, select, textarea');
-              if (nestedInput) {
-                element = nestedInput;
-              }
-            }
-          }
-          
-          const id = element.id || '';
-          const name = element.name || '';
-          
-          // Extract text content of any label associated or parent label to assist semantic matching
-          let labelText = "";
-          const parentLabel = element.closest('label');
-          if (parentLabel) {
-            labelText = parentLabel.textContent || "";
-          } else if (element.id) {
-            const externalLabel = document.querySelector(`label[for="${element.id}"]`);
-            if (externalLabel) {
-              labelText = externalLabel.textContent || "";
-            }
-          }
-          labelText = labelText.toLowerCase();
-
-          // Address fields
-          if (id.startsWith('addr_') || id === 'addr_city' || id === 'addr_street' || id === 'addr_house' || id === 'addr_korpus' || id === 'addr_flat' || labelText.includes('адрес')) {
-            return 'Адрес';
-          }
-          // Phone fields
-          if (id === 'tel' || 
-              id === 'tel_extra' || 
-              id === 'tel2' || 
-              id.startsWith('tel_') || 
-              id === 'btnAddPhone' || 
-              id === 'btnRemoveExtraPhone' || 
-              id.toLowerCase().includes('phone') || 
-              name === 'main_phone_select' || 
-              element.classList.contains('extra-phone-input') || 
-              element.closest('.extra-phone-row') ||
-              element.closest('#addPhoneButtonContainer') ||
-              labelText.includes('телефон') ||
-              labelText.includes('номер') ||
-              (element.textContent && (element.textContent.includes('телефон') || element.textContent.includes('номер')))) {
-            return 'Телефон';
-          }
-          // Messengers / contacts
-          if (id === 'messengers') {
-            return 'Телефон';
-          }
-          // Birth date / age
-          if (id === 'd_nar') {
-            return 'Дата народж.';
-          }
-          // Education
-          if (id === 'education') {
-            return 'Освіта';
-          }
-          // Profession
-          if (id === 'profession') {
-            return 'Професія';
-          }
-          // Baptism / Water date (В.Х. / Водне хрещення)
-          if (id === 'd_vodnogo') {
-            return 'В.Х.';
-          }
-          // Date joined church
-          if (id === 'd_vstupu') {
-            return 'В церкві з';
-          }
-          // San (Church rank)
-          if (id === 'san') {
-            return 'Служіння';
-          }
-          // Caregiver/Opika
-          if (id === 'opika' || id === 'presviter') {
-            return 'Опіка';
-          }
-          // District/Rayon
-          if (id === 'rayon') {
-            return 'РАЙОН';
-          }
-          // Marriage fields
-          if (id === 'd_shlyub_from') {
-            return 'Дата шлюб.';
-          }
-          if (id === 'd_shlyub_end') {
-            return 'К-ть рок.в шлюбі';
-          }
-          // If the element is within the marriage history or spouse block
-          if (element.closest('#marriage_history_block') || 
-              element.closest('[id*="shlyub"]') || 
-              id === 'family_status' || 
-              labelText.includes('шлюб') || 
-              labelText.includes('сімейн') || 
-              labelText.includes('партнер') ||
-              (element.textContent && (element.textContent.toLowerCase().includes('шлюб') || element.textContent.toLowerCase().includes('сімейн')))) {
-            return 'Сім. стан';
-          }
-          if (id === 'partner_pib' || id.includes('podruzhzhya') || id.includes('podrujya') || id === 'partner_name_input') {
-            return 'ПІБ партнера';
-          }
-          // Children block
-          if (element.closest('#children_container') || id === 'dity' || id.includes('child_') || labelText.includes('діти')) {
-            return 'Діти';
-          }
-          // Ministries / slujinnya
-          if (element.closest('#ministries_container') || id.startsWith('chk_min_') || id.startsWith('min_') || element.closest('#ministryDropdownWrapper') || element.closest('#ministryDropdownContainer')) {
-            return 'Служіння';
-          }
-          // Discipline / history of changes
-          if (element.closest('#discipline_container') || id.startsWith('disc_')) {
-            return 'Історія змін';
-          }
-          // Movements
-          if (element.closest('#movementsContent') || 
-              element.closest('#movement_fields_container') || 
-              element.closest('.movement-row') || 
-              id === 'btnAddMovement' || 
-              id.includes('movement') || 
-              target.closest('[onclick*="addGroupMovementRow"]') || 
-              element.classList.contains('movement-begin') || 
-              element.classList.contains('movement-end') || 
-              element.classList.contains('movement-group') || 
-              element.classList.contains('movement-address') ||
-              labelText.includes('переміщ') ||
-              (element.textContent && element.textContent.toLowerCase().includes('переміщ'))) {
-            return 'Переміщ. та зміни адр.';
-          }
-          // Social status
-          if (id === 'social_status' || id === 'social') {
-            return 'Соц. стан';
-          }
-          // Illness / Health notes (mapped to general Remarks/Примітки)
-          if (id === 'hvoryi' || id.includes('health') || id.includes('hvoryi') || labelText.includes('здоров') || labelText.includes('хвор')) {
-            return 'Примітки';
-          }
-          // Exit fields
-          if (id === 'exit_date' || id === 'exit_reason' || id === 'id_vybuttya' || id === 'vybuv_prymitka') {
-            return 'Дата вибуття';
-          }
-          if (id === 'exit_explanation' || id === 'exit_note') {
-            return 'Примітка вибуття';
-          }
-          // Contact dates
-          if (id === 'contact_dates' || id === 'd_kontaktiv') {
-            return 'Дата контакт.';
-          }
-          // Comments/Remarks
-          if (id === 'prymitka' || id === 'comment') {
-            return 'Примітки';
-          }
-          // Admin tasks
-          if (id === 'di_admin') {
-            return 'Завд. для адм.';
-          }
-          // Gender / Stat
-          if (id === 'stat') {
-            return 'ПІБ';
-          }
-          
-          return null;
-        }
-
-        function canEditField(target) {
-          if (!target) return false;
-          
-          const levelNum = getUserLevelNum();
-          if (levelNum === 4) {
-            return true; // Level 4 can edit everything
-          }
-          
-          // Submit button can always be clicked by permitted levels to save their edits
-          if (target.type === 'submit' || (target.tagName === 'BUTTON' && target.textContent && target.textContent.includes('ЗБЕРЕГТИ'))) {
-            return true;
-          }
-          
-          const fieldName = mapInputToFieldName(target);
-          if (!fieldName) {
-            return false;
-          }
-          
-          const lookups = window.__bazaLookupsCache || (window.parent && window.parent.__bazaLookupsData);
-          const list = (lookups && lookups.permission_levels) || [];
-          
-          const row = list.find((item) => {
-            const roleName = item.role || "";
-            return isSemanticMatch(roleName, fieldName) ||
-                   isSemanticMatch('кнопка' + roleName, fieldName) ||
-                   isSemanticMatch('поле' + roleName, fieldName) ||
-                   isSemanticMatch(roleName, 'кнопка' + fieldName) ||
-                   isSemanticMatch(roleName, 'поле' + fieldName);
-          });
-          
-          if (!row) {
-            return true; // Allow editing of unlisted fields (matches React app)
-          }
-          
-          // Check role/field's edit permission for current level
-          const access = row.access || {};
-          const keys = Object.keys(access);
-          for (const k of keys) {
-            const rawKey = k.toLowerCase().trim();
-            let keyLvl = 1;
-            if (rawKey.includes('iv') || rawKey.includes('іv') || rawKey.includes('4')) keyLvl = 4;
-            else if (rawKey.includes('iii') || rawKey.includes('ііі') || rawKey.includes('3')) keyLvl = 3;
-            else if (rawKey.includes('ii') || rawKey.includes('іі') || rawKey.includes('2')) keyLvl = 2;
-            else keyLvl = 1;
-
-            const isEdit = rawKey.includes('змін') || rawKey.includes('прав') || rawKey.includes('edit');
-            if (keyLvl === levelNum && isEdit) {
-              return !!access[k];
-            }
-          }
-          
-          return false;
-        }
-
         function isUserAdmin() {
           try {
             const cached = localStorage.getItem("baza_current_session_user");
@@ -3976,7 +3657,7 @@
         function showAlert() {
           const now = Date.now();
           if (now - lastAlertTime > 2000) {
-            alert("Немає прав доступу для редагування цього поля");
+            alert("Тимчасово вносити зміни не можна");
             lastAlertTime = now;
           }
         }
@@ -3985,7 +3666,7 @@
         if (formContainer) {
           const blockEvent = (e) => {
             if (isUserAdmin()) {
-              return; // Allow admin to edit everything
+              return; // Allow admin to edit
             }
 
             const target = e.target;
@@ -3996,17 +3677,10 @@
               return;
             }
             
-            // Allow clicking H3/H4/H5/H6 block headers, Ministry dropdown toggle triggers, label toggles, and collapsing toggle triggers to view collapsed blocks/data
-            if (target.closest('h3, h4, h5, h6') || 
-                target.closest('label[onclick]') ||
+            // Allow clicking H3 block headers, Ministry dropdown toggle triggers, and Children toggle trigger to view collapsed blocks/data
+            if (target.closest('h3') || 
                 (target.closest('#ministryDropdownWrapper') && !target.closest('#ministryDropdownContainer')) ||
-                target.closest('[onclick*="toggleChildren"]') ||
-                target.closest('[onclick*="classList.toggle"]')) {
-              return;
-            }
-
-            // Allow interaction with allowed fields
-            if (canEditField(target)) {
+                target.closest('[onclick*="toggleChildren"]')) {
               return;
             }
             

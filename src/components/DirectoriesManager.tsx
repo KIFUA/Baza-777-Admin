@@ -357,14 +357,41 @@ export default function DirectoriesManager({
   const [syncResult, setSyncResult] = useState<any>(null);
 
   // Dictionary editor state
-  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon'>('rayon');
+  const [selectedDictKey, setSelectedDictKey] = useState<'opika' | 'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'di_admin' | 'rayon' | string>('rayon');
   const [newDictValue, setNewDictValue] = useState('');
   const [dictItems, setDictItems] = useState<any[]>([]);
   const [saveStatus, setSaveStatus] = useState(false);
   const [editingItemIdx, setEditingItemIdx] = useState<number | null>(null);
   const [editingItemVal, setEditingItemVal] = useState<string>('');
+  const [isAddListModalOpen, setIsAddListModalOpen] = useState(false);
+  const [newListName, setNewListName] = useState('');
   
   const isAdmin = !currentSessionUser || currentSessionUser.level === 'IV-й' || (currentSessionUser.rayon === 'ЦЕНТР' && currentSessionUser.user?.includes('Черняк Вал.'));
+
+  const handleAddNewList = async () => {
+    if (!newListName.trim() || !lookups?.directories) return;
+    
+    const payload = {
+      ...lookups.directories,
+      [newListName.trim()]: [],
+      custom_lists: [...(lookups.directories.custom_lists || []), newListName.trim()]
+    };
+    
+    try {
+      const resp = await fetch('/api/directories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        await onRefreshLookups();
+        setIsAddListModalOpen(false);
+        setNewListName('');
+      }
+    } catch (err) {
+      console.error("Failed to add list:", err);
+    }
+  };
 
   // Load birthdays
   const fetchBirthdays = async () => {
@@ -954,24 +981,44 @@ export default function DirectoriesManager({
                     { id: 'slujinnya', title: 'Служіння' },
                     { id: 'vidviduvanist', title: 'Характеристики відвідування' },
                     { id: 'prysutnist', title: 'Причина відсутності' },
-                    { id: 'di_admin', title: 'Завдання для адміна' }
+                    { id: 'di_admin', title: 'Завдання для адміна' },
+                    ...(lookups?.directories?.custom_lists || []).map((l: string) => ({ id: l, title: l }))
                   ].map(x => (
                     <button
                       key={x.id}
-                      onClick={() => setSelectedDictKey(x.id as any)}
+                      onClick={() => setSelectedDictKey(x.id)}
                       className={`text-left p-2 text-[11px] font-bold rounded-lg transition-all outline-none ${selectedDictKey === x.id ? "bg-[#387d7a] text-white shadow-xs" : "hover:bg-[#1a3843] text-slate-300"}`}
                     >
                       {x.title}
                     </button>
                   ))}
                   <button
-                    onClick={() => alert("Функція додавання нового списку буде реалізована найближчим часом.")}
+                    onClick={() => setIsAddListModalOpen(true)}
                     className="text-left p-2 text-[11px] font-bold rounded-lg transition-all outline-none bg-[#1a3843]/50 border border-dashed border-[#224853] text-slate-400 hover:text-white hover:border-emerald-500/50 flex items-center gap-2"
                   >
                     <Plus className="h-3 w-3" /> Додати список
                   </button>
                 </div>
               </div>
+
+              {isAddListModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                  <div className="bg-[#1a3843] border border-[#224853] p-4 rounded-xl shadow-2xl w-full max-w-xs space-y-3">
+                    <h3 className="text-white font-bold text-sm">Створити новий список</h3>
+                    <input
+                      type="text"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      placeholder="Назва списку"
+                      className="w-full bg-[#0f1f23] text-white border border-[#224853] rounded p-2 text-sm focus:outline-none focus:border-emerald-500"
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <button onClick={() => setIsAddListModalOpen(false)} className="text-slate-400 hover:text-white text-xs font-bold p-2">Скасувати</button>
+                      <button onClick={handleAddNewList} className="bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded hover:bg-emerald-500">Додати</button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Right editable tag grid */}
               <div className="md:col-span-2 space-y-3">

@@ -1699,6 +1699,7 @@ export default function SpreadsheetView({
               filteredMembers.map((m, idx) => {
                 const isEditing = editingId === m.id;
                 const yearsInChurch = getYearsInChurch(m.d_vstupu);
+                const hasZauvazhennya = (m.prymitka || '').toLowerCase().includes('зауважен') || (m.prysutnist || '').toLowerCase().includes('зауважен');
 
                 return (
                   <tr 
@@ -1735,7 +1736,7 @@ export default function SpreadsheetView({
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''}`}
+                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''} ${hasZauvazhennya ? 'outline outline-[3px] outline-red-500 outline-offset-[-3px]' : ''}`}
                       onClick={(e) => {
                         if (!getPermission('АНКЕТИ').view) return;
                         const now = Date.now();

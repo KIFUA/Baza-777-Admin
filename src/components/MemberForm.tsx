@@ -148,6 +148,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
     vidviduvanist: '',
     prysutnist: '',
     discipline: '',
+    discipline_reason: '',
     discipline_date_start: '',
     discipline_date_end: '',
     di_admin: '',
@@ -187,6 +188,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         dity: (member as any).dity || '',
         sluj_uchast: member.sluj_uchast || '',
         discipline: member.discipline || '',
+        discipline_reason: member.discipline_reason || '',
         discipline_date_start: member.discipline_date_start || '',
         discipline_date_end: member.discipline_date_end || ''
       });
@@ -964,19 +966,32 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                   ];
                   return (
                     <div className="space-y-3 pt-2 border-t border-[#333333]/40">
-                      <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-300 block">Дисципл.</label>
-                        <select
-                          name="discipline"
-                          value={formData.discipline || ''}
-                          onChange={handleChange}
-                          className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.discipline ? 'text-slate-400 font-normal' : 'text-white'}`}
-                        >
-                          <option value="" className="text-slate-400">немає</option>
-                          {disciplineOptions.map((opt: string) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-300 block">Дисципл.</label>
+                          <select
+                            name="discipline"
+                            value={formData.discipline || ''}
+                            onChange={handleChange}
+                            className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.discipline ? 'text-slate-400 font-normal' : 'text-white'}`}
+                          >
+                            <option value="" className="text-slate-400">немає</option>
+                            {disciplineOptions.map((opt: string) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-slate-300 block">Прич. дисципл.</label>
+                          <input
+                            type="text"
+                            name="discipline_reason"
+                            value={formData.discipline_reason || ''}
+                            onChange={handleChange}
+                            placeholder="коротко..."
+                            className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 placeholder:text-slate-600"
+                          />
+                        </div>
                       </div>
 
                       {formData.discipline && (

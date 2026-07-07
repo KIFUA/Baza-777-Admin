@@ -136,6 +136,7 @@ export interface Member {
   dity?: string;
   sluj_uchast?: string;
   discipline?: string;
+  discipline_reason?: string;
   discipline_date_start?: string;
   discipline_date_end?: string;
 }

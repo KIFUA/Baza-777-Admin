@@ -1699,7 +1699,7 @@ export default function SpreadsheetView({
               filteredMembers.map((m, idx) => {
                 const isEditing = editingId === m.id;
                 const yearsInChurch = getYearsInChurch(m.d_vstupu);
-                const hasZauvazhennya = (m.prymitka || '').toLowerCase().includes('зауважен') || (m.prysutnist || '').toLowerCase().includes('зауважен');
+                const hasZauvazhennya = (m.prymitka || '').toLowerCase().includes('зауважен') || (m.discipline || '').toLowerCase().includes('зауважен');
 
                 return (
                   <tr 

@@ -757,6 +757,18 @@
                     <option value="" class="text-gray-500">немає</option>
                   </select>
                 </div>
+                <div>
+                  <label
+                    class="block text-[11px] text-purple-400 font-bold select-none"
+                    >Прич. дисципл.</label
+                  >
+                  <input
+                    type="text"
+                    id="discipline_reason"
+                    placeholder="коротко..."
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-[150px] text-xs p-1"
+                  />
+                </div>
                 <div id="discipline_dates_container" class="hidden flex gap-2">
                   <div>
                     <label
@@ -1201,8 +1213,10 @@
                   datesCont.classList.add("hidden");
                   const startEl = document.getElementById("discipline_date_start");
                   const endEl = document.getElementById("discipline_date_end");
+                  const reasonEl = document.getElementById("discipline_reason");
                   if (startEl) startEl.value = "";
                   if (endEl) endEl.value = "";
+                  if (reasonEl) reasonEl.value = "";
                 }
               }
             });
@@ -2886,6 +2900,12 @@
         if (discEndEl) {
           discEndEl.value = discEndValue;
         }
+
+        const discReasonValue = structura["discipline_reason"] || "";
+        const discReasonEl = document.getElementById("discipline_reason");
+        if (discReasonEl) {
+          discReasonEl.value = discReasonValue;
+        }
         
         const datesCont = document.getElementById("discipline_dates_container");
         if (datesCont) {
@@ -3426,6 +3446,7 @@
         updates[`04_STRUCTURA/prysutnist`] = getVal("prysutnist");
         updates[`04_STRUCTURA/9_prysutnist`] = getVal("prysutnist");
         updates[`04_STRUCTURA/discipline`] = getVal("discipline_select");
+        updates[`04_STRUCTURA/discipline_reason`] = getVal("discipline_reason");
         updates[`04_STRUCTURA/discipline_date_start`] = getVal("discipline_date_start");
         updates[`04_STRUCTURA/discipline_date_end`] = getVal("discipline_date_end");
         const contactDatesVal = getVal("d_kontaktiv");
@@ -3592,6 +3613,7 @@
               "04_STRUCTURA/vidviduvanist": "Відвідуваність",
               "04_STRUCTURA/prysutnist": "Присутність",
               "04_STRUCTURA/discipline": "Дисципліна",
+              "04_STRUCTURA/discipline_reason": "Причина дисципліни",
               "04_STRUCTURA/discipline_date_start": "Д. початку дисципліни",
               "04_STRUCTURA/discipline_date_end": "Д. закінчення дисципліни",
               "04_STRUCTURA/7_d_kontaktiv": "Дата контактів з пресвітером",

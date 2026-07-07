@@ -1744,7 +1744,25 @@ app.get("/api/members", async (req, res) => {
     }
   }
 
-  res.json(result);
+  // Enrich with active disciplines
+  const enrichedResult = result.map(m => {
+    // Check if member has active discipline
+    const activeDiscipline = disciplines.find(d => Number(d.id_anketa) === m.id && !d.d_znyato && !d.d_end);
+    let reason = m.discipline_reason || '';
+    let startDate = m.discipline_date_start || '';
+    
+    if (activeDiscipline) {
+      startDate = activeDiscipline.d_begin ? formatExcelDate(activeDiscipline.d_begin) : startDate;
+    }
+
+    return {
+      ...m,
+      discipline_reason: reason,
+      discipline_date_start: startDate
+    };
+  });
+
+  res.json(enrichedResult);
 });
 
 // 4. Get Core Statistics
@@ -1954,6 +1972,10 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
     "04_STRUCTURA/3_san": member.di_admin || "",
     "04_STRUCTURA/hsd": !!member.hsd,
+    "04_STRUCTURA/discipline": member.discipline || "",
+    "04_STRUCTURA/discipline_reason": member.discipline_reason || "",
+    "04_STRUCTURA/discipline_date_start": member.discipline_date_start || "",
+    "04_STRUCTURA/discipline_date_end": member.discipline_date_end || "",
     
     "ISTORIJA/slujinnya": slujList,
     "ISTORIJA/1_slujinnya": null, // Delete legacy
@@ -3459,6 +3481,10 @@ async function syncDatabaseWithFirebase() {
           hvoryi: String(raw["hvoryi"] || "").trim(),
           insha_gromada: String(raw["insha_gromada"] || "").trim(),
           prymitka: String(raw["prymitka"] || raw["primitka"] || "").trim(),
+          discipline: String(структура["discipline"] || "").trim(),
+          discipline_reason: String(структура["discipline_reason"] || "").trim(),
+          discipline_date_start: String(структура["discipline_date_start"] || "").trim(),
+          discipline_date_end: String(структура["discipline_date_end"] || "").trim(),
           efile: raw["efile"],
           address: formatAddress(адреса)
         };

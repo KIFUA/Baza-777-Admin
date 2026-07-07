@@ -1736,7 +1736,7 @@ export default function SpreadsheetView({
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-visible group/pib relative ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''}`}
+                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] hover:z-[60] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-visible group/pib relative ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''}`}
                       onClick={(e) => {
                         if (!getPermission('АНКЕТИ').view) return;
                         const now = Date.now();
@@ -1756,7 +1756,7 @@ export default function SpreadsheetView({
                           />
                           <div className="invisible opacity-0 group-hover/pib:opacity-100 group-hover/pib:visible absolute left-2 top-full mt-1 w-60 p-2 bg-pink-50 text-slate-900 text-[10px] rounded-md shadow-lg z-[150] pointer-events-none transition-all duration-200 border border-pink-200 flex flex-col font-normal leading-tight text-left">
                             <span className="font-bold text-red-600">На зауваженні</span>
-                            <span className="text-slate-700">з {formatDateToUA(m.discipline_date_start)}</span>
+                            {m.discipline_date_start && <span className="text-slate-700">з {formatDateToUA(m.discipline_date_start)}</span>}
                             <span className="mt-0.5 whitespace-normal break-words text-slate-700">Причина: {m.discipline_reason || 'н/д'}</span>
                           </div>
                         </>

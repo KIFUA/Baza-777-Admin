@@ -743,6 +743,45 @@
                   </select>
                 </div>
               </div>
+              
+              <div class="flex flex-wrap gap-2 mt-2 w-full border-t border-borderClr/20 pt-2">
+                <div>
+                  <label
+                    class="block text-[11px] text-purple-400 font-bold select-none"
+                    >Дисципл.</label
+                  >
+                  <select
+                    id="discipline_select"
+                    class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none w-[150px] cursor-pointer bg-zinc-900 text-xs py-0.5"
+                  >
+                    <option value="" class="text-gray-500">немає</option>
+                  </select>
+                </div>
+                <div id="discipline_dates_container" class="hidden flex gap-2">
+                  <div>
+                    <label
+                      class="block text-[11px] text-purple-400 font-bold select-none"
+                      >Д. початку дисципліни</label
+                    >
+                    <input
+                      type="date"
+                      id="discipline_date_start"
+                      class="bg-[#121214] border border-[#27272a] rounded text-white focus:border-blue-500 outline-none w-[130px] text-xs p-1"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      class="block text-[11px] text-purple-400 font-bold select-none"
+                      >Д. закінчення дисципліни</label
+                    >
+                    <input
+                      type="date"
+                      id="discipline_date_end"
+                      class="bg-[#121214] border border-[#27272a] rounded text-white focus:border-blue-500 outline-none w-[130px] text-xs p-1"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1134,6 +1173,37 @@
                 opt.value = p;
                 opt.textContent = p;
                 prySelect.appendChild(opt);
+              }
+            });
+          }
+
+          // 4.5. Populate Discipline Select
+          const discSelect = document.getElementById("discipline_select");
+          if (discSelect) {
+            discSelect.innerHTML = '<option value="" class="text-gray-500">немає</option>';
+            const discList = dirs.dystsyplina || dirs["Дисципліна"] || (dirs.custom && (dirs.custom.dystsyplina || dirs.custom["Дисципліна"])) || [];
+            discList.forEach(d => {
+              if (d) {
+                const opt = document.createElement("option");
+                opt.value = d;
+                opt.textContent = d;
+                discSelect.appendChild(opt);
+              }
+            });
+            
+            discSelect.addEventListener("change", () => {
+              const val = discSelect.value;
+              const datesCont = document.getElementById("discipline_dates_container");
+              if (datesCont) {
+                if (val && val !== "" && val !== "немає" && val !== "н/д") {
+                  datesCont.classList.remove("hidden");
+                } else {
+                  datesCont.classList.add("hidden");
+                  const startEl = document.getElementById("discipline_date_start");
+                  const endEl = document.getElementById("discipline_date_end");
+                  if (startEl) startEl.value = "";
+                  if (endEl) endEl.value = "";
+                }
               }
             });
           }
@@ -2797,6 +2867,34 @@
         setAndStyleField("zvidky", structura["7_zvidky_primitka"]);
         setAndStyleField("vidviduvanist", structura["vidviduvanist"] || structura["8_vidviduvanist"]);
         setAndStyleField("prysutnist", structura["prysutnist"] || structura["9_prysutnist"]);
+
+        const discValue = structura["discipline"] || "";
+        const discSelectEl = document.getElementById("discipline_select");
+        if (discSelectEl) {
+          discSelectEl.value = discValue;
+          updateSelectColor(discSelectEl);
+        }
+        
+        const discStartValue = structura["discipline_date_start"] || "";
+        const discStartEl = document.getElementById("discipline_date_start");
+        if (discStartEl) {
+          discStartEl.value = discStartValue;
+        }
+        
+        const discEndValue = structura["discipline_date_end"] || "";
+        const discEndEl = document.getElementById("discipline_date_end");
+        if (discEndEl) {
+          discEndEl.value = discEndValue;
+        }
+        
+        const datesCont = document.getElementById("discipline_dates_container");
+        if (datesCont) {
+          if (discValue && discValue !== "" && discValue !== "немає" && discValue !== "н/д") {
+            datesCont.classList.remove("hidden");
+          } else {
+            datesCont.classList.add("hidden");
+          }
+        }
         const contactDates = structura["7_d_kontaktiv"] || structura["d_kontaktiv"] || member["d_kontaktiv"] || "";
         setAndStyleField("d_kontaktiv", contactDates);
         loadSelectedMinistries(member);
@@ -3327,6 +3425,9 @@
         updates[`04_STRUCTURA/8_vidviduvanist`] = getVal("vidviduvanist");
         updates[`04_STRUCTURA/prysutnist`] = getVal("prysutnist");
         updates[`04_STRUCTURA/9_prysutnist`] = getVal("prysutnist");
+        updates[`04_STRUCTURA/discipline`] = getVal("discipline_select");
+        updates[`04_STRUCTURA/discipline_date_start`] = getVal("discipline_date_start");
+        updates[`04_STRUCTURA/discipline_date_end`] = getVal("discipline_date_end");
         const contactDatesVal = getVal("d_kontaktiv");
         updates[`04_STRUCTURA/7_d_kontaktiv`] = contactDatesVal;
         updates[`04_STRUCTURA/d_kontaktiv`] = contactDatesVal;
@@ -3490,6 +3591,9 @@
               "04_STRUCTURA/6_d_vstupu": "Дата вступу",
               "04_STRUCTURA/vidviduvanist": "Відвідуваність",
               "04_STRUCTURA/prysutnist": "Присутність",
+              "04_STRUCTURA/discipline": "Дисципліна",
+              "04_STRUCTURA/discipline_date_start": "Д. початку дисципліни",
+              "04_STRUCTURA/discipline_date_end": "Д. закінчення дисципліни",
               "04_STRUCTURA/7_d_kontaktiv": "Дата контактів з пресвітером",
               "02_OSOBYSTE/address": "Адреса",
               "06_VYBUTTYA/2_prichina": "Причина вибуття",

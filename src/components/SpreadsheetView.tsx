@@ -1736,7 +1736,7 @@ export default function SpreadsheetView({
                         maxWidth: `${pibColumnWidth}px`,
                         left: `${pibLeftSticky}px`
                       }}
-                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''} ${hasZauvazhennya ? 'outline outline-[3px] outline-red-500 outline-offset-[-3px]' : ''}`}
+                      className={`py-0.5 px-1 sm:px-1.5 border border-[#8fba94] font-bold text-[#0d341d] group-odd:bg-[#e4efe5] group-even:bg-[#d5e6d8] group-hover:bg-[#a8c7ab] sticky z-[30] shadow-[2px_0_5px_rgba(0,0,0,0.05)] overflow-hidden relative ${getPermission('АНКЕТИ').view ? 'cursor-pointer select-none' : ''}`}
                       onClick={(e) => {
                         if (!getPermission('АНКЕТИ').view) return;
                         const now = Date.now();
@@ -1748,6 +1748,12 @@ export default function SpreadsheetView({
                         lastTapRef.current[m.id] = now;
                       }}
                     >
+                      {hasZauvazhennya && (
+                        <div 
+                          id={`zauvazhennya-border-${m.id}`}
+                          className="absolute inset-0 border-[3px] border-red-500 pointer-events-none z-[40]" 
+                        />
+                      )}
                       <div className="flex items-center justify-between space-x-1 relative h-full min-h-[24px]">
                         <div className="flex items-center space-x-1 truncate min-w-0 flex-1">
                           {m.id_vybuttya > 0 && (

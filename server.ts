@@ -81,6 +81,7 @@ let children: any[] = [];
 let ministries: any[] = [];
 let disciplines: any[] = [];
 let auditLogs: AuditLogItem[] = [];
+let ignoreAdminLogs = true;
 
 // Dictionary tables loaded from Excel
 let s_osvita: any[] = [];
@@ -327,6 +328,7 @@ function loadDatabase() {
       ministries = db.ministries || [];
       disciplines = db.disciplines || [];
       auditLogs = db.auditLogs || [];
+      ignoreAdminLogs = db.ignoreAdminLogs !== undefined ? db.ignoreAdminLogs : true;
       s_osvita = db.s_osvita || [];
       s_socialniy = db.s_socialniy || [];
       s_simeyniy = db.s_simeyniy || [];
@@ -494,6 +496,7 @@ const DB_SYNC_TTL_MS = 10000; // 10 seconds TTL to keep serverless / warm contai
 function saveDatabaseToCache() {
   try {
     const db = {
+      ignoreAdminLogs,
       members, marriages, children, ministries, disciplines, auditLogs,
       s_osvita, s_socialniy, s_simeyniy, s_vybuv, s_profesiya, s_selo, s_vulicya,
       directories_opika,
@@ -521,7 +524,7 @@ function saveDatabaseToCache() {
 
 async function saveAuditLogToFirebase(log: AuditLogItem) {
   const user = (log.userPib || log.memberName || "").toLowerCase();
-  if (user.includes("адміністр") || user.includes("адмін")) {
+  if (ignoreAdminLogs && (user.includes("адміністр") || user.includes("адмін"))) {
     return; // Don't save administrator logs to Firebase
   }
   try {
@@ -533,6 +536,19 @@ async function saveAuditLogToFirebase(log: AuditLogItem) {
     });
   } catch (err: any) {
     console.error(`[Firebase Audit] Failed to save audit log: ${err.message}`);
+  }
+}
+
+async function saveDisciplineToFirebase(row: any) {
+  try {
+    const url = `${FIREBASE_URL}/disciplines/${row.id}.json?auth=${FIREBASE_SECRET}`;
+    await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(row)
+    });
+  } catch (err: any) {
+    console.error(`[Firebase Discipline] Failed to save discipline record to Firebase: ${err.message}`);
   }
 }
 
@@ -2131,17 +2147,22 @@ app.post("/api/members/:id", async (req, res) => {
 
 // 7. Add general audit logs / Custom event
 app.post("/api/audit", (req, res) => {
-  const { memberId, memberName, action, details } = req.body;
+  const { memberId, memberName, action, details, userPib, field, oldValue, newValue } = req.body;
   const newLog: AuditLogItem = {
     id: "user_" + Date.now(),
     timestamp: new Date().toISOString(),
     memberId: Number(memberId || 0),
     memberName: String(memberName || "Користувач").trim(),
     action: String(action || "audit"),
-    details: String(details || "").trim()
+    details: String(details || "").trim(),
+    userPib: userPib ? String(userPib).trim() : undefined,
+    field: field ? String(field).trim() : undefined,
+    oldValue: oldValue !== undefined ? String(oldValue) : undefined,
+    newValue: newValue !== undefined ? String(newValue) : undefined
   };
   auditLogs.push(newLog);
   saveDatabaseToCache();
+  saveAuditLogToFirebase(newLog);
   res.json({ success: true, log: newLog });
 });
 
@@ -2153,6 +2174,55 @@ app.get("/api/audit-logs", (req, res) => {
   });
   const sortedLogs = [...filtered].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   res.json(sortedLogs);
+});
+
+app.get("/api/settings/admin-logs", (req, res) => {
+  res.json({ ignoreAdminLogs });
+});
+
+app.post("/api/settings/admin-logs", (req, res) => {
+  const { ignore } = req.body;
+  ignoreAdminLogs = !!ignore;
+  saveDatabaseToCache();
+  res.json({ success: true, ignoreAdminLogs });
+});
+
+app.post("/api/settings/admin-logs/clear-firebase", async (req, res) => {
+  try {
+    const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+    const auditRes = await fetch(`${FIREBASE_URL}/audit_logs.json?auth=${DB_SECRET}`);
+    if (!auditRes.ok) {
+      return res.status(500).json({ error: "Failed to fetch audit logs from Firebase" });
+    }
+    const data = await auditRes.json();
+    if (!data) {
+      return res.json({ success: true, deletedCount: 0 });
+    }
+    
+    let deletedCount = 0;
+    for (const key of Object.keys(data)) {
+      const log = data[key];
+      if (log) {
+        const user = (log.userPib || log.memberName || "").toLowerCase();
+        if (user.includes("адміністр") || user.includes("адмін")) {
+          const deleteUrl = `${FIREBASE_URL}/audit_logs/${key}.json?auth=${DB_SECRET}`;
+          await fetch(deleteUrl, { method: "DELETE" });
+          deletedCount++;
+        }
+      }
+    }
+    
+    auditLogs = auditLogs.filter(log => {
+      const user = (log.userPib || log.memberName || "").toLowerCase();
+      return !(user.includes("адміністр") || user.includes("адмін"));
+    });
+    saveDatabaseToCache();
+    
+    res.json({ success: true, deletedCount });
+  } catch (err: any) {
+    console.error("[Clear Admin Logs] Failed:", err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // 9. Add a Member child
@@ -2338,16 +2408,19 @@ app.post("/api/members/:id/disciplines", (req, res) => {
     d_znyato: ""
   };
   disciplines.push(newRow);
+  saveDisciplineToFirebase(newRow);
 
   const discLabel = DISCIPLINE_MAP[Number(disciplineId)] || `Стягнення #${disciplineId}`;
-  auditLogs.push({
+  const logItem = {
     id: "disc_" + Date.now(),
     timestamp: new Date().toISOString(),
     memberId,
     memberName: member.pib,
     action: "discipline",
     details: `Накладено стягнення/дисципліну: <b>${discLabel}</b> з причини: "${reason}"`
-  });
+  };
+  auditLogs.push(logItem);
+  saveAuditLogToFirebase(logItem);
 
   saveDatabaseToCache();
   res.json({ success: true, id: newId });
@@ -2366,18 +2439,21 @@ app.post("/api/members/:id/disciplines/:recId/resolve", (req, res) => {
     const excelDate = dateToExcelSerialNumber(resolveDate);
     disciplines[idx].d_znyato = excelDate;
     disciplines[idx].d_end = excelDate;
+    saveDisciplineToFirebase(disciplines[idx]);
     
     const discId = disciplines[idx].id_styagnen;
     const discLabel = DISCIPLINE_MAP[discId] || `Стягнення #${discId}`;
 
-    auditLogs.push({
+    const logItem = {
       id: "disc_res_" + Date.now(),
       timestamp: new Date().toISOString(),
       memberId,
       memberName: member.pib,
       action: "discipline_resolved",
       details: `Знято стягнення: <b>${discLabel}</b> на дату ${resolveDate}`
-    });
+    };
+    auditLogs.push(logItem);
+    saveAuditLogToFirebase(logItem);
 
     saveDatabaseToCache();
     return res.json({ success: true });
@@ -3049,6 +3125,41 @@ async function syncDatabaseWithFirebase() {
     }
   } catch (err: any) {
     console.error(`[Firebase Startup Sync] Failed to load audit logs from Firebase: ${err.message}`);
+  }
+
+  // Load disciplines from Firebase RTDB
+  try {
+    const discRes = await fetch(`${FIREBASE_URL}/disciplines.json?auth=${DB_SECRET}`);
+    if (discRes.ok) {
+      const discData = await discRes.json();
+      if (discData) {
+        if (Array.isArray(discData)) {
+          disciplines = discData.filter(Boolean);
+        } else {
+          disciplines = Object.values(discData).filter(Boolean);
+        }
+        console.log(`[Firebase Startup Sync] Successfully loaded ${disciplines.length} disciplines from Firebase.`);
+      } else {
+        // If empty on Firebase, initialize it from our local disciplines array if we have one
+        if (disciplines.length > 0) {
+          console.log(`[Firebase Startup Sync] Seeding Firebase RTDB with ${disciplines.length} local disciplines...`);
+          const discUploadUrl = `${FIREBASE_URL}/disciplines.json?auth=${DB_SECRET}`;
+          const uploadObj: Record<string, any> = {};
+          disciplines.forEach(d => {
+            if (d && d.id) {
+              uploadObj[d.id] = d;
+            }
+          });
+          await fetch(discUploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(uploadObj)
+          });
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error(`[Firebase Startup Sync] Failed to load disciplines from Firebase: ${err.message}`);
   }
 
   const url = `${FIREBASE_URL}/members.json?auth=${DB_SECRET}`;

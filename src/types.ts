@@ -135,6 +135,9 @@ export interface Member {
   pib_partnera?: string;
   dity?: string;
   sluj_uchast?: string;
+  discipline?: string;
+  discipline_date_start?: string;
+  discipline_date_end?: string;
 }
 
 export interface MemberDetailExtended {

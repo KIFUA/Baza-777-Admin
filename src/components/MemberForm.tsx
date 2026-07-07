@@ -147,6 +147,9 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
     d_vstupu: '',
     vidviduvanist: '',
     prysutnist: '',
+    discipline: '',
+    discipline_date_start: '',
+    discipline_date_end: '',
     di_admin: '',
     id_vybuttya: 0,
     s_vybuv_ukr: '',
@@ -182,7 +185,10 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         d_shlyubu: (member as any).d_shlyubu || '',
         pib_partnera: (member as any).pib_partnera || '',
         dity: (member as any).dity || '',
-        sluj_uchast: member.sluj_uchast || ''
+        sluj_uchast: member.sluj_uchast || '',
+        discipline: member.discipline || '',
+        discipline_date_start: member.discipline_date_start || '',
+        discipline_date_end: member.discipline_date_end || ''
       });
     } else if (hasSpecificRayonLock) {
       setFormData(prev => ({
@@ -936,6 +942,70 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                     ))}
                   </select>
                 </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300 block">Прич. відсутності</label>
+                  <select
+                    name="prysutnist"
+                    value={formData.prysutnist || ''}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.prysutnist ? 'text-slate-400 font-normal' : 'text-white'}`}
+                  >
+                    <option value="" className="text-slate-400">не вказ. (н/д)</option>
+                    {prysutnistOptions.map((opt: string) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {(() => {
+                  const disciplineOptions = lookups?.directories?.dystsyplina || lookups?.directories?.['Дисципліна'] || [
+                    "Попередження", "Вилучення"
+                  ];
+                  return (
+                    <div className="space-y-3 pt-2 border-t border-[#333333]/40">
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-slate-300 block">Дисципл.</label>
+                        <select
+                          name="discipline"
+                          value={formData.discipline || ''}
+                          onChange={handleChange}
+                          className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${!formData.discipline ? 'text-slate-400 font-normal' : 'text-white'}`}
+                        >
+                          <option value="" className="text-slate-400">немає</option>
+                          {disciplineOptions.map((opt: string) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {formData.discipline && (
+                        <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 block">Д. початку дії</label>
+                            <input
+                              type="date"
+                              name="discipline_date_start"
+                              value={formData.discipline_date_start || ''}
+                              onChange={handleChange}
+                              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-slate-400 block">Д. закінчення дії</label>
+                            <input
+                              type="date"
+                              name="discipline_date_end"
+                              value={formData.discipline_date_end || ''}
+                              onChange={handleChange}
+                              className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Right Column: Ministry List */}

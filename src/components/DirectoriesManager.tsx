@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
   CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
-  Edit, UserPlus, ShieldAlert, Save
+  Edit, UserPlus, ShieldAlert, Save, Settings
 } from 'lucide-react';
 import { Member } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
@@ -27,6 +27,56 @@ export default function DirectoriesManager({
   const [activeSubTab, setActiveSubTab] = useState<'birthdays' | 'dicts' | 'access' | 'sync' | 'colors'>('birthdays');
   const [activeAccessSubTab, setActiveAccessSubTab] = useState<'sectors' | 'levels'>('sectors');
   const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
+  const [ignoreAdminLogs, setIgnoreAdminLogs] = useState<boolean>(true);
+  const [clearingLogs, setClearingLogs] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/settings/admin-logs')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.ignoreAdminLogs !== undefined) {
+          setIgnoreAdminLogs(data.ignoreAdminLogs);
+        }
+      })
+      .catch(err => console.error("Failed to load admin logs setting:", err));
+  }, []);
+
+  const handleToggleIgnoreAdminLogs = async (val: boolean) => {
+    try {
+      const res = await fetch('/api/settings/admin-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ignore: val })
+      });
+      if (res.ok) {
+        setIgnoreAdminLogs(val);
+      }
+    } catch (err) {
+      console.error("Failed to update admin logs setting:", err);
+    }
+  };
+
+  const handleClearAdminLogsFromFirebase = async () => {
+    if (!window.confirm("Ви дійсно хочете видалити всі записи Адміністратора з Firebase? Цю дію неможливо скасувати.")) {
+      return;
+    }
+    setClearingLogs(true);
+    try {
+      const res = await fetch('/api/settings/admin-logs/clear-firebase', {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Очищення виконано успішно! Видалено записів: ${data.deletedCount || 0}`);
+      } else {
+        alert("Помилка при очищенні записів.");
+      }
+    } catch (err: any) {
+      alert("Помилка зв'язку з сервером: " + err.message);
+    } finally {
+      setClearingLogs(false);
+    }
+  };
 
   const getFormattedPibForPresbyter = (m: any, allCandidates: any[]) => {
     const pibStr = String(m.pib || '').trim();
@@ -1778,6 +1828,52 @@ export default function DirectoriesManager({
                 )}
                 <span>{syncLoading ? 'Йде завантаження...' : 'Розпочати хмарну синхронізацію'}</span>
               </button>
+            </div>
+
+            {/* АДМІНІСТРАТИВНІ НАЛАШТУВАННЯ ЛОГІВ */}
+            <div className="mt-6 pt-5 border-t border-slate-800 text-left max-w-md mx-auto space-y-4">
+              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Settings className="h-3.5 w-3.5 text-slate-400" />
+                Системний аудит (Режим розробки)
+              </h3>
+              
+              <div className="flex items-start space-x-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800/80">
+                <div className="flex items-center h-5 mt-0.5">
+                  <input
+                    id="ignore_admin_logs"
+                    type="checkbox"
+                    checked={ignoreAdminLogs}
+                    onChange={(e) => handleToggleIgnoreAdminLogs(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-700 bg-slate-800 text-teal-650 focus:ring-teal-500 cursor-pointer"
+                  />
+                </div>
+                <div className="space-y-0.5 select-none">
+                  <label htmlFor="ignore_admin_logs" className="block text-[11px] font-bold text-slate-200 cursor-pointer">
+                    Пригнічувати відправку логів Адміністратора на Firebase
+                  </label>
+                  <p className="text-[10px] text-slate-400 leading-normal font-medium">
+                    Якщо увімкнено (рекомендовано), дії користувачів зі словом "адмін" або "адміністр" в імені не будуть відправлятися на сервер.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <button
+                  onClick={handleClearAdminLogsFromFirebase}
+                  disabled={clearingLogs}
+                  className={`w-full bg-rose-950/40 hover:bg-rose-950/60 border border-rose-900/50 hover:border-rose-800/70 text-rose-300 font-bold text-[11px] px-4 py-2 rounded-md transition-all outline-none flex items-center justify-center space-x-2 ${clearingLogs ? "opacity-60 cursor-not-allowed" : ""}`}
+                >
+                  {clearingLogs ? (
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-rose-350 border-t-transparent"></div>
+                  ) : (
+                    <Trash2 className="h-3.5 w-3.5 text-rose-450" />
+                  )}
+                  <span>{clearingLogs ? 'Очищення...' : 'Очистити всі логі Адміністратора на Firebase'}</span>
+                </button>
+                <p className="text-[9px] text-slate-500 text-center leading-normal font-medium">
+                  Це дозволить повністю видалити історичні записи зі словом "адмін/адміністр" у хмарі.
+                </p>
+              </div>
             </div>
           </div>
         )}

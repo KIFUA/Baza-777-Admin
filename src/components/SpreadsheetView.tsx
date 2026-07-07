@@ -213,6 +213,7 @@ export default function SpreadsheetView({
 
   // Active remark tooltip state for mouse hover or touch single-tap (Request 2)
   const [activeRemarkTooltipId, setActiveRemarkTooltipId] = useState<number | null>(null);
+  const [activeDisciplineTooltipId, setActiveDisciplineTooltipId] = useState<number | null>(null);
 
   // Editing state for the primitka (remarks/comments) cell
   const [editingRemarkId, setEditingRemarkId] = useState<number | null>(null);
@@ -286,6 +287,21 @@ export default function SpreadsheetView({
       document.removeEventListener('click', handleGlobalClick);
     };
   }, [activeRemarkTooltipId]);
+
+  // Close discipline tooltip on global click
+  useEffect(() => {
+    if (activeDisciplineTooltipId === null) return;
+    const handleGlobalClick = () => {
+      setActiveDisciplineTooltipId(null);
+    };
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleGlobalClick);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleGlobalClick);
+    };
+  }, [activeDisciplineTooltipId]);
 
   // States for the contact dates multi-record modal
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
@@ -1744,6 +1760,9 @@ export default function SpreadsheetView({
                         if (now - lastTap < 350) {
                           e.stopPropagation();
                           onOpenProfile(m.id);
+                        } else if (hasZauvazhennya) {
+                          e.stopPropagation();
+                          setActiveDisciplineTooltipId(activeDisciplineTooltipId === m.id ? null : m.id);
                         }
                         lastTapRef.current[m.id] = now;
                       }}
@@ -1754,7 +1773,7 @@ export default function SpreadsheetView({
                             id={`zauvazhennya-border-${m.id}`}
                             className="absolute inset-0 border-[3px] border-red-500 bg-red-500/10 pointer-events-none z-[40]" 
                           />
-                          <div className="invisible opacity-0 group-hover/pib:opacity-100 group-hover/pib:visible absolute left-2 top-full mt-1 w-60 p-2 bg-pink-50 text-slate-900 text-[10px] rounded-md shadow-lg z-[150] pointer-events-none transition-all duration-200 border border-pink-200 flex flex-col font-normal leading-tight text-left">
+                          <div className={`absolute left-2 top-full mt-1 w-60 p-2 bg-pink-50 text-slate-900 text-[10px] rounded-md shadow-lg z-[150] transition-all duration-200 border border-pink-200 flex flex-col font-normal leading-tight text-left ${activeDisciplineTooltipId === m.id ? 'opacity-100 visible pointer-events-auto' : 'invisible opacity-0 group-hover/pib:opacity-100 group-hover/pib:visible pointer-events-none'}`}>
                             <span className="font-bold text-red-600">На зауваженні</span>
                             {m.discipline_date_start && <span className="text-slate-700">з {formatDateToUA(m.discipline_date_start)}</span>}
                             <span className="mt-0.5 whitespace-normal break-words text-slate-700">Причина: {m.discipline_reason || 'н/д'}</span>

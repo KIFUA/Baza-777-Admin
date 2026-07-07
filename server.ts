@@ -520,6 +520,10 @@ function saveDatabaseToCache() {
 }
 
 async function saveAuditLogToFirebase(log: AuditLogItem) {
+  const user = (log.userPib || log.memberName || "").toLowerCase();
+  if (user.includes("адміністр") || user.includes("адмін")) {
+    return; // Don't save administrator logs to Firebase
+  }
   try {
     const url = `${FIREBASE_URL}/audit_logs/${log.id}.json?auth=${FIREBASE_SECRET}`;
     await fetch(url, {
@@ -810,10 +814,17 @@ app.get("/api/lookups", async (req, res) => {
       di_admin: directories_di_admin,
       rayon2: sortRayonsArray(directories_rayon2),
       rayon: sortRayonsArray(directories_rayon2),
-      custom: directories_custom,
-      custom_lists: Object.keys(directories_custom),
+      custom: {
+        ...directories_custom,
+        dystsyplina: directories_custom["dystsyplina"] || directories_custom["Дисципліна"] || [],
+        "Дисципліна": directories_custom["dystsyplina"] || directories_custom["Дисципліна"] || []
+      },
+      custom_lists: Array.from(new Set([...Object.keys(directories_custom), "dystsyplina", "Дисципліна"])),
       rayon_bindings: directories_rayon_bindings,
-      opika_bindings: directories_opika_bindings
+      opika_bindings: directories_opika_bindings,
+      ...directories_custom,
+      dystsyplina: directories_custom["dystsyplina"] || directories_custom["Дисципліна"] || [],
+      "Дисципліна": directories_custom["dystsyplina"] || directories_custom["Дисципліна"] || []
     },
     access: access_dostup,
     permission_levels: permission_levels
@@ -1577,11 +1588,21 @@ app.post("/api/directories/save", async (req, res) => {
   if (Array.isArray(data.custom_lists)) {
     directories_custom = {};
     data.custom_lists.forEach((listName: string) => {
-      console.log("Processing list:", listName, "Data found:", Array.isArray(data[listName]), "Data length:", Array.isArray(data[listName]) ? data[listName].length : "N/A");
+      let finalName = listName;
+      if (listName === "vibuv") {
+        finalName = "vybuv";
+      }
+      console.log("Processing list:", listName, "->", finalName, "Data found:", Array.isArray(data[listName]), "Data length:", Array.isArray(data[listName]) ? data[listName].length : "N/A");
       if (Array.isArray(data[listName])) {
-        directories_custom[listName] = data[listName];
+        directories_custom[finalName] = data[listName];
       }
     });
+
+    const disciplineList = directories_custom["Дисципліна"] || directories_custom["dystsyplina"];
+    if (disciplineList) {
+      directories_custom["Дисципліна"] = disciplineList;
+      directories_custom["dystsyplina"] = disciplineList;
+    }
   }
   
   const targetRayons = Array.isArray(data.rayon) ? data.rayon : data.rayon2;
@@ -2126,8 +2147,11 @@ app.post("/api/audit", (req, res) => {
 
 // 8. Get history changelogs List (Audit logs + Ministry Timeline events merged)
 app.get("/api/audit-logs", (req, res) => {
-  // Sort descending by timestamp
-  const sortedLogs = [...auditLogs].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  const filtered = auditLogs.filter(log => {
+    const user = (log.userPib || log.memberName || "").toLowerCase();
+    return !user.includes("адміністр") && !user.includes("адмін");
+  });
+  const sortedLogs = [...filtered].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   res.json(sortedLogs);
 });
 
@@ -2591,7 +2615,7 @@ async function syncDirectoriesToFirebase() {
   const DB_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
   const url = `${FIREBASE_URL}/directories.json?auth=${DB_SECRET}`;
   try {
-    const payload = {
+    const payload: any = {
       opika: directories_opika,
       slujinnya: directories_slujinnya,
       vidviduvanist: directories_vidviduvanist,
@@ -2599,8 +2623,15 @@ async function syncDirectoriesToFirebase() {
       di_admin: directories_di_admin,
       rayon: directories_rayon2, // saved as rayon key on Firebase now
       rayon_bindings: directories_rayon_bindings,
-      opika_bindings: directories_opika_bindings
+      opika_bindings: directories_opika_bindings,
+      custom: directories_custom,
+      custom_lists: Object.keys(directories_custom)
     };
+    // Expose custom lists as top-level keys
+    Object.keys(directories_custom).forEach(key => {
+      payload[key] = directories_custom[key];
+    });
+
     const res = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -2608,6 +2639,17 @@ async function syncDirectoriesToFirebase() {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     console.log("[Firebase Directories Sync] Directories successfully saved to Firebase RTDB.");
+
+    // Sync dystsyplina / Дисципліна directly to /dictionaries/dystsyplina.json
+    const dystsyplinaList = directories_custom["dystsyplina"] || directories_custom["Дисципліна"] || [];
+    if (dystsyplinaList.length > 0) {
+      const dictUrl = `${FIREBASE_URL}/dictionaries/dystsyplina.json?auth=${DB_SECRET}`;
+      await fetch(dictUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dystsyplinaList)
+      }).catch(e => console.error("Failed to PUT dictionaries/dystsyplina.json:", e));
+    }
   } catch (err: any) {
     console.error("[Firebase Directories Sync] Failed to save directories to Firebase:", err.message);
   }
@@ -2696,11 +2738,33 @@ async function syncDirectoriesFromFirebase() {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data: any = await res.json();
-    if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin || data.rayon || data.rayon2)) {
+    if (data && (data.opika || data.slujinnya || data.vidviduvanist || data.prysutnist || data.di_admin || data.rayon || data.rayon2 || data.custom || data.custom_lists)) {
       if (Array.isArray(data.opika)) directories_opika = data.opika;
       if (Array.isArray(data.rayon_bindings)) directories_rayon_bindings = data.rayon_bindings;
       if (Array.isArray(data.opika_bindings)) directories_opika_bindings = data.opika_bindings;
       
+      if (data.custom) {
+        directories_custom = data.custom;
+      } else if (Array.isArray(data.custom_lists)) {
+        directories_custom = {};
+        data.custom_lists.forEach((listName: string) => {
+          if (Array.isArray(data[listName])) {
+            directories_custom[listName] = data[listName];
+          }
+        });
+      }
+
+      const disciplineList = directories_custom["Дисципліна"] || directories_custom["dystsyplina"];
+      if (disciplineList) {
+        directories_custom["Дисципліна"] = disciplineList;
+        directories_custom["dystsyplina"] = disciplineList;
+      }
+
+      if (directories_custom["vibuv"]) {
+        directories_custom["vybuv"] = directories_custom["vibuv"];
+        delete directories_custom["vibuv"];
+      }
+
       // Shift/Prepend "" empty option into slujinnya lookup array if needed
       if (Array.isArray(data.slujinnya)) {
         let slList = data.slujinnya;
@@ -2747,6 +2811,70 @@ async function syncDirectoriesFromFirebase() {
     } else {
       console.warn("[Firebase Directories Sync] No directories found in Firebase RTDB, pushing local defaults...");
       await syncDirectoriesToFirebase();
+    }
+
+    // Rename legacy vibuv to vybuv inside the /dictionaries root on Firebase
+    try {
+      const vibuvUrl = `${FIREBASE_URL}/dictionaries/vibuv.json?auth=${DB_SECRET}`;
+      const resVibuv = await fetch(vibuvUrl);
+      if (resVibuv.ok) {
+        const vibuvData = await resVibuv.json();
+        if (vibuvData) {
+          console.log("[Firebase Dictionaries Sync] Found 'vibuv' in Firebase. Renaming to 'vybuv'...");
+          const vybuvUrl = `${FIREBASE_URL}/dictionaries/vybuv.json?auth=${DB_SECRET}`;
+          await fetch(vybuvUrl, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(vibuvData)
+          });
+          // Note: we can delete the old vibuv key on Firebase
+          await fetch(vibuvUrl, { method: "DELETE" });
+          console.log("[Firebase Dictionaries Sync] Successfully renamed 'vibuv' to 'vybuv' in Firebase.");
+        }
+      }
+    } catch (err: any) {
+      console.error("[Firebase Dictionaries Sync] Failed to check or rename 'vibuv' in Firebase:", err.message);
+    }
+
+    // Load s_vybuv from /dictionaries/vybuv.json if present
+    try {
+      const vybuvUrl = `${FIREBASE_URL}/dictionaries/vybuv.json?auth=${DB_SECRET}`;
+      const resVybuv = await fetch(vybuvUrl);
+      if (resVybuv.ok) {
+        const vybuvData = await resVybuv.json();
+        if (Array.isArray(vybuvData)) {
+          console.log("[Firebase Dictionaries Sync] Loading 'vybuv' from Firebase dictionaries into local s_vybuv lookups...");
+          s_vybuv = vybuvData.map((item: any, idx: number) => {
+            if (item === null || item === undefined) {
+              return { ID: idx, Value: "н/д" };
+            }
+            if (typeof item === 'string') {
+              return { ID: idx, Value: item };
+            }
+            if (typeof item === 'object') {
+              return { ID: item.ID !== undefined ? item.ID : idx, Value: item.Value || item.name || "" };
+            }
+            return { ID: idx, Value: String(item) };
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error("[Firebase Dictionaries Sync] Failed to load s_vybuv lookups from Firebase:", err.message);
+    }
+
+    // Fetch dystsyplina from /dictionaries/dystsyplina.json and sync to local custom list
+    try {
+      const dystsyplinaUrl = `${FIREBASE_URL}/dictionaries/dystsyplina.json?auth=${DB_SECRET}`;
+      const resDystsyplina = await fetch(dystsyplinaUrl);
+      if (resDystsyplina.ok) {
+        const dystsyplinaData = await resDystsyplina.json();
+        if (Array.isArray(dystsyplinaData)) {
+          directories_custom["dystsyplina"] = dystsyplinaData;
+          directories_custom["Дисципліна"] = dystsyplinaData;
+        }
+      }
+    } catch (err: any) {
+      console.error("[Firebase Dictionaries Sync] Failed to load dystsyplina from /dictionaries/dystsyplina.json:", err.message);
     }
   } catch (err: any) {
     console.error("[Firebase Directories Sync] Failed to load directories from Firebase:", err.message);

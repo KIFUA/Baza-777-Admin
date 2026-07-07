@@ -1751,7 +1751,7 @@ export default function SpreadsheetView({
                       {hasZauvazhennya && (
                         <div 
                           id={`zauvazhennya-border-${m.id}`}
-                          className="absolute inset-0 border-[3px] border-red-500 pointer-events-none z-[40]" 
+                          className="absolute inset-0 border-[3px] border-red-500 bg-red-500/10 pointer-events-none z-[40]" 
                         />
                       )}
                       <div className="flex items-center justify-between space-x-1 relative h-full min-h-[24px]">

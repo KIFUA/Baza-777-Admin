@@ -1044,7 +1044,9 @@ export default function DirectoriesManager({
                     { id: 'vidviduvanist', title: 'Характеристики відвідування' },
                     { id: 'prysutnist', title: 'Причина відсутності' },
                     { id: 'di_admin', title: 'Завдання для адміна' },
-                    ...(lookups?.directories?.custom_lists || []).map((l: string) => ({ id: l, title: l }))
+                    ...(lookups?.directories?.custom_lists || [])
+                      .filter((l: string) => l !== 'dystsyplina')
+                      .map((l: string) => ({ id: l, title: l }))
                   ].map(x => (
                     <button
                       key={x.id}

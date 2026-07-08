@@ -895,7 +895,21 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                       <tr key={m.id} className="border-b border-[#204250]/50 hover:bg-slate-800/30">
                         <td className="p-2 font-mono text-slate-500 text-center">{idx + 1}</td>
                         <td className="p-2 font-medium text-slate-200">{m.pib}</td>
-                        <td className="p-2 font-mono text-slate-400">{m.telefon_1 || '—'}</td>
+                        <td className="p-2 font-mono text-slate-400 leading-tight">
+                          {(() => {
+                            const tel = m.tel_mob || m.tel1;
+                            if (!tel) return '—';
+                            const parts = tel.split(/[/,;]/).map(p => p.trim()).filter(Boolean);
+                            if (parts.length <= 1) return tel;
+                            return (
+                              <div className="flex flex-col space-y-0.5">
+                                {parts.map((p, i) => (
+                                  <span key={i} className="block whitespace-nowrap">{p}</span>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </td>
                         <td className="p-2 text-slate-300 whitespace-pre-wrap leading-tight">{m.d_kontaktiv?.replace(/\s*\/\s*/g, ', ')}</td>
                       </tr>
                     ))}

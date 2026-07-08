@@ -170,6 +170,8 @@ export default function SpreadsheetView({
   const [activeFilterDropdown, setActiveFilterDropdown] = useState<'slujinnya' | 'vidviduvanist' | 'prysutnist' | 'opika' | 'di_admin' | null>(null);
 
   const lastTapRef = React.useRef<{ [key: number]: number }>({});
+  const contactTapRef = React.useRef<{ [key: number]: number }>({});
+  const remarkTapRef = React.useRef<{ [key: number]: number }>({});
 
   useEffect(() => {
     if (selectedMemberId !== undefined && selectedMemberId !== null) {
@@ -1830,10 +1832,6 @@ export default function SpreadsheetView({
                       return (
                       <td 
                           className={`py-0.5 px-0.5 border-r border-[#8fba94] text-center relative cursor-pointer select-none hover:brightness-95 transition-all ${bgClass}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveContactTooltipId(isTooltipOpen ? null : m.id);
-                          }}
                           onDoubleClick={(e) => {
                             e.stopPropagation();
                             if (!getPermission('ДАТИ КОНТАКТІВ З ПРЕСВ.').edit) {
@@ -1842,33 +1840,20 @@ export default function SpreadsheetView({
                             }
                             handleOpenContactModal(m);
                           }}
-                          title="Клацніть для перегляду всіх дат; Двічі клацніть для редагування"
+                          title="Двічі клацніть для редагування"
                         >
-                          <div className="flex items-center justify-between min-h-6">
-                            <span className={`font-extrabold font-mono text-[10px] mx-auto ${textClass}`}>
-                              {latestDateUA}
-                            </span>
+                          <div className="flex flex-col items-center justify-center min-h-6 leading-none space-y-0.5">
+                            {allDates.slice(-2).map((dt, idx) => (
+                              <span key={idx} className={`font-extrabold font-mono text-[9px] mx-auto ${textClass}`}>
+                                {dt}
+                              </span>
+                            ))}
+                            {allDates.length === 0 && (
+                              <span className={`font-extrabold font-mono text-[10px] mx-auto ${textClass}`}>
+                                —
+                              </span>
+                            )}
                           </div>
-
-                          {isTooltipOpen && (
-                            <div 
-                              className="absolute left-1/2 -translate-x-1/2 top-full mt-1 w-max min-w-[85px] max-w-[125px] bg-[#232323] text-white border border-[#444444] rounded shadow-md p-1.5 z-[250] text-center font-sans animate-in fade-in duration-75"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-[#232323]" />
-                              {allDates.length > 0 ? (
-                                <div className="space-y-0.5 max-h-24 overflow-y-auto custom-scrollbar text-[11px] leading-tight font-medium">
-                                  {allDates.map((dateStr, idx) => (
-                                    <div key={idx} className="py-0.5 border-b border-[#444444]/40 last:border-0">
-                                      {dateStr}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-[11px] text-zinc-400 italic py-0.5">Немає дат</p>
-                              )}
-                            </div>
-                          )}
                         </td>
                       );
                     })()}
@@ -1920,20 +1905,25 @@ export default function SpreadsheetView({
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
-                            if (div && div.scrollWidth > div.clientWidth) {
-                              setActiveRemarkTooltipId(activeRemarkTooltipId === m.id ? null : m.id);
+                            const now = Date.now();
+                            const lastTap = remarkTapRef.current[m.id] || 0;
+                            if (now - lastTap < 350) {
+                              // Double tap
+                              if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit && !isUserAdmin) {
+                                alert("Тимчасово вносити зміни не можна");
+                                return;
+                              }
+                              setEditingRemarkId(m.id);
+                              setEditingRemarkValue(m.prymitka || '');
+                              setActiveRemarkTooltipId(null);
+                            } else {
+                              // Single tap
+                              const div = e.currentTarget.querySelector(".remark-text-div") as HTMLDivElement;
+                              if (div && div.scrollWidth > div.clientWidth) {
+                                setActiveRemarkTooltipId(activeRemarkTooltipId === m.id ? null : m.id);
+                              }
                             }
-                          }}
-                          onDoubleClick={(e) => {
-                            e.stopPropagation();
-                            if (!getPermission('ПРИМІТКИ І ПОЯСНЕННЯ').edit && !isUserAdmin) {
-                              alert("Тимчасово вносити зміни не можна");
-                              return;
-                            }
-                            setEditingRemarkId(m.id);
-                            setEditingRemarkValue(m.prymitka || '');
-                            setActiveRemarkTooltipId(null);
+                            remarkTapRef.current[m.id] = now;
                           }}
                         >
                           <div className="remark-text-div truncate max-w-[128px]">

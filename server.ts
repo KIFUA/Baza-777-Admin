@@ -1,6 +1,8 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import nodemailer from "nodemailer";
+import PDFDocument from "pdfkit";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import XLSX from "xlsx";
 import { 
@@ -1574,39 +1576,146 @@ app.post("/api/birthdays/send", async (req, res) => {
   let emailLogs = "";
 
   if (type === "telegram_me" || type === "telegram_group") {
-    // Deliver via Telegram Bot API using provided or default IDs
-    // Target Chat: 1919236304 (Me) or -1001914940560 (Group)
-    const token = customToken || process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = customChatId || (type === "telegram_me" ? "1919236304" : "-1001914940560");
-
-    if (!token) {
-      telegramLogs = `[Симуляція] Telegram бот токен НЕ налаштований. Список було б надіслано в чат ID: ${chatId}.`;
-    } else {
-      try {
-        const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
-        const response = await fetch(tgUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: msg,
-            parse_mode: "Markdown"
-          })
-        });
-        const rJson = await response.json() as any;
-        if (rJson.ok) {
-          telegramLogs = `Успішно надіслано в Telegram чат ID: ${chatId}.`;
-        } else {
-          telegramLogs = `Помилка Telegram API: ${rJson.description} (Код: ${rJson.error_code})`;
-        }
-      } catch (tgErr: any) {
-        telegramLogs = `Помилка зв'язку з Telegram: ${tgErr.message}`;
+    const settings = getSettings();
+    const token = customToken || settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
+    const defaultChatId = type === "telegram_me" ? "1919236304" : "-1001914940560";
+    
+    let chatIdStr = customChatId;
+    if (!chatIdStr) {
+      if (type === "telegram_me") {
+        chatIdStr = settings.mondayTelegramIds || defaultChatId;
+      } else {
+        chatIdStr = settings.wednesdayTelegramIds || defaultChatId;
       }
     }
+
+    if (!token) {
+      telegramLogs = `[Симуляція] Telegram бот токен НЕ налаштований. Список було б надіслано в чат: ${chatIdStr}.`;
+    } else {
+      const chatIds = chatIdStr.split(",").map(id => id.trim()).filter(Boolean);
+      let tgSuccessCount = 0;
+      let tgFailCount = 0;
+      let lastError = "";
+      
+      for (const singleChatId of chatIds) {
+        try {
+          const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+          const response = await fetch(tgUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: singleChatId,
+              text: msg,
+              parse_mode: "Markdown"
+            })
+          });
+          const rJson = await response.json() as any;
+          if (rJson.ok) {
+            tgSuccessCount++;
+          } else {
+            tgFailCount++;
+            lastError = rJson.description || "unknown error";
+          }
+        } catch (tgErr: any) {
+          tgFailCount++;
+          lastError = tgErr.message;
+        }
+      }
+      
+      telegramLogs = `Telegram: надіслано успішно до ${tgSuccessCount} чатів. Помилок: ${tgFailCount}${lastError ? ' (' + lastError + ')' : ''}`;
+    }
   } else if (type === "email_text" || type === "email_pdf") {
-    // Deliver via church office email
-    const destinations = ["kostel.if.ua@gmail.com", "liliiachupryna@gmail.com", "solbo1971@gmail.com"];
-    emailLogs = `[Імітація Email] Направлено звіт ${type === "email_pdf" ? "з PDF вкладенням" : "як текст"} на поштові скриньки: ${destinations.join(", ")}.`;
+    const settings = getSettings();
+    const appPassword = settings.appPassword;
+    const destinationsStr = type === "email_pdf" ? settings.wednesdayEmails : settings.mondayEmails;
+    const destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
+    
+    if (destinations.length === 0) {
+      destinations.push("kostel.if.ua@gmail.com", "liliiachupryna@gmail.com", "solbo1971@gmail.com");
+    }
+
+    if (!appPassword) {
+      emailLogs = `[Помилка] Не вказано App Password (пароль додатка Gmail) в налаштуваннях розсилки. Будь ласка, перейдіть до Налаштування -> Автоматичні розсилки іменинників та введіть 16-значний пароль додатка.`;
+    } else {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: 'kostel.if.ua@gmail.com',
+            pass: appPassword
+          }
+        });
+
+        const subject = `🎂 Іменинники тижня (${birthdays.weekRangeText})`;
+        const mailOptions: any = {
+          from: '"База 777" <kostel.if.ua@gmail.com>',
+          to: destinations,
+          subject: subject,
+          text: msg.replace(/\*\*/g, "") // Remove Markdown bold styling for plain text email
+        };
+
+        let tempPdfPath = "";
+        if (type === "email_pdf") {
+          tempPdfPath = path.join(process.cwd(), `birthdays_manual_${Date.now()}.pdf`);
+          const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
+          const writeStream = fs.createWriteStream(tempPdfPath);
+          doc.pipe(writeStream);
+
+          const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+          const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+          
+          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+            doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.moveDown(0.5);
+            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            doc.moveDown(2);
+
+            birthdays.list.forEach((item: any) => {
+              doc.font(boldFont).fontSize(12);
+              if (item.isJubilee) {
+                doc.fillColor('red');
+              } else {
+                doc.fillColor('black');
+              }
+              doc.text(item.shortName, { align: 'center' });
+              doc.moveDown(0.5);
+            });
+          } else {
+            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.moveDown(0.5);
+            doc.fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            doc.moveDown(2);
+            birthdays.list.forEach((item: any) => {
+              doc.fontSize(12);
+              doc.text(item.shortName, { align: 'center' });
+              doc.moveDown(0.5);
+            });
+          }
+          
+          doc.end();
+
+          await new Promise<void>((resolve, reject) => {
+            writeStream.on('finish', () => resolve());
+            writeStream.on('error', (err) => reject(err));
+          });
+
+          mailOptions.attachments = [{
+            filename: 'Imenynnyky.pdf',
+            path: tempPdfPath
+          }];
+        }
+
+        await transporter.sendMail(mailOptions);
+        emailLogs = `Email: успішно надіслано на адреси: ${destinations.join(", ")}`;
+
+        if (tempPdfPath && fs.existsSync(tempPdfPath)) {
+          fs.unlinkSync(tempPdfPath);
+        }
+      } catch (mailErr: any) {
+        emailLogs = `Помилка надсилання пошти: ${mailErr.message}`;
+        console.error("Email send error manually:", mailErr);
+      }
+    }
   }
 
   // Insert Audit Log entry

@@ -55,6 +55,7 @@ function ensureInitialSync() {
           console.log(`[ensureInitialSync] Cleaned ${cleanedCount} members with invalid di_admin.`);
         }
         console.log("[ensureInitialSync] Initial Firebase sync finished successfully.");
+        await loadSettingsFromFirebase();
       })
       .catch((err) => {
         console.error("[ensureInitialSync] Initial Firebase sync failed:", err);
@@ -800,12 +801,37 @@ app.use('/api/firebase', async (req, res) => {
 // 1. Get List of directories for diagnostic or verification
 
 const SETTINGS_FILE = path.join(process.cwd(), "settings.json");
+let cachedSettings: any = null;
+
+async function loadSettingsFromFirebase() {
+  try {
+    const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
+    const response = await fetch(url);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && typeof data === 'object') {
+        cachedSettings = data;
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
+        console.log("[Firebase Settings] Successfully loaded and cached notification settings from Firebase Realtime DB.");
+        return;
+      }
+    }
+    console.log("[Firebase Settings] Settings empty or failed to load from Firebase Realtime DB, falling back to local file.");
+  } catch (err: any) {
+    console.error(`[Firebase Settings] Error loading settings from Firebase: ${err.message}`);
+  }
+}
 
 function getSettings() {
+  if (cachedSettings) {
+    return cachedSettings;
+  }
   try {
-    return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+    cachedSettings = data;
+    return data;
   } catch (e) {
-    return {
+    const defaults = {
       mondayEmails: "",
       wednesdayEmails: "",
       mondayTelegramIds: "",
@@ -813,6 +839,8 @@ function getSettings() {
       botToken: "",
       appPassword: ""
     };
+    cachedSettings = defaults;
+    return defaults;
   }
 }
 
@@ -820,9 +848,23 @@ app.get("/api/settings/notifications", (req, res) => {
   res.json(getSettings());
 });
 
-app.post("/api/settings/notifications", (req, res) => {
+app.post("/api/settings/notifications", async (req, res) => {
   const settings = req.body;
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  cachedSettings = settings;
+  try {
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    
+    // Save to Firebase Realtime DB
+    const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
+    await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings)
+    });
+    console.log("[Firebase Settings] Successfully synchronized settings to Firebase Realtime DB.");
+  } catch (err: any) {
+    console.error(`[Firebase Settings] Error saving settings to Firebase Realtime DB: ${err.message}`);
+  }
   res.json({ success: true });
 });
 

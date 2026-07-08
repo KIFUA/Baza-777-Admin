@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import XLSX from "xlsx";
 import { 
   Member, 
@@ -66,7 +67,11 @@ function ensureInitialSync() {
 app.use(async (req, res, next) => {
   if (req.path.startsWith("/api") && req.path !== "/api/health") {
     try {
-      await ensureInitialSync();
+    
+  await ensureInitialSync();
+
+  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
+
     } catch (err: any) {
       console.error("[Sync Middleware] Error awaiting database sync:", err.message);
     }
@@ -791,6 +796,34 @@ app.use('/api/firebase', async (req, res) => {
 });
 
 // 1. Get List of directories for diagnostic or verification
+
+const SETTINGS_FILE = path.join(process.cwd(), "settings.json");
+
+function getSettings() {
+  try {
+    return JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+  } catch (e) {
+    return {
+      mondayEmails: "",
+      wednesdayEmails: "",
+      mondayTelegramIds: "",
+      wednesdayTelegramIds: "",
+      botToken: "",
+      appPassword: ""
+    };
+  }
+}
+
+app.get("/api/settings/notifications", (req, res) => {
+  res.json(getSettings());
+});
+
+app.post("/api/settings/notifications", (req, res) => {
+  const settings = req.body;
+  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  res.json({ success: true });
+});
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok", numMembers: members.length });
 });
@@ -1448,12 +1481,25 @@ function getBirthdaysForThisWeek() {
 
   activeMembers.forEach(m => {
     const rawBirth = m.d_narodjennya!;
-    const parts = rawBirth.split("-");
-    if (parts.length !== 3) return;
+    let birthYear = 0;
+    let birthMonth = 0;
+    let birthDay = 0;
 
-    const birthYear = parseInt(parts[0], 10);
-    const birthMonth = parseInt(parts[1], 10) - 1; // 0-indexed
-    const birthDay = parseInt(parts[2], 10);
+    if (rawBirth.includes(".")) {
+      const parts = rawBirth.split(".");
+      if (parts.length !== 3) return;
+      birthDay = parseInt(parts[0], 10);
+      birthMonth = parseInt(parts[1], 10) - 1; // 0-indexed
+      birthYear = parseInt(parts[2], 10);
+    } else if (rawBirth.includes("-")) {
+      const parts = rawBirth.split("-");
+      if (parts.length !== 3) return;
+      birthYear = parseInt(parts[0], 10);
+      birthMonth = parseInt(parts[1], 10) - 1; // 0-indexed
+      birthDay = parseInt(parts[2], 10);
+    } else {
+      return;
+    }
 
     const birthdayThisYear = new Date(currentDate.getFullYear(), birthMonth, birthDay);
     birthdayThisYear.setHours(12, 0, 0, 0);

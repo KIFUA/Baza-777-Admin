@@ -7,6 +7,7 @@ import MemberProfile from './components/MemberProfile';
 import MemberForm from './components/MemberForm';
 import SpreadsheetView from './components/SpreadsheetView';
 import DirectoriesManager from './components/DirectoriesManager';
+import { NotificationSettings } from './components/NotificationSettings';
 import ReportGenerator from './components/ReportGenerator';
 import LoginPage from './components/LoginPage';
 import { 

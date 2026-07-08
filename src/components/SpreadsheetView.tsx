@@ -1943,7 +1943,7 @@ export default function SpreadsheetView({
                     ) : null}
 
                     {/* "Дії" (di_admin) Inline Dropdown (Request 5) */}
-                    {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-amber-800 bg-amber-50/50 rounded px-1')}
+                    {getPermission('ЗАВДАННЯ ДЛЯ АДМІН.').view && renderDropdownCell(m, 'di_admin', lookups?.directories?.di_admin || [], '—', 'text-black bg-amber-50/50 rounded px-1 !text-[6px] !font-normal')}
 
                     {/* Shepherd (Oversight/Opika) */}
                     {getPermission('ОПІКА').view && renderDropdownCell(m, 'presviter', caregivers, '—', 'text-slate-700 bg-emerald-50/40 rounded px-1')}

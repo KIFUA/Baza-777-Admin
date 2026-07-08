@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Member } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
+import { NotificationSettings } from './NotificationSettings';
 
 interface DirectoriesManagerProps {
   lookups: any;
@@ -1020,6 +1021,9 @@ export default function DirectoriesManager({
 
               </div>
             )}
+            
+            <NotificationSettings />
+            
           </div>
         )}
 

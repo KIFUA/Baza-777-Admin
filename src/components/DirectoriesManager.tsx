@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
   CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
-  Edit, UserPlus, ShieldAlert, Save, Settings
+  Edit, UserPlus, ShieldAlert, Save, Settings, Download
 } from 'lucide-react';
 import { Member } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
@@ -964,18 +964,26 @@ export default function DirectoriesManager({
                       <div className="flex flex-col sm:flex-row gap-1.5 pt-2">
                         <button
                           onClick={() => handleSendBirthdays('email_text')}
-                          className="flex-1 rounded-lg border border-[#224853] hover:bg-[#1a3843] text-slate-200 p-1.5 text-[10px] font-bold transition-all flex items-center justify-center space-x-1"
+                          className="flex-1 rounded-lg border border-[#224853] hover:bg-[#1a3843] text-slate-200 p-1.5 text-[10px] font-bold transition-all flex items-center justify-center space-x-1 outline-none"
                         >
                           <Mail className="h-3 w-3" />
                           <span>Надіслати Текст</span>
                         </button>
                         <button
                           onClick={() => handleSendBirthdays('email_pdf')}
-                          className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1"
+                          className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-1.5 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1 outline-none"
                         >
                           <Send className="h-3 w-3" />
                           <span>Надіслати PDF звіт</span>
                         </button>
+                        <a
+                          href="/api/birthdays/download-pdf"
+                          download="Imenynnyky.pdf"
+                          className="flex-1 rounded-lg bg-blue-700 hover:bg-blue-800 text-white p-1.5 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1 text-center outline-none"
+                        >
+                          <Download className="h-3 w-3" />
+                          <span>Завантажити PDF</span>
+                        </a>
                       </div>
                     </div>
                   </div>

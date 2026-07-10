@@ -1779,6 +1779,120 @@ app.post("/api/birthdays/send", async (req, res) => {
   });
 });
 
+app.get("/api/birthdays/download-pdf", async (req, res) => {
+  try {
+    const birthdays = getBirthdaysForThisWeek();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="Imenynnyky.pdf"');
+
+    const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 30 });
+    doc.pipe(res);
+
+    const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+    const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+    const hasFonts = fs.existsSync(regularFont) && fs.existsSync(boldFont);
+
+    if (hasFonts) {
+      doc.font(regularFont);
+    }
+
+    // Outer borders
+    doc.rect(15, 15, 390, 565).lineWidth(1.5).stroke('#224853');
+    doc.rect(18, 18, 384, 559).lineWidth(0.5).stroke('#1a3843');
+
+    // Header
+    doc.y = 35;
+    if (hasFonts) doc.font(boldFont);
+    doc.fontSize(14).fillColor('#0e2128').text('ІМЕНИННИКИ ЦЬОГО ТИЖНЯ', { align: 'center' });
+    doc.moveDown(0.2);
+    
+    if (hasFonts) doc.font(regularFont);
+    doc.fontSize(9).fillColor('#50707c').text(`Період: ${birthdays.weekRangeText}`, { align: 'center' });
+    doc.moveDown(0.8);
+
+    // Separator line
+    doc.moveTo(35, doc.y).lineTo(385, doc.y).lineWidth(0.5).stroke('#224853');
+    doc.moveDown(1.2);
+
+    const daysUkr = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
+
+    if (birthdays.list.length === 0) {
+      doc.fontSize(11).fillColor('#809090').text('На цьому тижні немає іменинників.', { align: 'center' });
+    } else {
+      birthdays.list.forEach((item: any, index: number) => {
+        // Safe check for page break
+        if (doc.y > 510) {
+          doc.addPage();
+          doc.rect(15, 15, 390, 565).lineWidth(1.5).stroke('#224853');
+          doc.rect(18, 18, 384, 559).lineWidth(0.5).stroke('#1a3843');
+          doc.y = 35;
+        }
+
+        const startY = doc.y;
+        
+        // Left Column: Day of week & date
+        const dayName = daysUkr[item.dayOfWeekNum] || "";
+        const bDayShort = item.birthDate ? item.birthDate.substring(0, 5) : "";
+        
+        if (hasFonts) doc.font(boldFont);
+        doc.fontSize(9.5).fillColor('#1a3843');
+        doc.text(`${dayName} (${bDayShort})`, 35, startY, { width: 100 });
+
+        // Right Column: Name, Age, Jubilee, Tel, Rayon
+        if (hasFonts) doc.font(boldFont);
+        doc.fontSize(10.5);
+        if (item.isJubilee) {
+          doc.fillColor('#be123c'); // Red accent for jubilee
+        } else {
+          doc.fillColor('#0e2128');
+        }
+        
+        const nameText = item.fullName || item.cleanName || item.shortName;
+        let ageText = `${item.age} р.`;
+        if (item.isJubilee) {
+          ageText += ` 🎉 ЮВІЛЕЙ!`;
+        }
+        
+        doc.text(nameText, 140, startY, { width: 245 });
+        
+        if (hasFonts) doc.font(regularFont);
+        doc.fontSize(9).fillColor('#334155');
+        doc.text(`Вік: ${ageText}`, 140, doc.y + 1);
+        
+        // Extra info (Rayon, Tel)
+        let infoLine = "";
+        if (item.rayon2_ukr) infoLine += `Район: ${item.rayon2_ukr}`;
+        if (item.tel_mob) {
+          if (infoLine) infoLine += " | ";
+          infoLine += `Тел: ${item.tel_mob}`;
+        }
+        if (item.presviter) {
+          if (infoLine) infoLine += " | ";
+          infoLine += `Опікун: ${item.presviter}`;
+        }
+        
+        if (infoLine) {
+          doc.fontSize(8).fillColor('#64748b').text(infoLine, 140, doc.y + 1);
+        }
+
+        // Add small line separator between items
+        doc.moveDown(0.5);
+        const endY = doc.y;
+        if (index < birthdays.list.length - 1) {
+          doc.moveTo(140, endY - 2).lineTo(385, endY - 2).lineWidth(0.3).stroke('#e2e8f0');
+        }
+        doc.y = endY + 2;
+      });
+    }
+
+    doc.end();
+  } catch (err: any) {
+    console.error("Failed to generate PDF download:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 2.4 API: Save Custom Directories manually edited in directories tab
 app.post("/api/directories/save", async (req, res) => {
   const data = req.body;

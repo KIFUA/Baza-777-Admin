@@ -1699,40 +1699,14 @@ app.post("/api/birthdays/send", async (req, res) => {
         let tempPdfPath = "";
         if (type === "email_pdf") {
           tempPdfPath = path.join(process.cwd(), `birthdays_manual_${Date.now()}.pdf`);
-          const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
+          const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 30 });
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);
 
           const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
           const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
           
-          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-            doc.moveDown(0.5);
-            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-            doc.moveDown(2);
-
-            birthdays.list.forEach((item: any) => {
-              doc.font(boldFont).fontSize(12);
-              if (item.isJubilee) {
-                doc.fillColor('red');
-              } else {
-                doc.fillColor('black');
-              }
-              doc.text(item.shortName, { align: 'center' });
-              doc.moveDown(0.5);
-            });
-          } else {
-            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-            doc.moveDown(0.5);
-            doc.fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-            doc.moveDown(2);
-            birthdays.list.forEach((item: any) => {
-              doc.fontSize(12);
-              doc.text(item.shortName, { align: 'center' });
-              doc.moveDown(0.5);
-            });
-          }
+          generateBirthdayPDF(doc, birthdays, regularFont, boldFont);
           
           doc.end();
 
@@ -1779,6 +1753,115 @@ app.post("/api/birthdays/send", async (req, res) => {
   });
 });
 
+function generateBirthdayPDF(doc: any, birthdays: any, regularFont: string, boldFont: string) {
+  const hasFonts = fs.existsSync(regularFont) && fs.existsSync(boldFont);
+
+  // Helper to draw borders on a page
+  const drawPageBorders = (pdfDoc: any) => {
+    pdfDoc.rect(15, 15, 390, 565).lineWidth(1.5).stroke('#224853');
+    pdfDoc.rect(18, 18, 384, 559).lineWidth(0.5).stroke('#1a3843');
+  };
+
+  // Draw borders for the first page
+  drawPageBorders(doc);
+
+  // Draw borders on any subsequent page automatically
+  doc.on('pageAdded', () => {
+    drawPageBorders(doc);
+  });
+
+  // Header
+  doc.y = 35;
+  if (hasFonts) doc.font(boldFont);
+  doc.fontSize(14).fillColor('#0e2128').text('ІМЕНИННИКИ ЦЬОГО ТИЖНЯ', { align: 'center' });
+  doc.moveDown(0.2);
+  
+  if (hasFonts) doc.font(regularFont);
+  doc.fontSize(9).fillColor('#50707c').text(`Період: ${birthdays.weekRangeText}`, { align: 'center' });
+  doc.moveDown(0.8);
+
+  // Separator line
+  doc.moveTo(35, doc.y).lineTo(385, doc.y).lineWidth(0.5).stroke('#224853');
+  doc.moveDown(1.2);
+
+  const daysOrder = [1, 2, 3, 4, 5, 6, 0];
+  const daysUkr = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
+
+  const hasAnyBirthdays = birthdays && birthdays.list && birthdays.list.length > 0;
+  
+  if (!hasAnyBirthdays) {
+    if (hasFonts) doc.font(regularFont);
+    doc.fontSize(11).fillColor('#809090').text('На цьому тижні немає іменинників.', { align: 'center' });
+  } else {
+    daysOrder.forEach((dayNum) => {
+      const dayBirthdays = birthdays.list.filter((b: any) => b.dayOfWeekNum === dayNum);
+      if (dayBirthdays.length === 0) return;
+
+      // Check space before printing a day group
+      if (doc.y > 500) {
+        doc.addPage();
+        doc.y = 40; // reset y
+      }
+
+      // We can draw a subtle divider line before each new day group (except if it's the start of a page)
+      if (doc.y > 110) {
+        doc.moveTo(35, doc.y).lineTo(385, doc.y).lineWidth(0.2).stroke('#cfd8dc');
+        doc.moveDown(0.5);
+      }
+
+      const startY = doc.y;
+
+      // Draw left column (Day Name and Date)
+      const dateFormatted = dayBirthdays[0].celebrationDate.split("-").reverse().slice(0, 2).join(".");
+      if (hasFonts) doc.font(boldFont);
+      doc.fontSize(11).fillColor('#1a3843');
+      doc.text(`${daysUkr[dayNum]}\n(${dateFormatted})`, 35, startY, { width: 100, align: 'left' });
+
+      // Draw right column (List of people on this day)
+      let currentY = startY;
+      dayBirthdays.forEach((item: any) => {
+        // Check page break for individual person
+        if (currentY > 520) {
+          doc.addPage();
+          currentY = 40;
+        }
+
+        if (hasFonts) doc.font(boldFont);
+        doc.fontSize(11);
+        if (item.isJubilee) {
+          doc.fillColor('#c62828'); // deep red for jubilee
+        } else {
+          doc.fillColor('#0e2128');
+        }
+        
+        // Print Name
+        const nameText = item.fullName || item.shortName;
+        const jubileeSuffix = item.isJubilee ? ` (ювілей! 🎂 ${item.age} р.)` : ` (${item.age} р.)`;
+        doc.text(`${nameText}${jubileeSuffix}`, 145, currentY, { width: 240, align: 'left' });
+        currentY = doc.y + 2;
+
+        // Print Details: Phone & Rayon & Presbyter
+        if (hasFonts) doc.font(regularFont);
+        doc.fontSize(9).fillColor('#50707c');
+        const detailsParts = [];
+        if (item.tel_mob) detailsParts.push(`📞 ${item.tel_mob}`);
+        if (item.rayon2_ukr) detailsParts.push(`📍 ${item.rayon2_ukr}`);
+        if (item.presviter) detailsParts.push(`⛪ ${item.presviter}`);
+        
+        if (detailsParts.length > 0) {
+          doc.text(detailsParts.join('  •  '), 145, currentY, { width: 240, align: 'left' });
+          currentY = doc.y + 6;
+        } else {
+          currentY += 4;
+        }
+      });
+
+      // Set y to the end of the day group
+      doc.y = currentY + 4;
+    });
+  }
+}
+
 app.get("/api/birthdays/download-pdf", async (req, res) => {
   try {
     const birthdays = getBirthdaysForThisWeek();
@@ -1786,48 +1869,13 @@ app.get("/api/birthdays/download-pdf", async (req, res) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="Imenynnyky.pdf"');
 
-    const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
+    const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 30 });
     doc.pipe(res);
 
     const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
     const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
-    const hasFonts = fs.existsSync(regularFont) && fs.existsSync(boldFont);
 
-    if (hasFonts) {
-      doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-      doc.moveDown(0.5);
-      doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-      doc.moveDown(2);
-
-      birthdays.list.forEach((item: any) => {
-        // Safe check for page break
-        if (doc.y > 530) {
-          doc.addPage();
-        }
-        
-        doc.font(boldFont).fontSize(12);
-        if (item.isJubilee) {
-          doc.fillColor('red');
-        } else {
-          doc.fillColor('black');
-        }
-        doc.text(item.shortName, { align: 'center' });
-        doc.moveDown(0.5);
-      });
-    } else {
-      doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-      doc.moveDown(0.5);
-      doc.fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-      doc.moveDown(2);
-      birthdays.list.forEach((item: any) => {
-        if (doc.y > 530) {
-          doc.addPage();
-        }
-        doc.fontSize(12);
-        doc.text(item.shortName, { align: 'center' });
-        doc.moveDown(0.5);
-      });
-    }
+    generateBirthdayPDF(doc, birthdays, regularFont, boldFont);
 
     doc.end();
   } catch (err: any) {

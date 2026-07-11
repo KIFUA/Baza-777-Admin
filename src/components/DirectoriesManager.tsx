@@ -978,6 +978,8 @@ export default function DirectoriesManager({
                         </button>
                         <a
                           href="/api/birthdays/download-pdf"
+                          target="_blank"
+                          rel="noopener noreferrer"
                           download="Imenynnyky.pdf"
                           className="flex-1 rounded-lg bg-blue-700 hover:bg-blue-800 text-white p-1.5 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1 text-center outline-none"
                         >

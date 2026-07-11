@@ -2320,7 +2320,7 @@ app.post("/api/members/:id", async (req, res) => {
     vidviduvanist: "Відвідуваність",
     prysutnist: "Присутність",
     id_vybuttya: "Статус вибуття",
-    di_admin: "Посада",
+    di_admin: "ЗАВДАННЯ ДЛЯ АДМІН.",
     address: "Адреса",
     nas_punkt: "Населений пункт",
     vulitsya: "Вулиця",

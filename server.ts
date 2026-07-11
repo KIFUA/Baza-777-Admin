@@ -1608,7 +1608,7 @@ app.post("/api/birthdays/send", async (req, res) => {
     const dayName = UKR_DAYS[item.dayOfWeekNum];
     const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
     const jubileeText = item.isJubilee ? ` 🎖️ **ЮВІЛЕЙ: ${item.age} років!**` : ` (${item.age} років)`;
-    msg += `${idx + 1}. **${item.shortName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
+    msg += `${idx + 1}. **${item.cleanName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
     if (item.tel_mob) msg += `   📞 Тел: ${item.tel_mob}\n`;
     if (item.rayon2_ukr) msg += `   📍 Район: ${item.rayon2_ukr} (Опікун: ${item.presviter || "не вказано"})\n`;
     msg += `\n`;
@@ -1669,7 +1669,13 @@ app.post("/api/birthdays/send", async (req, res) => {
   } else if (type === "email_text" || type === "email_pdf") {
     const settings = getSettings();
     const appPassword = settings.appPassword;
-    const destinationsStr = type === "email_pdf" ? settings.wednesdayEmails : settings.mondayEmails;
+    let destinationsStr = "";
+    if (type === "email_pdf") {
+      // Combine both Wednesday and Monday email lists to be absolutely sure the admin receives it
+      destinationsStr = [settings.wednesdayEmails, settings.mondayEmails].filter(Boolean).join(",");
+    } else {
+      destinationsStr = settings.mondayEmails;
+    }
     const destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
     
     if (destinations.length === 0) {
@@ -1688,7 +1694,11 @@ app.post("/api/birthdays/send", async (req, res) => {
           }
         });
 
-        const subject = `🎂 Іменинники тижня (${birthdays.weekRangeText})`;
+        // Use distinctive subject for manual PDF trigger
+        const subject = type === "email_pdf"
+          ? `🎂 Іменинники тижня (PDF) (${birthdays.weekRangeText})`
+          : `🎂 Іменинники тижня (${birthdays.weekRangeText})`;
+
         const mailOptions: any = {
           from: '"База 777" <kostel.if.ua@gmail.com>',
           to: destinations,
@@ -1719,7 +1729,7 @@ app.post("/api/birthdays/send", async (req, res) => {
               } else {
                 doc.fillColor('black');
               }
-              doc.text(item.shortName, { align: 'center' });
+              doc.text(item.cleanName, { align: 'center' });
               doc.moveDown(0.5);
             });
           } else {
@@ -1729,7 +1739,7 @@ app.post("/api/birthdays/send", async (req, res) => {
             doc.moveDown(2);
             birthdays.list.forEach((item: any) => {
               doc.fontSize(12);
-              doc.text(item.shortName, { align: 'center' });
+              doc.text(item.cleanName, { align: 'center' });
               doc.moveDown(0.5);
             });
           }
@@ -1741,18 +1751,19 @@ app.post("/api/birthdays/send", async (req, res) => {
             writeStream.on('error', (err) => reject(err));
           });
 
-          mailOptions.attachments = [{
-            filename: 'Imenynnyky.pdf',
-            path: tempPdfPath
-          }];
+          // Read the generated PDF into a buffer to avoid unlink race conditions
+          if (fs.existsSync(tempPdfPath)) {
+            const pdfBuffer = fs.readFileSync(tempPdfPath);
+            mailOptions.attachments = [{
+              filename: 'Imenynnyky.pdf',
+              content: pdfBuffer
+            }];
+            fs.unlinkSync(tempPdfPath); // Cleanup immediately after loading buffer
+          }
         }
 
         await transporter.sendMail(mailOptions);
         emailLogs = `Email: успішно надіслано на адреси: ${destinations.join(", ")}`;
-
-        if (tempPdfPath && fs.existsSync(tempPdfPath)) {
-          fs.unlinkSync(tempPdfPath);
-        }
       } catch (mailErr: any) {
         emailLogs = `Помилка надсилання пошти: ${mailErr.message}`;
         console.error("Email send error manually:", mailErr);

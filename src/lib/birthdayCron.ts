@@ -65,10 +65,11 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             text: text
         };
 
-        if (pdfPath) {
+        if (pdfPath && fs.existsSync(pdfPath)) {
+            const pdfBuffer = fs.readFileSync(pdfPath);
             mailOptions.attachments = [{
                 filename: 'Imenynnyky.pdf',
-                path: pdfPath
+                content: pdfBuffer
             }];
         }
 
@@ -94,7 +95,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             const dayName = UKR_DAYS[item.dayOfWeekNum];
             const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
             const jubileeText = item.isJubilee ? `ювілей` : ``;
-            msg += `${item.fullName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
+            msg += `${item.cleanName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
         });
 
         await sendTelegram(settings.mondayTelegramIds, msg, settings.botToken);
@@ -129,7 +130,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 } else {
                     doc.fillColor('black');
                 }
-                doc.text(item.shortName, { align: 'center' });
+                doc.text(item.cleanName, { align: 'center' });
                 doc.moveDown(0.5);
             });
         }

@@ -1736,8 +1736,7 @@ app.post("/api/birthdays/send", async (req, res) => {
               } else {
                 doc.fillColor('black');
               }
-              doc.text(item.cleanName, { align: 'left' });
-              doc.moveDown(0.5);
+              doc.text(item.shortName || item.cleanName, { align: 'left' });
             });
           } else {
             doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
@@ -1754,8 +1753,7 @@ app.post("/api/birthdays/send", async (req, res) => {
             doc.x = namesStartX;
             birthdays.list.forEach((item: any) => {
               doc.fontSize(12);
-              doc.text(item.cleanName, { align: 'left' });
-              doc.moveDown(0.5);
+              doc.text(item.shortName || item.cleanName, { align: 'left' });
             });
           }
           

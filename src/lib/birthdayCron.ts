@@ -137,8 +137,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 } else {
                     doc.fillColor('black');
                 }
-                doc.text(item.cleanName, { align: 'left' });
-                doc.moveDown(0.5);
+                doc.text(item.shortName || item.cleanName, { align: 'left' });
             });
         }
         

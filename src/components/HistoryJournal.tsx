@@ -1,16 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { AuditLogItem } from '../types';
-import { History, Search, FileText, UserPlus, ShieldAlert, BadgeInfo, CheckCircle } from 'lucide-react';
+import { History, Search, FileText, UserPlus, ShieldAlert, BadgeInfo, CheckCircle, Trash2 } from 'lucide-react';
 
 interface HistoryJournalProps {
   onSelectMember: (id: number) => void;
+  isAdmin?: boolean;
 }
 
-export default function HistoryJournal({ onSelectMember }: HistoryJournalProps) {
+export default function HistoryJournal({ onSelectMember, isAdmin = false }: HistoryJournalProps) {
   const [logs, setLogs] = useState<AuditLogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('');
+
+  const handleDeleteLog = async (logId: string) => {
+    if (!confirm("Ви впевнені, що хочете видалити цей запис з журналу?")) {
+      return;
+    }
+    try {
+      const resp = await fetch(`/api/audit-logs/${logId}`, {
+        method: 'DELETE'
+      });
+      if (resp.ok) {
+        setLogs(prev => prev.filter(l => l.id !== logId));
+      } else {
+        alert("Помилка при видаленні запису.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Помилка зв'язку з сервером.");
+    }
+  };
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -123,7 +143,8 @@ export default function HistoryJournal({ onSelectMember }: HistoryJournalProps) 
                 <th className="p-3 border-r border-[#1f424f] w-[220px]">Член церкви</th>
                 <th className="p-3 border-r border-[#1f424f] w-[160px]">Змінене поле</th>
                 <th className="p-3 border-r border-[#1f424f] text-rose-400 bg-rose-950/20 w-[180px]">Старе значення</th>
-                <th className="p-3 text-emerald-400 bg-emerald-950/20">Нове значення (зелений, жирний)</th>
+                <th className="p-3 border-r border-[#1f424f] text-emerald-400 bg-emerald-950/20">Нове значення (зелений, жирний)</th>
+                {isAdmin && <th className="p-3 w-[60px] text-center">Дія</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1f424f]/40 text-xs text-slate-300 font-medium">
@@ -194,7 +215,20 @@ export default function HistoryJournal({ onSelectMember }: HistoryJournalProps) 
                     </td>
 
                     {/* New Value (Green, Bold) */}
-                    <td className="p-3 text-emerald-400 bg-emerald-950/20 font-bold break-all" dangerouslySetInnerHTML={{ __html: newVal }} />
+                    <td className="p-3 border-r border-[#1f424f]/40 text-emerald-400 bg-emerald-950/20 font-bold break-all" dangerouslySetInnerHTML={{ __html: newVal }} />
+
+                    {/* Delete Action (Admin only) */}
+                    {isAdmin && (
+                      <td className="p-3 text-center bg-rose-950/10">
+                        <button
+                          onClick={() => handleDeleteLog(log.id)}
+                          className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 p-1.5 rounded transition-colors"
+                          title="Видалити запис з журналу"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

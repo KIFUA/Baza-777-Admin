@@ -2395,6 +2395,20 @@ app.get("/api/audit-logs", (req, res) => {
   res.json(sortedLogs);
 });
 
+app.delete("/api/audit-logs/:id", async (req, res) => {
+  const logId = req.params.id;
+  try {
+    auditLogs = auditLogs.filter(log => log.id !== logId);
+    saveDatabaseToCache();
+    const url = `${FIREBASE_URL}/audit_logs/${logId}.json?auth=${FIREBASE_SECRET}`;
+    await fetch(url, { method: "DELETE" });
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error("[Delete Audit Log] Failed:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get("/api/settings/admin-logs", (req, res) => {
   res.json({ ignoreAdminLogs });
 });

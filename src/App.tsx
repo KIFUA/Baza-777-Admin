@@ -889,6 +889,7 @@ export default function App() {
                     setSelectedMemberId(id);
                     setMainMode('questionnaire');
                   }}
+                  isAdmin={isCurrentUserAdmin}
                 />
               </div>
             ) : null}

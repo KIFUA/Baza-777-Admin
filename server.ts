@@ -1722,6 +1722,13 @@ app.post("/api/birthdays/send", async (req, res) => {
             doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
             doc.moveDown(2);
 
+            const dateText = `/ ${birthdays.weekRangeText} /`;
+            const dateWidth = doc.widthOfString(dateText);
+            const prefixWidth = doc.widthOfString("/ ");
+            const dateStartX = (doc.page.width - dateWidth) / 2;
+            const namesStartX = dateStartX + prefixWidth;
+
+            doc.x = namesStartX;
             birthdays.list.forEach((item: any) => {
               doc.font(boldFont).fontSize(12);
               if (item.isJubilee) {
@@ -1729,7 +1736,7 @@ app.post("/api/birthdays/send", async (req, res) => {
               } else {
                 doc.fillColor('black');
               }
-              doc.text(item.cleanName, { align: 'center' });
+              doc.text(item.cleanName, { align: 'left' });
               doc.moveDown(0.5);
             });
           } else {
@@ -1737,9 +1744,17 @@ app.post("/api/birthdays/send", async (req, res) => {
             doc.moveDown(0.5);
             doc.fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
             doc.moveDown(2);
+
+            const dateText = `/ ${birthdays.weekRangeText} /`;
+            const dateWidth = doc.widthOfString(dateText);
+            const prefixWidth = doc.widthOfString("/ ");
+            const dateStartX = (doc.page.width - dateWidth) / 2;
+            const namesStartX = dateStartX + prefixWidth;
+
+            doc.x = namesStartX;
             birthdays.list.forEach((item: any) => {
               doc.fontSize(12);
-              doc.text(item.cleanName, { align: 'center' });
+              doc.text(item.cleanName, { align: 'left' });
               doc.moveDown(0.5);
             });
           }

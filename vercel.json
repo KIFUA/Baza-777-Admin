@@ -1,19 +1,14 @@
 {
   "framework": "vite",
   "functions": {
-    "api/index.js": {
-      "includeFiles": [
-        "tablyci/**",
-        "fonts/**",
-        "dist/server.cjs",
-        "dist/server.cjs.map"
-      ]
+    "api/index.ts": {
+      "includeFiles": "tablyci/**"
     }
   },
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/index.js"
+      "destination": "/api/index.ts"
     },
     {
       "source": "/(.*)",

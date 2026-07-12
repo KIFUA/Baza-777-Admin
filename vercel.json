@@ -4,7 +4,9 @@
     "api/index.ts": {
       "includeFiles": [
         "tablyci/**",
-        "fonts/**"
+        "fonts/**",
+        "dist/server.cjs",
+        "dist/server.cjs.map"
       ]
     }
   },

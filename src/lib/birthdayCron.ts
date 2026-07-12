@@ -65,11 +65,10 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             text: text
         };
 
-        if (pdfPath && fs.existsSync(pdfPath)) {
-            const pdfBuffer = fs.readFileSync(pdfPath);
+        if (pdfPath) {
             mailOptions.attachments = [{
                 filename: 'Imenynnyky.pdf',
-                content: pdfBuffer
+                path: pdfPath
             }];
         }
 
@@ -95,7 +94,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             const dayName = UKR_DAYS[item.dayOfWeekNum];
             const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
             const jubileeText = item.isJubilee ? `ювілей` : ``;
-            msg += `${item.cleanName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
+            msg += `${item.fullName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
         });
 
         await sendTelegram(settings.mondayTelegramIds, msg, settings.botToken);
@@ -123,13 +122,6 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
             doc.moveDown(2);
 
-            const dateText = `/ ${birthdays.weekRangeText} /`;
-            const dateWidth = doc.widthOfString(dateText);
-            const prefixWidth = doc.widthOfString("/ ");
-            const dateStartX = (doc.page.width - dateWidth) / 2;
-            const namesStartX = dateStartX + prefixWidth;
-
-            doc.x = namesStartX;
             birthdays.list.forEach((item: any) => {
                 doc.font(boldFont).fontSize(12);
                 if (item.isJubilee) {
@@ -137,7 +129,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 } else {
                     doc.fillColor('black');
                 }
-                doc.text(item.cleanName, { align: 'left' });
+                doc.text(item.shortName, { align: 'center' });
                 doc.moveDown(0.5);
             });
         }

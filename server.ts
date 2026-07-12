@@ -1608,7 +1608,7 @@ app.post("/api/birthdays/send", async (req, res) => {
     const dayName = UKR_DAYS[item.dayOfWeekNum];
     const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
     const jubileeText = item.isJubilee ? ` 🎖️ **ЮВІЛЕЙ: ${item.age} років!**` : ` (${item.age} років)`;
-    msg += `${idx + 1}. **${item.cleanName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
+    msg += `${idx + 1}. **${item.shortName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
     if (item.tel_mob) msg += `   📞 Тел: ${item.tel_mob}\n`;
     if (item.rayon2_ukr) msg += `   📍 Район: ${item.rayon2_ukr} (Опікун: ${item.presviter || "не вказано"})\n`;
     msg += `\n`;
@@ -1669,13 +1669,7 @@ app.post("/api/birthdays/send", async (req, res) => {
   } else if (type === "email_text" || type === "email_pdf") {
     const settings = getSettings();
     const appPassword = settings.appPassword;
-    let destinationsStr = "";
-    if (type === "email_pdf") {
-      // Combine both Wednesday and Monday email lists to be absolutely sure the admin receives it
-      destinationsStr = [settings.wednesdayEmails, settings.mondayEmails].filter(Boolean).join(",");
-    } else {
-      destinationsStr = settings.mondayEmails;
-    }
+    const destinationsStr = type === "email_pdf" ? settings.wednesdayEmails : settings.mondayEmails;
     const destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
     
     if (destinations.length === 0) {
@@ -1694,11 +1688,7 @@ app.post("/api/birthdays/send", async (req, res) => {
           }
         });
 
-        // Use distinctive subject for manual PDF trigger
-        const subject = type === "email_pdf"
-          ? `🎂 Іменинники тижня (PDF) (${birthdays.weekRangeText})`
-          : `🎂 Іменинники тижня (${birthdays.weekRangeText})`;
-
+        const subject = `🎂 Іменинники тижня (${birthdays.weekRangeText})`;
         const mailOptions: any = {
           from: '"База 777" <kostel.if.ua@gmail.com>',
           to: destinations,
@@ -1722,13 +1712,6 @@ app.post("/api/birthdays/send", async (req, res) => {
             doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
             doc.moveDown(2);
 
-            const dateText = `/ ${birthdays.weekRangeText} /`;
-            const dateWidth = doc.widthOfString(dateText);
-            const prefixWidth = doc.widthOfString("/ ");
-            const dateStartX = (doc.page.width - dateWidth) / 2;
-            const namesStartX = dateStartX + prefixWidth;
-
-            doc.x = namesStartX;
             birthdays.list.forEach((item: any) => {
               doc.font(boldFont).fontSize(12);
               if (item.isJubilee) {
@@ -1736,7 +1719,7 @@ app.post("/api/birthdays/send", async (req, res) => {
               } else {
                 doc.fillColor('black');
               }
-              doc.text(item.cleanName, { align: 'left' });
+              doc.text(item.shortName, { align: 'center' });
               doc.moveDown(0.5);
             });
           } else {
@@ -1744,17 +1727,9 @@ app.post("/api/birthdays/send", async (req, res) => {
             doc.moveDown(0.5);
             doc.fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
             doc.moveDown(2);
-
-            const dateText = `/ ${birthdays.weekRangeText} /`;
-            const dateWidth = doc.widthOfString(dateText);
-            const prefixWidth = doc.widthOfString("/ ");
-            const dateStartX = (doc.page.width - dateWidth) / 2;
-            const namesStartX = dateStartX + prefixWidth;
-
-            doc.x = namesStartX;
             birthdays.list.forEach((item: any) => {
               doc.fontSize(12);
-              doc.text(item.cleanName, { align: 'left' });
+              doc.text(item.shortName, { align: 'center' });
               doc.moveDown(0.5);
             });
           }
@@ -1766,19 +1741,18 @@ app.post("/api/birthdays/send", async (req, res) => {
             writeStream.on('error', (err) => reject(err));
           });
 
-          // Read the generated PDF into a buffer to avoid unlink race conditions
-          if (fs.existsSync(tempPdfPath)) {
-            const pdfBuffer = fs.readFileSync(tempPdfPath);
-            mailOptions.attachments = [{
-              filename: 'Imenynnyky.pdf',
-              content: pdfBuffer
-            }];
-            fs.unlinkSync(tempPdfPath); // Cleanup immediately after loading buffer
-          }
+          mailOptions.attachments = [{
+            filename: 'Imenynnyky.pdf',
+            path: tempPdfPath
+          }];
         }
 
         await transporter.sendMail(mailOptions);
         emailLogs = `Email: успішно надіслано на адреси: ${destinations.join(", ")}`;
+
+        if (tempPdfPath && fs.existsSync(tempPdfPath)) {
+          fs.unlinkSync(tempPdfPath);
+        }
       } catch (mailErr: any) {
         emailLogs = `Помилка надсилання пошти: ${mailErr.message}`;
         console.error("Email send error manually:", mailErr);
@@ -2723,14 +2697,19 @@ app.post("/api/members/:id/disciplines/:recId/resolve", (req, res) => {
 // Helper for admin check
 const isAdmin = (req: any) => {
   const userPib = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "";
-  return userPib.includes("kostel.if.ua@gmail.com");
+  // Check for specific email, generic 'admin' role name, or known senior pastor names from the access list
+  return userPib.includes("kostel.if.ua@gmail.com") || 
+         userPib.toLowerCase().includes("адмін") || 
+         userPib.includes("Черняк Вал.") ||
+         userPib.includes("Черняк Вас.") ||
+         userPib.includes("Скіцко І.");
 };
 
 // 14. Create a completely New Member Profile
 app.post("/api/members", async (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
   const newMemberData = req.body as Partial<Member>;
-  const nextId = Math.max(...members.map(m => m.id)) + 1;
+  const nextId = members.length > 0 ? Math.max(...members.map(m => m.id)) + 1 : 1;
 
   const birthDate = newMemberData.d_narodjennya || "";
   let calculatedAge = 0;
@@ -2795,7 +2774,7 @@ app.post("/api/members", async (req, res) => {
     hvoryi: String(newMemberData.hvoryi || "").trim(),
     insha_gromada: String(newMemberData.insha_gromada || "").trim(),
     prymitka: String(newMemberData.prymitka || (newMemberData as any).primitka || "").trim(),
-    efile: true,
+    efile: newMemberData.efile !== undefined ? newMemberData.efile : true,
     address: String(newMemberData.address || "").trim(),
     nas_punkt: String(newMemberData.nas_punkt || "").trim(),
     vulitsya: String(newMemberData.vulitsya || "").trim(),

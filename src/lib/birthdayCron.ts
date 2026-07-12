@@ -110,8 +110,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const birthdays = getBirthdaysFn();
         if (birthdays.list.length === 0) return;
 
-        const tempDir = (process.platform !== "win32") ? "/tmp" : os.tmpdir();
-        const pdfPath = path.join(tempDir, 'birthdays_temp.pdf');
+        const pdfPath = path.join(os.tmpdir(), 'birthdays_temp.pdf');
         const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);

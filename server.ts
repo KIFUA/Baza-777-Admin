@@ -1709,7 +1709,8 @@ app.post("/api/birthdays/send", async (req, res) => {
 
         let tempPdfPath = "";
         if (type === "email_pdf") {
-          tempPdfPath = path.join(os.tmpdir(), `birthdays_manual_${Date.now()}.pdf`);
+          const tempDir = (process.platform !== "win32") ? "/tmp" : os.tmpdir();
+          tempPdfPath = path.join(tempDir, `birthdays_manual_${Date.now()}.pdf`);
           const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);

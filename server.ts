@@ -2752,7 +2752,11 @@ app.post("/api/members/:id/disciplines/:recId/resolve", (req, res) => {
 // Helper for admin check
 const isAdmin = (req: any) => {
   const userPib = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "";
-  return userPib.includes("kostel.if.ua@gmail.com");
+  return (
+    userPib.includes("kostel.if.ua@gmail.com") ||
+    userPib === "Адміністратор" ||
+    userPib.includes("Адміністратор")
+  );
 };
 
 // 14. Create a completely New Member Profile

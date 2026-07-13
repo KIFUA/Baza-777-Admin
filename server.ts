@@ -3060,6 +3060,7 @@ app.post("/api/members", async (req, res) => {
     console.error(`[Firebase Member Sync] Error creating member ${nextId}:`, err);
   }
 
+  // Add audit log for new member creation
   const userPib = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "Адміністратор";
   const logId = "add_mem_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
   const logItem: AuditLogItem = {

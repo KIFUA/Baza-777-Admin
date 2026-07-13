@@ -195,6 +195,7 @@ export default function App() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [iframeRefreshKey, setIframeRefreshKey] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -464,6 +465,7 @@ export default function App() {
         setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
         await fetchLookupsAndStats();
         await preloadRawFirebase();
+        setIframeRefreshKey(prev => prev + 1);
         return true;
       }
     } catch (err) {
@@ -512,6 +514,8 @@ export default function App() {
         await fetchMembers();
         await fetchAllMembers();
         await fetchLookupsAndStats();
+        await preloadRawFirebase();
+        setIframeRefreshKey(prev => prev + 1);
         
         if (!editingMember && resJson.memberId) {
           // If created new, navigate to details immediately
@@ -876,6 +880,7 @@ export default function App() {
                   </div>
                 ) : (
                   <iframe 
+                    key={iframeRefreshKey}
                     src={`/index_legacy.html?merge=before${selectedMemberId ? `&id=${selectedMemberId}` : ''}`} 
                     className="w-full h-full border-0 flex-1" 
                     title="Legacy Questionnaire"

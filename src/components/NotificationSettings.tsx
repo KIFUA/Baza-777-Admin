@@ -168,7 +168,25 @@ export function NotificationSettings() {
       </div>
 
       <div className="bg-[#1a3843]/60 px-4 py-3 border-t border-[#224853]/50 flex justify-between items-center">
-        <span className="text-xs font-bold text-emerald-400">{message}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-emerald-400">{message}</span>
+          <button
+            onClick={async () => {
+              if(!confirm("Надіслати сповіщення керівникам про всіх, хто приєднався за останні 6 днів?")) return;
+              try {
+                const res = await fetch('/api/admin/notify-recent-members', { method: 'POST' });
+                const data = await res.json();
+                alert(`Готово! Опрацьовано людей: ${data.processed}. Надіслано сповіщень: ${data.sent}`);
+              } catch (err) {
+                alert('Помилка при відправці');
+              }
+            }}
+            className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border border-indigo-500/30"
+          >
+            <Bell className="w-3.5 h-3.5" />
+            Сповістити про нових (6 днів)
+          </button>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}

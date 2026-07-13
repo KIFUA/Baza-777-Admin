@@ -3176,6 +3176,36 @@ app.post("/api/members", async (req, res) => {
   res.json({ success: true, memberId: nextId, member: newMember });
 });
 
+/**
+ * Endpoint to manually trigger notifications for members added in the last N days.
+ */
+app.post("/api/admin/notify-recent-members", async (req, res) => {
+  const days = 6;
+  const now = new Date();
+  const threshold = new Date();
+  threshold.setDate(now.getDate() - days);
+
+  const recentMembers = members.filter(m => {
+    if (!m.d_vstupu) return false;
+    const joinedDate = new Date(m.d_vstupu);
+    return joinedDate >= threshold && Number(m.id_vybuttya || 0) === 0;
+  });
+
+  console.log(`[Manual Notify] Found ${recentMembers.length} members added in the last ${days} days.`);
+
+  let successCount = 0;
+  for (const member of recentMembers) {
+    try {
+      await notifyDistrictLeader(member);
+      successCount++;
+    } catch (err) {
+      console.error(`[Manual Notify] Failed for ${member.pib}:`, err);
+    }
+  }
+
+  res.json({ success: true, processed: recentMembers.length, sent: successCount });
+});
+
 // Seed Database State
 loadDatabase();
 

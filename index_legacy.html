@@ -536,10 +536,11 @@
                 </div>
                 <textarea
                   id="dity"
+                  wrap="off"
                   oninput="window.autoResizeDity()"
-                  class="w-full bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden resize-none overflow-y-hidden text-xs py-1.5 px-2 font-sans"
+                  class="bg-inputBg border border-borderClr rounded text-white focus:border-blue-500 outline-none hidden resize-none overflow-y-hidden text-xs py-1.5 px-2 font-sans"
                   rows="1"
-                  style="height: auto"
+                  style="height: auto; min-width: 140px;"
                 ></textarea>
               </div>
             </div>
@@ -1679,7 +1680,10 @@
         
         const canvas = window.resizeDityWidth.canvas || (window.resizeDityWidth.canvas = document.createElement("canvas"));
         const ctx = canvas.getContext("2d");
-        ctx.font = "12px Inter, system-ui, -apple-system, sans-serif";
+        
+        // Grab computed font style for high-accuracy measurement
+        const style = window.getComputedStyle(area);
+        ctx.font = `${style.fontWeight || "normal"} ${style.fontSize || "12px"} ${style.fontFamily || "Inter, system-ui, sans-serif"}`;
         
         let maxWidth = 0;
         lines.forEach((l) => {
@@ -1690,15 +1694,15 @@
           }
         });
 
-        // Add padding + safe scrollbar/cursor padding
-        let finalWidth = maxWidth + 24; 
+        // Add padding + safe scrollbar/cursor padding (approx 36px)
+        let finalWidth = maxWidth + 36; 
         const minWidth = 140; // sleek compact minimum width for dity
         if (finalWidth < minWidth) {
           finalWidth = minWidth;
         }
         
         area.style.width = `${Math.ceil(finalWidth)}px`;
-        area.style.maxWidth = "100%";
+        area.style.maxWidth = "none";
       };
 
       window.autoResizeDity = function () {

@@ -1239,7 +1239,16 @@ export default function DirectoriesManager({
                                       const candidates = members.filter(m => {
                                         const isActive = Number(m.id_vybuttya || 0) === 0;
                                         const isBrother = (m.gender || m.stat) === 'брат';
-                                        const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер") || (m.di_admin || "").toLowerCase().includes("єпископ");
+                                        
+                                        const sluj = (m.s_slujinnya_spysok || "").toLowerCase();
+                                        const san = (m.di_admin || "").toLowerCase();
+
+                                        const isPresbyter = 
+                                          sluj.includes("пресвітер") || 
+                                          sluj.includes("ст. пастор") || 
+                                          san.includes("пастор") || 
+                                          san.includes("єпископ");
+                                          
                                         return isActive && isBrother && isPresbyter;
                                       }).sort((a,b) => (a.pib || "").localeCompare(b.pib || ""));
                                       

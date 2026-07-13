@@ -2648,6 +2648,95 @@ app.post("/api/audit", (req, res) => {
   res.json({ success: true, log: newLog });
 });
 
+/**
+ * Helper to notify District Leader via Telegram when a new member joins their rayon.
+ * Follows the specific identification algorithm requested by the user.
+ */
+async function notifyDistrictLeader(newMember: Member) {
+  const settings = getSettings();
+  const botToken = settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    console.warn("[Telegram Notification] Bot token not configured, skipping notification.");
+    return;
+  }
+
+  const rayonName = newMember.rayon2_ukr;
+  if (!rayonName) return;
+
+  // 1. Identification Algorithm: Find Rayon Leader PIB from bindings
+  // In the directories_rayon_bindings, find the entry for the rayonName and get presbyterId (member ID)
+  const binding = (directories_rayon_bindings as any[]).find(b => 
+    String(b.name).trim().toLowerCase() === String(rayonName).trim().toLowerCase()
+  );
+  if (!binding || !binding.presbyterId) {
+    console.log(`[Telegram Notification] No leader binding found for rayon: ${rayonName}`);
+    return;
+  }
+
+  // 2. Get the Leader's full PIB from the members list using the ID
+  const leaderId = Number(binding.presbyterId);
+  const leader = members.find(m => m.id === leaderId);
+  if (!leader) {
+    console.log(`[Telegram Notification] Leader with ID ${leaderId} not found in members list.`);
+    return;
+  }
+
+  // 3. Find the Leader's Telegram ID from access_dostup (matching PIB + presviter role)
+  const leaderAccess = (access_dostup as any[]).find(a => 
+    String(a.user).trim().toLowerCase() === String(leader.pib).trim().toLowerCase() && 
+    (String(a.position || "").toLowerCase().includes("пресвітер") || 
+     String(a.position || "").toLowerCase().includes("пастор"))
+  );
+  
+  const telegramId = leaderAccess?.telegramId;
+  if (!telegramId || telegramId === "—" || telegramId === "") {
+    console.log(`[Telegram Notification] No valid Telegram ID found for leader: ${leader.pib}`);
+    return;
+  }
+
+  // 4. Construct the localized message text as per requested template
+  let text = `📢 *ПОВІДОМЛЕННЯ про додавання нового члена церкви.*\n\n`;
+  text += `До району *${rayonName}* додано ${newMember.gender === "сестра" ? "сестру" : "брата"} *${newMember.pib}*`;
+  
+  if (newMember.d_narodjennya) {
+    text += `, ${toUADateFormat(newMember.d_narodjennya)} р.н.`;
+  }
+
+  const d_vodnogo = newMember.d_vodnogo;
+  const d_vstupu = newMember.d_vstupu;
+  
+  // Logic: Water Baptism vs Joined from other congregation
+  if (d_vodnogo && d_vstupu && d_vodnogo === d_vstupu) {
+    text += `; після Водного Хрещення ${toUADateFormat(d_vodnogo)}`;
+  } else if (newMember.insha_gromada) {
+    text += `; прийнятого з ${newMember.insha_gromada}`;
+  }
+  
+  text += `.\n\nВ основному списку Бази Церкви йому/їй треба призначити опікуна.`;
+
+  // 5. Send to Telegram API
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: telegramId,
+        text: text,
+        parse_mode: "Markdown"
+      })
+    });
+    const result = await response.json() as any;
+    if (result.ok) {
+      console.log(`[Telegram Notification] Successfully notified ${leader.pib} (${telegramId}) about ${newMember.pib}`);
+    } else {
+      console.error(`[Telegram Notification] API error for ${telegramId}: ${result.description}`);
+    }
+  } catch (err: any) {
+    console.error(`[Telegram Notification] Fetch error for ${telegramId}: ${err.message}`);
+  }
+}
+
 // 8. Get history changelogs List (Audit logs + Ministry Timeline events merged)
 app.get("/api/audit-logs", (req, res) => {
   const filtered = auditLogs.filter(log => {
@@ -3052,6 +3141,11 @@ app.post("/api/members", async (req, res) => {
   members.push(newMember);
   updateInMemoryMarriage(newMember);
   updateInMemoryChildren(newMember);
+
+  // Trigger Telegram notification to District Leader in background
+  notifyDistrictLeader(newMember).catch(err => {
+    console.error("[New Member Trigger] Notification error:", err);
+  });
 
   // Sync new member card to Firebase and await it to prevent client race conditions
   try {

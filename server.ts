@@ -2014,10 +2014,11 @@ app.get("/api/stats", async (req, res) => {
 app.get("/api/members/:id", async (req, res) => {
   await ensureDatabaseIsFresh();
   const id = Number(req.params.id);
-  const member = members.find(m => m.id === id);
-  if (!member) {
+  const foundMember = members.find(m => m.id === id);
+  if (!foundMember) {
     return res.status(404).json({ error: "Member not found" });
   }
+  const member = { ...foundMember } as any;
 
   // A. Determine spouse
   let spouse: Spouse | null = null;
@@ -2028,7 +2029,9 @@ app.get("/api/members/:id", async (req, res) => {
     if (spId > 0) {
       const spName = members.find(m => m.id === spId)?.pib || `Член ID ${spId}`;
       spouse = { id: spId, pib: spName };
+      member.pib_partnera = spName;
     }
+    member.d_shlyubu = toISODateFormat(formatExcelDate(marriageRec.d_begin));
   }
 
   // B. Get Children
@@ -2113,6 +2116,82 @@ app.get("/api/members/:id", async (req, res) => {
   res.json(response);
 });
 
+// Helper function to convert ISO "YYYY-MM-DD" to UA "DD.MM.YYYY"
+function toUADateFormat(dateStr: string): string {
+  if (!dateStr) return "";
+  const trimmed = dateStr.trim();
+  if (trimmed.includes(".")) return trimmed; // Already UA format
+  if (trimmed.includes("-")) {
+    const parts = trimmed.split("-");
+    if (parts.length === 3) {
+      const [yyyy, mm, dd] = parts;
+      return `${dd}.${mm}.${yyyy}`;
+    }
+  }
+  return trimmed;
+}
+
+// Helper function to convert UA "DD.MM.YYYY" to ISO "YYYY-MM-DD"
+function toISODateFormat(dateStr: string): string {
+  if (!dateStr) return "";
+  const trimmed = dateStr.trim();
+  if (trimmed.includes("-")) return trimmed; // Already ISO format
+  if (trimmed.includes(".")) {
+    const parts = trimmed.split(".");
+    if (parts.length === 3) {
+      const [dd, mm, yyyy] = parts;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  return trimmed;
+}
+
+// Helper to get abbreviated marital status
+function getAbbreviatedMaritalStatus(simeyniyStr: string): string {
+  if (!simeyniyStr) return "неодруж.";
+  const s = simeyniyStr.toLowerCase();
+  if (s.includes("неодр")) return "неодруж.";
+  if (s.includes("одруж") || s.includes("заміж") || s.includes("одр")) return "одр.";
+  if (s.includes("розлуч") || s.includes("розл")) return "розлуч.";
+  if (s.includes("вдов")) return "вдов.";
+  return "неодруж.";
+}
+
+// Helper to update in-memory marriages list
+function updateInMemoryMarriage(member: Member) {
+  const isMarried = member.id_simeyniy === 2 || String(member.s_simeyniy_ukr).toLowerCase().includes("одр") || String(member.s_simeyniy_ukr).toLowerCase().includes("заміж");
+  
+  let partnerId = 0;
+  if (member.pib_partnera) {
+    const matchedPartner = members.find(m => 
+      m.id !== member.id && (
+        m.pib.toLowerCase().includes(member.pib_partnera!.toLowerCase()) ||
+        member.pib_partnera!.toLowerCase().includes(m.pib.toLowerCase())
+      )
+    );
+    if (matchedPartner) partnerId = matchedPartner.id;
+  }
+
+  // Remove old marriage entries for this member
+  marriages = marriages.filter(m => Number(m.id_cholovik) !== member.id && Number(m.id_drujina) !== member.id);
+
+  if (isMarried && partnerId > 0) {
+    const gender = String(member.gender || member.stat || "брат").trim().toLowerCase();
+    const isWife = gender.includes("сестр") || gender.includes("сес") || member.pib.toLowerCase().endsWith("на") || member.pib.toLowerCase().endsWith("ва");
+    const husbandId = isWife ? partnerId : member.id;
+    const wifeId = isWife ? member.id : partnerId;
+
+    marriages.push({
+      id: marriages.length + 2000,
+      id_cholovik: husbandId,
+      id_drujina: wifeId,
+      d_begin: dateToExcelSerialNumber(toISODateFormat(member.d_shlyubu || "")),
+      d_end: ""
+    });
+    console.log(`[Relation Healing] Created/updated in-memory marriage: Husband ${husbandId} <-> Wife ${wifeId}`);
+  }
+}
+
 // Helper function to sync updated member details back to Firebase Realtime Database
 async function syncMemberToFirebase(id: number, member: Member) {
   const patchUrl = `${FIREBASE_URL}/members/${id}.json?auth=${FIREBASE_SECRET}`;
@@ -2123,13 +2202,61 @@ async function syncMemberToFirebase(id: number, member: Member) {
   // Convert ministries comma separated string into standard list for legacy checkboxes/hidden input compatibility
   const slujList = (member.s_slujinnya_spysok || "").split(/[,;]+/).map(s => s.trim()).filter(Boolean);
 
+  // Find spouse ID for marriage history
+  let spouseId = 0;
+  if (member.pib_partnera) {
+    const matchedSpouse = members.find(m => 
+      m.id !== member.id && (
+        m.pib.toLowerCase().includes(member.pib_partnera!.toLowerCase()) ||
+        member.pib_partnera!.toLowerCase().includes(m.pib.toLowerCase())
+      )
+    );
+    if (matchedSpouse) spouseId = matchedSpouse.id;
+  }
+
+  const shlyubHistory: any[] = [];
+  const sSimeyniy = String(member.s_simeyniy_ukr || "").toLowerCase();
+  if (member.id_simeyniy === 2 || sSimeyniy.includes("одр") || sSimeyniy.includes("заміж")) {
+    shlyubHistory.push({
+      status: "одр.",
+      d_shlyubu_begin: toUADateFormat(member.d_shlyubu || ""),
+      d_shlyubu_end: "",
+      podruzhzhya_id: spouseId || "",
+      podrujya_id: spouseId || ""
+    });
+  } else if (member.id_simeyniy === 4 || sSimeyniy.includes("вдов")) {
+    shlyubHistory.push({
+      status: "вдов.",
+      d_shlyubu_begin: toUADateFormat(member.d_shlyubu || ""),
+      d_shlyubu_end: "",
+      podruzhzhya_id: spouseId || "",
+      podrujya_id: spouseId || ""
+    });
+  } else if (member.id_simeyniy === 3 || sSimeyniy.includes("розл")) {
+    shlyubHistory.push({
+      status: "розлуч.",
+      d_shlyubu_begin: toUADateFormat(member.d_shlyubu || ""),
+      d_shlyubu_end: "",
+      podruzhzhya_id: spouseId || "",
+      podrujya_id: spouseId || ""
+    });
+  } else {
+    shlyubHistory.push({
+      status: "неодруж.",
+      d_shlyubu_begin: "",
+      d_shlyubu_end: "",
+      podruzhzhya_id: "",
+      podrujya_id: ""
+    });
+  }
+
   const updates: any = {
     "01_PIB": member.pib,
     "pib": null, // Delete legacy
     "gender": member.gender || member.stat,
     "stat": null, // Delete legacy
-    "02_OSOBYSTE/1_d_narodjennya": member.d_narodjennya || "",
-    "02_OSOBYSTE/3_d_nar": member.d_narodjennya || "",
+    "02_OSOBYSTE/1_d_narodjennya": toUADateFormat(member.d_narodjennya || ""),
+    "02_OSOBYSTE/3_d_nar": toUADateFormat(member.d_narodjennya || ""),
     "02_OSOBYSTE/2_tel": member.tel_mob || "",
     "02_OSOBYSTE/phone": member.tel_mob || "",
     "02_OSOBYSTE/tel": member.tel_mob || "",
@@ -2140,19 +2267,20 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "02_OSOBYSTE/6_socialniy": member.s_socialniy_ukr || "н/д",
     "02_OSOBYSTE/13_status": null, // Delete legacy
     "02_OSOBYSTE/s_simeyniy_ukr": member.s_simeyniy_ukr || "неодружений",
+    "02_OSOBYSTE/4_shlyub_history": shlyubHistory,
     
     "04_STRUCTURA/1_rayon": member.rayon2_ukr || "",
     "04_STRUCTURA/opika": member.presviter || "",
     "04_STRUCTURA/4_opika": null, // Delete legacy
     "04_STRUCTURA/grupa": member.n_dilyci || "",
     "04_STRUCTURA/2_grupa": null, // Delete legacy
-    "04_STRUCTURA/5_d_vodnogo": member.d_vodnogo || "",
-    "04_STRUCTURA/6_d_vstupu": member.d_vstupu || "",
+    "04_STRUCTURA/5_d_vodnogo": toUADateFormat(member.d_vodnogo || ""),
+    "04_STRUCTURA/6_d_vstupu": toUADateFormat(member.d_vstupu || ""),
     "04_STRUCTURA/vidviduvanist": member.vidviduvanist || "",
     "04_STRUCTURA/8_vidviduvanist": null, // Delete legacy
     "04_STRUCTURA/prysutnist": member.prysutnist || "",
     "04_STRUCTURA/9_prysutnist": null, // Delete legacy
-    "04_STRUCTURA/7_d_kontaktiv": member.d_kontaktiv || "",
+    "04_STRUCTURA/7_d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
     "04_STRUCTURA/status": statusStr,
     "04_STRUCTURA/id_dilnytsia": member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ""),
     "04_STRUCTURA/id_dilnicya": null, // Delete legacy
@@ -2163,16 +2291,28 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "02_OSOBYSTE/budynok": member.budynok || "",
     "02_OSOBYSTE/korpus": member.korpus || "",
     "02_OSOBYSTE/kvartyra": member.kvartyra || "",
+
+    "03_ADRESA/1_misto": member.nas_punkt || "",
+    "03_ADRESA/1_nas_punkt": member.nas_punkt || "",
+    "03_ADRESA/2_vulycja": member.vulitsya || "",
+    "03_ADRESA/2_vulitsya": member.vulitsya || "",
+    "03_ADRESA/3_budynok": member.budynok || "",
+    "03_ADRESA/3_budinok": member.budynok || "",
+    "03_ADRESA/4_korpus": member.korpus || "",
+    "03_ADRESA/5_kvartyra": member.kvartyra || "",
+    "03_ADRESA/4_kvartira": member.kvartyra || "",
+
     "04_STRUCTURA/insha_gromada": member.insha_gromada || "",
-    "04_STRUCTURA/d_kontaktiv": member.d_kontaktiv || "",
-    "d_kontaktiv": member.d_kontaktiv || "",
-    "ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
+    "04_STRUCTURA/7_zvidky_primitka": member.insha_gromada || "",
+    "04_STRUCTURA/d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
+    "d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
+    "ISTORIJA/d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
     "04_STRUCTURA/3_san": member.di_admin || "",
     "04_STRUCTURA/hsd": !!member.hsd,
     "04_STRUCTURA/discipline": member.discipline || "",
     "04_STRUCTURA/discipline_reason": member.discipline_reason || "",
-    "04_STRUCTURA/discipline_date_start": member.discipline_date_start || "",
-    "04_STRUCTURA/discipline_date_end": member.discipline_date_end || "",
+    "04_STRUCTURA/discipline_date_start": toUADateFormat(member.discipline_date_start || ""),
+    "04_STRUCTURA/discipline_date_end": toUADateFormat(member.discipline_date_end || ""),
     
     "ISTORIJA/slujinnya": slujList,
     "ISTORIJA/1_slujinnya": null, // Delete legacy
@@ -2180,8 +2320,8 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "slujinnya": slujList,
     
     "06_VYBUTTYA/2_prichina": member.s_vybuv_ukr || "",
-    "06_VYBUTTYA/1_d_vybuttya": member.d_vybuttya || "",
-    "06_VYBUTTYA/1_d_vybyttya": member.d_vybuttya || "",
+    "06_VYBUTTYA/1_d_vybuttya": toUADateFormat(member.d_vybuttya || ""),
+    "06_VYBUTTYA/1_d_vybyttya": toUADateFormat(member.d_vybuttya || ""),
     "06_VYBUTTYA/3_primitka": member.vybutty_prymitka || "",
     "06_VYBUTTYA/vybuv_prymitka": member.vybutty_prymitka || "",
 
@@ -2295,6 +2435,7 @@ app.post("/api/members/:id", async (req, res) => {
   }
 
   members[memberIndex] = mergedMember as Member;
+  updateInMemoryMarriage(mergedMember as Member);
 
   // Sync update back to Firebase Realtime Database and await it to prevent client race conditions
   try {
@@ -2780,10 +2921,13 @@ app.post("/api/members", async (req, res) => {
     vulitsya: String(newMemberData.vulitsya || "").trim(),
     budynok: String(newMemberData.budynok || "").trim(),
     korpus: String(newMemberData.korpus || "").trim(),
-    kvartyra: String(newMemberData.kvartyra || "").trim()
+    kvartyra: String(newMemberData.kvartyra || "").trim(),
+    pib_partnera: String(newMemberData.pib_partnera || "").trim(),
+    d_shlyubu: String(newMemberData.d_shlyubu || "").trim()
   };
 
   members.push(newMember);
+  updateInMemoryMarriage(newMember);
 
   // Sync new member card to Firebase and await it to prevent client race conditions
   try {
@@ -3654,32 +3798,32 @@ async function syncDatabaseWithFirebase() {
           s_slujinnya_spysok: ministriesStr,
           zaklad_osv: String(особисте["zaklad_osv"] || "").trim(),
 
-          d_narodjennya: birthDate,
+          d_narodjennya: toISODateFormat(birthDate),
           d_narodjennya_excel: dateToExcelSerialNumber(birthDate),
           tel_mob: String(особисте["2_tel"] || "").trim(),
           tel1: String(особисте["tel1"] || "").trim(),
           skype: String(особисте["skype"] || "").trim(),
           vik_rokiv1: calculatedAge,
 
-          d_pokayannya: структура["d_pokayannya"] || "",
+          d_pokayannya: toISODateFormat(структура["d_pokayannya"] || ""),
           d_pokayannya_excel: dateToExcelSerialNumber(структура["d_pokayannya"] || ""),
-          d_vodnogo: структура["5_d_vodnogo"] || структура["d_vodnogo"] || "",
+          d_vodnogo: toISODateFormat(структура["5_d_vodnogo"] || структура["d_vodnogo"] || ""),
           d_vodnogo_excel: dateToExcelSerialNumber(структура["5_d_vodnogo"] || структура["d_vodnogo"] || ""),
           hsd: !!структура["hsd"],
-          d_vstupu: структура["6_d_vstupu"] || структура["d_vstupu"] || "",
+          d_vstupu: toISODateFormat(структура["6_d_vstupu"] || структура["d_vstupu"] || ""),
           d_vstupu_excel: dateToExcelSerialNumber(структура["6_d_vstupu"] || структура["d_vstupu"] || ""),
 
           vidviduvanist: String(структура["vidviduvanist"] || структура["8_vidviduvanist"] || "").trim(),
           prysutnist: String(структура["prysutnist"] || структура["9_prysutnist"] || "").trim(),
           di_admin: String(структура["3_san"] || raw["di_admin"] || "").trim(),
-          d_kontaktiv: String(
+          d_kontaktiv: toISODateFormat(String(
             raw["d_kontaktiv"] || 
             (raw["ISTORIJA"] && raw["ISTORIJA"]["d_kontaktiv"]) || 
             (raw["ISTORIJA"] && raw["ISTORIJA"]["7_d_kontaktiv"]) || 
             структура["7_d_kontaktiv"] || 
             структура["d_kontaktiv"] || 
             ""
-          ).trim(),
+          ).trim()),
 
           presviter: String(структура["opika"] || структура["4_opika"] || "").trim(),
           rayon2_ukr: String(структура["1_rayon"] || "").trim(),
@@ -3690,17 +3834,23 @@ async function syncDatabaseWithFirebase() {
 
           id_vybuttya: id_vybuttya,
           s_vybuv_ukr: String(вибуття["2_prichina"] || "").trim(),
-          d_vybuttya: вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"] || "",
+          d_vybuttya: toISODateFormat(вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"] || ""),
           d_vybuttya_excel: dateToExcelSerialNumber(вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"] || ""),
           vybutty_prymitka: String(вибуття["vybuv_prymitka"] || вибуття["3_primitka"] || "").trim(),
 
+          nas_punkt: String(адреса["1_nas_punkt"] || адреса["1_misto"] || особисте["nas_punkt"] || "").trim(),
+          vulitsya: String(адреса["2_vulycja"] || адреса["2_vulitsya"] || особисте["vulitsya"] || "").trim(),
+          budynok: String(адреса["3_budynok"] || адреса["3_budinok"] || особисте["budynok"] || "").trim(),
+          korpus: String(адреса["4_korpus"] || особисте["korpus"] || "").trim(),
+          kvartyra: String(адреса["5_kvartyra"] || адреса["4_kvartira"] || особисте["kvartyra"] || "").trim(),
+
           hvoryi: String(raw["hvoryi"] || "").trim(),
-          insha_gromada: String(raw["insha_gromada"] || "").trim(),
+          insha_gromada: String(структура["7_zvidky_primitka"] || структура["insha_gromada"] || raw["insha_gromada"] || "").trim(),
           prymitka: String(raw["prymitka"] || raw["primitka"] || "").trim(),
           discipline: String(структура["discipline"] || "").trim(),
           discipline_reason: String(структура["discipline_reason"] || "").trim(),
-          discipline_date_start: String(структура["discipline_date_start"] || "").trim(),
-          discipline_date_end: String(структура["discipline_date_end"] || "").trim(),
+          discipline_date_start: toISODateFormat(String(структура["discipline_date_start"] || "").trim()),
+          discipline_date_end: toISODateFormat(String(структура["discipline_date_end"] || "").trim()),
           efile: raw["efile"],
           address: formatAddress(адреса)
         };

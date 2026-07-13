@@ -751,15 +751,18 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
             <div className="space-y-1">
               <label className="block text-xs font-medium text-slate-300 mb-1">Соц. стан</label>
-              <input
-                type="text"
-                name="soc_stan"
+              <select
+                name="id_socialniy"
                 disabled={!!isRestricted}
-                value={formData.soc_stan || ''}
+                value={formData.id_socialniy || ''}
                 onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              >
+                <option value="" className="text-slate-400">не вказ.</option>
+                {lookups?.socialniy?.map((s: any) => (
+                  <option key={s.ID} value={s.ID} className="text-white font-semibold">{s.Value}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">

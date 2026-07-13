@@ -2045,8 +2045,14 @@ app.get("/api/members/:id", async (req, res) => {
     childrenList = children.filter(c => Number(c.id_simya) === Number(marriageRec.id) || Number(c.simya_id) === Number(marriageRec.id));
   }
 
-  if (childrenList.length > 0) {
-    member.dity = childrenList.map(c => {
+  const validChildren = childrenList.filter(c => {
+    const name = `${String(c.n_dity || "").trim()} ${String(c.f_dity || "").trim()}`.trim();
+    const lower = name.toLowerCase();
+    return lower !== "" && lower !== "н/д" && lower !== "немає" && lower !== "не вказ." && lower !== "-" && !lower.startsWith("н/д -");
+  });
+
+  if (validChildren.length > 0) {
+    member.dity = validChildren.map(c => {
       const name = `${String(c.n_dity || "").trim()} ${String(c.f_dity || "").trim()}`.trim();
       const bday = formatExcelDate(c.d_nar);
       return bday ? `${name} ${bday}` : name;
@@ -2055,7 +2061,7 @@ app.get("/api/members/:id", async (req, res) => {
     member.dity = "";
   }
 
-  myChildren = childrenList.map(c => ({
+  myChildren = validChildren.map(c => ({
     id: Number(c.dity_id || c.id),
     name: String(c.n_dity || "").trim() + " " + String(c.f_dity || "").trim(),
     birthDate: formatExcelDate(c.d_nar),
@@ -2241,8 +2247,13 @@ function updateInMemoryChildren(member: Member) {
         bday = toISODateFormat(dateMatch[0]);
         name = part.replace(dateMatch[0], "").trim();
       }
-      const firstName = name.split(" ")[0] || name;
-      const lastName = name.split(" ").slice(1).join(" ") || "";
+      const cleanName = name.trim();
+      const lowerName = cleanName.toLowerCase();
+      if (lowerName === "" || lowerName === "н/д" || lowerName === "не вказ." || lowerName === "немає" || lowerName === "-") {
+        return; // Skip placeholder/empty child names
+      }
+      const firstName = cleanName.split(" ")[0] || cleanName;
+      const lastName = cleanName.split(" ").slice(1).join(" ") || "";
       let ageVal = 0;
       if (bday) {
         try {
@@ -2337,6 +2348,11 @@ async function syncMemberToFirebase(id: number, member: Member) {
         bday = toISODateFormat(dateMatch[0]);
         name = part.replace(dateMatch[0], "").trim();
       }
+      const cleanName = name.trim();
+      const lowerName = cleanName.toLowerCase();
+      if (lowerName === "" || lowerName === "н/д" || lowerName === "не вказ." || lowerName === "немає" || lowerName === "-") {
+        return; // Skip placeholder/empty child names
+      }
       let ageVal = 0;
       if (bday) {
         try {
@@ -2347,7 +2363,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
         } catch (_) {}
       }
       parsedDityList.push({
-        name: name.trim(),
+        name: cleanName,
         birthday: toUADateFormat(bday),
         age: ageVal
       });
@@ -4019,6 +4035,10 @@ async function syncDatabaseWithFirebase() {
             fbDity.forEach(ch => {
               if (ch && ch.name) {
                 const name = String(ch.name).trim();
+                const lowerName = name.toLowerCase();
+                if (lowerName === "" || lowerName === "н/д" || lowerName === "не вказ." || lowerName === "немає" || lowerName === "-") {
+                  return; // Skip placeholder/empty child names
+                }
                 const bday = String(ch.birthday || "").trim();
                 const firstName = name.split(" ")[0] || name;
                 const lastName = name.split(" ").slice(1).join(" ") || "";

@@ -13,7 +13,13 @@ export interface BirthdaySettings {
     appPassword: string;
 }
 
+let isInitialized = false;
+
 export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () => BirthdaySettings) {
+    if (isInitialized) {
+        return;
+    }
+    isInitialized = true;
     console.log("Initializing Birthday Cron Jobs...");
 
     const sendTelegram = async (chatIds: string, text: string, botToken: string, pdfPath?: string) => {

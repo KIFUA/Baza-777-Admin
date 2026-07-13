@@ -2679,14 +2679,24 @@
           .split("\n")
           .map((line) => {
             const parts = line.split("-").map((p) => p.trim());
-            return { name: parts[0] || "", birthday: parts[1] || "" };
+            const cleanName = parts[0] || "";
+            const lowerName = cleanName.toLowerCase();
+            if (lowerName === "" || lowerName === "н/д" || lowerName === "немає" || lowerName === "не вказ." || lowerName === "-") {
+              return null;
+            }
+            return { name: cleanName, birthday: parts[1] || "" };
           })
-          .filter((item) => item.name || item.birthday);
+          .filter((item) => item && (item.name || item.birthday));
       }
 
       function formatDityJson(jsonArray) {
         if (!Array.isArray(jsonArray)) return "";
         return jsonArray
+          .filter((item) => {
+            if (!item) return false;
+            const name = String(item.name || "").trim().toLowerCase();
+            return name !== "" && name !== "н/д" && name !== "немає" && name !== "не вказ." && name !== "-";
+          })
           .map((item) => `${item.name || ""} - ${item.birthday || ""}`)
           .join("\n");
       }

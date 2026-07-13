@@ -833,15 +833,39 @@ export default function App() {
                 {(currentSessionUser?.level === 'IV-й' || currentSessionUser?.level === 'ІІІ-й') && (
                   <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
-                    <button
-                      onClick={() => {
-                        setEditingMember(null);
-                        setShowForm(true);
-                      }}
-                      className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-                    >
-                      + Додати члена
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      {selectedMemberId && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/members/${selectedMemberId}`);
+                              if (resp.ok) {
+                                const fullMember = await resp.json();
+                                setEditingMember(fullMember);
+                                setShowForm(true);
+                              } else {
+                                alert("Не вдалося завантажити дані члена");
+                              }
+                            } catch (err) {
+                              console.error("Error loading member details:", err);
+                              alert("Помилка при завантаженні даних");
+                            }
+                          }}
+                          className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-amber-600 text-white shadow-sm hover:bg-amber-700"
+                        >
+                          Редагувати
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setEditingMember(null);
+                          setShowForm(true);
+                        }}
+                        className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                      >
+                        + Додати члена
+                      </button>
+                    </div>
                   </div>
                 )}
                 {false ? (

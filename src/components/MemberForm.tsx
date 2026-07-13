@@ -769,9 +769,9 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               <label className="block text-xs font-medium text-slate-300 mb-1">Професія</label>
               <input
                 type="text"
-                name="profesiya"
+                name="s_profesiya_ukr"
                 disabled={!!isRestricted}
-                value={formData.profesiya || ''}
+                value={formData.s_profesiya_ukr === 'н/д' ? '' : (formData.s_profesiya_ukr || '')}
                 onChange={handleChange}
                 placeholder="не вказ."
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"

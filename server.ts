@@ -2045,6 +2045,16 @@ app.get("/api/members/:id", async (req, res) => {
     childrenList = children.filter(c => Number(c.id_simya) === Number(marriageRec.id) || Number(c.simya_id) === Number(marriageRec.id));
   }
 
+  if (childrenList.length > 0) {
+    member.dity = childrenList.map(c => {
+      const name = `${String(c.n_dity || "").trim()} ${String(c.f_dity || "").trim()}`.trim();
+      const bday = formatExcelDate(c.d_nar);
+      return bday ? `${name} ${bday}` : name;
+    }).join("; ");
+  } else {
+    member.dity = "";
+  }
+
   myChildren = childrenList.map(c => ({
     id: Number(c.dity_id || c.id),
     name: String(c.n_dity || "").trim() + " " + String(c.f_dity || "").trim(),
@@ -2192,6 +2202,71 @@ function updateInMemoryMarriage(member: Member) {
   }
 }
 
+// Helper to update in-memory children list
+function updateInMemoryChildren(member: Member) {
+  const dityString = String(member.dity || "").trim();
+  
+  // Find spouse/parents ID
+  let spouseId = 0;
+  if (member.pib_partnera) {
+    const matchedSpouse = members.find(m => 
+      m.id !== member.id && (
+        m.pib.toLowerCase().includes(member.pib_partnera!.toLowerCase()) ||
+        member.pib_partnera!.toLowerCase().includes(m.pib.toLowerCase())
+      )
+    );
+    if (matchedSpouse) spouseId = matchedSpouse.id;
+  }
+  const gender = String(member.gender || member.stat || "брат").trim().toLowerCase();
+  const isWife = gender.includes("сестр") || gender.includes("сес") || member.pib.toLowerCase().endsWith("на") || member.pib.toLowerCase().endsWith("ва");
+  const fatherId = isWife ? (spouseId || 0) : member.id;
+  const motherId = isWife ? member.id : (spouseId || 0);
+
+  // Remove old in-memory children entries for this member
+  children = children.filter(c => {
+    const isThisFather = Number(c.id_cholovik) === member.id && member.id > 0;
+    const isThisMother = Number(c.id_drujina) === member.id && member.id > 0;
+    const isSpouseFather = spouseId > 0 && Number(c.id_cholovik) === spouseId;
+    const isSpouseMother = spouseId > 0 && Number(c.id_drujina) === spouseId;
+    return !isThisFather && !isThisMother && !isSpouseFather && !isSpouseMother;
+  });
+
+  if (dityString) {
+    const parts = dityString.split(";").map(p => p.trim()).filter(Boolean);
+    parts.forEach((part, index) => {
+      const dateMatch = part.match(/(\d{2}\.\d{2}\.\d{4})|(\d{4}-\d{2}-\d{2})/);
+      let name = part;
+      let bday = "";
+      if (dateMatch) {
+        bday = toISODateFormat(dateMatch[0]);
+        name = part.replace(dateMatch[0], "").trim();
+      }
+      const firstName = name.split(" ")[0] || name;
+      const lastName = name.split(" ").slice(1).join(" ") || "";
+      let ageVal = 0;
+      if (bday) {
+        try {
+          const birth = new Date(bday);
+          const ageDiff = Date.now() - birth.getTime();
+          const ageDate = new Date(ageDiff);
+          ageVal = Math.abs(ageDate.getUTCFullYear() - 1970);
+        } catch (_) {}
+      }
+
+      children.push({
+        dity_id: children.length + 3000 + index,
+        id_simya: 1,
+        n_dity: firstName,
+        f_dity: lastName,
+        d_nar: bday ? dateToExcelSerialNumber(bday) : 0,
+        id_cholovik: fatherId,
+        id_drujina: motherId,
+        dity_vik_rokiv1: ageVal
+      });
+    });
+  }
+}
+
 // Helper function to sync updated member details back to Firebase Realtime Database
 async function syncMemberToFirebase(id: number, member: Member) {
   const patchUrl = `${FIREBASE_URL}/members/${id}.json?auth=${FIREBASE_SECRET}`;
@@ -2250,6 +2325,35 @@ async function syncMemberToFirebase(id: number, member: Member) {
     });
   }
 
+  const dityString = String(member.dity || "").trim();
+  const parsedDityList: any[] = [];
+  if (dityString) {
+    const parts = dityString.split(";").map(p => p.trim()).filter(Boolean);
+    parts.forEach(part => {
+      const dateMatch = part.match(/(\d{2}\.\d{2}\.\d{4})|(\d{4}-\d{2}-\d{2})/);
+      let name = part;
+      let bday = "";
+      if (dateMatch) {
+        bday = toISODateFormat(dateMatch[0]);
+        name = part.replace(dateMatch[0], "").trim();
+      }
+      let ageVal = 0;
+      if (bday) {
+        try {
+          const birth = new Date(bday);
+          const ageDiff = Date.now() - birth.getTime();
+          const ageDate = new Date(ageDiff);
+          ageVal = Math.abs(ageDate.getUTCFullYear() - 1970);
+        } catch (_) {}
+      }
+      parsedDityList.push({
+        name: name.trim(),
+        birthday: toUADateFormat(bday),
+        age: ageVal
+      });
+    });
+  }
+
   const updates: any = {
     "01_PIB": member.pib,
     "pib": null, // Delete legacy
@@ -2268,6 +2372,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "02_OSOBYSTE/13_status": null, // Delete legacy
     "02_OSOBYSTE/s_simeyniy_ukr": member.s_simeyniy_ukr || "неодружений",
     "02_OSOBYSTE/4_shlyub_history": shlyubHistory,
+    "02_OSOBYSTE/9_dity": parsedDityList,
     
     "04_STRUCTURA/1_rayon": member.rayon2_ukr || "",
     "04_STRUCTURA/opika": member.presviter || "",
@@ -2436,6 +2541,7 @@ app.post("/api/members/:id", async (req, res) => {
 
   members[memberIndex] = mergedMember as Member;
   updateInMemoryMarriage(mergedMember as Member);
+  updateInMemoryChildren(mergedMember as Member);
 
   // Sync update back to Firebase Realtime Database and await it to prevent client race conditions
   try {
@@ -2923,11 +3029,13 @@ app.post("/api/members", async (req, res) => {
     korpus: String(newMemberData.korpus || "").trim(),
     kvartyra: String(newMemberData.kvartyra || "").trim(),
     pib_partnera: String(newMemberData.pib_partnera || "").trim(),
-    d_shlyubu: String(newMemberData.d_shlyubu || "").trim()
+    d_shlyubu: String(newMemberData.d_shlyubu || "").trim(),
+    dity: String(newMemberData.dity || "").trim()
   };
 
   members.push(newMember);
   updateInMemoryMarriage(newMember);
+  updateInMemoryChildren(newMember);
 
   // Sync new member card to Firebase and await it to prevent client race conditions
   try {

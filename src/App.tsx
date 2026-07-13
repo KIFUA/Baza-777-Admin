@@ -841,7 +841,7 @@ export default function App() {
                               const resp = await fetch(`/api/members/${selectedMemberId}`);
                               if (resp.ok) {
                                 const fullMember = await resp.json();
-                                setEditingMember(fullMember);
+                                setEditingMember(fullMember.member || fullMember);
                                 setShowForm(true);
                               } else {
                                 alert("Не вдалося завантажити дані члена");

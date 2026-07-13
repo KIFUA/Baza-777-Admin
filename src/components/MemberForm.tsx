@@ -171,13 +171,78 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
   useEffect(() => {
     if (member) {
       const parsed = parseAddress(member.address);
+
+      // Smart reverse-lookup helper to resolve string descriptions to standard lookup IDs
+      const findIdByValue = (list: any[] | undefined, valueStr: string | undefined, currentId: any, defaultId: number): number => {
+        if (!list || !Array.isArray(list)) return Number(currentId || defaultId);
+        
+        // If we already have a valid non-default, non-placeholder ID, preserve it
+        const currentIdNum = Number(currentId);
+        if (!isNaN(currentIdNum) && currentIdNum !== 0 && currentIdNum !== defaultId) {
+          const exists = list.some(item => Number(item.ID) === currentIdNum);
+          if (exists) return currentIdNum;
+        }
+
+        if (!valueStr) return defaultId;
+        const cleanVal = String(valueStr).trim().toLowerCase();
+        if (cleanVal === "" || cleanVal === "н/д" || cleanVal === "не вказано" || cleanVal === "не вказ.") {
+          return defaultId;
+        }
+
+        // 1. Try exact match
+        let found = list.find(item => String(item.Value || "").trim().toLowerCase() === cleanVal);
+        if (found) return Number(found.ID);
+
+        // 2. Try partial match
+        found = list.find(item => {
+          const itemVal = String(item.Value || "").trim().toLowerCase();
+          return itemVal.includes(cleanVal) || cleanVal.includes(itemVal);
+        });
+        if (found) return Number(found.ID);
+
+        // 3. Try Ukrainian-specific stems (e.g., checking first 4 characters for gendered endings like "одружений" vs "одружена")
+        if (cleanVal.length >= 4) {
+          const stem = cleanVal.slice(0, 4);
+          found = list.find(item => String(item.Value || "").trim().toLowerCase().startsWith(stem));
+          if (found) return Number(found.ID);
+        }
+
+        return Number(currentId || defaultId);
+      };
+
+      const simeyniyId = findIdByValue(lookups?.simeyniy, member.s_simeyniy_ukr, member.id_simeyniy, 5);
+      const socialniyId = findIdByValue(lookups?.socialniy, member.s_socialniy_ukr, member.id_socialniy, 6);
+      const osvitaId = findIdByValue(lookups?.osvita, member.s_osvita_ukr, member.id_osvita, 4);
+      const profesiyaId = findIdByValue(lookups?.profesiya, member.s_profesiya_ukr, member.id_profesiya, 41);
+      const vybuttyaId = findIdByValue(lookups?.vybuv, member.s_vybuv_ukr, member.id_vybuttya, 0);
+
+      // Match Ukrainian text labels with our resolved IDs for visual feedback
+      const simeyniyLabel = lookups?.simeyniy?.find((s: any) => Number(s.ID) === simeyniyId)?.Value || member.s_simeyniy_ukr || 'н/д';
+      const socialniyLabel = lookups?.socialniy?.find((s: any) => Number(s.ID) === socialniyId)?.Value || member.s_socialniy_ukr || 'н/д';
+      const osvitaLabel = lookups?.osvita?.find((s: any) => Number(s.ID) === osvitaId)?.Value || member.s_osvita_ukr || 'н/д';
+      const profesiyaLabel = lookups?.profesiya?.find((s: any) => Number(s.ID) === profesiyaId)?.Value || member.s_profesiya_ukr || 'н/д';
+      const vybuvLabel = lookups?.vybuv?.find((s: any) => Number(s.ID) === vybuttyaId)?.Value || member.s_vybuv_ukr || '';
+
+      const mainNote = member.prymitka || (member as any).primitka || '';
+
       setFormData({
         ...member,
         gender: member.gender || member.stat || 'брат',
         stat: member.gender || member.stat || 'брат',
+        id_simeyniy: simeyniyId,
+        s_simeyniy_ukr: simeyniyLabel,
+        id_socialniy: socialniyId,
+        s_socialniy_ukr: socialniyLabel,
+        id_osvita: osvitaId,
+        s_osvita_ukr: osvitaLabel,
+        id_profesiya: profesiyaId,
+        s_profesiya_ukr: profesiyaLabel,
+        id_vybuttya: vybuttyaId,
+        s_vybuv_ukr: vybuvLabel,
         id_dilnytsia: member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ''),
         id_dilnicya: member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ''),
-        prymitka: member.prymitka || (member as any).primitka || '',
+        prymitka: mainNote,
+        primitka: mainNote,
         nas_punkt: member.nas_punkt || parsed.nas_punkt,
         vulitsya: member.vulitsya || parsed.vulitsya,
         budynok: member.budynok || parsed.budynok,
@@ -207,7 +272,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         sluj_uchast: ''
       }));
     }
-  }, [member, hasSpecificRayonLock]);
+  }, [member, hasSpecificRayonLock, lookups]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -223,6 +288,11 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         (updated as any)[name] = checked;
       } else {
         (updated as any)[name] = value;
+        if (name === 'prymitka') {
+          (updated as any).primitka = value;
+        } else if (name === 'primitka') {
+          (updated as any).prymitka = value;
+        }
       }
 
       // Auto compile address if any address parts change

@@ -837,7 +837,7 @@ export default function App() {
                 {(currentSessionUser?.level === 'IV-й' || currentSessionUser?.level === 'ІІІ-й') && (
                   <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       {selectedMemberId && (
                         <button
                           onClick={async () => {
@@ -855,7 +855,7 @@ export default function App() {
                               alert("Помилка при завантаженні даних");
                             }
                           }}
-                          className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-amber-600 text-white shadow-sm hover:bg-amber-700"
+                          className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-amber-600 text-white shadow-xs hover:bg-amber-700"
                         >
                           Редагувати
                         </button>
@@ -865,7 +865,7 @@ export default function App() {
                           setEditingMember(null);
                           setShowForm(true);
                         }}
-                        className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+                        className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
                       >
                         + Додати члена
                       </button>

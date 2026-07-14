@@ -2851,10 +2851,13 @@ async function notifyDistrictLeadersForMembers(membersList: Member[]) {
       }
 
       text += `*${pibAccusative}*${dobFormatted}\n`;
+      if (m.address) {
+        text += `Проживає по адресу: ${m.address}\n`;
+      }
       text += `${entryWay}\n\n`;
 
       const pronoun = m.gender === "сестра" ? "їй" : "йому";
-      text += `В основному списку району *${rayonName}* ${pronoun} треба призначити опікуна.`;
+      text += `В основному списку району *${rayonName}* ${pronoun} треба призначити опікуна.\n\nАдміністратор.`;
     } else {
       for (const m of group) {
         const pibAccusative = toUkrainianAccusative(m.pib, m.gender);
@@ -2874,9 +2877,13 @@ async function notifyDistrictLeadersForMembers(membersList: Member[]) {
           entryWay = `${verb} в члени церкви`;
         }
 
-        text += `- *${pibAccusative}*${dobFormatted}\n  ${entryWay}\n`;
+        text += `- *${pibAccusative}*${dobFormatted}\n`;
+        if (m.address) {
+          text += `  Проживає по адресу: ${m.address}\n`;
+        }
+        text += `  ${entryWay}\n`;
       }
-      text += `\nВ основному списку району *${rayonName}* їм треба призначити опікунів.`;
+      text += `\nВ основному списку району *${rayonName}* їм треба призначити опікунів.\n\nАдміністратор.`;
     }
 
     try {

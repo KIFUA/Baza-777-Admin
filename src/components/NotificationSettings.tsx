@@ -8,7 +8,9 @@ export function NotificationSettings() {
     mondayTelegramIds: '',
     wednesdayTelegramIds: '',
     botToken: '',
-    appPassword: ''
+    appPassword: '',
+    enableTestMode: false,
+    testTelegramId: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -18,7 +20,16 @@ export function NotificationSettings() {
     fetch('/api/settings/notifications')
       .then(res => res.json())
       .then(data => {
-        setSettings(data);
+        setSettings({
+          mondayEmails: data.mondayEmails || '',
+          wednesdayEmails: data.wednesdayEmails || '',
+          mondayTelegramIds: data.mondayTelegramIds || '',
+          wednesdayTelegramIds: data.wednesdayTelegramIds || '',
+          botToken: data.botToken || '',
+          appPassword: data.appPassword || '',
+          enableTestMode: data.enableTestMode === true || data.enableTestMode === "true",
+          testTelegramId: data.testTelegramId || ''
+        });
         setLoading(false);
       })
       .catch(err => {
@@ -163,6 +174,53 @@ export function NotificationSettings() {
               className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder-slate-600 transition-colors font-mono"
             />
             <p className="text-[10px] text-slate-500 mt-1.5">Для відправки листів з kostel.if.ua@gmail.com</p>
+          </div>
+        </div>
+
+        {/* Test Mode Redirection Section */}
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 space-y-4">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 flex-shrink-0 text-amber-500 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-400 text-xs uppercase tracking-wider mb-1">Режим тестування бота та перенаправлення</p>
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Оскільки Telegram забороняє надсилати повідомлення користувачам, які не натиснули <strong>СТАРТ</strong> у боті, ви можете увімкнути тестовий режим. 
+                Усі сповіщення для керівників районів будуть надходити <strong>особисто вам</strong> на тестовий ID. Ви зможете перевірити роботу бота без залучення керівників.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox"
+                id="enableTestMode"
+                name="enableTestMode"
+                checked={settings.enableTestMode}
+                onChange={(e) => setSettings({ ...settings, enableTestMode: e.target.checked })}
+                className="w-4 h-4 rounded border-[#224853] bg-[#0e2128] text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
+              />
+              <label htmlFor="enableTestMode" className="text-xs font-bold text-slate-300 cursor-pointer select-none">
+                Увімкнути тестовий режим (перенаправлення)
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                Ваш тестовий Telegram Chat ID
+              </label>
+              <input 
+                type="text"
+                name="testTelegramId"
+                value={settings.testTelegramId}
+                onChange={handleChange}
+                placeholder="Введіть ваш Telegram ID (наприклад, 240931069)"
+                className="w-full px-3 py-1.5 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 placeholder-slate-600 transition-colors"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                При активному режимі, повідомлення надходитимуть на цей ID з детальним описом того, кому вони мали бути відправлені.
+              </p>
+            </div>
           </div>
         </div>
       </div>

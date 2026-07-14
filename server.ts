@@ -2652,6 +2652,11 @@ app.post("/api/audit", (req, res) => {
  * Helper to notify District Leader via Telegram when a new member joins their rayon.
  * Follows the specific identification algorithm requested by the user.
  */
+/**
+ * Helper to notify District Leader via Telegram when a new member joins their rayon.
+ * Follows the specific identification algorithm requested by the user, with robust fuzzy matching
+ * and a test/redirection mode.
+ */
 async function notifyDistrictLeader(newMember: Member) {
   const settings = getSettings();
   const botToken = settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
@@ -2663,39 +2668,85 @@ async function notifyDistrictLeader(newMember: Member) {
   const rayonName = newMember.rayon2_ukr;
   if (!rayonName) return;
 
+  // Check test mode configuration
+  const isTestMode = settings.enableTestMode === true || settings.enableTestMode === "true";
+  const testTelegramId = String(settings.testTelegramId || "").trim();
+
   // 1. Identification Algorithm: Find Rayon Leader PIB from bindings
   // In the directories_rayon_bindings, find the entry for the rayonName and get presbyterId (member ID)
   const binding = (directories_rayon_bindings as any[]).find(b => 
     String(b.name).trim().toLowerCase() === String(rayonName).trim().toLowerCase()
   );
-  if (!binding || !binding.presbyterId) {
-    console.log(`[Telegram Notification] No leader binding found for rayon: ${rayonName}`);
-    return;
+
+  let leader: Member | undefined;
+  let leaderAccess: any = null;
+  let targetTelegramId = "";
+  let debugHeader = "";
+
+  if (binding && binding.presbyterId) {
+    const leaderId = Number(binding.presbyterId);
+    leader = members.find(m => m.id === leaderId);
+    if (leader) {
+      // Robust matching of the full PIB with abbreviated/initialed user names in access_dostup
+      const parts = leader.pib.trim().split(/\s+/);
+      if (parts.length > 0) {
+        const lastName = parts[0].toLowerCase();
+        const firstName = parts.length > 1 ? parts[1].toLowerCase() : "";
+
+        const candidates = (access_dostup as any[]).filter(a => {
+          const userStr = String(a.user || "").trim().toLowerCase();
+          return userStr.startsWith(lastName);
+        });
+
+        if (candidates.length === 1) {
+          leaderAccess = candidates[0];
+        } else if (candidates.length > 1) {
+          if (firstName) {
+            for (const cand of candidates) {
+              const userStr = String(cand.user || "").trim().toLowerCase();
+              const afterLastName = userStr.replace(lastName, "").trim().replace(/[^a-zа-яіїєґ]/gi, "");
+              if (afterLastName && firstName.startsWith(afterLastName)) {
+                leaderAccess = cand;
+                break;
+              }
+            }
+          }
+          if (!leaderAccess) {
+            leaderAccess = candidates[0];
+          }
+        }
+      }
+    }
   }
 
-  // 2. Get the Leader's full PIB from the members list using the ID
-  const leaderId = Number(binding.presbyterId);
-  const leader = members.find(m => m.id === leaderId);
-  if (!leader) {
-    console.log(`[Telegram Notification] Leader with ID ${leaderId} not found in members list.`);
-    return;
+  if (leaderAccess) {
+    targetTelegramId = String(leaderAccess.telegramId || "").trim();
   }
 
-  // 3. Find the Leader's Telegram ID from access_dostup (matching PIB + presviter role)
-  const leaderAccess = (access_dostup as any[]).find(a => 
-    String(a.user).trim().toLowerCase() === String(leader.pib).trim().toLowerCase() && 
-    (String(a.position || "").toLowerCase().includes("пресвітер") || 
-     String(a.position || "").toLowerCase().includes("пастор"))
-  );
-  
-  const telegramId = leaderAccess?.telegramId;
-  if (!telegramId || telegramId === "—" || telegramId === "") {
-    console.log(`[Telegram Notification] No valid Telegram ID found for leader: ${leader.pib}`);
+  // Handle routing (Normal vs Test Mode)
+  let finalTelegramId = "";
+  if (isTestMode && testTelegramId) {
+    finalTelegramId = testTelegramId;
+    debugHeader = `⚠️ *[ТЕСТОВИЙ РЕЖИМ]*\n`;
+    if (leader) {
+      debugHeader += `Оригінальний отримувач: *${leader.pib}* (ID: ${leader.id})\n`;
+      debugHeader += `Район: *${rayonName}*\n`;
+      debugHeader += `Telegram ID отримувача: *${targetTelegramId || "Не знайдено"}*\n\n`;
+    } else {
+      debugHeader += `Район: *${rayonName}* (Керівника не налаштовано)\n\n`;
+    }
+  } else {
+    finalTelegramId = targetTelegramId;
+  }
+
+  if (!finalTelegramId || finalTelegramId === "—" || finalTelegramId === "") {
+    console.log(`[Telegram Notification] No target Telegram ID found. normal_target=${targetTelegramId}, isTestMode=${isTestMode}`);
     return;
   }
 
   // 4. Construct the localized message text as per requested template
-  let text = `📢 *ПОВІДОМЛЕННЯ про додавання нового члена церкви.*\n\n`;
+  let text = debugHeader;
+  text += `📢 *ПОВІДОМЛЕННЯ про додавання нового члена церкви.*\n\n`;
   text += `До району *${rayonName}* додано ${newMember.gender === "сестра" ? "сестру" : "брата"} *${newMember.pib}*`;
   
   if (newMember.d_narodjennya) {
@@ -2721,19 +2772,19 @@ async function notifyDistrictLeader(newMember: Member) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        chat_id: telegramId,
+        chat_id: finalTelegramId,
         text: text,
         parse_mode: "Markdown"
       })
     });
     const result = await response.json() as any;
     if (result.ok) {
-      console.log(`[Telegram Notification] Successfully notified ${leader.pib} (${telegramId}) about ${newMember.pib}`);
+      console.log(`[Telegram Notification] Successfully notified ${finalTelegramId} about ${newMember.pib}`);
     } else {
-      console.error(`[Telegram Notification] API error for ${telegramId}: ${result.description}`);
+      console.error(`[Telegram Notification] API error for ${finalTelegramId}: ${result.description}`);
     }
   } catch (err: any) {
-    console.error(`[Telegram Notification] Fetch error for ${telegramId}: ${err.message}`);
+    console.error(`[Telegram Notification] Fetch error for ${finalTelegramId}: ${err.message}`);
   }
 }
 

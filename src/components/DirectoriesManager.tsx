@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
   CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
-  Edit, UserPlus, ShieldAlert, Save, Settings
+  Edit, UserPlus, ShieldAlert, Save, Settings, Bell
 } from 'lucide-react';
 import { Member } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
@@ -25,7 +25,7 @@ export default function DirectoriesManager({
   members,
   onUpdateMember
 }: DirectoriesManagerProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'birthdays' | 'dicts' | 'access' | 'sync' | 'colors'>('birthdays');
+  const [activeSubTab, setActiveSubTab] = useState<'journal_notifications' | 'dicts' | 'access' | 'sync' | 'colors'>('journal_notifications');
   const [activeAccessSubTab, setActiveAccessSubTab] = useState<'sectors' | 'levels'>('sectors');
   const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
   const [ignoreAdminLogs, setIgnoreAdminLogs] = useState<boolean>(true);
@@ -711,11 +711,11 @@ export default function DirectoriesManager({
         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1">Навігація кабінету</h3>
         
         <button
-          onClick={() => setActiveSubTab('birthdays')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'birthdays' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
+          onClick={() => setActiveSubTab('journal_notifications')}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'journal_notifications' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
         >
-          <Cake className="h-4 w-4 text-amber-500 shrink-0" />
-          <span>🎂 Іменинники тижня</span>
+          <Bell className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>🔔 ЖУРНАЛ / ІМЕНИННИКИ</span>
         </button>
 
         <button
@@ -774,8 +774,8 @@ export default function DirectoriesManager({
       {/* Main Panel Content Workspace */}
       <div className="flex-1 min-w-0">
         
-        {/* SUBTAB 1: BIRTHDAYS MANAGER */}
-        {activeSubTab === 'birthdays' && (
+        {/* SUBTAB 1: JOURNAL & BIRTHDAYS MANAGER */}
+        {activeSubTab === 'journal_notifications' && (
           <div className="space-y-4 animate-fade-in text-slate-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#224853]/55 pb-2.5">
               <div>

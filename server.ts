@@ -2649,9 +2649,9 @@ app.post("/api/audit", (req, res) => {
 });
 
 /**
- * Declines Ukrainian PIB (Прізвище, Ім'я, По батькові) to Genitive case (Родовий відмінок).
+ * Declines Ukrainian PIB (Прізвище, Ім'я, По батькові) to Accusative case (Знахідний відмінок).
  */
-function toUkrainianGenitive(pib: string, gender: string): string {
+function toUkrainianAccusative(pib: string, gender: string): string {
   if (!pib) return "";
   const parts = pib.trim().split(/\s+/);
   const declinedParts = parts.map((part) => {
@@ -2662,6 +2662,7 @@ function toUkrainianGenitive(pib: string, gender: string): string {
     const partLower = part.toLowerCase();
 
     if (isMale) {
+      // Accusative for animate males is the same as Genitive (Родовий відмінок)
       if (partLower.endsWith("ич")) {
         return part + "а";
       }
@@ -2689,18 +2690,24 @@ function toUkrainianGenitive(pib: string, gender: string): string {
         return part + "а";
       }
     } else {
+      // Accusative for females (Знахідний відмінок)
+      // Patronymic: e.g. "Іванівна" -> "Іванівну"
       if (partLower.endsWith("вна")) {
-        return part.slice(0, -1) + "и";
+        return part.slice(0, -1) + "у";
       }
+      // Adjectival surnames: e.g. "Волошинська" -> "Волошинську"
       if (partLower.endsWith("ська") || partLower.endsWith("цька")) {
-        return part.slice(0, -1) + "ої";
+        return part.slice(0, -1) + "у";
       }
+      // Female first names or other words ending in "а": e.g. "Марта" -> "Марту", "Людмила" -> "Людмилу"
       if (partLower.endsWith("а")) {
-        return part.slice(0, -1) + "и";
+        return part.slice(0, -1) + "у";
       }
+      // Female names ending in "я": e.g. "Марія" -> "Марію"
       if (partLower.endsWith("я")) {
-        return part.slice(0, -1) + "ї";
+        return part.slice(0, -1) + "ю";
       }
+      // Female surnames ending in a consonant (e.g. "Рожок", "Семчук") do not decline
     }
 
     return part;
@@ -2826,7 +2833,7 @@ async function notifyDistrictLeadersForMembers(membersList: Member[]) {
 
     if (group.length === 1) {
       const m = group[0];
-      const pibGenitive = toUkrainianGenitive(m.pib, m.gender);
+      const pibAccusative = toUkrainianAccusative(m.pib, m.gender);
       const dobFormatted = m.d_narodjennya ? `, ${toUADateFormat(m.d_narodjennya)} р.н.` : "";
       
       let entryWay = "";
@@ -2843,14 +2850,14 @@ async function notifyDistrictLeadersForMembers(membersList: Member[]) {
         entryWay = `${verb} в члени церкви`;
       }
 
-      text += `*${pibGenitive}*${dobFormatted}\n`;
+      text += `*${pibAccusative}*${dobFormatted}\n`;
       text += `${entryWay}\n\n`;
 
       const pronoun = m.gender === "сестра" ? "їй" : "йому";
       text += `В основному списку району *${rayonName}* ${pronoun} треба призначити опікуна.`;
     } else {
       for (const m of group) {
-        const pibGenitive = toUkrainianGenitive(m.pib, m.gender);
+        const pibAccusative = toUkrainianAccusative(m.pib, m.gender);
         const dobFormatted = m.d_narodjennya ? `, ${toUADateFormat(m.d_narodjennya)} р.н.` : "";
         
         let entryWay = "";
@@ -2867,7 +2874,7 @@ async function notifyDistrictLeadersForMembers(membersList: Member[]) {
           entryWay = `${verb} в члени церкви`;
         }
 
-        text += `- *${pibGenitive}*${dobFormatted}\n  ${entryWay}\n`;
+        text += `- *${pibAccusative}*${dobFormatted}\n  ${entryWay}\n`;
       }
       text += `\nВ основному списку району *${rayonName}* їм треба призначити опікунів.`;
     }

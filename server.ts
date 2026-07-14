@@ -2852,7 +2852,7 @@ async function notifyDistrictLeadersForMembers(membersList: Member[]) {
 
       text += `*${pibAccusative}*${dobFormatted}\n`;
       if (m.address) {
-        text += `Проживає по адресу: ${m.address}\n`;
+        text += `Проживає по адресу: ${m.address},\n`;
       }
       text += `${entryWay}\n\n`;
 
@@ -2879,7 +2879,7 @@ async function notifyDistrictLeadersForMembers(membersList: Member[]) {
 
         text += `- *${pibAccusative}*${dobFormatted}\n`;
         if (m.address) {
-          text += `  Проживає по адресу: ${m.address}\n`;
+          text += `  Проживає по адресу: ${m.address},\n`;
         }
         text += `  ${entryWay}\n`;
       }

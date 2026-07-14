@@ -2649,15 +2649,84 @@ app.post("/api/audit", (req, res) => {
 });
 
 /**
- * Helper to notify District Leader via Telegram when a new member joins their rayon.
- * Follows the specific identification algorithm requested by the user.
+ * Declines Ukrainian PIB (Прізвище, Ім'я, По батькові) to Genitive case (Родовий відмінок).
  */
+function toUkrainianGenitive(pib: string, gender: string): string {
+  if (!pib) return "";
+  const parts = pib.trim().split(/\s+/);
+  const declinedParts = parts.map((part) => {
+    const isMale = (gender === "брат");
+    const len = part.length;
+    if (len === 0) return part;
+
+    const partLower = part.toLowerCase();
+
+    if (isMale) {
+      if (partLower.endsWith("ич")) {
+        return part + "а";
+      }
+      if (partLower.endsWith("ий")) {
+        return part.slice(0, -2) + "ого";
+      }
+      if (partLower.endsWith("о")) {
+        return part.slice(0, -1) + "а";
+      }
+      if (partLower.endsWith("ій")) {
+        return part.slice(0, -2) + "ія";
+      }
+      if (partLower.endsWith("ь")) {
+        return part.slice(0, -1) + "я";
+      }
+      if (partLower.endsWith("а")) {
+        return part.slice(0, -1) + "и";
+      }
+      if (partLower.endsWith("я")) {
+        return part.slice(0, -1) + "і";
+      }
+      const lastChar = partLower.slice(-1);
+      const vowels = ["а", "о", "у", "е", "и", "і", "е", "є", "я", "ю", "ь"];
+      if (!vowels.includes(lastChar)) {
+        return part + "а";
+      }
+    } else {
+      if (partLower.endsWith("вна")) {
+        return part.slice(0, -1) + "и";
+      }
+      if (partLower.endsWith("ська") || partLower.endsWith("цька")) {
+        return part.slice(0, -1) + "ої";
+      }
+      if (partLower.endsWith("а")) {
+        return part.slice(0, -1) + "и";
+      }
+      if (partLower.endsWith("я")) {
+        return part.slice(0, -1) + "ї";
+      }
+    }
+
+    return part;
+  });
+
+  return declinedParts.join(" ");
+}
+
 /**
- * Helper to notify District Leader via Telegram when a new member joins their rayon.
- * Follows the specific identification algorithm requested by the user, with robust fuzzy matching
- * and a test/redirection mode.
+ * Formats "прийнятого/прийнятої з" from the "insha_gromada" field without duplicates.
  */
-async function notifyDistrictLeader(newMember: Member) {
+function formatJoinedFrom(inshaGromada: string, gender: string): string {
+  if (!inshaGromada) return "";
+  const verb = gender === "сестра" ? "прийнятої" : "прийнятого";
+  const g = inshaGromada.trim();
+  const lowerG = g.toLowerCase();
+  if (lowerG.startsWith("з ") || lowerG.startsWith("зі ") || lowerG.startsWith("із ")) {
+    return `${verb} ${g}`;
+  }
+  return `${verb} з ${g}`;
+}
+
+/**
+ * Groups and notifies district leaders for a list of newly joined members.
+ */
+async function notifyDistrictLeadersForMembers(membersList: Member[]) {
   const settings = getSettings();
   const botToken = settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
@@ -2665,127 +2734,172 @@ async function notifyDistrictLeader(newMember: Member) {
     return;
   }
 
-  const rayonName = newMember.rayon2_ukr;
-  if (!rayonName) return;
-
-  // Check test mode configuration
   const isTestMode = settings.enableTestMode === true || settings.enableTestMode === "true";
   const testTelegramId = String(settings.testTelegramId || "").trim();
 
-  // 1. Identification Algorithm: Find Rayon Leader PIB from bindings
-  // In the directories_rayon_bindings, find the entry for the rayonName and get presbyterId (member ID)
-  const binding = (directories_rayon_bindings as any[]).find(b => 
-    String(b.name).trim().toLowerCase() === String(rayonName).trim().toLowerCase()
-  );
+  // Group members by rayon
+  const rayonGroups: { [rayon: string]: Member[] } = {};
+  for (const member of membersList) {
+    const rayonName = member.rayon2_ukr;
+    if (!rayonName) continue;
+    if (!rayonGroups[rayonName]) {
+      rayonGroups[rayonName] = [];
+    }
+    rayonGroups[rayonName].push(member);
+  }
 
-  let leader: Member | undefined;
-  let leaderAccess: any = null;
-  let targetTelegramId = "";
-  let debugHeader = "";
+  // Process and send notifications per rayon
+  for (const [rayonName, group] of Object.entries(rayonGroups)) {
+    // 1. Find Rayon Leader binding
+    const binding = (directories_rayon_bindings as any[]).find(b => 
+      String(b.name).trim().toLowerCase() === String(rayonName).trim().toLowerCase()
+    );
 
-  if (binding && binding.presbyterId) {
-    const leaderId = Number(binding.presbyterId);
-    leader = members.find(m => m.id === leaderId);
-    if (leader) {
-      // Robust matching of the full PIB with abbreviated/initialed user names in access_dostup
-      const parts = leader.pib.trim().split(/\s+/);
-      if (parts.length > 0) {
-        const lastName = parts[0].toLowerCase();
-        const firstName = parts.length > 1 ? parts[1].toLowerCase() : "";
+    let leader: Member | undefined;
+    let leaderAccess: any = null;
+    let targetTelegramId = "";
+    let debugHeader = "";
 
-        const candidates = (access_dostup as any[]).filter(a => {
-          const userStr = String(a.user || "").trim().toLowerCase();
-          return userStr.startsWith(lastName);
-        });
+    if (binding && binding.presbyterId) {
+      const leaderId = Number(binding.presbyterId);
+      leader = members.find(m => m.id === leaderId);
+      if (leader) {
+        // Find leader in access_dostup
+        const parts = leader.pib.trim().split(/\s+/);
+        if (parts.length > 0) {
+          const lastName = parts[0].toLowerCase();
+          const firstName = parts.length > 1 ? parts[1].toLowerCase() : "";
 
-        if (candidates.length === 1) {
-          leaderAccess = candidates[0];
-        } else if (candidates.length > 1) {
-          if (firstName) {
-            for (const cand of candidates) {
-              const userStr = String(cand.user || "").trim().toLowerCase();
-              const afterLastName = userStr.replace(lastName, "").trim().replace(/[^a-zа-яіїєґ]/gi, "");
-              if (afterLastName && firstName.startsWith(afterLastName)) {
-                leaderAccess = cand;
-                break;
+          const candidates = (access_dostup as any[]).filter(a => {
+            const userStr = String(a.user || "").trim().toLowerCase();
+            return userStr.startsWith(lastName);
+          });
+
+          if (candidates.length === 1) {
+            leaderAccess = candidates[0];
+          } else if (candidates.length > 1) {
+            if (firstName) {
+              for (const cand of candidates) {
+                const userStr = String(cand.user || "").trim().toLowerCase();
+                const afterLastName = userStr.replace(lastName, "").trim().replace(/[^a-zа-яіїєґ]/gi, "");
+                if (afterLastName && firstName.startsWith(afterLastName)) {
+                  leaderAccess = cand;
+                  break;
+                }
               }
             }
-          }
-          if (!leaderAccess) {
-            leaderAccess = candidates[0];
+            if (!leaderAccess) {
+              leaderAccess = candidates[0];
+            }
           }
         }
       }
     }
-  }
 
-  if (leaderAccess) {
-    targetTelegramId = String(leaderAccess.telegramId || "").trim();
-  }
-
-  // Handle routing (Normal vs Test Mode)
-  let finalTelegramId = "";
-  if (isTestMode && testTelegramId) {
-    finalTelegramId = testTelegramId;
-    debugHeader = `⚠️ *[ТЕСТОВИЙ РЕЖИМ]*\n`;
-    if (leader) {
-      debugHeader += `Оригінальний отримувач: *${leader.pib}* (ID: ${leader.id})\n`;
-      debugHeader += `Район: *${rayonName}*\n`;
-      debugHeader += `Telegram ID отримувача: *${targetTelegramId || "Не знайдено"}*\n\n`;
-    } else {
-      debugHeader += `Район: *${rayonName}* (Керівника не налаштовано)\n\n`;
+    if (leaderAccess) {
+      targetTelegramId = String(leaderAccess.telegramId || "").trim();
     }
-  } else {
-    finalTelegramId = targetTelegramId;
-  }
 
-  if (!finalTelegramId || finalTelegramId === "—" || finalTelegramId === "") {
-    console.log(`[Telegram Notification] No target Telegram ID found. normal_target=${targetTelegramId}, isTestMode=${isTestMode}`);
-    return;
-  }
-
-  // 4. Construct the localized message text as per requested template
-  let text = debugHeader;
-  text += `📢 *ПОВІДОМЛЕННЯ про додавання нового члена церкви.*\n\n`;
-  text += `До району *${rayonName}* додано ${newMember.gender === "сестра" ? "сестру" : "брата"} *${newMember.pib}*`;
-  
-  if (newMember.d_narodjennya) {
-    text += `, ${toUADateFormat(newMember.d_narodjennya)} р.н.`;
-  }
-
-  const d_vodnogo = newMember.d_vodnogo;
-  const d_vstupu = newMember.d_vstupu;
-  
-  // Logic: Water Baptism vs Joined from other congregation
-  if (d_vodnogo && d_vstupu && d_vodnogo === d_vstupu) {
-    text += `; після Водного Хрещення ${toUADateFormat(d_vodnogo)}`;
-  } else if (newMember.insha_gromada) {
-    text += `; прийнятого з ${newMember.insha_gromada}`;
-  }
-  
-  text += `.\n\nВ основному списку Бази Церкви йому/їй треба призначити опікуна.`;
-
-  // 5. Send to Telegram API
-  try {
-    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: finalTelegramId,
-        text: text,
-        parse_mode: "Markdown"
-      })
-    });
-    const result = await response.json() as any;
-    if (result.ok) {
-      console.log(`[Telegram Notification] Successfully notified ${finalTelegramId} about ${newMember.pib}`);
+    let finalTelegramId = "";
+    if (isTestMode && testTelegramId) {
+      finalTelegramId = testTelegramId;
+      debugHeader = `⚠️ *[ТЕСТОВИЙ РЕЖИМ]*\n`;
+      if (leader) {
+        debugHeader += `Оригінальний отримувач: *${leader.pib}* (ID: ${leader.id})\n`;
+        debugHeader += `Район: *${rayonName}*\n`;
+        debugHeader += `Telegram ID отримувача: *${targetTelegramId || "Не знайдено"}*\n\n`;
+      } else {
+        debugHeader += `Район: *${rayonName}* (Керівника не налаштовано)\n\n`;
+      }
     } else {
-      console.error(`[Telegram Notification] API error for ${finalTelegramId}: ${result.description}`);
+      finalTelegramId = targetTelegramId;
     }
-  } catch (err: any) {
-    console.error(`[Telegram Notification] Fetch error for ${finalTelegramId}: ${err.message}`);
+
+    if (!finalTelegramId || finalTelegramId === "—" || finalTelegramId === "") {
+      console.log(`[Telegram Notification] No target Telegram ID found for rayon: ${rayonName}. normal_target=${targetTelegramId}, isTestMode=${isTestMode}`);
+      continue;
+    }
+
+    let text = debugHeader;
+    text += `📢 *ПОВІДОМЛЕННЯ про прийняття нового члена церкви.*\n\n`;
+    text += `До району *${rayonName}* додано:\n`;
+
+    if (group.length === 1) {
+      const m = group[0];
+      const pibGenitive = toUkrainianGenitive(m.pib, m.gender);
+      const dobFormatted = m.d_narodjennya ? `, ${toUADateFormat(m.d_narodjennya)} р.н.` : "";
+      
+      let entryWay = "";
+      const d_vodnogo = m.d_vodnogo;
+      const d_vstupu = m.d_vstupu;
+      
+      if (d_vodnogo && d_vstupu && d_vodnogo === d_vstupu) {
+        const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+        entryWay = `${verb} після Водного Хрещення ${toUADateFormat(d_vodnogo)}`;
+      } else if (m.insha_gromada) {
+        entryWay = formatJoinedFrom(m.insha_gromada, m.gender);
+      } else {
+        const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+        entryWay = `${verb} в члени церкви`;
+      }
+
+      text += `*${pibGenitive}*${dobFormatted}\n`;
+      text += `${entryWay}\n\n`;
+
+      const pronoun = m.gender === "сестра" ? "їй" : "йому";
+      text += `В основному списку району *${rayonName}* ${pronoun} треба призначити опікуна.`;
+    } else {
+      for (const m of group) {
+        const pibGenitive = toUkrainianGenitive(m.pib, m.gender);
+        const dobFormatted = m.d_narodjennya ? `, ${toUADateFormat(m.d_narodjennya)} р.н.` : "";
+        
+        let entryWay = "";
+        const d_vodnogo = m.d_vodnogo;
+        const d_vstupu = m.d_vstupu;
+        
+        if (d_vodnogo && d_vstupu && d_vodnogo === d_vstupu) {
+          const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+          entryWay = `${verb} після Водного Хрещення ${toUADateFormat(d_vodnogo)}`;
+        } else if (m.insha_gromada) {
+          entryWay = formatJoinedFrom(m.insha_gromada, m.gender);
+        } else {
+          const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+          entryWay = `${verb} в члени церкви`;
+        }
+
+        text += `- *${pibGenitive}*${dobFormatted}\n  ${entryWay}\n`;
+      }
+      text += `\nВ основному списку району *${rayonName}* їм треба призначити опікунів.`;
+    }
+
+    try {
+      const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: finalTelegramId,
+          text: text,
+          parse_mode: "Markdown"
+        })
+      });
+      const result = await response.json() as any;
+      if (result.ok) {
+        console.log(`[Telegram Notification] Successfully notified ${finalTelegramId} about ${group.length} members in rayon ${rayonName}`);
+      } else {
+        console.error(`[Telegram Notification] API error for ${finalTelegramId}: ${result.description}`);
+      }
+    } catch (err: any) {
+      console.error(`[Telegram Notification] Fetch error for ${finalTelegramId}: ${err.message}`);
+    }
   }
+}
+
+/**
+ * Backward-compatible helper to notify District Leader on single creation.
+ */
+async function notifyDistrictLeader(newMember: Member) {
+  await notifyDistrictLeadersForMembers([newMember]);
 }
 
 // 8. Get history changelogs List (Audit logs + Ministry Timeline events merged)
@@ -3231,7 +3345,7 @@ app.post("/api/members", async (req, res) => {
  * Endpoint to manually trigger notifications for members added in the last N days.
  */
 app.post("/api/admin/notify-recent-members", async (req, res) => {
-  const days = 6;
+  const days = 14;
   const now = new Date();
   const threshold = new Date();
   threshold.setDate(now.getDate() - days);
@@ -3244,17 +3358,15 @@ app.post("/api/admin/notify-recent-members", async (req, res) => {
 
   console.log(`[Manual Notify] Found ${recentMembers.length} members added in the last ${days} days.`);
 
-  let successCount = 0;
-  for (const member of recentMembers) {
-    try {
-      await notifyDistrictLeader(member);
-      successCount++;
-    } catch (err) {
-      console.error(`[Manual Notify] Failed for ${member.pib}:`, err);
-    }
+  let success = false;
+  try {
+    await notifyDistrictLeadersForMembers(recentMembers);
+    success = true;
+  } catch (err) {
+    console.error(`[Manual Notify] Failed to notify district leaders:`, err);
   }
 
-  res.json({ success: true, processed: recentMembers.length, sent: successCount });
+  res.json({ success: success, processed: recentMembers.length, sent: recentMembers.length });
 });
 
 // Seed Database State

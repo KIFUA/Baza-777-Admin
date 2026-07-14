@@ -230,7 +230,7 @@ export function NotificationSettings() {
           <span className="text-xs font-bold text-emerald-400">{message}</span>
           <button
             onClick={async () => {
-              if(!confirm("Надіслати сповіщення керівникам про всіх, хто приєднався за останні 6 днів?")) return;
+              if(!confirm("Надіслати сповіщення керівникам про всіх, хто приєднався за останні 14 днів?")) return;
               try {
                 const res = await fetch('/api/admin/notify-recent-members', { method: 'POST' });
                 const data = await res.json();
@@ -242,7 +242,7 @@ export function NotificationSettings() {
             className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border border-indigo-500/30"
           >
             <Bell className="w-3.5 h-3.5" />
-            Сповістити про нових (6 днів)
+            Сповістити про нових (14 днів)
           </button>
         </div>
         <button

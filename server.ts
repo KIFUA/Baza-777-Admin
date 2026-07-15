@@ -3385,7 +3385,7 @@ app.post("/api/members", async (req, res) => {
  * Endpoint to manually trigger notifications for members added in the last N days.
  */
 app.post("/api/admin/notify-recent-members", async (req, res) => {
-  const days = 14;
+  const days = parseInt(req.body.days) || 14;
   const now = new Date();
   const threshold = new Date();
   threshold.setDate(now.getDate() - days);

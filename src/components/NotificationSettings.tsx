@@ -10,7 +10,8 @@ export function NotificationSettings() {
     botToken: '',
     appPassword: '',
     enableTestMode: false,
-    testTelegramId: ''
+    testTelegramId: '',
+    notificationDays: 14
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,7 +30,8 @@ export function NotificationSettings() {
           botToken: data.botToken || '',
           appPassword: data.appPassword || '',
           enableTestMode: data.enableTestMode === true || data.enableTestMode === "true",
-          testTelegramId: data.testTelegramId || ''
+          testTelegramId: data.testTelegramId || '',
+          notificationDays: data.notificationDays || 14
         });
         setLoading(false);
       })
@@ -182,22 +184,39 @@ export function NotificationSettings() {
         <div className="border-t border-[#224853]/30 pt-4 mt-2">
           <h4 className="font-bold text-slate-400 text-[10px] uppercase tracking-widest mb-2.5">Додаткові сервіси</h4>
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={async () => {
-                if(!confirm("Надіслати сповіщення керівникам про всіх, хто приєднався за останні 14 днів?")) return;
-                try {
-                  const res = await fetch('/api/admin/notify-recent-members', { method: 'POST' });
-                  const data = await res.json();
-                  alert(`Готово! Опрацьовано людей: ${data.processed}. Надіслано сповіщень: ${data.sent}`);
-                } catch (err) {
-                  alert('Помилка при відправці');
-                }
-              }}
-              className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border border-indigo-500/30 outline-none"
-            >
-              <Bell className="w-3.5 h-3.5" />
-              Сповістити про нових (14 днів)
-            </button>
+            <div className="flex items-center bg-indigo-600/10 border border-indigo-500/30 rounded-lg overflow-hidden transition-all">
+              <button
+                onClick={async () => {
+                  if(!confirm(`Надіслати сповіщення керівникам про всіх нових членів, хто приєднався за останні ${settings.notificationDays || 14} днів?`)) return;
+                  try {
+                    const res = await fetch('/api/admin/notify-recent-members', { 
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ days: settings.notificationDays || 14 })
+                    });
+                    const data = await res.json();
+                    alert(`Готово! Опрацьовано людей: ${data.processed}. Надіслано сповіщень: ${data.sent}`);
+                  } catch (err) {
+                    alert('Помилка при відправці');
+                  }
+                }}
+                className="flex items-center gap-1.5 hover:bg-indigo-600 text-indigo-400 hover:text-white px-3 py-1.5 text-[10px] font-bold transition-all outline-none border-r border-indigo-500/20"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                Сповістити про нових членів
+              </button>
+              <select 
+                value={settings.notificationDays || 14}
+                onChange={(e) => setSettings({ ...settings, notificationDays: parseInt(e.target.value) })}
+                className="bg-transparent text-indigo-300 text-[10px] font-bold px-2 py-1.5 outline-none cursor-pointer hover:bg-indigo-600/20 appearance-none text-center min-w-[60px]"
+              >
+                <option value={7} className="bg-[#13282e]">7 днів</option>
+                <option value={14} className="bg-[#13282e]">14 днів</option>
+                <option value={30} className="bg-[#13282e]">30 днів</option>
+                <option value={60} className="bg-[#13282e]">60 днів</option>
+                <option value={90} className="bg-[#13282e]">90 днів</option>
+              </select>
+            </div>
 
             <button
               onClick={() => setShowTestModal(true)}

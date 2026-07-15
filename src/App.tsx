@@ -868,15 +868,17 @@ export default function App() {
                           Редагувати
                         </button>
                       )}
-                      <button
-                        onClick={() => {
-                          setEditingMember(null);
-                          setShowForm(true);
-                        }}
-                        className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
-                      >
-                        + Додати члена
-                      </button>
+                      {isCurrentUserAdmin && (
+                        <button
+                          onClick={() => {
+                            setEditingMember(null);
+                            setShowForm(true);
+                          }}
+                          className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+                        >
+                          + Додати члена
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}

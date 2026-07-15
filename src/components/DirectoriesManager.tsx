@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
   CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
-  Edit, UserPlus, ShieldAlert, Save, Settings, Bell
+  Edit, UserPlus, ShieldAlert, Save, Settings, Bell, FileText
 } from 'lucide-react';
 import { Member } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
@@ -457,10 +457,46 @@ export default function DirectoriesManager({
       if (resp.ok) {
         const json = await resp.json();
         setBirthdayData(json);
+        
+        // Also load manual recipient settings if they exist in lookups
+        if (lookups?.directories) {
+          if (lookups.directories.birthday_manual_emails) {
+            setCustomEmails(lookups.directories.birthday_manual_emails);
+          }
+          if (lookups.directories.birthday_manual_chat_ids) {
+            setCustomTelegramIds(lookups.directories.birthday_manual_chat_ids);
+          }
+          if (lookups.directories.birthday_manual_tg_token) {
+            setTgToken(lookups.directories.birthday_manual_tg_token);
+          }
+        }
       }
     } catch (_) {
     } finally {
       setBdayLoading(false);
+    }
+  };
+
+  const handleSaveManualRecipients = async () => {
+    if (!lookups?.directories) return;
+    const payload = {
+      ...lookups.directories,
+      birthday_manual_emails: customEmails,
+      birthday_manual_chat_ids: customTelegramIds,
+      birthday_manual_tg_token: tgToken
+    };
+    try {
+      const resp = await fetch('/api/directories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        alert("Отримувачі збережені!");
+        await onRefreshLookups();
+      }
+    } catch (err) {
+      console.error("Failed to save recipients:", err);
     }
   };
 
@@ -522,7 +558,7 @@ export default function DirectoriesManager({
   };
 
   // Trigger Weekly Birthdays Send
-  const handleSendBirthdays = async (type: 'telegram_me' | 'telegram_group' | 'email_text' | 'email_pdf') => {
+  const handleSendBirthdays = async (type: 'telegram_me' | 'telegram_group' | 'telegram_pdf' | 'email_text' | 'email_pdf') => {
     setSendingStatus({ msg: 'Надсилання розписку...' });
     try {
       const resp = await fetch('/api/birthdays/send', {
@@ -997,7 +1033,14 @@ export default function DirectoriesManager({
                               className="flex-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
                             >
                               <Users className="h-3 w-3" />
-                              <span>ЦЕРКОВНА РАДА</span>
+                              <span>Текст ЦР</span>
+                            </button>
+                            <button
+                              onClick={() => handleSendBirthdays('telegram_pdf')}
+                              className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
+                            >
+                              <FileText className="h-3 w-3" />
+                              <span>PDF ЦР</span>
                             </button>
                           </div>
                         </div>
@@ -1026,8 +1069,7 @@ export default function DirectoriesManager({
                             </div>
                             
                             <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-                              У повній відповідності з GAS-сценарієм, тригер надсилає листи на наступні адреси: <br />
-                              <span className="font-mono text-[9px] text-slate-350 font-semibold block mt-0.5 truncate">kostel.if.ua@gmail.com, liliiachupryna@gmail.com, solbo1971@gmail.com</span>
+                              Тригер надсилає листи на вказані вище адреси. Якщо поле порожнє, будуть використані адреси з налаштувань (Понеділок/Середа).
                             </p>
                           </div>
 
@@ -1045,6 +1087,16 @@ export default function DirectoriesManager({
                             >
                               <Send className="h-3 w-3" />
                               <span>Надіслати PDF звіт</span>
+                            </button>
+                          </div>
+                          
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              onClick={handleSaveManualRecipients}
+                              className="bg-sky-600/20 hover:bg-sky-600 text-sky-400 hover:text-white border border-sky-500/30 rounded px-3 py-1.5 text-[9px] font-bold flex items-center gap-1.5 transition-all outline-none"
+                            >
+                              <Save className="w-3 h-3" />
+                              Зберегти отримувачів (Email/TG)
                             </button>
                           </div>
                         </div>

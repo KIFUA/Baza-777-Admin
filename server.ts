@@ -4,6 +4,8 @@ import fs from "fs";
 import os from "os";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
+import axios from "axios";
+import FormData from "form-data";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import XLSX from "xlsx";
 import { 
@@ -1618,7 +1620,7 @@ app.post("/api/birthdays/send", async (req, res) => {
   let telegramLogs = "";
   let emailLogs = "";
 
-  if (type === "telegram_me" || type === "telegram_group") {
+  if (type === "telegram_me" || type === "telegram_group" || type === "telegram_pdf") {
     const settings = getSettings();
     const token = customToken || settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
     const defaultChatId = type === "telegram_me" ? "1919236304" : "-1001914940560";
@@ -1640,28 +1642,92 @@ app.post("/api/birthdays/send", async (req, res) => {
       let tgFailCount = 0;
       let lastError = "";
       
-      for (const singleChatId of chatIds) {
+      if (type === "telegram_pdf") {
+        const tempPdfPath = path.join(os.tmpdir(), `birthdays_${Date.now()}.pdf`);
         try {
-          const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
-          const response = await fetch(tgUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: singleChatId,
-              text: msg,
-              parse_mode: "Markdown"
-            })
-          });
-          const rJson = await response.json() as any;
-          if (rJson.ok) {
-            tgSuccessCount++;
+          const doc = new PDFDocument({ size: 'A5', margin: 30 });
+          const writeStream = fs.createWriteStream(tempPdfPath);
+          doc.pipe(writeStream);
+
+          const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+          const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+          
+          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+            doc.registerFont('Roboto-Regular', regularFont);
+            doc.registerFont('Roboto-Bold', boldFont);
+
+            doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.moveDown(0.5);
+            doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            doc.moveDown(2);
+
+            birthdays.list.forEach((item: any) => {
+              doc.font('Roboto-Bold').fontSize(12);
+              if (item.isJubilee) doc.fillColor('red');
+              else doc.fillColor('black');
+              doc.text(item.text);
+              doc.fillColor('black');
+              doc.moveDown(0.5);
+            });
           } else {
-            tgFailCount++;
-            lastError = rJson.description || "unknown error";
+            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.moveDown();
+            birthdays.list.forEach((item: any) => doc.fontSize(12).text(item.text));
           }
-        } catch (tgErr: any) {
-          tgFailCount++;
-          lastError = tgErr.message;
+
+          doc.end();
+          await new Promise<void>((resolve, reject) => {
+            writeStream.on('finish', () => resolve());
+            writeStream.on('error', (err) => reject(err));
+          });
+
+          for (const singleChatId of chatIds) {
+            try {
+              const formData = new FormData();
+              formData.append('chat_id', singleChatId);
+              formData.append('document', fs.createReadStream(tempPdfPath), { filename: 'imenynnyky.pdf' });
+              formData.append('caption', `🎂 Список іменинників на тиждень (${birthdays.weekRangeText})`);
+
+              const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+                headers: formData.getHeaders()
+              });
+              if (response.data.ok) tgSuccessCount++;
+              else {
+                tgFailCount++;
+                lastError = response.data.description;
+              }
+            } catch (err: any) {
+              tgFailCount++;
+              lastError = err.response?.data?.description || err.message;
+            }
+          }
+        } finally {
+          if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+        }
+      } else {
+        for (const singleChatId of chatIds) {
+          try {
+            const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+            const response = await fetch(tgUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: singleChatId,
+                text: msg,
+                parse_mode: "Markdown"
+              })
+            });
+            const rJson = await response.json() as any;
+            if (rJson.ok) {
+              tgSuccessCount++;
+            } else {
+              tgFailCount++;
+              lastError = rJson.description || "unknown error";
+            }
+          } catch (tgErr: any) {
+            tgFailCount++;
+            lastError = tgErr.message;
+          }
         }
       }
       
@@ -1680,7 +1746,7 @@ app.post("/api/birthdays/send", async (req, res) => {
     }
     
     if (destinations.length === 0) {
-      destinations.push("kostel.if.ua@gmail.com", "liliiachupryna@gmail.com", "solbo1971@gmail.com");
+      return res.status(400).json({ error: "No email destinations provided." });
     }
 
     if (!appPassword) {
@@ -1715,60 +1781,30 @@ app.post("/api/birthdays/send", async (req, res) => {
           const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
           const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
           
-          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            doc.registerFont('Roboto-Regular', regularFont);
-            doc.registerFont('Roboto-Bold', boldFont);
+            if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+              doc.registerFont('Roboto-Regular', regularFont);
+              doc.registerFont('Roboto-Bold', boldFont);
 
-            const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-            doc.font('Roboto-Bold').fontSize(14);
-            const headerWidth = doc.widthOfString(headerText);
-            const prefixWidth = doc.widthOfString('ІМЕ');
-            const headerLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - headerWidth) / 2;
-            const listLeftX = headerLeftX + prefixWidth;
+              doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+              doc.moveDown(0.5);
+              doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+              doc.moveDown(2);
 
-            doc.text(headerText, { align: 'center' });
-            doc.moveDown(0.5);
-            
-            const subheaderText = `/ ${birthdays.weekRangeText} /`;
-            doc.font('Roboto-Regular').fontSize(10);
-            doc.text(subheaderText, { align: 'center' });
-            doc.moveDown(2);
-
-            birthdays.list.forEach((item: any) => {
-              doc.font('Roboto-Bold').fontSize(12);
-              if (item.isJubilee) {
-                doc.fillColor('red');
-              } else {
+              birthdays.list.forEach((item: any) => {
+                doc.font('Roboto-Bold').fontSize(12);
+                if (item.isJubilee) doc.fillColor('red');
+                else doc.fillColor('black');
+                
+                const nameText = item.cleanName || item.fullName || item.shortName;
+                doc.text(nameText, { align: 'center' });
                 doc.fillColor('black');
-              }
-              const nameText = item.cleanName || item.fullName || item.shortName;
-              doc.text(nameText, listLeftX, doc.y);
-              doc.moveDown(0.5);
-            });
-          } else {
-            console.warn("Fonts not found for PDF generation at:", regularFont);
-            const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-            doc.fontSize(14);
-            const headerWidth = doc.widthOfString(headerText);
-            const prefixWidth = doc.widthOfString('ІМЕ');
-            const headerLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - headerWidth) / 2;
-            const listLeftX = headerLeftX + prefixWidth;
-
-            doc.text(headerText, { align: 'center' });
-            doc.moveDown(0.5);
-            
-            const subheaderText = `/ ${birthdays.weekRangeText} /`;
-            doc.fontSize(10);
-            doc.text(subheaderText, { align: 'center' });
-            doc.moveDown(2);
-            
-            birthdays.list.forEach((item: any) => {
-              doc.fontSize(12);
-              const nameText = item.cleanName || item.fullName || item.shortName;
-              doc.text(nameText, listLeftX, doc.y);
-              doc.moveDown(0.5);
-            });
-          }
+                doc.moveDown(0.5);
+              });
+            } else {
+              doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+              doc.moveDown();
+              birthdays.list.forEach((item: any) => doc.fontSize(12).text(item.text, { align: 'center' }));
+            }
           
           doc.end();
 

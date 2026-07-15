@@ -1637,7 +1637,7 @@ app.post("/api/birthdays/send", async (req, res) => {
     if (!token) {
       telegramLogs = `[Симуляція] Telegram бот токен НЕ налаштований. Список було б надіслано в чат: ${chatIdStr}.`;
     } else {
-      const chatIds = chatIdStr.split(",").map(id => id.trim()).filter(Boolean);
+      const chatIds = Array.from(new Set(chatIdStr.split(",").map(id => id.trim()).filter(Boolean)));
       let tgSuccessCount = 0;
       let tgFailCount = 0;
       let lastError = "";
@@ -1653,26 +1653,30 @@ app.post("/api/birthdays/send", async (req, res) => {
           const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
           
           if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            doc.registerFont('Roboto-Regular', regularFont);
-            doc.registerFont('Roboto-Bold', boldFont);
-
-            doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
             doc.moveDown(0.5);
-            doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
             doc.moveDown(2);
 
             birthdays.list.forEach((item: any) => {
-              doc.font('Roboto-Bold').fontSize(12);
+              doc.font(boldFont).fontSize(12);
               if (item.isJubilee) doc.fillColor('red');
               else doc.fillColor('black');
-              doc.text(item.text);
+              
+              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
+              const ageText = item.age ? ` (${item.age} р.)` : '';
+              doc.text(`${nameText}${ageText}`, { align: 'center' });
+              
               doc.fillColor('black');
               doc.moveDown(0.5);
             });
           } else {
             doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
             doc.moveDown();
-            birthdays.list.forEach((item: any) => doc.fontSize(12).text(item.text));
+            birthdays.list.forEach((item: any) => {
+              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
+              doc.fontSize(12).text(nameText, { align: 'center' });
+            });
           }
 
           doc.end();
@@ -1745,6 +1749,9 @@ app.post("/api/birthdays/send", async (req, res) => {
       destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
     }
     
+    // De-duplicate
+    destinations = Array.from(new Set(destinations));
+    
     if (destinations.length === 0) {
       return res.status(400).json({ error: "No email destinations provided." });
     }
@@ -1782,28 +1789,30 @@ app.post("/api/birthdays/send", async (req, res) => {
           const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
           
             if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-              doc.registerFont('Roboto-Regular', regularFont);
-              doc.registerFont('Roboto-Bold', boldFont);
-
-              doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+              doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
               doc.moveDown(0.5);
-              doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+              doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
               doc.moveDown(2);
 
               birthdays.list.forEach((item: any) => {
-                doc.font('Roboto-Bold').fontSize(12);
+                doc.font(boldFont).fontSize(12);
                 if (item.isJubilee) doc.fillColor('red');
                 else doc.fillColor('black');
                 
-                const nameText = item.cleanName || item.fullName || item.shortName;
-                doc.text(nameText, { align: 'center' });
+                const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
+                const ageText = item.age ? ` (${item.age} р.)` : '';
+                doc.text(`${nameText}${ageText}`, { align: 'center' });
+                
                 doc.fillColor('black');
                 doc.moveDown(0.5);
               });
             } else {
               doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
               doc.moveDown();
-              birthdays.list.forEach((item: any) => doc.fontSize(12).text(item.text, { align: 'center' }));
+              birthdays.list.forEach((item: any) => {
+                const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
+                doc.fontSize(12).text(nameText, { align: 'center' });
+              });
             }
           
           doc.end();

@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import os from "os";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
@@ -1700,7 +1701,7 @@ app.post("/api/birthdays/send", async (req, res) => {
 
         let tempPdfPath = "";
         if (type === "email_pdf") {
-          tempPdfPath = path.join(process.cwd(), `birthdays_manual_${Date.now()}.pdf`);
+          tempPdfPath = path.join(os.tmpdir(), `birthdays_manual_${Date.now()}.pdf`);
           const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);

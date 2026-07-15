@@ -3,6 +3,7 @@ import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 export interface BirthdaySettings {
     mondayEmails: string;
@@ -15,7 +16,7 @@ export interface BirthdaySettings {
 
 let isInitialized = false;
 
-const STATE_FILE = path.join(process.cwd(), 'last_sent_distributions.json');
+const STATE_FILE = path.join(os.tmpdir(), 'last_sent_distributions.json');
 
 const getKyivDateTime = () => {
     const d = new Date();
@@ -156,7 +157,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             return;
         }
 
-        const pdfPath = path.join(process.cwd(), 'birthdays_temp.pdf');
+        const pdfPath = path.join(os.tmpdir(), 'birthdays_temp.pdf');
         const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);

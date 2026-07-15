@@ -165,14 +165,18 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
         
         if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+            doc.font(boldFont).fontSize(14);
+            const headerWidth = doc.widthOfString(headerText);
+            const prefixWidth = doc.widthOfString('ІМЕ');
+            const headerLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - headerWidth) / 2;
+            const listLeftX = headerLeftX + prefixWidth;
+
+            doc.text(headerText, { align: 'center' });
             doc.moveDown(0.5);
             
             const subheaderText = `/ ${birthdays.weekRangeText} /`;
             doc.font(regularFont).fontSize(10);
-            const textWidth = doc.widthOfString(subheaderText);
-            const listLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - textWidth) / 2;
-            
             doc.text(subheaderText, { align: 'center' });
             doc.moveDown(2);
 

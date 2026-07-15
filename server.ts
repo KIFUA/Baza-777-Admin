@@ -1670,8 +1670,14 @@ app.post("/api/birthdays/send", async (req, res) => {
   } else if (type === "email_text" || type === "email_pdf") {
     const settings = getSettings();
     const appPassword = settings.appPassword;
-    const destinationsStr = type === "email_pdf" ? settings.wednesdayEmails : settings.mondayEmails;
-    const destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
+    
+    let destinations: string[] = [];
+    if (req.body.customEmails) {
+      destinations = req.body.customEmails.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+    } else {
+      const destinationsStr = type === "email_pdf" ? settings.wednesdayEmails : settings.mondayEmails;
+      destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
+    }
     
     if (destinations.length === 0) {
       destinations.push("kostel.if.ua@gmail.com", "liliiachupryna@gmail.com", "solbo1971@gmail.com");
@@ -1706,12 +1712,15 @@ app.post("/api/birthdays/send", async (req, res) => {
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);
 
-          const regularFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-          const boldFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+          const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+          const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
           
           if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+            doc.registerFont('Roboto-Regular', regularFont);
+            doc.registerFont('Roboto-Bold', boldFont);
+
             const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-            doc.font(boldFont).fontSize(14);
+            doc.font('Roboto-Bold').fontSize(14);
             const headerWidth = doc.widthOfString(headerText);
             const prefixWidth = doc.widthOfString('ІМЕ');
             const headerLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - headerWidth) / 2;
@@ -1721,12 +1730,12 @@ app.post("/api/birthdays/send", async (req, res) => {
             doc.moveDown(0.5);
             
             const subheaderText = `/ ${birthdays.weekRangeText} /`;
-            doc.font(regularFont).fontSize(10);
+            doc.font('Roboto-Regular').fontSize(10);
             doc.text(subheaderText, { align: 'center' });
             doc.moveDown(2);
 
             birthdays.list.forEach((item: any) => {
-              doc.font(boldFont).fontSize(12);
+              doc.font('Roboto-Bold').fontSize(12);
               if (item.isJubilee) {
                 doc.fillColor('red');
               } else {
@@ -1737,6 +1746,7 @@ app.post("/api/birthdays/send", async (req, res) => {
               doc.moveDown(0.5);
             });
           } else {
+            console.warn("Fonts not found for PDF generation at:", regularFont);
             const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
             doc.fontSize(14);
             const headerWidth = doc.widthOfString(headerText);

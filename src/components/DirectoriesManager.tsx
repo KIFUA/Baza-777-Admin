@@ -402,6 +402,8 @@ export default function DirectoriesManager({
   const [birthdayData, setBirthdayData] = useState<any>(null);
   const [bdayLoading, setBdayLoading] = useState(false);
   const [tgToken, setTgToken] = useState('');
+  const [customEmails, setCustomEmails] = useState('');
+  const [customTelegramIds, setCustomTelegramIds] = useState('');
   const [sendingStatus, setSendingStatus] = useState<{ success?: boolean; msg?: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -528,7 +530,9 @@ export default function DirectoriesManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
-          customToken: tgToken || undefined
+          customToken: tgToken || undefined,
+          customEmails: customEmails || undefined,
+          customChatId: customTelegramIds || undefined
         })
       });
       if (resp.ok) {
@@ -966,6 +970,17 @@ export default function DirectoriesManager({
                               onChange={(e) => setTgToken(e.target.value)}
                               className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
                             />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">Отримувачі Chat ID (через кому)</label>
+                            <input
+                              type="text"
+                              placeholder="Напр: 1919236304, -1001914940560"
+                              value={customTelegramIds}
+                              onChange={(e) => setCustomTelegramIds(e.target.value)}
+                              className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
+                            />
                             <p className="text-[8px] text-slate-450 mt-0.5 leading-tight">Бот повинен бути доданий у чат-отримувач для здійснення реальних відправок.</p>
                           </div>
 
@@ -995,10 +1010,21 @@ export default function DirectoriesManager({
                                 <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
                                   <Mail className="h-3.5 w-3.5 text-emerald-400" />
                                 </span>
-                                <span>Email Рассылка (Майже реальна)</span>
+                                <span>Email Розсилка (Майже реальна)</span>
                               </span>
                               <span className="text-[8px] bg-[#1a3843] text-emerald-400 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">PDF / Текст</span>
                             </div>
+                            
+                            <div className="space-y-1 mt-2">
+                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">Отримувачі Email (через кому)</label>
+                              <textarea
+                                placeholder="Напр: email1@gmail.com, email2@gmail.com"
+                                value={customEmails}
+                                onChange={(e) => setCustomEmails(e.target.value)}
+                                className="w-full h-12 rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-none placeholder-slate-500 resize-none"
+                              />
+                            </div>
+                            
                             <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
                               У повній відповідності з GAS-сценарієм, тригер надсилає листи на наступні адреси: <br />
                               <span className="font-mono text-[9px] text-slate-350 font-semibold block mt-0.5 truncate">kostel.if.ua@gmail.com, liliiachupryna@gmail.com, solbo1971@gmail.com</span>

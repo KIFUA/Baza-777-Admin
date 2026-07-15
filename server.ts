@@ -1693,7 +1693,9 @@ app.post("/api/birthdays/send", async (req, res) => {
           from: '"База 777" <kostel.if.ua@gmail.com>',
           to: destinations,
           subject: subject,
-          text: msg.replace(/\*\*/g, "") // Remove Markdown bold styling for plain text email
+          text: type === "email_pdf"
+            ? `📄 Прикріплено файл ПДФ зі списком іменинників поточного тижня (${birthdays.weekRangeText}).`
+            : msg.replace(/\*\*/g, "") // Remove Markdown bold styling for plain text email
         };
 
         let tempPdfPath = "";

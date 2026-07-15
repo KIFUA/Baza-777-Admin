@@ -15,6 +15,7 @@ export function NotificationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [showTestModal, setShowTestModal] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings/notifications')
@@ -177,74 +178,39 @@ export function NotificationSettings() {
           </div>
         </div>
 
-        {/* Test Mode Redirection Section */}
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 space-y-4">
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 flex-shrink-0 text-amber-500 mt-0.5" />
-            <div>
-              <p className="font-bold text-amber-400 text-xs uppercase tracking-wider mb-1">Режим тестування бота та перенаправлення</p>
-              <p className="text-[11px] text-slate-300 leading-relaxed">
-                Оскільки Telegram забороняє надсилати повідомлення користувачам, які не натиснули <strong>СТАРТ</strong> у боті, ви можете увімкнути тестовий режим. 
-                Усі сповіщення для керівників районів будуть надходити <strong>особисто вам</strong> на тестовий ID. Ви зможете перевірити роботу бота без залучення керівників.
-              </p>
-            </div>
-          </div>
+        {/* Additional Services Section */}
+        <div className="border-t border-[#224853]/30 pt-4 mt-2">
+          <h4 className="font-bold text-slate-400 text-[10px] uppercase tracking-widest mb-2.5">Додаткові сервіси</h4>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={async () => {
+                if(!confirm("Надіслати сповіщення керівникам про всіх, хто приєднався за останні 14 днів?")) return;
+                try {
+                  const res = await fetch('/api/admin/notify-recent-members', { method: 'POST' });
+                  const data = await res.json();
+                  alert(`Готово! Опрацьовано людей: ${data.processed}. Надіслано сповіщень: ${data.sent}`);
+                } catch (err) {
+                  alert('Помилка при відправці');
+                }
+              }}
+              className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border border-indigo-500/30 outline-none"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              Сповістити про нових (14 днів)
+            </button>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox"
-                id="enableTestMode"
-                name="enableTestMode"
-                checked={settings.enableTestMode}
-                onChange={(e) => setSettings({ ...settings, enableTestMode: e.target.checked })}
-                className="w-4 h-4 rounded border-[#224853] bg-[#0e2128] text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
-              />
-              <label htmlFor="enableTestMode" className="text-xs font-bold text-slate-300 cursor-pointer select-none">
-                Увімкнути тестовий режим (перенаправлення)
-              </label>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
-                Ваш тестовий Telegram Chat ID
-              </label>
-              <input 
-                type="text"
-                name="testTelegramId"
-                value={settings.testTelegramId}
-                onChange={handleChange}
-                placeholder="Введіть ваш Telegram ID (наприклад, 240931069)"
-                className="w-full px-3 py-1.5 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 placeholder-slate-600 transition-colors"
-              />
-              <p className="text-[10px] text-slate-500 mt-1">
-                При активному режимі, повідомлення надходитимуть на цей ID з детальним описом того, кому вони мали бути відправлені.
-              </p>
-            </div>
+            <button
+              onClick={() => setShowTestModal(true)}
+              className="flex items-center gap-1.5 bg-amber-600/20 hover:bg-amber-600 text-amber-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border border-amber-500/30 outline-none"
+            >
+              ⚙️ Режим тестування бота та перенаправлення
+            </button>
           </div>
         </div>
       </div>
 
       <div className="bg-[#1a3843]/60 px-4 py-3 border-t border-[#224853]/50 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-emerald-400">{message}</span>
-          <button
-            onClick={async () => {
-              if(!confirm("Надіслати сповіщення керівникам про всіх, хто приєднався за останні 14 днів?")) return;
-              try {
-                const res = await fetch('/api/admin/notify-recent-members', { method: 'POST' });
-                const data = await res.json();
-                alert(`Готово! Опрацьовано людей: ${data.processed}. Надіслано сповіщень: ${data.sent}`);
-              } catch (err) {
-                alert('Помилка при відправці');
-              }
-            }}
-            className="flex items-center gap-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all border border-indigo-500/30"
-          >
-            <Bell className="w-3.5 h-3.5" />
-            Сповістити про нових (14 днів)
-          </button>
-        </div>
+        <span className="text-xs font-bold text-emerald-400">{message}</span>
         <button
           onClick={handleSave}
           disabled={saving}
@@ -254,6 +220,79 @@ export function NotificationSettings() {
           {saving ? 'Збереження...' : 'Зберегти налаштування'}
         </button>
       </div>
+
+      {/* Test Mode Redirection Modal */}
+      {showTestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-4">
+          <div className="bg-[#13282e] border border-amber-500/30 rounded-xl p-5 max-w-md w-full shadow-2xl relative space-y-4">
+            <button 
+              onClick={() => setShowTestModal(false)}
+              className="absolute top-3 right-3 text-slate-400 hover:text-white text-sm outline-none"
+            >
+              ✕
+            </button>
+            
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 flex-shrink-0 text-amber-500 mt-0.5" />
+              <div>
+                <p className="font-bold text-amber-400 text-xs uppercase tracking-wider mb-1">Режим тестування бота та перенаправлення</p>
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Оскільки Telegram забороняє надсилати повідомлення користувачам, які не натиснули <strong>СТАРТ</strong> у боті, ви можете увімкнути тестовий режим. 
+                  Усі сповіщення для керівників районів будуть надходити <strong>особисто вам</strong> на тестовий ID. Ви зможете перевірити роботу бота без залучення керівників.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2 border-t border-[#224853]/40">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox"
+                  id="enableTestMode"
+                  name="enableTestMode"
+                  checked={settings.enableTestMode}
+                  onChange={(e) => setSettings({ ...settings, enableTestMode: e.target.checked })}
+                  className="w-4 h-4 rounded border-[#224853] bg-[#0e2128] text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
+                />
+                <label htmlFor="enableTestMode" className="text-xs font-bold text-slate-300 cursor-pointer select-none">
+                  Увімкнути тестовий режим (перенаправлення)
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                  Ваш тестовий Telegram Chat ID
+                </label>
+                <input 
+                  type="text"
+                  name="testTelegramId"
+                  value={settings.testTelegramId}
+                  onChange={handleChange}
+                  placeholder="наприклад, 240931069"
+                  className="w-full px-3 py-1.5 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 placeholder-slate-600 transition-colors font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#224853]/40">
+              <button
+                onClick={() => setShowTestModal(false)}
+                className="px-3 py-1.5 bg-[#1a3843]/80 hover:bg-[#1a3843] text-slate-300 hover:text-white rounded-lg text-xs font-bold transition-colors outline-none"
+              >
+                Скасувати
+              </button>
+              <button
+                onClick={async () => {
+                  await handleSave();
+                  setShowTestModal(false);
+                }}
+                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors outline-none"
+              >
+                Зберегти
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

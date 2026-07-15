@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, DashboardStats } from '../types';
 import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, FileDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 interface StatsDashboardProps {
   stats: DashboardStats | null;
@@ -910,7 +911,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                             );
                           })()}
                         </td>
-                        <td className="p-2 text-slate-300 whitespace-pre-wrap leading-tight">{m.d_kontaktiv?.replace(/\s*\/\s*/g, ', ')}</td>
+                        <td className="p-2 text-slate-300 whitespace-pre-wrap leading-tight">
+                          {parseAndNormalizeContactDates(m.d_kontaktiv).join(', ')}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

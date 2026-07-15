@@ -1470,30 +1470,43 @@
 
       function applyAdminRestrictions() {
         let isAdmin = (localStorage.getItem("user_tg_id") === ALLOWED_TG_ID);
-        if (!isAdmin) {
-          try {
-            const cached = localStorage.getItem("baza_current_session_user");
-            if (cached) {
-              const sessionUser = JSON.parse(cached);
-              if (sessionUser) {
-                const isSessionAdmin = sessionUser.level === 'IV-й' || sessionUser.level === 'ІІІ-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
-                if (isSessionAdmin) {
-                  isAdmin = true;
-                }
+        let isGlobalViewer = false;
+        try {
+          const cached = localStorage.getItem("baza_current_session_user");
+          if (cached) {
+            const sessionUser = JSON.parse(cached);
+            if (sessionUser) {
+              const isSessionAdmin = sessionUser.level === 'IV-й' || sessionUser.level === 'ІІІ-й' || (sessionUser.rayon === 'ЦЕНТР' && sessionUser.user && sessionUser.user.includes('Черняк Вал.'));
+              if (isSessionAdmin) {
+                isAdmin = true;
+              }
+              if (sessionUser.rayon === 'ВСІ РАЙОНИ') {
+                isGlobalViewer = true;
               }
             }
-          } catch (e) {
-            console.error("Error checking session user in applyAdminRestrictions:", e);
           }
+        } catch (e) {
+          console.error("Error checking session user in applyAdminRestrictions:", e);
         }
+
         const quickFilterContainer = document.getElementById("quickFilterContainer");
         const btnNewCard = document.getElementById("btnNewCard");
         
+        const btnFilterLeft = document.getElementById("btnFilterLeft");
+        const btnFilterAll = document.getElementById("btnFilterAll");
+
         if (quickFilterContainer) {
-          if (isAdmin) {
-            quickFilterContainer.classList.remove("hidden");
-          } else {
-            quickFilterContainer.classList.add("hidden");
+          // Keep container visible but hide specific buttons
+          quickFilterContainer.classList.remove("hidden");
+          const isPrivileged = isAdmin || isGlobalViewer;
+          
+          if (btnFilterLeft) {
+            if (isPrivileged) btnFilterLeft.classList.remove("hidden");
+            else btnFilterLeft.classList.add("hidden");
+          }
+          if (btnFilterAll) {
+            if (isPrivileged) btnFilterAll.classList.remove("hidden");
+            else btnFilterAll.classList.add("hidden");
           }
         }
         

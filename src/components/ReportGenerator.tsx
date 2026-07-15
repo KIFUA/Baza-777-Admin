@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 const cleanAddress = (address: string | undefined | null): string => {
   if (!address) return '';
@@ -512,6 +513,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
             }
           } catch {}
+        } else if (col.key === 'd_kontaktiv' && cellVal !== '—') {
+          cellVal = parseAndNormalizeContactDates(String(cellVal)).join(', ');
         }
 
         // Special rendering matching report generator exactly

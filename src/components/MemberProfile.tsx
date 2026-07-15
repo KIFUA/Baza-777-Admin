@@ -4,6 +4,7 @@ import {
   User, Phone, Mail, MapPin, Calendar, Heart, Baby, 
   Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink
 } from 'lucide-react';
+import { normalizeToDateStr } from '../lib/dateUtils';
 
 interface MemberProfileProps {
   memberId: number;
@@ -20,10 +21,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   const [loading, setLoading] = useState(true);
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'дд.мм.рррр';
-    if (dateStr.includes('.')) return dateStr;
-    const [y, m, d] = dateStr.split('-');
-    if (!y || !m || !d) return dateStr;
-    return `${d}.${m}.${y}`;
+    return normalizeToDateStr(dateStr);
   };
 
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');

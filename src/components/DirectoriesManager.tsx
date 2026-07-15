@@ -1035,7 +1035,7 @@ export default function DirectoriesManager({
                                 const dayName = UKR_DAYS[item.dayOfWeekNum];
                                 const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
                                 const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
-                                cleanText += `${idx + 1}. ${item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n`;
+                                cleanText += `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n`;
                                 if (item.tel_mob) cleanText += `   📞 Тел: ${item.tel_mob}\n`;
                                 if (item.rayon2_ukr) cleanText += `   📍 Район: ${item.rayon2_ukr}\n`;
                                 cleanText += `\n`;
@@ -1054,7 +1054,7 @@ export default function DirectoriesManager({
                              const dayName = UKR_DAYS[item.dayOfWeekNum];
                              const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
                              const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
-                             return `${idx + 1}. ${item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n` + 
+                             return `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n` + 
                                     (item.tel_mob ? `   📞 Тел: ${item.tel_mob}\n` : '') + 
                                     (item.rayon2_ukr ? `   📍 Район: ${item.rayon2_ukr}\n` : '');
                            }).join('\n')}

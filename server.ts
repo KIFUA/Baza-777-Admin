@@ -1608,7 +1608,7 @@ app.post("/api/birthdays/send", async (req, res) => {
     const dayName = UKR_DAYS[item.dayOfWeekNum];
     const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
     const jubileeText = item.isJubilee ? ` 🎖️ **ЮВІЛЕЙ: ${item.age} років!**` : ` (${item.age} років)`;
-    msg += `${idx + 1}. **${item.shortName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
+    msg += `${idx + 1}. **${item.cleanName || item.fullName || item.shortName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
     if (item.tel_mob) msg += `   📞 Тел: ${item.tel_mob}\n`;
     if (item.rayon2_ukr) msg += `   📍 Район: ${item.rayon2_ukr} (Опікун: ${item.presviter || "не вказано"})\n`;
     msg += `\n`;
@@ -1709,7 +1709,13 @@ app.post("/api/birthdays/send", async (req, res) => {
           if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
             doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
             doc.moveDown(0.5);
-            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            
+            const subheaderText = `/ ${birthdays.weekRangeText} /`;
+            doc.font(regularFont).fontSize(10);
+            const textWidth = doc.widthOfString(subheaderText);
+            const listLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - textWidth) / 2;
+            
+            doc.text(subheaderText, { align: 'center' });
             doc.moveDown(2);
 
             birthdays.list.forEach((item: any) => {
@@ -1719,17 +1725,26 @@ app.post("/api/birthdays/send", async (req, res) => {
               } else {
                 doc.fillColor('black');
               }
-              doc.text(item.shortName, { align: 'center' });
+              const nameText = item.cleanName || item.fullName || item.shortName;
+              doc.text(nameText, listLeftX, doc.y);
               doc.moveDown(0.5);
             });
           } else {
             doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
             doc.moveDown(0.5);
-            doc.fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            
+            const subheaderText = `/ ${birthdays.weekRangeText} /`;
+            doc.fontSize(10);
+            const textWidth = doc.widthOfString(subheaderText);
+            const listLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - textWidth) / 2;
+            
+            doc.text(subheaderText, { align: 'center' });
             doc.moveDown(2);
+            
             birthdays.list.forEach((item: any) => {
               doc.fontSize(12);
-              doc.text(item.shortName, { align: 'center' });
+              const nameText = item.cleanName || item.fullName || item.shortName;
+              doc.text(nameText, listLeftX, doc.y);
               doc.moveDown(0.5);
             });
           }

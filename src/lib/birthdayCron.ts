@@ -139,7 +139,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             const dayName = UKR_DAYS[item.dayOfWeekNum];
             const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
             const jubileeText = item.isJubilee ? `ювілей` : ``;
-            msg += `${item.fullName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
+            msg += `${item.cleanName || item.fullName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
         });
 
         await sendTelegram(settings.mondayTelegramIds, msg, settings.botToken);
@@ -167,7 +167,13 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
             doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
             doc.moveDown(0.5);
-            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            
+            const subheaderText = `/ ${birthdays.weekRangeText} /`;
+            doc.font(regularFont).fontSize(10);
+            const textWidth = doc.widthOfString(subheaderText);
+            const listLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - textWidth) / 2;
+            
+            doc.text(subheaderText, { align: 'center' });
             doc.moveDown(2);
 
             birthdays.list.forEach((item: any) => {
@@ -177,7 +183,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 } else {
                     doc.fillColor('black');
                 }
-                doc.text(item.shortName, { align: 'center' });
+                const nameText = item.cleanName || item.fullName || item.shortName;
+                doc.text(nameText, listLeftX, doc.y);
                 doc.moveDown(0.5);
             });
         }

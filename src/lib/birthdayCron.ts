@@ -162,8 +162,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
 
-        const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-        const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+        const regularFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+        const boldFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
         
         if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
             const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
@@ -219,44 +219,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         });
     };
 
-    const checkAndCatchUp = async () => {
-        try {
-            const nowKyiv = getKyivDateTime();
-            
-            let state: { lastMondaySent?: string; lastWednesdaySent?: string } = {};
-            if (fs.existsSync(STATE_FILE)) {
-                try {
-                    state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
-                } catch (e) {
-                    console.error("Error parsing distribution state file:", e);
-                }
-            }
-
-            console.log(`[Distribution Catch-Up Check] Kyiv date: ${nowKyiv.dateStr}, Kyiv hour: ${nowKyiv.hour}, Day of week: ${nowKyiv.dayOfWeek}`);
-
-            // If Monday, >= 11:00 AM Kyiv, and we haven't sent Monday's report for this date yet
-            if (nowKyiv.dayOfWeek === 1 && nowKyiv.hour >= 11) {
-                if (state.lastMondaySent !== nowKyiv.dateStr) {
-                    console.log(`[Distribution Catch-Up] Missed Monday distribution for ${nowKyiv.dateStr}. Sending now!`);
-                    await runMondayDistribution();
-                    state.lastMondaySent = nowKyiv.dateStr;
-                    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-                }
-            }
-
-            // If Wednesday, >= 11:00 AM Kyiv, and we haven't sent Wednesday's report for this date yet
-            if (nowKyiv.dayOfWeek === 3 && nowKyiv.hour >= 11) {
-                if (state.lastWednesdaySent !== nowKyiv.dateStr) {
-                    console.log(`[Distribution Catch-Up] Missed Wednesday distribution for ${nowKyiv.dateStr}. Sending now!`);
-                    await runWednesdayDistribution();
-                    state.lastWednesdaySent = nowKyiv.dateStr;
-                    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
-                }
-            }
-        } catch (err: any) {
-            console.error("Error in checkAndCatchUp:", err.message);
-        }
-    };
+    // Removed checkAndCatchUp to prevent spamming on every server restart.
+    // The cron schedules below are sufficient for automatic weekly distributions.
 
     // Monday 11:00 Kyiv
     cron.schedule('0 11 * * 1', async () => {
@@ -296,8 +260,6 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         timezone: "Europe/Kyiv"
     });
 
-    // Run catch-up immediately upon server startup / initialization
-    setTimeout(() => {
-        checkAndCatchUp();
-    }, 5000);
+    // Removed immediate catch-up trigger to prevent spamming on every restart
+    // The cron schedules are sufficient for production use.
 }

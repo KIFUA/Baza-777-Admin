@@ -207,6 +207,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.')) || isAdmin;
+
   useEffect(() => {
     let modeToElement: Record<string, string> = {
       'spreadsheet': 'СПИСОК',
@@ -216,6 +218,13 @@ export default function App() {
       'journal': 'ЖУРНАЛ'
     };
     const currentElemName = modeToElement[mainMode];
+
+    // Special check for Journal - only for admins
+    if (mainMode === 'journal' && !isCurrentUserAdmin) {
+      setMainMode('spreadsheet');
+      return;
+    }
+
     if (currentElemName && !getPermission(currentElemName).view) {
       if (getPermission('СПИСОК').view) {
         setMainMode('spreadsheet');
@@ -223,7 +232,7 @@ export default function App() {
         setMainMode('questionnaire');
       }
     }
-  }, [currentSessionUser, lookups, mainMode]);
+  }, [currentSessionUser, lookups, mainMode, isCurrentUserAdmin]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -435,7 +444,6 @@ export default function App() {
   const assignedRayon = currentSessionUser?.rayon;
   const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
   
-  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.')) || isAdmin;
   const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserAdmin) || isGlobalViewer;
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
@@ -685,7 +693,7 @@ export default function App() {
                   АНКЕТИ
                 </button>
               )}
-              {getPermission('АНКЕТИ').view && (
+              {isCurrentUserAdmin && (
                 <button
                   style={{
                     fontSize: '12px',
@@ -911,7 +919,7 @@ export default function App() {
                   onUpdateMember={handleSpreadsheetUpdate}
                 />
               </div>
-            ) : mainMode === 'journal' ? (
+            ) : (mainMode === 'journal' && isCurrentUserAdmin) ? (
               <div className="flex-1 overflow-y-auto min-h-0 pb-2 bg-[#0e2128] p-4 sm:p-6 rounded-2xl border border-[#1f424f] shadow-lg">
                 <HistoryJournal
                   onSelectMember={(id) => {

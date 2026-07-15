@@ -1706,8 +1706,8 @@ app.post("/api/birthdays/send", async (req, res) => {
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);
 
-          const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-          const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+          const regularFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+          const boldFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
           
           if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
             const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';

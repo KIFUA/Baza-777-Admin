@@ -1749,6 +1749,11 @@ app.post("/api/birthdays/send", async (req, res) => {
     let destinations: string[] = [];
     if (req.body.customEmails) {
       destinations = req.body.customEmails.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+    } else {
+      const emailField = settings.mondayEmails || settings.wednesdayEmails;
+      if (emailField) {
+        destinations = emailField.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+      }
     }
     
     // De-duplicate

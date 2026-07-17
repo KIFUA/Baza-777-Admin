@@ -1649,17 +1649,21 @@ app.post("/api/birthdays/send", async (req, res) => {
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);
 
-          const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-          const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+          const fontsDir = path.resolve(process.cwd(), 'fonts');
+          const regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
+          const boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
           
           if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.registerFont('Roboto-Regular', regularFont);
+            doc.registerFont('Roboto-Bold', boldFont);
+
+            doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
             doc.moveDown(0.5);
-            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
             doc.moveDown(2);
 
             birthdays.list.forEach((item: any) => {
-              doc.font(boldFont).fontSize(12);
+              doc.font('Roboto-Bold').fontSize(12);
               if (item.isJubilee) doc.fillColor('red');
               else doc.fillColor('black');
               
@@ -1671,7 +1675,8 @@ app.post("/api/birthdays/send", async (req, res) => {
               doc.moveDown(0.5);
             });
           } else {
-            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            console.error("Fonts NOT found at:", fontsDir);
+            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ (FONTS MISSING)', { align: 'center' });
             doc.moveDown();
             birthdays.list.forEach((item: any) => {
               const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
@@ -1744,16 +1749,13 @@ app.post("/api/birthdays/send", async (req, res) => {
     let destinations: string[] = [];
     if (req.body.customEmails) {
       destinations = req.body.customEmails.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
-    } else {
-      const destinationsStr = type === "email_pdf" ? settings.wednesdayEmails : settings.mondayEmails;
-      destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
     }
     
     // De-duplicate
     destinations = Array.from(new Set(destinations));
     
     if (destinations.length === 0) {
-      return res.status(400).json({ error: "No email destinations provided." });
+      return res.status(400).json({ error: "Вкажіть хоча б одну адресу Email для розсилки." });
     }
 
     if (!appPassword) {
@@ -1785,35 +1787,40 @@ app.post("/api/birthdays/send", async (req, res) => {
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);
 
-          const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-          const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+          const fontsDir = path.resolve(process.cwd(), 'fonts');
+          const regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
+          const boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
           
-            if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-              doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-              doc.moveDown(0.5);
-              doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-              doc.moveDown(2);
+          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+            doc.registerFont('Roboto-Regular', regularFont);
+            doc.registerFont('Roboto-Bold', boldFont);
 
-              birthdays.list.forEach((item: any) => {
-                doc.font(boldFont).fontSize(12);
-                if (item.isJubilee) doc.fillColor('red');
-                else doc.fillColor('black');
-                
-                const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
-                const ageText = item.age ? ` (${item.age} р.)` : '';
-                doc.text(`${nameText}${ageText}`, { align: 'center' });
-                
-                doc.fillColor('black');
-                doc.moveDown(0.5);
-              });
-            } else {
-              doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-              doc.moveDown();
-              birthdays.list.forEach((item: any) => {
-                const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
-                doc.fontSize(12).text(nameText, { align: 'center' });
-              });
-            }
+            doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.moveDown(0.5);
+            doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
+            doc.moveDown(2);
+
+            birthdays.list.forEach((item: any) => {
+              doc.font('Roboto-Bold').fontSize(12);
+              if (item.isJubilee) doc.fillColor('red');
+              else doc.fillColor('black');
+              
+              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
+              const ageText = item.age ? ` (${item.age} р.)` : '';
+              doc.text(`${nameText}${ageText}`, { align: 'center' });
+              
+              doc.fillColor('black');
+              doc.moveDown(0.5);
+            });
+          } else {
+            console.error("Fonts NOT found at:", fontsDir);
+            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ (FONTS MISSING)', { align: 'center' });
+            doc.moveDown();
+            birthdays.list.forEach((item: any) => {
+              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
+              doc.fontSize(12).text(nameText, { align: 'center' });
+            });
+          }
           
           doc.end();
 

@@ -73,11 +73,7 @@ function ensureInitialSync() {
 app.use(async (req, res, next) => {
   if (req.path.startsWith("/api") && req.path !== "/api/health") {
     try {
-    
-  await ensureInitialSync();
-
-  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
-
+      await ensureInitialSync();
     } catch (err: any) {
       console.error("[Sync Middleware] Error awaiting database sync:", err.message);
     }
@@ -4540,6 +4536,9 @@ async function ensureDatabaseIsFresh() {
 async function startServer() {
   // Sync the database state with Firebase RTDB on startup in background
   await ensureInitialSync();
+  
+  // Initialize birthday cron jobs
+  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
 
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");

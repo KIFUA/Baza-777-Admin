@@ -840,7 +840,11 @@ function getSettings() {
       mondayTelegramIds: "",
       wednesdayTelegramIds: "",
       botToken: "",
-      appPassword: ""
+      appPassword: "",
+      mondayMailingDay: 1,
+      mondayMailingHour: 11,
+      wednesdayMailingDay: 3,
+      wednesdayMailingHour: 11
     };
     cachedSettings = defaults;
     return defaults;

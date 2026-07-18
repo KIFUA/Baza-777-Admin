@@ -11,7 +11,11 @@ export function NotificationSettings() {
     appPassword: '',
     enableTestMode: false,
     testTelegramId: '',
-    notificationDays: 14
+    notificationDays: 14,
+    mondayMailingDay: 1,
+    mondayMailingHour: 11,
+    wednesdayMailingDay: 3,
+    wednesdayMailingHour: 11
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,7 +35,11 @@ export function NotificationSettings() {
           appPassword: data.appPassword || '',
           enableTestMode: data.enableTestMode === true || data.enableTestMode === "true",
           testTelegramId: data.testTelegramId || '',
-          notificationDays: data.notificationDays || 14
+          notificationDays: data.notificationDays || 14,
+          mondayMailingDay: data.mondayMailingDay !== undefined ? data.mondayMailingDay : 1,
+          mondayMailingHour: data.mondayMailingHour !== undefined ? data.mondayMailingHour : 11,
+          wednesdayMailingDay: data.wednesdayMailingDay !== undefined ? data.wednesdayMailingDay : 3,
+          wednesdayMailingHour: data.wednesdayMailingHour !== undefined ? data.wednesdayMailingHour : 11
         });
         setLoading(false);
       })
@@ -41,8 +49,12 @@ export function NotificationSettings() {
       });
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSettings({ ...settings, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setSettings({ 
+      ...settings, 
+      [name]: type === 'number' ? parseInt(value) : value 
+    });
   };
 
   const handleSave = async () => {
@@ -68,6 +80,8 @@ export function NotificationSettings() {
 
   if (loading) return <div className="p-8 text-center text-slate-400">Завантаження налаштувань...</div>;
 
+  const UKR_DAYS = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
+
   return (
     <div className="bg-[#13282e] rounded-xl border border-[#224853]/50 shadow-sm overflow-hidden mb-6 mt-4">
       <div className="bg-[#1a3843]/60 px-4 py-3 border-b border-[#224853]/50 flex items-center gap-2">
@@ -80,7 +94,7 @@ export function NotificationSettings() {
           <Info className="w-5 h-5 flex-shrink-0 text-sky-400" />
           <div>
             <p className="font-bold text-white mb-1">Як працює автоматична розсилка?</p>
-            <p className="mb-2">Система щопонеділка (о 11:00) та щосереди (о 11:00) автоматично формує списки і відправляє їх.</p>
+            <p className="mb-2">Система автоматично формує списки і відправляє їх у встановлений вами час (за часом Києва).</p>
             <ul className="list-disc pl-5 space-y-1 text-slate-400">
               <li><strong>Email:</strong> Оскільки сервер відправляє листи у фоні, вам потрібно створити <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-sky-400 hover:text-sky-300 underline font-medium">Пароль додатку (App Password)</a> у вашому акаунті Google.</li>
               <li><strong>Telegram:</strong> Використовується Telegram Bot. Створіть бота через <a href="https://t.me/botfather" target="_blank" rel="noreferrer" className="text-sky-400 hover:text-sky-300 underline font-medium">@BotFather</a> та вставте його токен нижче.</li>
@@ -90,10 +104,39 @@ export function NotificationSettings() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <h4 className="font-bold text-white border-b border-[#224853]/50 pb-2 text-sm flex items-center gap-2">
-              <span className="bg-sky-500/20 text-sky-400 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Пн 11:00</span>
-              Текстовий список
-            </h4>
+            <div className="flex items-center justify-between border-b border-[#224853]/50 pb-2">
+              <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                Розсилка 1: Текстовий список
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">День тижня</label>
+                <select 
+                  name="mondayMailingDay" 
+                  value={settings.mondayMailingDay} 
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                >
+                  {UKR_DAYS.map((day, idx) => (
+                    <option key={idx} value={idx}>{day}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Година (0-23)</label>
+                <input 
+                  type="number" 
+                  name="mondayMailingHour" 
+                  min="0" 
+                  max="23" 
+                  value={settings.mondayMailingHour} 
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+            </div>
             
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Електронні адреси (через кому)</label>
@@ -121,10 +164,39 @@ export function NotificationSettings() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-bold text-white border-b border-[#224853]/50 pb-2 text-sm flex items-center gap-2">
-              <span className="bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Ср 11:00</span>
-              PDF формат A5
-            </h4>
+            <div className="flex items-center justify-between border-b border-[#224853]/50 pb-2">
+              <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                Розсилка 2: PDF формат A5
+              </h4>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">День тижня</label>
+                <select 
+                  name="wednesdayMailingDay" 
+                  value={settings.wednesdayMailingDay} 
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                >
+                  {UKR_DAYS.map((day, idx) => (
+                    <option key={idx} value={idx}>{day}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Година (0-23)</label>
+                <input 
+                  type="number" 
+                  name="wednesdayMailingHour" 
+                  min="0" 
+                  max="23" 
+                  value={settings.wednesdayMailingHour} 
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+            </div>
             
             <div>
               <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Електронні адреси (через кому)</label>

@@ -838,9 +838,11 @@ function mergeSettings(data: any) {
 async function loadSettingsFromFirebase() {
   try {
     const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
+    console.log(`[Firebase Settings] Attempting to load from ${url.split('?')[0]}`);
     const response = await fetch(url);
     if (response.ok) {
       const data = await response.json();
+      console.log("[Firebase Settings] Received data:", JSON.stringify(data));
       if (data && typeof data === 'object') {
         cachedSettings = mergeSettings(data);
         fs.writeFileSync(SETTINGS_FILE, JSON.stringify(cachedSettings, null, 2));
@@ -862,12 +864,14 @@ function getSettings() {
     if (fs.existsSync(SETTINGS_FILE)) {
       const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
       cachedSettings = mergeSettings(data);
+      console.log("[Settings] Loaded from local cache.");
       return cachedSettings;
     }
   } catch (e) {
     console.error("[Settings] Error reading local settings file:", e);
   }
   cachedSettings = mergeSettings({});
+  console.log("[Settings] Using default settings (no cache found).");
   return cachedSettings;
 }
 
@@ -877,21 +881,27 @@ app.get("/api/settings/notifications", (req, res) => {
 
 app.post("/api/settings/notifications", async (req, res) => {
   const newSettings = req.body;
+  console.log("[Settings] Received update request:", JSON.stringify(newSettings));
   const currentSettings = getSettings();
   const mergedSettings = mergeSettings({ ...currentSettings, ...newSettings });
   cachedSettings = mergedSettings;
   
   try {
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(mergedSettings, null, 2));
+    console.log("[Settings] Local cache updated.");
     
     // Save to Firebase Realtime DB
     const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
-    await fetch(url, {
+    const response = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(mergedSettings)
     });
-    console.log("[Firebase Settings] Successfully synchronized merged settings to Firebase Realtime DB.");
+    if (response.ok) {
+      console.log("[Firebase Settings] Successfully synchronized merged settings to Firebase Realtime DB.");
+    } else {
+      console.error(`[Firebase Settings] Sync failed with status: ${response.status}`);
+    }
   } catch (err: any) {
     console.error(`[Firebase Settings] Error saving settings to Firebase Realtime DB: ${err.message}`);
   }

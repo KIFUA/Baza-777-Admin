@@ -4,6 +4,8 @@ import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import axios from 'axios';
+import FormData from 'form-data';
 
 export interface BirthdaySettings {
     mondayEmails: string;
@@ -49,8 +51,7 @@ const getKyivDateTime = () => {
     // Create date object in Kyiv time
     const kyivDate = new Date(year, month - 1, day, hour, minute);
     
-    // Calculate day of week manually because getDay() might use local time if not careful
-    // But since we built kyivDate from parts, it should be relatively consistent
+    // Calculate day of week manually
     const dayOfWeek = kyivDate.getDay(); // 0 is Sunday, 1 is Monday ... 6 is Saturday
     
     const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
@@ -75,26 +76,24 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const ids = chatIds.split(',').map(id => id.trim()).filter(Boolean);
         for (const chatId of ids) {
             try {
-                if (pdfPath) {
+                if (pdfPath && fs.existsSync(pdfPath)) {
                     const formData = new FormData();
                     formData.append('chat_id', chatId);
-                    const fileBuffer = fs.readFileSync(pdfPath);
-                    const blob = new Blob([fileBuffer]);
-                    formData.append('document', blob, 'Imenynnyky.pdf');
+                    formData.append('caption', text);
+                    formData.append('document', fs.createReadStream(pdfPath));
                     
-                    await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
-                        method: 'POST',
-                        body: formData
+                    await axios.post(`https://api.telegram.org/bot${botToken}/sendDocument`, formData, {
+                        headers: formData.getHeaders()
                     });
                 } else {
-                    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+                    await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        chat_id: chatId,
+                        text: text,
+                        parse_mode: 'Markdown'
                     });
                 }
-            } catch (err) {
-                console.error(`Telegram send error to ${chatId}:`, err);
+            } catch (err: any) {
+                console.error(`Telegram send error to ${chatId}:`, err.response?.data || err.message);
             }
         }
     };
@@ -167,7 +166,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             return;
         }
 
-        const pdfPath = path.join(os.tmpdir(), 'birthdays_temp.pdf');
+        const pdfPath = path.join(os.tmpdir(), `birthdays_${Date.now()}.pdf`);
         const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
@@ -177,24 +176,15 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         
         try {
             if (fs.existsSync(regularFontPath) && fs.existsSync(boldFontPath)) {
-                // Register fonts with specific names to ensure they are loaded correctly
                 doc.registerFont('Roboto-Regular', regularFontPath);
                 doc.registerFont('Roboto-Bold', boldFontPath);
 
-                const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
                 doc.font('Roboto-Bold').fontSize(14);
-                
-                const headerWidth = doc.widthOfString(headerText);
-                const prefixWidth = doc.widthOfString('ІМЕ');
-                const headerLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - headerWidth) / 2;
-                const listLeftX = headerLeftX + prefixWidth;
-
-                doc.text(headerText, { align: 'center' });
+                doc.text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
                 doc.moveDown(0.5);
                 
-                const subheaderText = `/ ${birthdays.weekRangeText} /`;
                 doc.font('Roboto-Regular').fontSize(10);
-                doc.text(subheaderText, { align: 'center' });
+                doc.text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
                 doc.moveDown(2);
 
                 birthdays.list.forEach((item: any) => {
@@ -205,7 +195,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                         doc.fillColor('black');
                     }
                     const nameText = String(item.cleanName || item.fullName || item.shortName || "Невідоме ім'я");
-                    doc.text(nameText, listLeftX, doc.y);
+                    doc.text(nameText, { align: 'center' });
                     doc.moveDown(0.5);
                 });
             } else {
@@ -216,11 +206,11 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     doc.fontSize(12).text(String(item.cleanName || item.fullName || "Невідомо"), { align: 'center' });
                 });
             }
+            doc.end();
         } catch (pdfErr) {
             console.error("Error during PDF drawing:", pdfErr);
+            doc.end();
         }
-        
-        doc.end();
 
         await new Promise<void>((resolve, reject) => {
             writeStream.on('finish', async () => {

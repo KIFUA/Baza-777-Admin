@@ -1680,7 +1680,7 @@ app.post("/api/birthdays/send", async (req, res) => {
       let lastError = "";
       
       if (type === "telegram_pdf") {
-        const tempPdfPath = path.join(os.tmpdir(), `birthdays_${Date.now()}.pdf`);
+        const tempPdfPath = path.resolve(process.cwd(), `birthdays_${Date.now()}.pdf`);
         try {
           const doc = new PDFDocument({ size: 'A5', margin: 30 });
           const writeStream = fs.createWriteStream(tempPdfPath);
@@ -1729,9 +1729,10 @@ app.post("/api/birthdays/send", async (req, res) => {
 
           for (const singleChatId of chatIds) {
             try {
+              const fileBuffer = fs.readFileSync(tempPdfPath);
               const formData = new FormData();
               formData.append('chat_id', singleChatId);
-              formData.append('document', fs.createReadStream(tempPdfPath), { filename: 'imenynnyky.pdf' });
+              formData.append('document', fileBuffer, { filename: 'imenynnyky.pdf' });
               formData.append('caption', `🎂 Список іменинників на тиждень (${birthdays.weekRangeText})`);
 
               const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
@@ -1824,7 +1825,7 @@ app.post("/api/birthdays/send", async (req, res) => {
 
         let tempPdfPath = "";
         if (type === "email_pdf") {
-          tempPdfPath = path.join(os.tmpdir(), `birthdays_manual_${Date.now()}.pdf`);
+          tempPdfPath = path.resolve(process.cwd(), `birthdays_manual_${Date.now()}.pdf`);
           const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);

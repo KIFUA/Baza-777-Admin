@@ -77,15 +77,23 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         for (const chatId of ids) {
             try {
                 if (pdfPath && fs.existsSync(pdfPath)) {
+                    console.log(`[BirthdayCron] Sending PDF to Telegram chat ${chatId}: ${pdfPath}`);
+                    const fileBuffer = fs.readFileSync(pdfPath);
                     const formData = new FormData();
                     formData.append('chat_id', chatId);
                     formData.append('caption', text);
-                    formData.append('document', fs.createReadStream(pdfPath));
+                    formData.append('document', fileBuffer, { filename: 'Imenynnyky.pdf' });
                     
-                    await axios.post(`https://api.telegram.org/bot${botToken}/sendDocument`, formData, {
+                    const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendDocument`, formData, {
                         headers: formData.getHeaders()
                     });
+                    if (response.data.ok) {
+                        console.log(`[BirthdayCron] PDF sent successfully to Telegram chat ${chatId}`);
+                    } else {
+                        console.error(`[BirthdayCron] Telegram sendDocument failed:`, response.data);
+                    }
                 } else {
+                    console.log(`[BirthdayCron] No PDF found or provided, sending text message to ${chatId}`);
                     await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                         chat_id: chatId,
                         text: text,
@@ -93,7 +101,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     });
                 }
             } catch (err: any) {
-                console.error(`Telegram send error to ${chatId}:`, err.response?.data || err.message);
+                console.error(`[BirthdayCron] Telegram send error to ${chatId}:`, err.response?.data || err.message);
             }
         }
     };
@@ -166,7 +174,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             return;
         }
 
-        const pdfPath = path.join(os.tmpdir(), `birthdays_${Date.now()}.pdf`);
+        const pdfPath = path.resolve(process.cwd(), `birthdays_${Date.now()}.pdf`);
+        console.log(`[BirthdayCron] Starting PDF generation: ${pdfPath}`);
         const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
@@ -176,6 +185,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         
         try {
             if (fs.existsSync(regularFontPath) && fs.existsSync(boldFontPath)) {
+                console.log("[BirthdayCron] Using custom fonts for PDF.");
                 doc.registerFont('Roboto-Regular', regularFontPath);
                 doc.registerFont('Roboto-Bold', boldFontPath);
 
@@ -199,7 +209,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     doc.moveDown(0.5);
                 });
             } else {
-                console.warn("Fonts not found, creating PDF with default font.");
+                console.warn("[BirthdayCron] Fonts not found, creating PDF with default font.");
                 doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
                 doc.moveDown();
                 birthdays.list.forEach((item: any) => {
@@ -207,29 +217,43 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 });
             }
             doc.end();
+            console.log("[BirthdayCron] doc.end() called.");
         } catch (pdfErr) {
-            console.error("Error during PDF drawing:", pdfErr);
+            console.error("[BirthdayCron] Error during PDF drawing:", pdfErr);
             doc.end();
         }
 
         await new Promise<void>((resolve, reject) => {
             writeStream.on('finish', async () => {
+                console.log(`[BirthdayCron] writeStream finished: ${pdfPath}`);
                 try {
-                    let msg = `📄 Прикріплено файл ПДФ зі списком іменинників поточного тижня (${birthdays.weekRangeText}).`;
-                    await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, pdfPath);
-                    await sendEmails(settings.wednesdayEmails, `Іменинники тижня PDF (${birthdays.weekRangeText})`, msg, settings.appPassword, pdfPath);
                     if (fs.existsSync(pdfPath)) {
+                        const stats = fs.statSync(pdfPath);
+                        console.log(`[BirthdayCron] PDF file size: ${stats.size} bytes`);
+                    } else {
+                        console.error(`[BirthdayCron] PDF file DOES NOT EXIST after finish!`);
+                    }
+
+                    let msg = `📄 Прикріплено файл ПДФ зі списком іменинників поточного тижня (${birthdays.weekRangeText}).`;
+                    console.log("[BirthdayCron] Sending Telegram (Distribution 2)...");
+                    await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, pdfPath);
+                    
+                    console.log("[BirthdayCron] Sending Emails (Distribution 2)...");
+                    await sendEmails(settings.wednesdayEmails, `Іменинники тижня PDF (${birthdays.weekRangeText})`, msg, settings.appPassword, pdfPath);
+                    
+                    if (fs.existsSync(pdfPath)) {
+                        console.log(`[BirthdayCron] Unlinking temp PDF: ${pdfPath}`);
                         fs.unlinkSync(pdfPath);
                     }
                     console.log("Distribution 2 completed.");
                     resolve();
                 } catch (err) {
-                    console.error("Error in distribution 2 writeStream finish handler:", err);
+                    console.error("[BirthdayCron] Error in distribution 2 writeStream finish handler:", err);
                     reject(err);
                 }
             });
             writeStream.on('error', (err) => {
-                console.error("WriteStream error:", err);
+                console.error("[BirthdayCron] WriteStream error:", err);
                 reject(err);
             });
         });

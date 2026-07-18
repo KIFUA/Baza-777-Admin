@@ -877,14 +877,22 @@ app.get("/api/settings/notifications", (req, res) => {
 
 app.post("/api/settings/notifications", async (req, res) => {
   const newSettings = req.body;
-  console.log("[Settings] Received update request:", JSON.stringify(newSettings));
+  console.log("[Settings] Received update request with keys:", Object.keys(newSettings).join(", "));
   const currentSettings = getSettings();
   const mergedSettings = mergeSettings({ ...currentSettings, ...newSettings });
+  
+  console.log("[Settings] Merged settings preview:", JSON.stringify({
+    monDay: mergedSettings.mondayMailingDay,
+    monHour: mergedSettings.mondayMailingHour,
+    wedDay: mergedSettings.wednesdayMailingDay,
+    wedHour: mergedSettings.wednesdayMailingHour
+  }));
+
   cachedSettings = mergedSettings;
   
   try {
     fs.writeFileSync(SETTINGS_FILE, JSON.stringify(mergedSettings, null, 2));
-    console.log("[Settings] Local cache updated.");
+    console.log("[Settings] Local cache file updated successfully.");
     
     // Save to Firebase Realtime DB
     const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;

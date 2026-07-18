@@ -74,7 +74,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
     isInitialized = true;
     console.log("Initializing Birthday Cron Jobs (Europe/Kyiv)...");
 
-    const sendTelegram = async (chatIds: string, text: string, botToken: string, pdfPath?: string) => {
+    const sendTelegram = async (chatIds: string, text: string, botToken: string, filePath?: string) => {
         if (!botToken) {
             console.warn("[BirthdayCron] No bot token provided for Telegram.");
             return;
@@ -87,19 +87,20 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
 
         for (const chatId of ids) {
             try {
-                if (pdfPath && fs.existsSync(pdfPath)) {
-                    console.log(`[BirthdayCron] Sending PDF to Telegram chat ${chatId}: ${pdfPath}`);
-                    const fileBuffer = fs.readFileSync(pdfPath);
+                if (filePath && fs.existsSync(filePath)) {
+                    console.log(`[BirthdayCron] Sending file to Telegram chat ${chatId}: ${filePath}`);
+                    const fileBuffer = fs.readFileSync(filePath);
+                    const filename = path.basename(filePath);
                     const formData = new FormData();
                     formData.append('chat_id', chatId);
                     formData.append('caption', text);
-                    formData.append('document', fileBuffer, { filename: 'Imenynnyky.pdf' });
+                    formData.append('document', fileBuffer, { filename });
                     
                     const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendDocument`, formData, {
                         headers: formData.getHeaders()
                     });
                     if (response.data.ok) {
-                        console.log(`[BirthdayCron] PDF sent successfully to Telegram chat ${chatId}`);
+                        console.log(`[BirthdayCron] File ${filename} sent successfully to Telegram chat ${chatId}`);
                     } else {
                         console.error(`[BirthdayCron] Telegram sendDocument failed for ${chatId}:`, response.data);
                     }
@@ -117,7 +118,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         }
     };
 
-    const sendEmails = async (emails: string, subject: string, text: string, appPassword: string, pdfPath?: string) => {
+    const sendEmails = async (emails: string, subject: string, text: string, appPassword: string, attachments?: { filename: string, path: string }[]) => {
         if (!appPassword || !emails) return;
         const mailList = emails.split(',').map(e => e.trim()).filter(Boolean);
         if (mailList.length === 0) return;
@@ -137,11 +138,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             text: text
         };
 
-        if (pdfPath) {
-            mailOptions.attachments = [{
-                filename: 'Imenynnyky.pdf',
-                path: pdfPath
-            }];
+        if (attachments && attachments.length > 0) {
+            mailOptions.attachments = attachments;
         }
 
         try {
@@ -177,7 +175,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
     };
 
     const runWednesdayDistribution = async () => {
-        console.log("[BirthdayCron] Running Distribution 2 (PDF)...");
+        console.log("[BirthdayCron] Running Distribution 2 (PDF & HTML)...");
         const settings = getSettingsFn();
         const birthdays = getBirthdaysFn();
         if (!birthdays || !birthdays.list || birthdays.list.length === 0) {
@@ -185,8 +183,68 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             return;
         }
 
-        const pdfPath = path.join(os.tmpdir(), `birthdays_${Date.now()}.pdf`);
-        console.log(`[BirthdayCron] Starting PDF generation: ${pdfPath}`);
+        const nowTs = Date.now();
+        const pdfPath = path.join(os.tmpdir(), `birthdays_${nowTs}.pdf`);
+        const htmlPath = path.join(os.tmpdir(), `birthdays_${nowTs}.html`);
+        
+        console.log(`[BirthdayCron] Generating files: ${pdfPath}, ${htmlPath}`);
+
+        // --- HTML Generation ---
+        const UKR_DAYS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+        let htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; }
+                h1 { text-align: center; color: #000; font-size: 24px; margin-bottom: 5px; }
+                .subtitle { text-align: center; font-size: 16px; color: #666; margin-bottom: 30px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #f2f2f2; font-weight: bold; }
+                .jubilee { color: #e74c3c; font-weight: bold; }
+                .day-col { width: 60px; text-align: center; }
+                .date-col { width: 100px; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
+            <div class="subtitle">/ ${birthdays.weekRangeText} /</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="day-col">День</th>
+                        <th class="date-col">Дата</th>
+                        <th>ПІБ / Ім'я</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        birthdays.list.forEach((item: any) => {
+            const dayName = UKR_DAYS[item.dayOfWeekNum];
+            const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
+            const jubileeClass = item.isJubilee ? 'class="jubilee"' : '';
+            htmlContent += `
+                <tr ${jubileeClass}>
+                    <td class="day-col">${dayName}</td>
+                    <td class="date-col">${dateFormatted}</td>
+                    <td>${item.cleanName || item.fullName} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
+                </tr>
+            `;
+        });
+
+        htmlContent += `
+                </tbody>
+            </table>
+            <p style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">Згенеровано автоматично системою "База 777"</p>
+        </body>
+        </html>
+        `;
+        fs.writeFileSync(htmlPath, htmlContent);
+
+        // --- PDF Generation ---
         const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
@@ -196,7 +254,6 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         
         try {
             if (fs.existsSync(regularFontPath) && fs.existsSync(boldFontPath)) {
-                console.log("[BirthdayCron] Using custom fonts for PDF.");
                 doc.registerFont('Roboto-Regular', regularFontPath);
                 doc.registerFont('Roboto-Bold', boldFontPath);
 
@@ -215,7 +272,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     } else {
                         doc.fillColor('black');
                     }
-                    const nameText = String(item.cleanName || item.fullName || item.shortName || "Невідоме ім'я");
+                    const dayName = UKR_DAYS[item.dayOfWeekNum];
+                    const nameText = `${dayName}: ${String(item.cleanName || item.fullName || item.shortName)}`;
                     doc.text(nameText, { align: 'center' });
                     doc.moveDown(0.5);
                 });
@@ -238,23 +296,40 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             writeStream.on('finish', async () => {
                 console.log(`[BirthdayCron] writeStream finished: ${pdfPath}`);
                 try {
+                    const attachments = [];
                     if (fs.existsSync(pdfPath)) {
                         const stats = fs.statSync(pdfPath);
-                        console.log(`[BirthdayCron] PDF file size: ${stats.size} bytes`);
-                        
-                        let msg = `📄 Прикріплено файл ПДФ зі списком іменинників поточного тижня (${birthdays.weekRangeText}).`;
-                        console.log("[BirthdayCron] Sending Telegram (Distribution 2)...");
-                        await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, pdfPath);
-                        
-                        console.log("[BirthdayCron] Sending Emails (Distribution 2)...");
-                        await sendEmails(settings.wednesdayEmails, `Іменинники тижня PDF (${birthdays.weekRangeText})`, msg, settings.appPassword, pdfPath);
-                        
-                        console.log(`[BirthdayCron] Unlinking temp PDF: ${pdfPath}`);
-                        fs.unlinkSync(pdfPath);
-                        console.log("[BirthdayCron] Distribution 2 completed successfully.");
-                    } else {
-                        console.error(`[BirthdayCron] PDF file DOES NOT EXIST after finish!`);
+                        if (stats.size > 0) {
+                            attachments.push({ filename: 'Imenynnyky.pdf', path: pdfPath });
+                        } else {
+                            console.warn("[BirthdayCron] Generated PDF is empty (0 bytes)!");
+                        }
                     }
+                    if (fs.existsSync(htmlPath)) {
+                        attachments.push({ filename: 'Imenynnyky.html', path: htmlPath });
+                    }
+
+                    let msg = `📄 Прикріплено список іменинників (${birthdays.weekRangeText}) у форматах ПДФ та HTML (для друку).`;
+                    
+                    console.log("[BirthdayCron] Sending Telegram (Distribution 2)...");
+                    // Send PDF if exists, otherwise text
+                    const telegramFilePath = attachments.find(a => a.filename === 'Imenynnyky.pdf')?.path;
+                    await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, telegramFilePath);
+                    
+                    // Also send HTML to Telegram if PDF is missing or just as an alternative? 
+                    // Telegram doesn't support multiple documents in one sendDocument call easily without loops
+                    if (!telegramFilePath && fs.existsSync(htmlPath)) {
+                        await sendTelegram(settings.wednesdayTelegramIds, "Альтернативний формат (HTML) для друку:", settings.botToken, htmlPath);
+                    }
+
+                    console.log("[BirthdayCron] Sending Emails (Distribution 2)...");
+                    await sendEmails(settings.wednesdayEmails, `Іменинники тижня (${birthdays.weekRangeText})`, msg, settings.appPassword, attachments);
+                    
+                    // Cleanup
+                    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+                    if (fs.existsSync(htmlPath)) fs.unlinkSync(htmlPath);
+                    
+                    console.log("[BirthdayCron] Distribution 2 completed successfully.");
                     resolve();
                 } catch (err) {
                     console.error("[BirthdayCron] Error in distribution 2 writeStream finish handler:", err);

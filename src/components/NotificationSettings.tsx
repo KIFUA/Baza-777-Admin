@@ -55,10 +55,25 @@ export function NotificationSettings() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setSettings({ 
-      ...settings, 
-      [name]: type === 'number' ? parseInt(value) : value 
-    });
+    
+    // List of fields that MUST be numbers
+    const numericFields = [
+      'notificationDays', 
+      'mondayMailingDay', 'mondayMailingHour', 'mondayMailingMinute',
+      'wednesdayMailingDay', 'wednesdayMailingHour', 'wednesdayMailingMinute'
+    ];
+    
+    if (numericFields.includes(name)) {
+      setSettings({ 
+        ...settings, 
+        [name]: parseInt(value) || 0 
+      });
+    } else {
+      setSettings({ 
+        ...settings, 
+        [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value 
+      });
+    }
   };
 
   const handleSave = async () => {

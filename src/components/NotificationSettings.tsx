@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Bell, Info } from 'lucide-react';
 
+import { GoogleDocExport } from './GoogleDocExport';
+
 export function NotificationSettings() {
   const [settings, setSettings] = useState({
     mondayEmails: '',
@@ -298,6 +300,11 @@ export function NotificationSettings() {
         {/* Additional Services Section */}
         <div className="border-t border-[#224853]/30 pt-4 mt-2">
           <h4 className="font-bold text-slate-400 text-[10px] uppercase tracking-widest mb-2.5">Додаткові сервіси</h4>
+          
+          <div className="mb-4">
+            <GoogleDocExport />
+          </div>
+
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center bg-indigo-600/10 border border-indigo-500/30 rounded-lg overflow-hidden transition-all">
               <button

@@ -297,30 +297,30 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 console.log(`[BirthdayCron] writeStream finished: ${pdfPath}`);
                 try {
                     const attachments = [];
+                    let pdfSuccessful = false;
                     if (fs.existsSync(pdfPath)) {
                         const stats = fs.statSync(pdfPath);
-                        if (stats.size > 0) {
+                        if (stats.size > 100) {
                             attachments.push({ filename: 'Imenynnyky.pdf', path: pdfPath });
+                            pdfSuccessful = true;
                         } else {
-                            console.warn("[BirthdayCron] Generated PDF is empty (0 bytes)!");
+                            console.warn(`[BirthdayCron] Generated PDF is too small (${stats.size} bytes)!`);
                         }
                     }
                     if (fs.existsSync(htmlPath)) {
                         attachments.push({ filename: 'Imenynnyky.html', path: htmlPath });
                     }
 
-                    let msg = `📄 Прикріплено список іменинників (${birthdays.weekRangeText}) у форматах ПДФ та HTML (для друку).`;
+                    let msg = `📄 Прикріплено список іменинників (${birthdays.weekRangeText}).`;
+                    if (!pdfSuccessful) {
+                        msg += "\n\n⚠️ УВАГА: Виникла помилка при генерації PDF. Будь ласка, використайте HTML файл або текстовий список.";
+                    }
                     
                     console.log("[BirthdayCron] Sending Telegram (Distribution 2)...");
-                    // Send PDF if exists, otherwise text
-                    const telegramFilePath = attachments.find(a => a.filename === 'Imenynnyky.pdf')?.path;
-                    await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, telegramFilePath);
+                    const telegramFilePath = attachments.find(a => a.filename === 'Imenynnyky.pdf')?.path 
+                                          || attachments.find(a => a.filename === 'Imenynnyky.html')?.path;
                     
-                    // Also send HTML to Telegram if PDF is missing or just as an alternative? 
-                    // Telegram doesn't support multiple documents in one sendDocument call easily without loops
-                    if (!telegramFilePath && fs.existsSync(htmlPath)) {
-                        await sendTelegram(settings.wednesdayTelegramIds, "Альтернативний формат (HTML) для друку:", settings.botToken, htmlPath);
-                    }
+                    await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, telegramFilePath);
 
                     console.log("[BirthdayCron] Sending Emails (Distribution 2)...");
                     await sendEmails(settings.wednesdayEmails, `Іменинники тижня (${birthdays.weekRangeText})`, msg, settings.appPassword, attachments);

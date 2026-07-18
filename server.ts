@@ -806,6 +806,35 @@ app.use('/api/firebase', async (req, res) => {
 const SETTINGS_FILE = path.join(process.cwd(), "settings.json");
 let cachedSettings: any = null;
 
+const SETTINGS_DEFAULTS = {
+  mondayEmails: "",
+  wednesdayEmails: "",
+  mondayTelegramIds: "",
+  wednesdayTelegramIds: "",
+  botToken: "",
+  appPassword: "",
+  mondayMailingDay: 1,
+  mondayMailingHour: 11,
+  mondayMailingMinute: 0,
+  wednesdayMailingDay: 3,
+  wednesdayMailingHour: 11,
+  wednesdayMailingMinute: 0,
+  notificationDays: 14
+};
+
+function mergeSettings(data: any) {
+  const merged = { ...SETTINGS_DEFAULTS, ...(data || {}) };
+  // Enforce numbers for time fields
+  merged.mondayMailingDay = Number(merged.mondayMailingDay);
+  merged.mondayMailingHour = Number(merged.mondayMailingHour);
+  merged.mondayMailingMinute = Number(merged.mondayMailingMinute);
+  merged.wednesdayMailingDay = Number(merged.wednesdayMailingDay);
+  merged.wednesdayMailingHour = Number(merged.wednesdayMailingHour);
+  merged.wednesdayMailingMinute = Number(merged.wednesdayMailingMinute);
+  merged.notificationDays = Number(merged.notificationDays);
+  return merged;
+}
+
 async function loadSettingsFromFirebase() {
   try {
     const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
@@ -813,8 +842,8 @@ async function loadSettingsFromFirebase() {
     if (response.ok) {
       const data = await response.json();
       if (data && typeof data === 'object') {
-        cachedSettings = data;
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
+        cachedSettings = mergeSettings(data);
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(cachedSettings, null, 2));
         console.log("[Firebase Settings] Successfully loaded and cached notification settings from Firebase Realtime DB.");
         return;
       }
@@ -830,27 +859,16 @@ function getSettings() {
     return cachedSettings;
   }
   try {
-    const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
-    cachedSettings = data;
-    return data;
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+      cachedSettings = mergeSettings(data);
+      return cachedSettings;
+    }
   } catch (e) {
-    const defaults = {
-      mondayEmails: "",
-      wednesdayEmails: "",
-      mondayTelegramIds: "",
-      wednesdayTelegramIds: "",
-      botToken: "",
-      appPassword: "",
-      mondayMailingDay: 1,
-      mondayMailingHour: 11,
-      mondayMailingMinute: 0,
-      wednesdayMailingDay: 3,
-      wednesdayMailingHour: 11,
-      wednesdayMailingMinute: 0
-    };
-    cachedSettings = defaults;
-    return defaults;
+    console.error("[Settings] Error reading local settings file:", e);
   }
+  cachedSettings = mergeSettings({});
+  return cachedSettings;
 }
 
 app.get("/api/settings/notifications", (req, res) => {
@@ -858,23 +876,26 @@ app.get("/api/settings/notifications", (req, res) => {
 });
 
 app.post("/api/settings/notifications", async (req, res) => {
-  const settings = req.body;
-  cachedSettings = settings;
+  const newSettings = req.body;
+  const currentSettings = getSettings();
+  const mergedSettings = mergeSettings({ ...currentSettings, ...newSettings });
+  cachedSettings = mergedSettings;
+  
   try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(mergedSettings, null, 2));
     
     // Save to Firebase Realtime DB
     const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
     await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings)
+      body: JSON.stringify(mergedSettings)
     });
-    console.log("[Firebase Settings] Successfully synchronized settings to Firebase Realtime DB.");
+    console.log("[Firebase Settings] Successfully synchronized merged settings to Firebase Realtime DB.");
   } catch (err: any) {
     console.error(`[Firebase Settings] Error saving settings to Firebase Realtime DB: ${err.message}`);
   }
-  res.json({ success: true });
+  res.json({ success: true, settings: mergedSettings });
 });
 
 app.get("/api/health", (req, res) => {

@@ -37,13 +37,13 @@ export function NotificationSettings() {
           appPassword: data.appPassword || '',
           enableTestMode: data.enableTestMode === true || data.enableTestMode === "true",
           testTelegramId: data.testTelegramId || '',
-          notificationDays: data.notificationDays || 14,
-          mondayMailingDay: data.mondayMailingDay !== undefined ? data.mondayMailingDay : 1,
-          mondayMailingHour: data.mondayMailingHour !== undefined ? data.mondayMailingHour : 11,
-          mondayMailingMinute: data.mondayMailingMinute !== undefined ? data.mondayMailingMinute : 0,
-          wednesdayMailingDay: data.wednesdayMailingDay !== undefined ? data.wednesdayMailingDay : 3,
-          wednesdayMailingHour: data.wednesdayMailingHour !== undefined ? data.wednesdayMailingHour : 11,
-          wednesdayMailingMinute: data.wednesdayMailingMinute !== undefined ? data.wednesdayMailingMinute : 0
+          notificationDays: data.notificationDays !== undefined ? data.notificationDays : 14,
+          mondayMailingDay: data.mondayMailingDay !== undefined ? Number(data.mondayMailingDay) : 1,
+          mondayMailingHour: data.mondayMailingHour !== undefined ? Number(data.mondayMailingHour) : 11,
+          mondayMailingMinute: data.mondayMailingMinute !== undefined ? Number(data.mondayMailingMinute) : 0,
+          wednesdayMailingDay: data.wednesdayMailingDay !== undefined ? Number(data.wednesdayMailingDay) : 3,
+          wednesdayMailingHour: data.wednesdayMailingHour !== undefined ? Number(data.wednesdayMailingHour) : 11,
+          wednesdayMailingMinute: data.wednesdayMailingMinute !== undefined ? Number(data.wednesdayMailingMinute) : 0
         });
         setLoading(false);
       })

@@ -172,36 +172,52 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
 
-        const regularFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-        const boldFont = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+        const regularFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+        const boldFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
         
-        if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-            doc.font(boldFont).fontSize(14);
-            const headerWidth = doc.widthOfString(headerText);
-            const prefixWidth = doc.widthOfString('ІМЕ');
-            const headerLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - headerWidth) / 2;
-            const listLeftX = headerLeftX + prefixWidth;
+        try {
+            if (fs.existsSync(regularFontPath) && fs.existsSync(boldFontPath)) {
+                // Register fonts with specific names to ensure they are loaded correctly
+                doc.registerFont('Roboto-Regular', regularFontPath);
+                doc.registerFont('Roboto-Bold', boldFontPath);
 
-            doc.text(headerText, { align: 'center' });
-            doc.moveDown(0.5);
-            
-            const subheaderText = `/ ${birthdays.weekRangeText} /`;
-            doc.font(regularFont).fontSize(10);
-            doc.text(subheaderText, { align: 'center' });
-            doc.moveDown(2);
+                const headerText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+                doc.font('Roboto-Bold').fontSize(14);
+                
+                const headerWidth = doc.widthOfString(headerText);
+                const prefixWidth = doc.widthOfString('ІМЕ');
+                const headerLeftX = doc.page.margins.left + (doc.page.width - doc.page.margins.left - doc.page.margins.right - headerWidth) / 2;
+                const listLeftX = headerLeftX + prefixWidth;
 
-            birthdays.list.forEach((item: any) => {
-                doc.font(boldFont).fontSize(12);
-                if (item.isJubilee) {
-                    doc.fillColor('red');
-                } else {
-                    doc.fillColor('black');
-                }
-                const nameText = item.cleanName || item.fullName || item.shortName;
-                doc.text(nameText, listLeftX, doc.y);
+                doc.text(headerText, { align: 'center' });
                 doc.moveDown(0.5);
-            });
+                
+                const subheaderText = `/ ${birthdays.weekRangeText} /`;
+                doc.font('Roboto-Regular').fontSize(10);
+                doc.text(subheaderText, { align: 'center' });
+                doc.moveDown(2);
+
+                birthdays.list.forEach((item: any) => {
+                    doc.font('Roboto-Bold').fontSize(12);
+                    if (item.isJubilee) {
+                        doc.fillColor('red');
+                    } else {
+                        doc.fillColor('black');
+                    }
+                    const nameText = String(item.cleanName || item.fullName || item.shortName || "Невідоме ім'я");
+                    doc.text(nameText, listLeftX, doc.y);
+                    doc.moveDown(0.5);
+                });
+            } else {
+                console.warn("Fonts not found, creating PDF with default font.");
+                doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+                doc.moveDown();
+                birthdays.list.forEach((item: any) => {
+                    doc.fontSize(12).text(String(item.cleanName || item.fullName || "Невідомо"), { align: 'center' });
+                });
+            }
+        } catch (pdfErr) {
+            console.error("Error during PDF drawing:", pdfErr);
         }
         
         doc.end();

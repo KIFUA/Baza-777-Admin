@@ -14,8 +14,10 @@ export interface BirthdaySettings {
     appPassword: string;
     mondayMailingDay?: number | string;
     mondayMailingHour?: number | string;
+    mondayMailingMinute?: number | string;
     wednesdayMailingDay?: number | string;
     wednesdayMailingHour?: number | string;
+    wednesdayMailingMinute?: number | string;
 }
 
 let isInitialized = false;
@@ -227,17 +229,21 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         });
     };
 
-    // Check every hour for scheduled distributions
-    cron.schedule('0 * * * *', async () => {
+    // Check every minute for scheduled distributions
+    cron.schedule('* * * * *', async () => {
         const now = getKyivDateTime();
         const settings = getSettingsFn();
         
         const mondayDay = settings.mondayMailingDay !== undefined ? Number(settings.mondayMailingDay) : 1;
         const mondayHour = settings.mondayMailingHour !== undefined ? Number(settings.mondayMailingHour) : 11;
+        const mondayMinute = settings.mondayMailingMinute !== undefined ? Number(settings.mondayMailingMinute) : 0;
+
         const wedDay = settings.wednesdayMailingDay !== undefined ? Number(settings.wednesdayMailingDay) : 3;
         const wedHour = settings.wednesdayMailingHour !== undefined ? Number(settings.wednesdayMailingHour) : 11;
+        const wedMinute = settings.wednesdayMailingMinute !== undefined ? Number(settings.wednesdayMailingMinute) : 0;
 
-        console.log(`Cron check (Kyiv): Day=${now.dayOfWeek}, Hour=${now.hour}. Scheduled 1: Day=${mondayDay}, Hour=${mondayHour}. Scheduled 2: Day=${wedDay}, Hour=${wedHour}`);
+        // Skip log spam every minute, but we could log if we wanted
+        // console.log(`Cron check (Kyiv): Day=${now.dayOfWeek}, Time=${now.hour}:${now.minute}`);
 
         let state: any = {};
         if (fs.existsSync(STATE_FILE)) {
@@ -247,7 +253,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         }
 
         // Distribution 1
-        if (now.dayOfWeek === mondayDay && now.hour === mondayHour) {
+        if (now.dayOfWeek === mondayDay && now.hour === mondayHour && now.minute === mondayMinute) {
             if (state.lastMondaySent !== now.dateStr) {
                 await runMondayDistribution();
                 state.lastMondaySent = now.dateStr;
@@ -256,7 +262,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         }
 
         // Distribution 2
-        if (now.dayOfWeek === wedDay && now.hour === wedHour) {
+        if (now.dayOfWeek === wedDay && now.hour === wedHour && now.minute === wedMinute) {
             if (state.lastWednesdaySent !== now.dateStr) {
                 await runWednesdayDistribution();
                 state.lastWednesdaySent = now.dateStr;

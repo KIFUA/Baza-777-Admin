@@ -843,8 +843,10 @@ function getSettings() {
       appPassword: "",
       mondayMailingDay: 1,
       mondayMailingHour: 11,
+      mondayMailingMinute: 0,
       wednesdayMailingDay: 3,
-      wednesdayMailingHour: 11
+      wednesdayMailingHour: 11,
+      wednesdayMailingMinute: 0
     };
     cachedSettings = defaults;
     return defaults;

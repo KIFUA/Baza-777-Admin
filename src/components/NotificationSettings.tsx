@@ -14,8 +14,10 @@ export function NotificationSettings() {
     notificationDays: 14,
     mondayMailingDay: 1,
     mondayMailingHour: 11,
+    mondayMailingMinute: 0,
     wednesdayMailingDay: 3,
-    wednesdayMailingHour: 11
+    wednesdayMailingHour: 11,
+    wednesdayMailingMinute: 0
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -38,8 +40,10 @@ export function NotificationSettings() {
           notificationDays: data.notificationDays || 14,
           mondayMailingDay: data.mondayMailingDay !== undefined ? data.mondayMailingDay : 1,
           mondayMailingHour: data.mondayMailingHour !== undefined ? data.mondayMailingHour : 11,
+          mondayMailingMinute: data.mondayMailingMinute !== undefined ? data.mondayMailingMinute : 0,
           wednesdayMailingDay: data.wednesdayMailingDay !== undefined ? data.wednesdayMailingDay : 3,
-          wednesdayMailingHour: data.wednesdayMailingHour !== undefined ? data.wednesdayMailingHour : 11
+          wednesdayMailingHour: data.wednesdayMailingHour !== undefined ? data.wednesdayMailingHour : 11,
+          wednesdayMailingMinute: data.wednesdayMailingMinute !== undefined ? data.wednesdayMailingMinute : 0
         });
         setLoading(false);
       })
@@ -110,9 +114,9 @@ export function NotificationSettings() {
               </h4>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">День тижня</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">День</label>
                 <select 
                   name="mondayMailingDay" 
                   value={settings.mondayMailingDay} 
@@ -125,13 +129,25 @@ export function NotificationSettings() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Година (0-23)</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Година</label>
                 <input 
                   type="number" 
                   name="mondayMailingHour" 
                   min="0" 
                   max="23" 
                   value={settings.mondayMailingHour} 
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Хв.</label>
+                <input 
+                  type="number" 
+                  name="mondayMailingMinute" 
+                  min="0" 
+                  max="59" 
+                  value={settings.mondayMailingMinute} 
                   onChange={handleChange}
                   className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
                 />
@@ -170,9 +186,9 @@ export function NotificationSettings() {
               </h4>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">День тижня</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">День</label>
                 <select 
                   name="wednesdayMailingDay" 
                   value={settings.wednesdayMailingDay} 
@@ -185,13 +201,25 @@ export function NotificationSettings() {
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Година (0-23)</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Година</label>
                 <input 
                   type="number" 
                   name="wednesdayMailingHour" 
                   min="0" 
                   max="23" 
                   value={settings.wednesdayMailingHour} 
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Хв.</label>
+                <input 
+                  type="number" 
+                  name="wednesdayMailingMinute" 
+                  min="0" 
+                  max="59" 
+                  value={settings.wednesdayMailingMinute} 
                   onChange={handleChange}
                   className="w-full px-3 py-2 bg-[#0e2128] border border-[#224853] text-white rounded-md text-xs focus:outline-none focus:border-emerald-500 transition-colors"
                 />

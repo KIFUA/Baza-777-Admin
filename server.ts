@@ -4563,7 +4563,79 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  // API route for printable view
+app.get("/api/birthdays/print", (req, res) => {
+  const birthdays = getBirthdaysForThisWeek();
+  const UKR_DAYS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  
+  let rows = "";
+  birthdays.list.forEach((item: any) => {
+    const dayName = UKR_DAYS[item.dayOfWeekNum];
+    const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
+    const jubileeStyle = item.isJubilee ? 'style="color: #d32f2f; font-weight: bold;"' : '';
+    rows += `
+      <tr ${jubileeStyle}>
+        <td style="text-align: center; width: 60px;">${dayName}</td>
+        <td style="text-align: center; width: 100px;">${dateFormatted}</td>
+        <td>${item.cleanName || item.fullName} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
+      </tr>
+    `;
+  });
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="uk">
+    <head>
+      <meta charset="UTF-8">
+      <title>Іменинники тижня - ${birthdays.weekRangeText}</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 40px; line-height: 1.5; color: #333; }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        h1 { margin: 0; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { font-size: 16px; color: #666; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+        th, td { border: 1px solid #000; padding: 12px; text-align: left; }
+        th { background-color: #f5f5f5; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        .no-print { margin-bottom: 20px; text-align: right; }
+        button { background: #000; color: #fff; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        button:hover { background: #333; }
+        @media print {
+          .no-print { display: none; }
+          body { padding: 0; }
+          table { font-size: 12pt; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print">
+        <button onclick="window.print()">РОЗДРУКУВАТИ (CTRL+P)</button>
+      </div>
+      <div class="header">
+        <h1>Іменинники поточного тижня</h1>
+        <div class="subtitle">${birthdays.weekRangeText}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>День</th>
+            <th>Дата</th>
+            <th>ПІБ / Ім'я</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+      <div style="margin-top: 40px; font-size: 10px; text-align: center; color: #999;">
+        Згенеровано автоматично системою "База 777" - ${new Date().toLocaleString('uk-UA')}
+      </div>
+    </body>
+    </html>
+  `;
+  res.send(html);
+});
+
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Church Database FullStack Server running on port ${PORT}`);
   });
 }

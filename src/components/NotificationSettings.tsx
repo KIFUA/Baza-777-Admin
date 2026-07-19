@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Bell, Info } from 'lucide-react';
 
-import { GoogleDocExport } from './GoogleDocExport';
+import { PrintExport } from './PrintExport';
 
 export function NotificationSettings() {
   const [settings, setSettings] = useState({
@@ -302,7 +302,7 @@ export function NotificationSettings() {
           <h4 className="font-bold text-slate-400 text-[10px] uppercase tracking-widest mb-2.5">Додаткові сервіси</h4>
           
           <div className="mb-4">
-            <GoogleDocExport />
+            <PrintExport />
           </div>
 
           <div className="flex flex-wrap items-center gap-3">

@@ -1643,7 +1643,6 @@ app.get("/api/birthdays/print", async (req, res) => {
   let listItems = "";
   birthdays.list.forEach((item: any) => {
     const dayName = UKR_DAYS[item.dayOfWeekNum];
-    const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
     
     // Форматування імені: лише Прізвище та Ім'я (перші два слова)
     const nameParts = (item.cleanName || item.fullName || "").trim().split(/\s+/);
@@ -1654,7 +1653,7 @@ app.get("/api/birthdays/print", async (req, res) => {
 
     listItems += `
       <div class="birthday-item" ${jubileeStyle}>
-        <span class="date-info"><strong>${dayName}</strong> ${dateFormatted}</span> — 
+        <span class="day-label"><strong>${dayName}</strong></span> — 
         <span class="name-info">${shortName}${jubileeMarker}</span>
       </div>
     `;
@@ -1669,63 +1668,58 @@ app.get("/api/birthdays/print", async (req, res) => {
       <style>
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-          padding: 50px; 
-          line-height: 1.6; 
-          color: #333; 
-          max-width: 800px;
+          padding: 30px; 
+          line-height: 1.2; 
+          color: #000; 
+          max-width: 600px;
           margin: 0 auto;
         }
         .header { 
           text-align: center; 
-          margin-bottom: 40px; 
-          border-bottom: 1px solid #eee; 
-          padding-bottom: 20px; 
+          margin-bottom: 20px; 
+          border-bottom: 1px solid #000; 
+          padding-bottom: 10px; 
         }
-        h1 { margin: 0; font-size: 22px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .subtitle { font-size: 15px; color: #666; margin-top: 8px; }
+        h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
+        .subtitle { font-size: 13px; color: #333; margin-top: 4px; }
         
-        .birthday-list { margin-top: 30px; }
+        .birthday-list { margin-top: 15px; }
         .birthday-item { 
-          padding: 10px 0; 
-          border-bottom: 1px dashed #eee;
-          font-size: 16px;
+          padding: 2px 0; 
+          font-size: 14px;
         }
-        .date-info { color: #555; display: inline-block; width: 130px; }
-        .name-info { color: #000; }
+        .day-label { display: inline-block; width: 30px; }
         
-        .no-print { margin-bottom: 30px; text-align: right; }
+        .no-print { margin-bottom: 20px; text-align: right; }
         button { 
           background: #000; 
           color: #fff; 
           border: none; 
-          padding: 12px 24px; 
+          padding: 8px 16px; 
           cursor: pointer; 
-          border-radius: 6px; 
+          border-radius: 4px; 
           font-weight: bold;
-          font-size: 13px;
+          font-size: 12px;
         }
-        button:hover { background: #333; }
-        
         @media print {
           .no-print { display: none; }
           body { padding: 0; }
-          .birthday-item { border-bottom: 1px solid #f0f0f0; }
         }
       </style>
     </head>
     <body>
       <div class="no-print">
-        <button onclick="window.print()">РОЗДРУКУВАТИ СПИСОК</button>
+        <button onclick="window.print()">ДРУКУВАТИ</button>
       </div>
       <div class="header">
-        <h1>Іменинники поточного тижня</h1>
+        <h1>Іменинники тижня</h1>
         <div class="subtitle">${birthdays.weekRangeText}</div>
       </div>
       <div class="birthday-list">
         ${listItems || '<div style="text-align: center; color: #999;">На цьому тижні немає іменинників</div>'}
       </div>
-      <div style="margin-top: 60px; font-size: 11px; text-align: center; color: #aaa; border-top: 1px solid #eee; padding-top: 20px;">
-        Згенеровано автоматично системою "База 777" — ${new Date().toLocaleString('uk-UA')}
+      <div style="margin-top: 30px; font-size: 9px; text-align: center; color: #666; border-top: 0.5px solid #ccc; padding-top: 10px;">
+        База 777 — ${new Date().toLocaleString('uk-UA')}
       </div>
     </body>
     </html>

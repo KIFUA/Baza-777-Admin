@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
   CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
-  Edit, UserPlus, ShieldAlert, Save, Settings
+  Edit, UserPlus, ShieldAlert, Save, Settings, Bell, FileText
 } from 'lucide-react';
 import { Member } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
@@ -25,7 +25,9 @@ export default function DirectoriesManager({
   members,
   onUpdateMember
 }: DirectoriesManagerProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'birthdays' | 'dicts' | 'access' | 'sync' | 'colors'>('birthdays');
+  const [activeSubTab, setActiveSubTab] = useState<'journal_notifications' | 'dicts' | 'access' | 'additional_services' | 'sync' | 'colors' | null>(null);
+  const [birthdaysExpanded, setBirthdaysExpanded] = useState<boolean>(false);
+  const [newsletterExpanded, setNewsletterExpanded] = useState<boolean>(false);
   const [activeAccessSubTab, setActiveAccessSubTab] = useState<'sectors' | 'levels'>('sectors');
   const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
   const [ignoreAdminLogs, setIgnoreAdminLogs] = useState<boolean>(true);
@@ -400,6 +402,8 @@ export default function DirectoriesManager({
   const [birthdayData, setBirthdayData] = useState<any>(null);
   const [bdayLoading, setBdayLoading] = useState(false);
   const [tgToken, setTgToken] = useState('');
+  const [customEmails, setCustomEmails] = useState('');
+  const [customTelegramIds, setCustomTelegramIds] = useState('');
   const [sendingStatus, setSendingStatus] = useState<{ success?: boolean; msg?: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -453,10 +457,46 @@ export default function DirectoriesManager({
       if (resp.ok) {
         const json = await resp.json();
         setBirthdayData(json);
+        
+        // Also load manual recipient settings if they exist in lookups
+        if (lookups?.directories) {
+          if (lookups.directories.birthday_manual_emails) {
+            setCustomEmails(lookups.directories.birthday_manual_emails);
+          }
+          if (lookups.directories.birthday_manual_chat_ids) {
+            setCustomTelegramIds(lookups.directories.birthday_manual_chat_ids);
+          }
+          if (lookups.directories.birthday_manual_tg_token) {
+            setTgToken(lookups.directories.birthday_manual_tg_token);
+          }
+        }
       }
     } catch (_) {
     } finally {
       setBdayLoading(false);
+    }
+  };
+
+  const handleSaveManualRecipients = async () => {
+    if (!lookups?.directories) return;
+    const payload = {
+      ...lookups.directories,
+      birthday_manual_emails: customEmails,
+      birthday_manual_chat_ids: customTelegramIds,
+      birthday_manual_tg_token: tgToken
+    };
+    try {
+      const resp = await fetch('/api/directories/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        alert("Отримувачі збережені!");
+        await onRefreshLookups();
+      }
+    } catch (err) {
+      console.error("Failed to save recipients:", err);
     }
   };
 
@@ -518,7 +558,7 @@ export default function DirectoriesManager({
   };
 
   // Trigger Weekly Birthdays Send
-  const handleSendBirthdays = async (type: 'telegram_me' | 'telegram_group' | 'email_text' | 'email_pdf') => {
+  const handleSendBirthdays = async (type: 'telegram_me' | 'telegram_group' | 'telegram_pdf' | 'email_text' | 'email_pdf') => {
     setSendingStatus({ msg: 'Надсилання розписку...' });
     try {
       const resp = await fetch('/api/birthdays/send', {
@@ -526,7 +566,9 @@ export default function DirectoriesManager({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type,
-          customToken: tgToken || undefined
+          customToken: tgToken || undefined,
+          customEmails: customEmails || undefined,
+          customChatId: customTelegramIds || undefined
         })
       });
       if (resp.ok) {
@@ -711,11 +753,11 @@ export default function DirectoriesManager({
         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-1">Навігація кабінету</h3>
         
         <button
-          onClick={() => setActiveSubTab('birthdays')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'birthdays' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
+          onClick={() => setActiveSubTab('journal_notifications')}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'journal_notifications' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
         >
-          <Cake className="h-4 w-4 text-amber-500 shrink-0" />
-          <span>🎂 Іменинники тижня</span>
+          <Cake className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>🎂 ІМЕНИННИКИ</span>
         </button>
 
         <button
@@ -740,6 +782,14 @@ export default function DirectoriesManager({
         >
           <ShieldCheck className="h-4 w-4 text-emerald-450 shrink-0" />
           <span>🔑 Доступ</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('additional_services')}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all outline-none text-left ${activeSubTab === 'additional_services' ? "bg-[#387d7a] text-white shadow-sm scale-[1.01]" : "text-slate-300 hover:bg-[#1a3843] hover:text-white"}`}
+        >
+          <Settings className="h-4 w-4 text-amber-500 shrink-0" />
+          <span>⚙️ Додаткові сервіси</span>
         </button>
 
         <button
@@ -774,8 +824,16 @@ export default function DirectoriesManager({
       {/* Main Panel Content Workspace */}
       <div className="flex-1 min-w-0">
         
-        {/* SUBTAB 1: BIRTHDAYS MANAGER */}
-        {activeSubTab === 'birthdays' && (
+        {activeSubTab === null && (
+          <div className="flex flex-col items-center justify-center h-full py-16 text-center text-slate-400 animate-fade-in">
+            <Settings className="h-10 w-10 text-[#387d7a]/50 mb-3" />
+            <div className="text-xs font-bold text-slate-300">Оберіть пункт у Навігації кабінету</div>
+            <p className="text-[10px] text-slate-500 mt-1">Клацніть на будь-який пункт ліворуч, щоб розпочати роботу з налаштуваннями.</p>
+          </div>
+        )}
+        
+        {/* SUBTAB 1: JOURNAL & BIRTHDAYS MANAGER */}
+        {activeSubTab === 'journal_notifications' && (
           <div className="space-y-4 animate-fade-in text-slate-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#224853]/55 pb-2.5">
               <div>
@@ -823,206 +881,269 @@ export default function DirectoriesManager({
                 </div>
 
                 {/* Table list */}
-                <div className="rounded-lg border border-[#224853]/55 overflow-x-auto bg-[#13282e]/40">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-[#13282e] border-b border-[#224853]/60 text-[10px] font-bold text-slate-305 uppercase tracking-wider">
-                        <th className="p-2 px-2.5">Дата святкування / День</th>
-                        <th className="p-2 px-2.5">Член церкви</th>
-                        <th className="p-2 px-2.5">Вік / Статус</th>
-                        <th className="p-2 px-2.5">Контакти</th>
-                        <th className="p-2 px-2.5">Підзвітний сектор</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#224853]/30 text-xs">
-                      {birthdayData.list.map((item: any) => {
-                        const day = UKR_DAYS[item.dayOfWeekNum];
-                        const dateFormatted = item.celebrationDate.split('-').reverse().slice(0,2).join('.');
-                        return (
-                          <tr key={item.id} className="hover:bg-[#1a3843]/35 transition-colors">
-                            <td className="p-2 px-2.5">
-                              <span className="font-bold text-slate-100 block text-xs">{day}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">{dateFormatted} (н/д)</span>
-                            </td>
-                            <td className="p-2 px-2.5">
-                              <div className="font-bold text-slate-100 flex items-center space-x-1.5 animate-none">
-                                <span>{item.cleanName}</span>
-                                {item.fullName !== item.cleanName && (
-                                  <span className="text-[10px] text-slate-400 font-normal italic leading-none truncate max-w-[120px]">(дівоче: {item.fullName.split('(')[1]?.replace(')', '')})</span>
-                                )}
-                              </div>
-                              <span className="text-[10px] font-medium text-slate-400">{item.gender || item.stat}</span>
-                            </td>
-                            <td className="p-2 px-2.5">
-                              <div className="flex items-center space-x-2">
-                                <span className="font-medium text-slate-200">{item.age} років</span>
-                                {item.isJubilee && (
-                                  <span className="bg-amber-950/80 border border-amber-600 text-amber-300 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider animate-pulse flex items-center shrink-0">
-                                    🎖️ Ювіляр
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-2 px-2.5 text-slate-300 font-mono">
-                              {item.tel_mob || <span className="text-slate-500 italic">немає</span>}
-                            </td>
-                            <td className="p-2 px-2.5 font-medium">
-                              <span className="bg-[#1a3843] text-slate-250 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold inline-block border border-[#224853] mr-1">
-                                {item.rayon2_ukr || "Центр"}
-                              </span>
-                              <span className="text-[10px] text-slate-400 block truncate">Оп: {item.presviter || "не вказано"}</span>
-                            </td>
+                <div className="border border-[#224853]/55 rounded-lg bg-[#13282e]/40 overflow-hidden">
+                  <button
+                    onClick={() => setBirthdaysExpanded(!birthdaysExpanded)}
+                    className="w-full flex items-center justify-between p-3 text-left font-bold text-xs text-slate-200 hover:bg-[#1a3843]/30 transition-colors focus:outline-none"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <span>👥 Список іменинників ({birthdayData.list.length} осіб)</span>
+                    </span>
+                    <span className="text-[10px] bg-[#1a3843] hover:bg-[#387d7a] text-slate-300 hover:text-white px-2.5 py-1 rounded transition-colors font-bold flex items-center gap-1">
+                      {birthdaysExpanded ? "▲ Згорнути" : "▼ Розгорнути список"}
+                    </span>
+                  </button>
+
+                  {birthdaysExpanded && (
+                    <div className="overflow-x-auto border-t border-[#224853]/40 animate-fade-in">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-[#13282e] border-b border-[#224853]/60 text-[10px] font-bold text-slate-305 uppercase tracking-wider">
+                            <th className="p-2 px-2.5">Дата святкування / День</th>
+                            <th className="p-2 px-2.5">Член церкви</th>
+                            <th className="p-2 px-2.5">Вік / Статус</th>
+                            <th className="p-2 px-2.5">Контакти</th>
+                            <th className="p-2 px-2.5">Підзвітний сектор</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="divide-y divide-[#224853]/30 text-xs">
+                          {birthdayData.list.map((item: any) => {
+                            const day = UKR_DAYS[item.dayOfWeekNum];
+                            const dateFormatted = item.celebrationDate.split('-').reverse().slice(0,2).join('.');
+                            return (
+                              <tr key={item.id} className="hover:bg-[#1a3843]/35 transition-colors">
+                                <td className="p-2 px-2.5">
+                                  <span className="font-bold text-slate-100 block text-xs">{day}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">{dateFormatted} (н/д)</span>
+                                </td>
+                                <td className="p-2 px-2.5">
+                                  <div className="font-bold text-slate-100 flex items-center space-x-1.5 animate-none">
+                                    <span>{item.cleanName}</span>
+                                    {item.fullName !== item.cleanName && (
+                                      <span className="text-[10px] text-slate-400 font-normal italic leading-none truncate max-w-[120px]">(дівоче: {item.fullName.split('(')[1]?.replace(')', '')})</span>
+                                    )}
+                                  </div>
+                                  <span className="text-[10px] font-medium text-slate-400">{item.gender || item.stat}</span>
+                                </td>
+                                <td className="p-2 px-2.5">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-medium text-slate-200">{item.age} років</span>
+                                    {item.isJubilee && (
+                                      <span className="bg-amber-950/80 border border-amber-600 text-amber-300 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider animate-pulse flex items-center shrink-0">
+                                        🎖️ Ювіляр
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="p-2 px-2.5 text-slate-300 font-mono">
+                                  {item.tel_mob || <span className="text-slate-500 italic">немає</span>}
+                                </td>
+                                <td className="p-2 px-2.5 font-medium">
+                                  <span className="bg-[#1a3843] text-slate-250 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold inline-block border border-[#224853] mr-1">
+                                    {item.rayon2_ukr || "Центр"}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 block truncate">Оп: {item.presviter || "не вказано"}</span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
 
                 {/* Automation trigger interface panel */}
-                <div id="trigger_newsletter_card" className="rounded-xl border border-[#224853]/55 bg-[#13282e]/40 p-4 space-y-3">
-                  <div className="border-b border-[#224853]/50 pb-2">
-                    <h3 className="font-bold text-white text-xs tracking-wide">📣 Канали оповіщення та розсилки</h3>
-                    <p className="text-[10px] text-slate-400">Швидке надсилання сформованого звіту тижня за вказаними координатами</p>
-                  </div>
+                <div id="trigger_newsletter_card" className="rounded-xl border border-[#224853]/55 bg-[#13282e]/40 overflow-hidden">
+                  <button
+                    onClick={() => setNewsletterExpanded(!newsletterExpanded)}
+                    className="w-full flex items-center justify-between p-4 text-left focus:outline-none hover:bg-[#1a3843]/10 transition-colors"
+                  >
+                    <div>
+                      <h3 className="font-bold text-white text-xs tracking-wide flex items-center gap-1.5">📣 Канали оповіщення та розсилки</h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Швидке надсилання сформованого звіту тижня за вказаними координатами</p>
+                    </div>
+                    <span className="text-[10px] bg-[#1a3843] hover:bg-[#387d7a] text-slate-300 hover:text-white px-2.5 py-1 rounded transition-colors font-bold flex items-center gap-1 shrink-0">
+                      {newsletterExpanded ? "▲ Згорнути" : "▼ Розгорнути"}
+                    </span>
+                  </button>
 
-                  {sendingStatus && (
-                    <div className={`rounded-lg border p-2.5 flex items-start space-x-2 text-xs transition-all ${sendingStatus.success === undefined ? "bg-[#1a3843] border-blue-500/30 text-blue-300" : (sendingStatus.success ? "bg-emerald-950/80 border-emerald-500/30 text-emerald-300" : "bg-rose-950/80 border-rose-500/30 text-rose-300")}`}>
-                      {sendingStatus.success === undefined ? (
-                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-400 border-t-transparent shrink-0 mt-0.5"></div>
-                      ) : (
-                        sendingStatus.success ? <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  {newsletterExpanded && (
+                    <div className="p-4 pt-0 space-y-3 border-t border-[#224853]/30 animate-fade-in">
+                      {sendingStatus && (
+                        <div className={`rounded-lg border p-2.5 flex items-start space-x-2 text-xs transition-all ${sendingStatus.success === undefined ? "bg-[#1a3843] border-blue-500/30 text-blue-300" : (sendingStatus.success ? "bg-emerald-950/80 border-emerald-500/30 text-emerald-300" : "bg-rose-950/80 border-rose-500/30 text-rose-300")}`}>
+                          {sendingStatus.success === undefined ? (
+                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-400 border-t-transparent shrink-0 mt-0.5"></div>
+                          ) : (
+                            sendingStatus.success ? <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                          )}
+                          <div className="leading-snug">
+                            <span className="font-bold block">Статус доставки:</span>
+                            <span className="font-mono text-[9px]">{sendingStatus.msg}</span>
+                          </div>
+                        </div>
                       )}
-                      <div className="leading-snug">
-                        <span className="font-bold block">Статус доставки:</span>
-                        <span className="font-mono text-[9px]">{sendingStatus.msg}</span>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
+                        {/* Channel 1: Telegram Bot Dispatch API */}
+                        <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
+                              <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
+                                <Send className="h-3.5 w-3.5 text-sky-400" />
+                              </span>
+                              <span>Телеграм сповіщення</span>
+                            </span>
+                            <span className="text-[8px] bg-[#1a3843] text-slate-350 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">Бот API</span>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">TELEGRAM BOT TOKEN (опціонально для перевірки)</label>
+                            <input
+                              type="password"
+                              placeholder="Введіть токен бота (напр. 61234567:AAFe...)"
+                              value={tgToken}
+                              onChange={(e) => setTgToken(e.target.value)}
+                              className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">Отримувачі Chat ID (через кому)</label>
+                            <input
+                              type="text"
+                              placeholder="Напр: 1919236304, -1001914940560"
+                              value={customTelegramIds}
+                              onChange={(e) => setCustomTelegramIds(e.target.value)}
+                              className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
+                            />
+                            <p className="text-[8px] text-slate-450 mt-0.5 leading-tight">Бот повинен бути доданий у чат-отримувач для здійснення реальних відправок.</p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-1.5 pt-1">
+                            <button
+                              onClick={() => handleSendBirthdays('telegram_me')}
+                              className="flex-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-[#224853] text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
+                            >
+                              <Send className="h-3 w-3 text-sky-400" />
+                              <span>Надіслати мені</span>
+                            </button>
+                            <button
+                              onClick={() => handleSendBirthdays('telegram_group')}
+                              className="flex-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
+                            >
+                              <Users className="h-3 w-3" />
+                              <span>Текст ЦР</span>
+                            </button>
+                            <button
+                              onClick={() => handleSendBirthdays('telegram_pdf')}
+                              className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
+                            >
+                              <FileText className="h-3 w-3" />
+                              <span>PDF ЦР</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Channel 2: Email PDF/HTML Report Delivery */}
+                        <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
+                                <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
+                                  <Mail className="h-3.5 w-3.5 text-emerald-400" />
+                                </span>
+                                <span>Email Розсилка (Майже реальна)</span>
+                              </span>
+                              <span className="text-[8px] bg-[#1a3843] text-emerald-400 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">PDF / Текст</span>
+                            </div>
+                            
+                            <div className="space-y-1 mt-2">
+                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">Отримувачі Email (через кому)</label>
+                              <textarea
+                                placeholder="Напр: email1@gmail.com, email2@gmail.com"
+                                value={customEmails}
+                                onChange={(e) => setCustomEmails(e.target.value)}
+                                className="w-full h-12 rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-none placeholder-slate-500 resize-none"
+                              />
+                            </div>
+                            
+                            <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
+                              Тригер надсилає листи на вказані вище адреси. Якщо поле порожнє, будуть використані адреси з налаштувань (Понеділок/Середа).
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row gap-1.5 pt-2">
+                            <button
+                              onClick={() => handleSendBirthdays('email_text')}
+                              className="flex-1 rounded-lg border border-[#224853] hover:bg-[#1a3843] text-slate-200 p-1.5 text-[10px] font-bold transition-all flex items-center justify-center space-x-1"
+                            >
+                              <Mail className="h-3 w-3" />
+                              <span>Надіслати Текст</span>
+                            </button>
+                            <button
+                              onClick={() => handleSendBirthdays('email_pdf')}
+                              className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1"
+                            >
+                              <Send className="h-3 w-3" />
+                              <span>Надіслати PDF звіт</span>
+                            </button>
+                          </div>
+                          
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              onClick={handleSaveManualRecipients}
+                              className="bg-sky-600/20 hover:bg-sky-600 text-sky-400 hover:text-white border border-sky-500/30 rounded px-3 py-1.5 text-[9px] font-bold flex items-center gap-1.5 transition-all outline-none"
+                            >
+                              <Save className="w-3 h-3" />
+                              Зберегти отримувачів (Email/TG)
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Clipboard Text generator */}
+                      <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2 mt-3">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-200">
+                          <span>📝 Попередній перегляд текстового звіту</span>
+                          <button
+                            onClick={() => {
+                              let cleanText = `🎂 ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdayData.weekRangeText} 🎂\n\n`;
+                              birthdayData.list.forEach((item: any, idx: number) => {
+                                const dayName = UKR_DAYS[item.dayOfWeekNum];
+                                const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
+                                const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
+                                cleanText += `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n`;
+                                if (item.tel_mob) cleanText += `   📞 Тел: ${item.tel_mob}\n`;
+                                if (item.rayon2_ukr) cleanText += `   📍 Район: ${item.rayon2_ukr}\n`;
+                                cleanText += `\n`;
+                              });
+                              handleCopyToClipboard(cleanText);
+                            }}
+                            className="text-white hover:text-sky-305 flex items-center space-x-1 outline-none font-bold text-[10px] bg-[#1a3843] border border-[#224853] hover:border-slate-550 rounded px-2 py-1 transition-all"
+                          >
+                            {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                            <span>{copied ? 'Скопійовано!' : 'Скопіювати звіт'}</span>
+                          </button>
+                        </div>
+                        <pre className="text-[9px] font-mono text-slate-400 bg-[#0f1f23]/60 rounded-lg p-2 max-h-[100px] overflow-y-auto overflow-x-hidden leading-relaxed break-all whitespace-pre-wrap border border-[#224853]/20">
+                          {`🎂 ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdayData.weekRangeText} 🎂\n\n` + 
+                           birthdayData.list.map((item: any, idx: number) => {
+                             const dayName = UKR_DAYS[item.dayOfWeekNum];
+                             const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
+                             const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
+                             return `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n` + 
+                                    (item.tel_mob ? `   📞 Тел: ${item.tel_mob}\n` : '') + 
+                                    (item.rayon2_ukr ? `   📍 Район: ${item.rayon2_ukr}\n` : '');
+                           }).join('\n')}
+                        </pre>
                       </div>
                     </div>
                   )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Channel 1: Telegram Bot Dispatch API */}
-                    <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
-                          <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
-                            <Send className="h-3.5 w-3.5 text-sky-400" />
-                          </span>
-                          <span>Телеграм сповіщення</span>
-                        </span>
-                        <span className="text-[8px] bg-[#1a3843] text-slate-350 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">Бот API</span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">TELEGRAM BOT TOKEN (опціонально для перевірки)</label>
-                        <input
-                          type="password"
-                          placeholder="Введіть токен бота (напр. 61234567:AAFe...)"
-                          value={tgToken}
-                          onChange={(e) => setTgToken(e.target.value)}
-                          className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
-                        />
-                        <p className="text-[8px] text-slate-450 mt-0.5 leading-tight">Бот повинен бути доданий у чат-отримувач для здійснення реальних відправок.</p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-1.5 pt-1">
-                        <button
-                          onClick={() => handleSendBirthdays('telegram_me')}
-                          className="flex-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-[#224853] text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
-                        >
-                          <Send className="h-3 w-3 text-sky-400" />
-                          <span>Надіслати мені</span>
-                        </button>
-                        <button
-                          onClick={() => handleSendBirthdays('telegram_group')}
-                          className="flex-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
-                        >
-                          <Users className="h-3 w-3" />
-                          <span>ЦЕРКОВНА РАДА</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Channel 2: Email PDF/HTML Report Delivery */}
-                    <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
-                            <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
-                              <Mail className="h-3.5 w-3.5 text-emerald-400" />
-                            </span>
-                            <span>Email Рассылка (Майже реальна)</span>
-                          </span>
-                          <span className="text-[8px] bg-[#1a3843] text-emerald-400 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">PDF / Текст</span>
-                        </div>
-                        <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-                          У повній відповідності з GAS-сценарієм, тригер надсилає листи на наступні адреси: <br />
-                          <span className="font-mono text-[9px] text-slate-350 font-semibold block mt-0.5 truncate">kostel.if.ua@gmail.com, liliiachupryna@gmail.com, solbo1971@gmail.com</span>
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col sm:flex-row gap-1.5 pt-2">
-                        <button
-                          onClick={() => handleSendBirthdays('email_text')}
-                          className="flex-1 rounded-lg border border-[#224853] hover:bg-[#1a3843] text-slate-200 p-1.5 text-[10px] font-bold transition-all flex items-center justify-center space-x-1"
-                        >
-                          <Mail className="h-3 w-3" />
-                          <span>Надіслати Текст</span>
-                        </button>
-                        <button
-                          onClick={() => handleSendBirthdays('email_pdf')}
-                          className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1"
-                        >
-                          <Send className="h-3 w-3" />
-                          <span>Надіслати PDF звіт</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Clipboard Text generator */}
-                  <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2">
-                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-200">
-                      <span>📝 Попередній перегляд текстового звіту</span>
-                      <button
-                        onClick={() => {
-                          let cleanText = `🎂 ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdayData.weekRangeText} 🎂\n\n`;
-                          birthdayData.list.forEach((item: any, idx: number) => {
-                            const dayName = UKR_DAYS[item.dayOfWeekNum];
-                            const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                            const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
-                            cleanText += `${idx + 1}. ${item.cleanName} — ${dayName}, ${dateFormatted}${jubileeText}\n`;
-                            if (item.tel_mob) cleanText += `   📞 Тел: ${item.tel_mob}\n`;
-                            if (item.rayon2_ukr) cleanText += `   📍 Район: ${item.rayon2_ukr}\n`;
-                            cleanText += `\n`;
-                          });
-                          handleCopyToClipboard(cleanText);
-                        }}
-                        className="text-white hover:text-sky-305 flex items-center space-x-1 outline-none font-bold text-[10px] bg-[#1a3843] border border-[#224853] hover:border-slate-550 rounded px-2 py-1 transition-all"
-                      >
-                        {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-                        <span>{copied ? 'Скопійовано!' : 'Скопіювати звіт'}</span>
-                      </button>
-                    </div>
-                    <pre className="text-[9px] font-mono text-slate-400 bg-[#0f1f23]/60 rounded-lg p-2 max-h-[100px] overflow-y-auto overflow-x-hidden leading-relaxed break-all whitespace-pre-wrap border border-[#224853]/20">
-                      {`🎂 ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdayData.weekRangeText} 🎂\n\n` + 
-                       birthdayData.list.map((item: any, idx: number) => {
-                         const dayName = UKR_DAYS[item.dayOfWeekNum];
-                         const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                         const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
-                         return `${idx + 1}. ${item.cleanName} — ${dayName}, ${dateFormatted}${jubileeText}\n` + 
-                                (item.tel_mob ? `   📞 Тел: ${item.tel_mob}\n` : '') + 
-                                (item.rayon2_ukr ? `   📍 Район: ${item.rayon2_ukr}\n` : '');
-                       }).join('\n')}
-                    </pre>
-                  </div>
-
                 </div>
 
               </div>
             )}
-            
-            <NotificationSettings />
             
           </div>
         )}
@@ -1239,7 +1360,16 @@ export default function DirectoriesManager({
                                       const candidates = members.filter(m => {
                                         const isActive = Number(m.id_vybuttya || 0) === 0;
                                         const isBrother = (m.gender || m.stat) === 'брат';
-                                        const isPresbyter = (m.di_admin || "").toLowerCase().includes("пресвітер") || (m.di_admin || "").toLowerCase().includes("єпископ");
+                                        
+                                        const sluj = (m.s_slujinnya_spysok || "").toLowerCase();
+                                        const san = (m.di_admin || "").toLowerCase();
+
+                                        const isPresbyter = 
+                                          sluj.includes("пресвітер") || 
+                                          sluj.includes("ст. пастор") || 
+                                          san.includes("пастор") || 
+                                          san.includes("єпископ");
+                                          
                                         return isActive && isBrother && isPresbyter;
                                       }).sort((a,b) => (a.pib || "").localeCompare(b.pib || ""));
                                       
@@ -1771,6 +1901,18 @@ export default function DirectoriesManager({
             </div>
           );
         })()}
+
+        {/* SUBTAB: ADDITIONAL SERVICES */}
+        {activeSubTab === 'additional_services' && (
+          <div className="space-y-4 animate-fade-in text-slate-200">
+            <div>
+              <h2 className="font-display text-lg font-black text-white tracking-tight flex items-center gap-1.5">⚙️ Додаткові сервіси</h2>
+              <p className="text-[11px] text-slate-400">Налаштування розсилок, сповіщень у Telegram та режимів тестування бота</p>
+            </div>
+            
+            <NotificationSettings />
+          </div>
+        )}
 
         {/* SUBTAB 4: SYNC SYSTEM METRICS WITH GOOGLE SHEETS */}
         {activeSubTab === 'sync' && (

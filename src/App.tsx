@@ -195,6 +195,7 @@ export default function App() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [iframeRefreshKey, setIframeRefreshKey] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -206,6 +207,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.')) || isAdmin;
+
   useEffect(() => {
     let modeToElement: Record<string, string> = {
       'spreadsheet': 'СПИСОК',
@@ -215,6 +218,13 @@ export default function App() {
       'journal': 'ЖУРНАЛ'
     };
     const currentElemName = modeToElement[mainMode];
+
+    // Special check for Journal - only for admins
+    if (mainMode === 'journal' && !isCurrentUserAdmin) {
+      setMainMode('spreadsheet');
+      return;
+    }
+
     if (currentElemName && !getPermission(currentElemName).view) {
       if (getPermission('СПИСОК').view) {
         setMainMode('spreadsheet');
@@ -222,7 +232,7 @@ export default function App() {
         setMainMode('questionnaire');
       }
     }
-  }, [currentSessionUser, lookups, mainMode]);
+  }, [currentSessionUser, lookups, mainMode, isCurrentUserAdmin]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -434,7 +444,6 @@ export default function App() {
   const assignedRayon = currentSessionUser?.rayon;
   const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
   
-  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.')) || isAdmin;
   const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserAdmin) || isGlobalViewer;
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
@@ -464,6 +473,7 @@ export default function App() {
         setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
         await fetchLookupsAndStats();
         await preloadRawFirebase();
+        setIframeRefreshKey(prev => prev + 1);
         return true;
       }
     } catch (err) {
@@ -512,6 +522,8 @@ export default function App() {
         await fetchMembers();
         await fetchAllMembers();
         await fetchLookupsAndStats();
+        await preloadRawFirebase();
+        setIframeRefreshKey(prev => prev + 1);
         
         if (!editingMember && resJson.memberId) {
           // If created new, navigate to details immediately
@@ -681,7 +693,7 @@ export default function App() {
                   АНКЕТИ
                 </button>
               )}
-              {getPermission('АНКЕТИ').view && (
+              {isCurrentUserAdmin && (
                 <button
                   style={{
                     fontSize: '12px',
@@ -833,15 +845,41 @@ export default function App() {
                 {(currentSessionUser?.level === 'IV-й' || currentSessionUser?.level === 'ІІІ-й') && (
                   <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
-                    <button
-                      onClick={() => {
-                        setEditingMember(null);
-                        setShowForm(true);
-                      }}
-                      className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-                    >
-                      + Додати члена
-                    </button>
+                    <div className="flex items-center space-x-1">
+                      {selectedMemberId && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/members/${selectedMemberId}`);
+                              if (resp.ok) {
+                                const fullMember = await resp.json();
+                                setEditingMember(fullMember.member || fullMember);
+                                setShowForm(true);
+                              } else {
+                                alert("Не вдалося завантажити дані члена");
+                              }
+                            } catch (err) {
+                              console.error("Error loading member details:", err);
+                              alert("Помилка при завантаженні даних");
+                            }
+                          }}
+                          className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-amber-600 text-white shadow-xs hover:bg-amber-700"
+                        >
+                          Редагувати
+                        </button>
+                      )}
+                      {isCurrentUserAdmin && (
+                        <button
+                          onClick={() => {
+                            setEditingMember(null);
+                            setShowForm(true);
+                          }}
+                          className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+                        >
+                          + Додати члена
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
                 {false ? (
@@ -852,6 +890,7 @@ export default function App() {
                   </div>
                 ) : (
                   <iframe 
+                    key={iframeRefreshKey}
                     src={`/index_legacy.html?merge=before${selectedMemberId ? `&id=${selectedMemberId}` : ''}`} 
                     className="w-full h-full border-0 flex-1" 
                     title="Legacy Questionnaire"
@@ -882,7 +921,7 @@ export default function App() {
                   onUpdateMember={handleSpreadsheetUpdate}
                 />
               </div>
-            ) : mainMode === 'journal' ? (
+            ) : (mainMode === 'journal' && isCurrentUserAdmin) ? (
               <div className="flex-1 overflow-y-auto min-h-0 pb-2 bg-[#0e2128] p-4 sm:p-6 rounded-2xl border border-[#1f424f] shadow-lg">
                 <HistoryJournal
                   onSelectMember={(id) => {

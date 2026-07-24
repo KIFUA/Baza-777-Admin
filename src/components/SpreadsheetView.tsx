@@ -4,6 +4,7 @@ import {
   Search, Edit2, Check, X, FileText, CheckCircle, AlertTriangle, 
   HelpCircle, Sparkles, Filter 
 } from 'lucide-react';
+import { normalizeToDateStr, parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 interface SpreadsheetViewProps {
   members: Member[];
@@ -313,24 +314,7 @@ export default function SpreadsheetView({
 
   // Helper to parse contact dates safely
   const parseContactDates = (dKontaktiv?: string): string[] => {
-    if (!dKontaktiv) return [];
-    let tokens = dKontaktiv.split(/[\/,;\n]+/);
-    let finalTokens: string[] = [];
-    tokens.forEach(t => {
-      const trimmed = t.trim();
-      if (!trimmed) return;
-      
-      if (trimmed.includes(' ') && /\d{2}\.\d{2}\.\d{2}/.test(trimmed)) {
-        const spaceParts = trimmed.split(/\s+/);
-        spaceParts.forEach(sp => {
-          const spt = sp.trim();
-          if (spt) finalTokens.push(spt);
-        });
-      } else {
-        finalTokens.push(trimmed);
-      }
-    });
-    return finalTokens.filter(p => p && p !== '—' && p !== 'н/д');
+    return parseAndNormalizeContactDates(dKontaktiv);
   };
 
   // Helper to get latest contact date
@@ -394,10 +378,10 @@ export default function SpreadsheetView({
 
     const parts = trimmed.split(/[\s,;]+/).map(p => p.trim()).filter(Boolean);
     if (parts.length > 0) {
-      return parts[parts.length - 1];
+      return normalizeToDateStr(parts[parts.length - 1]);
     }
 
-    return trimmed;
+    return normalizeToDateStr(trimmed);
   };
 
   const handleOpenContactModal = (m: Member) => {

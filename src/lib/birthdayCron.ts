@@ -250,14 +250,33 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         doc.pipe(writeStream);
 
         const getFontCron = (name: string, fallbackWoff: string) => {
+            const root = process.cwd();
             const candidates = [
-                path.resolve(process.cwd(), 'fonts', name),
-                (typeof __dirname !== 'undefined' ? path.resolve(__dirname, '..', '..', 'fonts', name) : path.resolve(process.cwd(), 'fonts', name)),
-                path.resolve(process.cwd(), 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
+                path.resolve(root, 'fonts', name),
+                path.resolve(root, 'fonts', fallbackWoff),
+                path.resolve(root, 'public', 'fonts', name),
+                path.resolve(root, 'public', 'fonts', fallbackWoff),
+                path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
+                // When bundled, __dirname is dist/
+                ...(typeof __dirname !== 'undefined' ? [
+                    path.resolve(__dirname, 'fonts', name),
+                    path.resolve(__dirname, 'fonts', fallbackWoff),
+                    path.resolve(__dirname, '..', 'fonts', name),
+                    path.resolve(__dirname, '..', 'fonts', fallbackWoff),
+                    path.resolve(__dirname, '..', '..', 'fonts', name),
+                    path.resolve(__dirname, '..', 'public', 'fonts', name),
+                    path.resolve(__dirname, '..', 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff)
+                ] : []),
                 `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
             ];
             for (const p of candidates) {
-                if (fs.existsSync(p)) return p;
+                try {
+                    if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 1000) {
+                        return p;
+                    }
+                } catch (e) {
+                    continue;
+                }
             }
             return null;
         };

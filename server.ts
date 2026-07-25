@@ -1736,6 +1736,76 @@ app.get("/api/birthdays/print", async (req, res) => {
   res.send(html);
 });
 
+function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
+      const chunks: Buffer[] = [];
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', err => reject(err));
+
+      const getFont = (name: string, fallbackWoff: string) => {
+        const candidates = [
+          path.resolve(process.cwd(), 'fonts', name),
+          (typeof __dirname !== 'undefined' ? path.resolve(__dirname, 'fonts', name) : path.resolve(process.cwd(), 'fonts', name)),
+          path.resolve(process.cwd(), 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
+          `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
+        ];
+        for (const p of candidates) {
+          if (fs.existsSync(p)) return p;
+        }
+        return null;
+      };
+
+      const regularFont = getFont('Roboto-Regular.ttf', 'Roboto-Regular.woff');
+      const boldFont = getFont('Roboto-Bold.ttf', 'Roboto-Bold.woff');
+
+      if (regularFont && boldFont) {
+        doc.registerFont('Roboto-Regular', regularFont);
+        doc.registerFont('Roboto-Bold', boldFont);
+
+        doc.font('Roboto-Bold').fontSize(16);
+        const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+        const titleWidth = doc.widthOfString(titleText);
+        const titleStartX = (doc.page.width - titleWidth) / 2;
+        const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
+
+        doc.text(titleText, { align: 'center' });
+        doc.moveDown(0.5);
+        doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
+        doc.moveDown(1.5);
+
+        birthdays.list.forEach((item: any) => {
+          doc.font('Roboto-Bold').fontSize(14);
+          if (item.isJubilee) doc.fillColor('red');
+          else doc.fillColor('black');
+          
+          const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+          const nameParts = rawName.split(/\s+/);
+          const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
+          
+          doc.text(shortName, alignX);
+          doc.fillColor('black');
+          doc.moveDown(0.5);
+        });
+      } else {
+        console.error("Fonts NOT found at:", process.cwd());
+        doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
+        doc.moveDown();
+        birthdays.list.forEach((item: any) => {
+          const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
+          doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
+        });
+      }
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 // 2.3 API: Send Birthday Celebrants reports (Email or Telegram Bot)
 app.post("/api/birthdays/send", async (req, res) => {
   const { type, customToken, customChatId } = req.body;
@@ -1786,82 +1856,19 @@ app.post("/api/birthdays/send", async (req, res) => {
       let lastError = "";
       
       if (type === "telegram_pdf") {
-        const tempPdfPath = path.resolve(process.cwd(), `birthdays_${Date.now()}.pdf`);
         try {
-          const doc = new PDFDocument({ size: 'A5', margin: 30 });
-          const writeStream = fs.createWriteStream(tempPdfPath);
-          doc.pipe(writeStream);
-
-          const getFont = (name: string, fallbackWoff: string) => {
-            const candidates = [
-              path.resolve(process.cwd(), 'fonts', name),
-              (typeof __dirname !== 'undefined' ? path.resolve(__dirname, 'fonts', name) : path.resolve(process.cwd(), 'fonts', name)),
-              path.resolve(process.cwd(), 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
-              `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
-            ];
-            for (const p of candidates) {
-              if (fs.existsSync(p)) return p;
-            }
-            return null;
-          };
-
-          const regularFont = getFont('Roboto-Regular.ttf', 'Roboto-Regular.woff');
-          const boldFont = getFont('Roboto-Bold.ttf', 'Roboto-Bold.woff');
-
-          if (regularFont && boldFont) {
-            doc.registerFont('Roboto-Regular', regularFont);
-            doc.registerFont('Roboto-Bold', boldFont);
-
-            doc.font('Roboto-Bold').fontSize(16);
-            const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-            const titleWidth = doc.widthOfString(titleText);
-            const titleStartX = (doc.page.width - titleWidth) / 2;
-            const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
-
-            doc.text(titleText, { align: 'center' });
-            doc.moveDown(0.5);
-            doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
-            doc.moveDown(1.5);
-
-            birthdays.list.forEach((item: any) => {
-              doc.font('Roboto-Bold').fontSize(14);
-              if (item.isJubilee) doc.fillColor('red');
-              else doc.fillColor('black');
-              
-              const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
-              const nameParts = rawName.split(/\s+/);
-              const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
-              
-              doc.text(shortName, alignX);
-              doc.fillColor('black');
-              doc.moveDown(0.5);
-            });
-          } else {
-            console.error("Fonts NOT found at:", process.cwd());
-            doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
-            doc.moveDown();
-            birthdays.list.forEach((item: any) => {
-              const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
-              doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
-            });
-          }
-
-          doc.end();
-          await new Promise<void>((resolve, reject) => {
-            writeStream.on('finish', () => resolve());
-            writeStream.on('error', (err) => reject(err));
-          });
+          const pdfBuffer = await generateBirthdayPdfBuffer(birthdays);
 
           for (const singleChatId of chatIds) {
             try {
-              const fileBuffer = fs.readFileSync(tempPdfPath);
               const formData = new FormData();
               formData.append('chat_id', singleChatId);
-              formData.append('document', fileBuffer, { filename: 'imenynnyky.pdf' });
+              formData.append('document', pdfBuffer, { filename: 'imenynnyky.pdf', contentType: 'application/pdf' });
               formData.append('caption', `🎂 Список іменинників на тиждень (${birthdays.weekRangeText})`);
 
               const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
-                headers: formData.getHeaders()
+                headers: formData.getHeaders(),
+                timeout: 15000
               });
               if (response.data.ok) tgSuccessCount++;
               else {
@@ -1873,8 +1880,9 @@ app.post("/api/birthdays/send", async (req, res) => {
               lastError = err.response?.data?.description || err.message;
             }
           }
-        } finally {
-          if (fs.existsSync(tempPdfPath)) fs.unlinkSync(tempPdfPath);
+        } catch (pdfErr: any) {
+          tgFailCount = chatIds.length || 1;
+          lastError = `PDF gen error: ${pdfErr.message}`;
         }
       } else {
         for (const singleChatId of chatIds) {
@@ -1948,86 +1956,21 @@ app.post("/api/birthdays/send", async (req, res) => {
             : msg.replace(/\*\*/g, "") // Remove Markdown bold styling for plain text email
         };
 
-        let tempPdfPath = "";
         if (type === "email_pdf") {
-          tempPdfPath = path.resolve(process.cwd(), `birthdays_manual_${Date.now()}.pdf`);
-          const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
-          const writeStream = fs.createWriteStream(tempPdfPath);
-          doc.pipe(writeStream);
-
-          const getFontEmail = (name: string, fallbackWoff: string) => {
-            const candidates = [
-              path.resolve(process.cwd(), 'fonts', name),
-              (typeof __dirname !== 'undefined' ? path.resolve(__dirname, 'fonts', name) : path.resolve(process.cwd(), 'fonts', name)),
-              path.resolve(process.cwd(), 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
-              `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
-            ];
-            for (const p of candidates) {
-              if (fs.existsSync(p)) return p;
-            }
-            return null;
-          };
-
-          const regularFont = getFontEmail('Roboto-Regular.ttf', 'Roboto-Regular.woff');
-          const boldFont = getFontEmail('Roboto-Bold.ttf', 'Roboto-Bold.woff');
-
-          if (regularFont && boldFont) {
-            doc.registerFont('Roboto-Regular', regularFont);
-            doc.registerFont('Roboto-Bold', boldFont);
-
-            doc.font('Roboto-Bold').fontSize(16);
-            const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-            const titleWidth = doc.widthOfString(titleText);
-            const titleStartX = (doc.page.width - titleWidth) / 2;
-            const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
-
-            doc.text(titleText, { align: 'center' });
-            doc.moveDown(0.5);
-            doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
-            doc.moveDown(1.5);
-
-            birthdays.list.forEach((item: any) => {
-              doc.font('Roboto-Bold').fontSize(14);
-              if (item.isJubilee) doc.fillColor('red');
-              else doc.fillColor('black');
-              
-              const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
-              const nameParts = rawName.split(/\s+/);
-              const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
-              
-              doc.text(shortName, alignX);
-              doc.fillColor('black');
-              doc.moveDown(0.5);
-            });
-          } else {
-            console.error("Fonts NOT found at:", process.cwd());
-            doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
-            doc.moveDown();
-            birthdays.list.forEach((item: any) => {
-              const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
-              doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
-            });
+          try {
+            const pdfBuffer = await generateBirthdayPdfBuffer(birthdays);
+            mailOptions.attachments = [{
+              filename: 'Imenynnyky.pdf',
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }];
+          } catch (pdfErr: any) {
+            console.error("Error generating PDF for email:", pdfErr);
           }
-          
-          doc.end();
-
-          await new Promise<void>((resolve, reject) => {
-            writeStream.on('finish', () => resolve());
-            writeStream.on('error', (err) => reject(err));
-          });
-
-          mailOptions.attachments = [{
-            filename: 'Imenynnyky.pdf',
-            path: tempPdfPath
-          }];
         }
 
         await transporter.sendMail(mailOptions);
         emailLogs = `Email: успішно надіслано на адреси: ${destinations.join(", ")}`;
-
-        if (tempPdfPath && fs.existsSync(tempPdfPath)) {
-          fs.unlinkSync(tempPdfPath);
-        }
       } catch (mailErr: any) {
         emailLogs = `Помилка надсилання пошти: ${mailErr.message}`;
         console.error("Email send error manually:", mailErr);

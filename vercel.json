@@ -2,7 +2,7 @@
   "framework": "vite",
   "functions": {
     "api/index.ts": {
-      "includeFiles": "{tablyci/**,fonts/**,public/fonts/**,dist/fonts/**}"
+      "includeFiles": "{tablyci/**,fonts/**,public/fonts/**,dist/**}"
     }
   },
   "rewrites": [

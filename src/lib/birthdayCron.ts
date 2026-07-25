@@ -249,7 +249,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
 
-        const getFontCron = (name: string): Buffer | null => {
+        const getFontCron = (name: string): string | null => {
             const root = process.cwd();
             const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
             const candidates = [
@@ -257,27 +257,33 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 path.resolve(root, 'public', 'fonts', name),
                 path.resolve(lambdaRoot, 'fonts', name),
                 path.resolve(lambdaRoot, 'public', 'fonts', name),
+                `/var/task/fonts/${name}`,
+                `/var/task/public/fonts/${name}`,
                 `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
                 ...(typeof __dirname !== 'undefined' ? [
                     path.resolve(__dirname, 'fonts', name),
                     path.resolve(__dirname, '..', 'fonts', name),
-                    path.resolve(__dirname, '..', '..', 'fonts', name),
                     path.resolve(__dirname, '..', 'public', 'fonts', name),
+                    path.resolve(__dirname, '..', '..', 'fonts', name),
                     path.resolve(__dirname, '..', '..', '..', 'fonts', name),
                 ] : []),
             ];
             for (const p of candidates) {
                 try {
                     if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 10000) {
-                        const fontBuffer = fs.readFileSync(p);
-                        const header = fontBuffer.slice(0, 4).toString('hex');
+                        const fd = fs.openSync(p, 'r');
+                        const buffer = Buffer.alloc(4);
+                        fs.readSync(fd, buffer, 0, 4, 0);
+                        fs.closeSync(fd);
+                        const header = buffer.toString('hex');
                         if (header === '00010000' || header === '74727565') {
-                            console.log(`[BirthdayCron] Loaded font: ${p} (${fontBuffer.length} bytes)`);
-                            return fontBuffer;
+                            console.log(`[BirthdayCron] Found valid font at: ${p}`);
+                            return p;
                         }
                     }
                 } catch (e) { continue; }
             }
+            console.error(`[BirthdayCron] Font NOT found: ${name}. Searched ${candidates.length} locations. cwd: ${root}`);
             return null;
         };
 
@@ -285,7 +291,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const boldFontPath = getFontCron('Roboto-Bold.ttf');
         
         try {
-            if (Buffer.isBuffer(regularFontPath) && Buffer.isBuffer(boldFontPath)) {
+            if (regularFontPath && boldFontPath) {
                 doc.registerFont('Roboto-Regular', regularFontPath);
                 doc.registerFont('Roboto-Bold', boldFontPath);
 
@@ -318,6 +324,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 });
             } else {
                 console.warn("[BirthdayCron] Fonts not found, creating PDF with default font.");
+                doc.font('Helvetica'); // Set safe default
                 doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
                 doc.moveDown();
                 birthdays.list.forEach((item: any) => {

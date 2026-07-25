@@ -249,32 +249,45 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
 
-        const regularFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-        const boldFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+        let regularFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
+        let boldFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
+        if (!fs.existsSync(regularFontPath)) {
+            regularFontPath = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf';
+        }
+        if (!fs.existsSync(boldFontPath)) {
+            boldFontPath = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf';
+        }
         
         try {
             if (fs.existsSync(regularFontPath) && fs.existsSync(boldFontPath)) {
                 doc.registerFont('Roboto-Regular', regularFontPath);
                 doc.registerFont('Roboto-Bold', boldFontPath);
 
-                doc.font('Roboto-Bold').fontSize(14);
-                doc.text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+                doc.font('Roboto-Bold').fontSize(16);
+                const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+                const titleWidth = doc.widthOfString(titleText);
+                const titleStartX = (doc.page.width - titleWidth) / 2;
+                const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
+
+                doc.text(titleText, { align: 'center' });
                 doc.moveDown(0.5);
                 
-                doc.font('Roboto-Regular').fontSize(10);
-                doc.text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-                doc.moveDown(2);
+                doc.font('Roboto-Regular').fontSize(11);
+                doc.text(`/ ${birthdays.weekRangeText} /`, alignX);
+                doc.moveDown(1.5);
 
                 birthdays.list.forEach((item: any) => {
-                    doc.font('Roboto-Bold').fontSize(12);
+                    doc.font('Roboto-Bold').fontSize(14);
                     if (item.isJubilee) {
                         doc.fillColor('red');
                     } else {
                         doc.fillColor('black');
                     }
-                    const dayName = UKR_DAYS[item.dayOfWeekNum];
-                    const nameText = `${dayName}: ${String(item.cleanName || item.fullName || item.shortName)}`;
-                    doc.text(nameText, { align: 'center' });
+                    const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+                    const nameParts = rawName.split(/\s+/);
+                    const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
+                    doc.text(shortName, alignX);
+                    doc.fillColor('black');
                     doc.moveDown(0.5);
                 });
             } else {

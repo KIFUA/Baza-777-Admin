@@ -1638,23 +1638,19 @@ app.get("/api/birthdays", async (req, res) => {
 app.get("/api/birthdays/print", async (req, res) => {
   await ensureDatabaseIsFresh();
   const birthdays = getBirthdaysForThisWeek();
-  const UKR_DAYS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
   
   let listItems = "";
   birthdays.list.forEach((item: any) => {
-    const dayName = UKR_DAYS[item.dayOfWeekNum];
-    
     // Форматування імені: лише Прізвище та Ім'я (перші два слова)
     const nameParts = (item.cleanName || item.fullName || "").trim().split(/\s+/);
     const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
     
-    const jubileeMarker = item.isJubilee ? ' <span style="color: #d32f2f; font-weight: bold;">(Ювілей!)</span>' : '';
-    const jubileeStyle = item.isJubilee ? 'style="font-weight: 600;"' : '';
+    // Ювіляри - червоні, решта - чорні. Все жирне через CSS body.
+    const itemStyle = item.isJubilee ? 'style="color: #d32f2f;"' : '';
 
     listItems += `
-      <div class="birthday-item" ${jubileeStyle}>
-        <span class="day-label"><strong>${dayName}</strong></span> — 
-        <span class="name-info">${shortName}${jubileeMarker}</span>
+      <div class="birthday-item" ${itemStyle}>
+        ${shortName}
       </div>
     `;
   });
@@ -1664,33 +1660,47 @@ app.get("/api/birthdays/print", async (req, res) => {
     <html lang="uk">
     <head>
       <meta charset="UTF-8">
-      <title>Іменинники тижня - ${birthdays.weekRangeText}</title>
+      <title>Іменинники тижня</title>
       <style>
+        @page {
+          size: A5 portrait;
+          margin: 10mm;
+        }
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-          padding: 30px; 
-          line-height: 1.2; 
+          padding: 10mm; 
+          line-height: 1.1; 
           color: #000; 
-          max-width: 600px;
-          margin: 0 auto;
+          margin: 0;
+          font-weight: bold;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .page-wrapper {
+          width: fit-content;
+          min-width: 250px;
         }
         .header { 
-          text-align: center; 
-          margin-bottom: 20px; 
-          border-bottom: 1px solid #000; 
-          padding-bottom: 10px; 
+          text-align: center;
+          margin-bottom: 15px; 
+          border-bottom: 2px solid #000; 
+          padding-bottom: 5px; 
         }
-        h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
-        .subtitle { font-size: 13px; color: #333; margin-top: 4px; }
+        h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .subtitle { font-size: 12px; color: #333; margin-top: 2px; }
         
-        .birthday-list { margin-top: 15px; }
+        .birthday-list { 
+          margin-top: 10px;
+          /* Зміщення списку вправо, щоб початок був під "Н" у слові "ІМЕНИННИКИ" */
+          padding-left: 3.3ch; 
+        }
         .birthday-item { 
-          padding: 2px 0; 
-          font-size: 14px;
+          padding: 1px 0; 
+          font-size: 16px;
         }
-        .day-label { display: inline-block; width: 30px; }
         
-        .no-print { margin-bottom: 20px; text-align: right; }
+        .no-print { width: 100%; margin-bottom: 20px; text-align: right; }
         button { 
           background: #000; 
           color: #fff; 
@@ -1709,17 +1719,16 @@ app.get("/api/birthdays/print", async (req, res) => {
     </head>
     <body>
       <div class="no-print">
-        <button onclick="window.print()">ДРУКУВАТИ</button>
+        <button onclick="window.print()">ДРУКУВАТИ (A5)</button>
       </div>
-      <div class="header">
-        <h1>Іменинники тижня</h1>
-        <div class="subtitle">${birthdays.weekRangeText}</div>
-      </div>
-      <div class="birthday-list">
-        ${listItems || '<div style="text-align: center; color: #999;">На цьому тижні немає іменинників</div>'}
-      </div>
-      <div style="margin-top: 30px; font-size: 9px; text-align: center; color: #666; border-top: 0.5px solid #ccc; padding-top: 10px;">
-        База 777 — ${new Date().toLocaleString('uk-UA')}
+      <div class="page-wrapper">
+        <div class="header">
+          <h1>ІМЕНИННИКИ ТИЖНЯ</h1>
+          <div class="subtitle">${birthdays.weekRangeText}</div>
+        </div>
+        <div class="birthday-list">
+          ${listItems || '<div style="text-align: center; color: #999;">На цьому тижні немає іменинників</div>'}
+        </div>
       </div>
     </body>
     </html>
@@ -1784,27 +1793,40 @@ app.post("/api/birthdays/send", async (req, res) => {
           doc.pipe(writeStream);
 
           const fontsDir = path.resolve(process.cwd(), 'fonts');
-          const regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
-          const boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
+          let regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
+          let boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
+          if (!fs.existsSync(regularFont)) {
+            regularFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf';
+          }
+          if (!fs.existsSync(boldFont)) {
+            boldFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf';
+          }
           
           if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
             doc.registerFont('Roboto-Regular', regularFont);
             doc.registerFont('Roboto-Bold', boldFont);
 
-            doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.font('Roboto-Bold').fontSize(16);
+            const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+            const titleWidth = doc.widthOfString(titleText);
+            const titleStartX = (doc.page.width - titleWidth) / 2;
+            const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
+
+            doc.text(titleText, { align: 'center' });
             doc.moveDown(0.5);
-            doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-            doc.moveDown(2);
+            doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
+            doc.moveDown(1.5);
 
             birthdays.list.forEach((item: any) => {
-              doc.font('Roboto-Bold').fontSize(12);
+              doc.font('Roboto-Bold').fontSize(14);
               if (item.isJubilee) doc.fillColor('red');
               else doc.fillColor('black');
               
-              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
-              const ageText = item.age ? ` (${item.age} р.)` : '';
-              doc.text(`${nameText}${ageText}`, { align: 'center' });
+              const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+              const nameParts = rawName.split(/\s+/);
+              const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
               
+              doc.text(shortName, alignX);
               doc.fillColor('black');
               doc.moveDown(0.5);
             });
@@ -1928,27 +1950,40 @@ app.post("/api/birthdays/send", async (req, res) => {
           doc.pipe(writeStream);
 
           const fontsDir = path.resolve(process.cwd(), 'fonts');
-          const regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
-          const boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
+          let regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
+          let boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
+          if (!fs.existsSync(regularFont)) {
+            regularFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf';
+          }
+          if (!fs.existsSync(boldFont)) {
+            boldFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf';
+          }
           
           if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
             doc.registerFont('Roboto-Regular', regularFont);
             doc.registerFont('Roboto-Bold', boldFont);
 
-            doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+            doc.font('Roboto-Bold').fontSize(16);
+            const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+            const titleWidth = doc.widthOfString(titleText);
+            const titleStartX = (doc.page.width - titleWidth) / 2;
+            const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
+
+            doc.text(titleText, { align: 'center' });
             doc.moveDown(0.5);
-            doc.font('Roboto-Regular').fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-            doc.moveDown(2);
+            doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
+            doc.moveDown(1.5);
 
             birthdays.list.forEach((item: any) => {
-              doc.font('Roboto-Bold').fontSize(12);
+              doc.font('Roboto-Bold').fontSize(14);
               if (item.isJubilee) doc.fillColor('red');
               else doc.fillColor('black');
               
-              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
-              const ageText = item.age ? ` (${item.age} р.)` : '';
-              doc.text(`${nameText}${ageText}`, { align: 'center' });
+              const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+              const nameParts = rawName.split(/\s+/);
+              const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
               
+              doc.text(shortName, alignX);
               doc.fillColor('black');
               doc.moveDown(0.5);
             });
@@ -4635,12 +4670,14 @@ async function ensureDatabaseIsFresh() {
 // --- Vite Middleware Config ---
 
 async function startServer() {
-  // Sync the database state with Firebase RTDB on startup in background
-  await ensureInitialSync();
-  
-  // Initialize birthday cron jobs
-  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
+  // 1. Load local database cache immediately
+  try {
+    loadDatabase();
+  } catch (err) {
+    console.error("[startServer] Error loading local database cache:", err);
+  }
 
+  // 2. Attach Vite middleware (dev) or static serving (prod)
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -4656,9 +4693,16 @@ async function startServer() {
     });
   }
 
+  // 3. Start listening immediately on port 3000
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Church Database FullStack Server running on port ${PORT}`);
   });
+
+  // 4. Background initial sync and cron initialization
+  ensureInitialSync().catch((err) => {
+    console.error("[startServer] Background initial sync error:", err);
+  });
+  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
 }
 
 if (!process.env.VERCEL) {

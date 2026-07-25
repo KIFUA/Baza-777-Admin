@@ -249,41 +249,41 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
 
-        const getFontCron = (name: string, fallbackWoff: string) => {
+        const getFontCron = (name: string) => {
             const root = process.cwd();
+            const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
             const candidates = [
+                `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
                 path.resolve(root, 'fonts', name),
-                path.resolve(root, 'fonts', fallbackWoff),
                 path.resolve(root, 'public', 'fonts', name),
-                path.resolve(root, 'public', 'fonts', fallbackWoff),
-                path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
-                // When bundled on Vercel, __dirname is dist/
+                path.resolve(lambdaRoot, 'fonts', name),
+                path.resolve(lambdaRoot, 'public', 'fonts', name),
                 ...(typeof __dirname !== 'undefined' ? [
                     path.resolve(__dirname, 'fonts', name),
-                    path.resolve(__dirname, 'fonts', fallbackWoff),
                     path.resolve(__dirname, '..', 'fonts', name),
-                    path.resolve(__dirname, '..', 'fonts', fallbackWoff),
                     path.resolve(__dirname, '..', '..', 'fonts', name),
                     path.resolve(__dirname, '..', 'public', 'fonts', name),
-                    path.resolve(__dirname, '..', 'public', 'fonts', fallbackWoff),
-                    path.resolve(__dirname, '..', 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff)
                 ] : []),
-                `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
             ];
             for (const p of candidates) {
                 try {
-                    if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 5000) {
-                        return p;
+                    if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 10000) {
+                        const fd = fs.openSync(p, 'r');
+                        const buffer = Buffer.alloc(4);
+                        fs.readSync(fd, buffer, 0, 4, 0);
+                        fs.closeSync(fd);
+                        const header = buffer.toString('hex');
+                        if (header === '00010000' || header === '74727565') {
+                            return p;
+                        }
                     }
-                } catch (e) {
-                    continue;
-                }
+                } catch (e) { continue; }
             }
             return null;
         };
 
-        const regularFontPath = getFontCron('Roboto-Regular.ttf', 'Roboto-Regular.woff');
-        const boldFontPath = getFontCron('Roboto-Bold.ttf', 'Roboto-Bold.woff');
+        const regularFontPath = getFontCron('Roboto-Regular.ttf');
+        const boldFontPath = getFontCron('Roboto-Bold.ttf');
         
         try {
             if (regularFontPath && boldFontPath) {

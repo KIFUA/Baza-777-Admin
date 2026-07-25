@@ -1792,17 +1792,23 @@ app.post("/api/birthdays/send", async (req, res) => {
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);
 
-          const fontsDir = path.resolve(process.cwd(), 'fonts');
-          let regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
-          let boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
-          if (!fs.existsSync(regularFont)) {
-            regularFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf';
-          }
-          if (!fs.existsSync(boldFont)) {
-            boldFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf';
-          }
-          
-          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+          const getFont = (name: string, fallbackWoff: string) => {
+            const candidates = [
+              path.resolve(process.cwd(), 'fonts', name),
+              (typeof __dirname !== 'undefined' ? path.resolve(__dirname, 'fonts', name) : path.resolve(process.cwd(), 'fonts', name)),
+              path.resolve(process.cwd(), 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
+              `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
+            ];
+            for (const p of candidates) {
+              if (fs.existsSync(p)) return p;
+            }
+            return null;
+          };
+
+          const regularFont = getFont('Roboto-Regular.ttf', 'Roboto-Regular.woff');
+          const boldFont = getFont('Roboto-Bold.ttf', 'Roboto-Bold.woff');
+
+          if (regularFont && boldFont) {
             doc.registerFont('Roboto-Regular', regularFont);
             doc.registerFont('Roboto-Bold', boldFont);
 
@@ -1831,12 +1837,12 @@ app.post("/api/birthdays/send", async (req, res) => {
               doc.moveDown(0.5);
             });
           } else {
-            console.error("Fonts NOT found at:", fontsDir);
-            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ (FONTS MISSING)', { align: 'center' });
+            console.error("Fonts NOT found at:", process.cwd());
+            doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
             doc.moveDown();
             birthdays.list.forEach((item: any) => {
-              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
-              doc.fontSize(12).text(nameText, { align: 'center' });
+              const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
+              doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
             });
           }
 
@@ -1949,17 +1955,23 @@ app.post("/api/birthdays/send", async (req, res) => {
           const writeStream = fs.createWriteStream(tempPdfPath);
           doc.pipe(writeStream);
 
-          const fontsDir = path.resolve(process.cwd(), 'fonts');
-          let regularFont = path.join(fontsDir, 'Roboto-Regular.ttf');
-          let boldFont = path.join(fontsDir, 'Roboto-Bold.ttf');
-          if (!fs.existsSync(regularFont)) {
-            regularFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf';
-          }
-          if (!fs.existsSync(boldFont)) {
-            boldFont = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf';
-          }
-          
-          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
+          const getFontEmail = (name: string, fallbackWoff: string) => {
+            const candidates = [
+              path.resolve(process.cwd(), 'fonts', name),
+              (typeof __dirname !== 'undefined' ? path.resolve(__dirname, 'fonts', name) : path.resolve(process.cwd(), 'fonts', name)),
+              path.resolve(process.cwd(), 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
+              `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
+            ];
+            for (const p of candidates) {
+              if (fs.existsSync(p)) return p;
+            }
+            return null;
+          };
+
+          const regularFont = getFontEmail('Roboto-Regular.ttf', 'Roboto-Regular.woff');
+          const boldFont = getFontEmail('Roboto-Bold.ttf', 'Roboto-Bold.woff');
+
+          if (regularFont && boldFont) {
             doc.registerFont('Roboto-Regular', regularFont);
             doc.registerFont('Roboto-Bold', boldFont);
 
@@ -1988,12 +2000,12 @@ app.post("/api/birthdays/send", async (req, res) => {
               doc.moveDown(0.5);
             });
           } else {
-            console.error("Fonts NOT found at:", fontsDir);
-            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ (FONTS MISSING)', { align: 'center' });
+            console.error("Fonts NOT found at:", process.cwd());
+            doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
             doc.moveDown();
             birthdays.list.forEach((item: any) => {
-              const nameText = item.cleanName || item.fullName || item.shortName || 'Без імені';
-              doc.fontSize(12).text(nameText, { align: 'center' });
+              const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
+              doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
             });
           }
           

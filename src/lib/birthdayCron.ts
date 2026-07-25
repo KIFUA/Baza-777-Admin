@@ -249,17 +249,24 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
 
-        let regularFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-        let boldFontPath = path.resolve(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
-        if (!fs.existsSync(regularFontPath)) {
-            regularFontPath = '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf';
-        }
-        if (!fs.existsSync(boldFontPath)) {
-            boldFontPath = '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf';
-        }
+        const getFontCron = (name: string, fallbackWoff: string) => {
+            const candidates = [
+                path.resolve(process.cwd(), 'fonts', name),
+                (typeof __dirname !== 'undefined' ? path.resolve(__dirname, '..', '..', 'fonts', name) : path.resolve(process.cwd(), 'fonts', name)),
+                path.resolve(process.cwd(), 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
+                `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
+            ];
+            for (const p of candidates) {
+                if (fs.existsSync(p)) return p;
+            }
+            return null;
+        };
+
+        const regularFontPath = getFontCron('Roboto-Regular.ttf', 'Roboto-Regular.woff');
+        const boldFontPath = getFontCron('Roboto-Bold.ttf', 'Roboto-Bold.woff');
         
         try {
-            if (fs.existsSync(regularFontPath) && fs.existsSync(boldFontPath)) {
+            if (regularFontPath && boldFontPath) {
                 doc.registerFont('Roboto-Regular', regularFontPath);
                 doc.registerFont('Roboto-Bold', boldFontPath);
 
@@ -292,10 +299,11 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 });
             } else {
                 console.warn("[BirthdayCron] Fonts not found, creating PDF with default font.");
-                doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+                doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
                 doc.moveDown();
                 birthdays.list.forEach((item: any) => {
-                    doc.fontSize(12).text(String(item.cleanName || item.fullName || "Невідомо"), { align: 'center' });
+                    const nameText = item.cleanName || item.fullName || "Unknown";
+                    doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
                 });
             }
             doc.end();

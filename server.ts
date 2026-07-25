@@ -1745,7 +1745,7 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      const getFont = (name: string): string | null => {
+      const getFont = (name: string): Buffer | null => {
         const root = process.cwd();
         const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
         const candidates = [
@@ -1753,44 +1753,54 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
           path.resolve(root, 'public', 'fonts', name),
           path.resolve(lambdaRoot, 'fonts', name),
           path.resolve(lambdaRoot, 'public', 'fonts', name),
+          path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name.replace('Roboto-', '')),
+          path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name),
           `/var/task/fonts/${name}`,
           `/var/task/public/fonts/${name}`,
           `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
-          // Vercel bundle structure relative to dist/server.cjs
+          // Vercel bundle structure
           ...(typeof __dirname !== 'undefined' ? [
             path.resolve(__dirname, 'fonts', name),
             path.resolve(__dirname, '..', 'fonts', name),
             path.resolve(__dirname, '..', 'public', 'fonts', name),
             path.resolve(__dirname, '..', '..', 'fonts', name),
+            path.resolve(__dirname, '..', '..', '..', 'fonts', name),
           ] : []),
         ];
         for (const p of candidates) {
           try {
             if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 10000) {
-              // Quick check for TTF header
-              const fd = fs.openSync(p, 'r');
-              const buffer = Buffer.alloc(4);
-              fs.readSync(fd, buffer, 0, 4, 0);
-              fs.closeSync(fd);
-              const header = buffer.toString('hex');
+              const buf = fs.readFileSync(p);
+              const header = buf.slice(0, 4).toString('hex');
               if (header === '00010000' || header === '74727565') {
-                console.log(`[PDF] Found valid font at: ${p}`);
-                return p;
+                console.log(`[PDF] Loaded font from: ${p} (${buf.length} bytes)`);
+                return buf;
               }
             }
           } catch (e) { continue; }
         }
-        console.error(`[PDF] Font NOT found: ${name}. Searched ${candidates.length} locations. cwd: ${root}`);
+        console.error(`[PDF] Font NOT found: ${name}. Checked ${candidates.length} locations.`);
         return null;
       };
 
-      const regularFontPath = getFont('Roboto-Regular.ttf');
-      const boldFontPath = getFont('Roboto-Bold.ttf');
+      const regularFont = getFont('Roboto-Regular.ttf');
+      const boldFont = getFont('Roboto-Bold.ttf');
 
-      if (regularFontPath && boldFontPath) {
-        doc.registerFont('Roboto-Regular', regularFontPath);
-        doc.registerFont('Roboto-Bold', boldFontPath);
+      let useRoboto = false;
+      if (regularFont && boldFont) {
+        try {
+          doc.registerFont('Roboto-Regular', regularFont);
+          doc.registerFont('Roboto-Bold', boldFont);
+          doc.font('Roboto-Bold');
+          if ((doc as any)._font) {
+            useRoboto = true;
+          }
+        } catch (e) {
+          console.error("[PDF] Error registering fonts:", e);
+        }
+      }
 
+      if (useRoboto) {
         doc.font('Roboto-Bold').fontSize(16);
         const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
         const titleWidth = doc.widthOfString(titleText);
@@ -1816,13 +1826,15 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
           doc.moveDown(0.5);
         });
       } else {
-        console.error("Fonts NOT found at:", process.cwd());
-        doc.font('Helvetica'); // Set a safe default to avoid advanceWidth errors
+        console.warn("[PDF] Using fallback font Helvetica (No Cyrillic support)");
+        doc.font('Helvetica');
         doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
         doc.moveDown();
         birthdays.list.forEach((item: any) => {
           const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
-          doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
+          // Filter out non-ASCII to prevent pdfkit crashes with Helvetica
+          const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
+          doc.fontSize(12).text(safeName, { align: 'center' });
         });
       }
 

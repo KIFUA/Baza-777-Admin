@@ -245,11 +245,14 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         fs.writeFileSync(htmlPath, htmlContent);
 
         // --- PDF Generation ---
-        const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
-        const writeStream = fs.createWriteStream(pdfPath);
-        doc.pipe(writeStream);
+        let doc: any;
+        let writeStream: any;
+        try {
+            doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
+            writeStream = fs.createWriteStream(pdfPath);
+            doc.pipe(writeStream);
 
-        const getFontCron = (name: string): string | null => {
+        const getFontCron = (name: string): Buffer | null => {
             const root = process.cwd();
             const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
             const candidates = [
@@ -257,6 +260,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 path.resolve(root, 'public', 'fonts', name),
                 path.resolve(lambdaRoot, 'fonts', name),
                 path.resolve(lambdaRoot, 'public', 'fonts', name),
+                path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name.replace('Roboto-', '')),
+                path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name),
                 `/var/task/fonts/${name}`,
                 `/var/task/public/fonts/${name}`,
                 `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
@@ -271,73 +276,81 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             for (const p of candidates) {
                 try {
                     if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 10000) {
-                        const fd = fs.openSync(p, 'r');
-                        const buffer = Buffer.alloc(4);
-                        fs.readSync(fd, buffer, 0, 4, 0);
-                        fs.closeSync(fd);
-                        const header = buffer.toString('hex');
+                        const buf = fs.readFileSync(p);
+                        const header = buf.slice(0, 4).toString('hex');
                         if (header === '00010000' || header === '74727565') {
-                            console.log(`[BirthdayCron] Found valid font at: ${p}`);
-                            return p;
+                            console.log(`[BirthdayCron] Loaded font from: ${p} (${buf.length} bytes)`);
+                            return buf;
                         }
                     }
                 } catch (e) { continue; }
             }
-            console.error(`[BirthdayCron] Font NOT found: ${name}. Searched ${candidates.length} locations. cwd: ${root}`);
+            console.error(`[BirthdayCron] Font NOT found: ${name}. Checked ${candidates.length} locations.`);
             return null;
         };
 
-        const regularFontPath = getFontCron('Roboto-Regular.ttf');
-        const boldFontPath = getFontCron('Roboto-Bold.ttf');
+        const regularFont = getFontCron('Roboto-Regular.ttf');
+        const boldFont = getFontCron('Roboto-Bold.ttf');
         
+        let useRoboto = false;
         try {
-            if (regularFontPath && boldFontPath) {
-                doc.registerFont('Roboto-Regular', regularFontPath);
-                doc.registerFont('Roboto-Bold', boldFontPath);
-
-                doc.font('Roboto-Bold').fontSize(16);
-                const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-                const titleWidth = doc.widthOfString(titleText);
-                const titleStartX = (doc.page.width - titleWidth) / 2;
-                const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
-
-                doc.text(titleText, { align: 'center' });
-                doc.moveDown(0.5);
-                
-                doc.font('Roboto-Regular').fontSize(11);
-                doc.text(`/ ${birthdays.weekRangeText} /`, alignX);
-                doc.moveDown(1.5);
-
-                birthdays.list.forEach((item: any) => {
-                    doc.font('Roboto-Bold').fontSize(14);
-                    if (item.isJubilee) {
-                        doc.fillColor('red');
-                    } else {
-                        doc.fillColor('black');
-                    }
-                    const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
-                    const nameParts = rawName.split(/\s+/);
-                    const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
-                    doc.text(shortName, alignX);
-                    doc.fillColor('black');
-                    doc.moveDown(0.5);
-                });
-            } else {
-                console.warn("[BirthdayCron] Fonts not found, creating PDF with default font.");
-                doc.font('Helvetica'); // Set safe default
-                doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
-                doc.moveDown();
-                birthdays.list.forEach((item: any) => {
-                    const nameText = item.cleanName || item.fullName || "Unknown";
-                    doc.fontSize(12).text(String(nameText).replace(/[^\x00-\x7F]/g, '?'), { align: 'center' });
-                });
+            if (regularFont && boldFont) {
+                doc.registerFont('Roboto-Regular', regularFont);
+                doc.registerFont('Roboto-Bold', boldFont);
+                doc.font('Roboto-Bold');
+                if ((doc as any)._font) {
+                    useRoboto = true;
+                }
             }
-            doc.end();
-            console.log("[BirthdayCron] doc.end() called.");
-        } catch (pdfErr) {
-            console.error("[BirthdayCron] Error during PDF drawing:", pdfErr);
-            doc.end();
+        } catch (e) {
+            console.error("[BirthdayCron] Error registering fonts:", e);
         }
+
+        if (useRoboto) {
+            doc.font('Roboto-Bold').fontSize(16);
+            const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+            const titleWidth = doc.widthOfString(titleText);
+            const titleStartX = (doc.page.width - titleWidth) / 2;
+            const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
+
+            doc.text(titleText, { align: 'center' });
+            doc.moveDown(0.5);
+            
+            doc.font('Roboto-Regular').fontSize(11);
+            doc.text(`/ ${birthdays.weekRangeText} /`, alignX);
+            doc.moveDown(1.5);
+
+            birthdays.list.forEach((item: any) => {
+                doc.font('Roboto-Bold').fontSize(14);
+                if (item.isJubilee) {
+                    doc.fillColor('red');
+                } else {
+                    doc.fillColor('black');
+                }
+                const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+                const nameParts = rawName.split(/\s+/);
+                const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
+                doc.text(shortName, alignX);
+                doc.fillColor('black');
+                doc.moveDown(0.5);
+            });
+        } else {
+            console.warn("[BirthdayCron] Using fallback font Helvetica (No Cyrillic support)");
+            doc.font('Helvetica'); // Set safe default
+            doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
+            doc.moveDown();
+            birthdays.list.forEach((item: any) => {
+                const nameText = item.cleanName || item.fullName || "Unknown";
+                const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
+                doc.fontSize(12).text(safeName, { align: 'center' });
+            });
+        }
+        doc.end();
+        console.log("[BirthdayCron] doc.end() called.");
+    } catch (pdfErr) {
+        console.error("[BirthdayCron] Error during PDF drawing:", pdfErr);
+        try { doc.end(); } catch (e) {}
+    }
 
         await new Promise<void>((resolve, reject) => {
             writeStream.on('finish', async () => {

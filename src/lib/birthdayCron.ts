@@ -337,7 +337,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
                     doc.text(shortName, alignX);
                     doc.fillColor('black');
-                    doc.moveDown(0.5);
+                    doc.moveDown(0.1);
                 });
             } catch (drawErr) {
                 console.error("[BirthdayCron] Error drawing with Roboto, falling back:", drawErr);

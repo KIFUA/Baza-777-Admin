@@ -1833,7 +1833,7 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
             
             doc.text(shortName, alignX);
             doc.fillColor('black');
-            doc.moveDown(0.5);
+            doc.moveDown(0.1);
           });
         } catch (drawErr) {
           console.error("[PDF] Error drawing with Roboto, falling back:", drawErr);

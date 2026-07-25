@@ -1745,7 +1745,7 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      const getFont = (name: string): Buffer | null => {
+      const getFont = (name: string): Uint8Array | null => {
         const root = process.cwd();
         const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
         const candidates = [
@@ -1774,7 +1774,7 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
               const header = buf.slice(0, 4).toString('hex');
               if (header === '00010000' || header === '74727565') {
                 console.log(`[PDF] Loaded font from: ${p} (${buf.length} bytes)`);
-                return buf;
+                return new Uint8Array(buf);
               }
             }
           } catch (e) { continue; }
@@ -1789,53 +1789,73 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
       let useRoboto = false;
       if (regularFont && boldFont) {
         try {
-          doc.registerFont('Roboto-Regular', regularFont);
-          doc.registerFont('Roboto-Bold', boldFont);
+          doc.registerFont('Roboto-Regular', regularFont as any);
+          doc.registerFont('Roboto-Bold', boldFont as any);
           doc.font('Roboto-Bold');
-          if ((doc as any)._font) {
-            useRoboto = true;
-          }
+          // Basic test to see if it can measure Cyrillic
+          doc.widthOfString('Тест');
+          useRoboto = true;
         } catch (e) {
-          console.error("[PDF] Error registering fonts:", e);
+          console.error("[PDF] Error registering or testing Roboto fonts:", e);
+          useRoboto = false;
         }
       }
 
+      const safeWidth = (text: string) => {
+        try {
+          return doc.widthOfString(text);
+        } catch (e) {
+          return text.length * 8;
+        }
+      };
+
       if (useRoboto) {
-        doc.font('Roboto-Bold').fontSize(16);
-        const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-        const titleWidth = doc.widthOfString(titleText);
-        const titleStartX = (doc.page.width - titleWidth) / 2;
-        const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
+        try {
+          doc.font('Roboto-Bold').fontSize(16);
+          const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+          const titleWidth = safeWidth(titleText);
+          const titleStartX = (doc.page.width - titleWidth) / 2;
+          const alignX = titleStartX + safeWidth('ІМЕНИН');
 
-        doc.text(titleText, { align: 'center' });
-        doc.moveDown(0.5);
-        doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
-        doc.moveDown(1.5);
-
-        birthdays.list.forEach((item: any) => {
-          doc.font('Roboto-Bold').fontSize(14);
-          if (item.isJubilee) doc.fillColor('red');
-          else doc.fillColor('black');
-          
-          const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
-          const nameParts = rawName.split(/\s+/);
-          const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
-          
-          doc.text(shortName, alignX);
-          doc.fillColor('black');
+          doc.text(titleText, { align: 'center' });
           doc.moveDown(0.5);
-        });
-      } else {
+          doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
+          doc.moveDown(1.5);
+
+          birthdays.list.forEach((item: any) => {
+            doc.font('Roboto-Bold').fontSize(14);
+            if (item.isJubilee) doc.fillColor('red');
+            else doc.fillColor('black');
+            
+            const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+            const nameParts = rawName.split(/\s+/);
+            const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
+            
+            doc.text(shortName, alignX);
+            doc.fillColor('black');
+            doc.moveDown(0.5);
+          });
+        } catch (drawErr) {
+          console.error("[PDF] Error drawing with Roboto, falling back:", drawErr);
+          useRoboto = false;
+        }
+      }
+      
+      if (!useRoboto) {
         console.warn("[PDF] Using fallback font Helvetica (No Cyrillic support)");
-        doc.font('Helvetica');
-        doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
-        doc.moveDown();
-        birthdays.list.forEach((item: any) => {
-          const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
-          // Filter out non-ASCII to prevent pdfkit crashes with Helvetica
-          const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
-          doc.fontSize(12).text(safeName, { align: 'center' });
-        });
+        try {
+          doc.font('Helvetica');
+          doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
+          doc.moveDown();
+          birthdays.list.forEach((item: any) => {
+            const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
+            // Filter out non-ASCII to prevent pdfkit crashes with Helvetica
+            const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
+            doc.fontSize(12).text(safeName, { align: 'center' });
+          });
+        } catch (fallbackErr) {
+          console.error("[PDF] Fallback also failed:", fallbackErr);
+        }
       }
 
       doc.end();

@@ -252,7 +252,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             writeStream = fs.createWriteStream(pdfPath);
             doc.pipe(writeStream);
 
-        const getFontCron = (name: string): Buffer | null => {
+        const getFontCron = (name: string): Uint8Array | null => {
             const root = process.cwd();
             const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
             const candidates = [
@@ -280,7 +280,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                         const header = buf.slice(0, 4).toString('hex');
                         if (header === '00010000' || header === '74727565') {
                             console.log(`[BirthdayCron] Loaded font from: ${p} (${buf.length} bytes)`);
-                            return buf;
+                            return new Uint8Array(buf);
                         }
                     }
                 } catch (e) { continue; }
@@ -295,55 +295,70 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         let useRoboto = false;
         try {
             if (regularFont && boldFont) {
-                doc.registerFont('Roboto-Regular', regularFont);
-                doc.registerFont('Roboto-Bold', boldFont);
+                doc.registerFont('Roboto-Regular', regularFont as any);
+                doc.registerFont('Roboto-Bold', boldFont as any);
                 doc.font('Roboto-Bold');
-                if ((doc as any)._font) {
-                    useRoboto = true;
-                }
+                doc.widthOfString('Тест');
+                useRoboto = true;
             }
         } catch (e) {
-            console.error("[BirthdayCron] Error registering fonts:", e);
+            console.error("[BirthdayCron] Error registering or testing fonts:", e);
+            useRoboto = false;
         }
 
+        const safeWidth = (text: string) => {
+            try { return doc.widthOfString(text); } catch (e) { return text.length * 8; }
+        };
+
         if (useRoboto) {
-            doc.font('Roboto-Bold').fontSize(16);
-            const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-            const titleWidth = doc.widthOfString(titleText);
-            const titleStartX = (doc.page.width - titleWidth) / 2;
-            const alignX = titleStartX + doc.widthOfString('ІМЕНИН');
+            try {
+                doc.font('Roboto-Bold').fontSize(16);
+                const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+                const titleWidth = safeWidth(titleText);
+                const titleStartX = (doc.page.width - titleWidth) / 2;
+                const alignX = titleStartX + safeWidth('ІМЕНИН');
 
-            doc.text(titleText, { align: 'center' });
-            doc.moveDown(0.5);
-            
-            doc.font('Roboto-Regular').fontSize(11);
-            doc.text(`/ ${birthdays.weekRangeText} /`, alignX);
-            doc.moveDown(1.5);
-
-            birthdays.list.forEach((item: any) => {
-                doc.font('Roboto-Bold').fontSize(14);
-                if (item.isJubilee) {
-                    doc.fillColor('red');
-                } else {
-                    doc.fillColor('black');
-                }
-                const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
-                const nameParts = rawName.split(/\s+/);
-                const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
-                doc.text(shortName, alignX);
-                doc.fillColor('black');
+                doc.text(titleText, { align: 'center' });
                 doc.moveDown(0.5);
-            });
-        } else {
+                
+                doc.font('Roboto-Regular').fontSize(11);
+                doc.text(`/ ${birthdays.weekRangeText} /`, alignX);
+                doc.moveDown(1.5);
+
+                birthdays.list.forEach((item: any) => {
+                    doc.font('Roboto-Bold').fontSize(14);
+                    if (item.isJubilee) {
+                        doc.fillColor('red');
+                    } else {
+                        doc.fillColor('black');
+                    }
+                    const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+                    const nameParts = rawName.split(/\s+/);
+                    const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
+                    doc.text(shortName, alignX);
+                    doc.fillColor('black');
+                    doc.moveDown(0.5);
+                });
+            } catch (drawErr) {
+                console.error("[BirthdayCron] Error drawing with Roboto, falling back:", drawErr);
+                useRoboto = false;
+            }
+        }
+        
+        if (!useRoboto) {
             console.warn("[BirthdayCron] Using fallback font Helvetica (No Cyrillic support)");
-            doc.font('Helvetica'); // Set safe default
-            doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
-            doc.moveDown();
-            birthdays.list.forEach((item: any) => {
-                const nameText = item.cleanName || item.fullName || "Unknown";
-                const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
-                doc.fontSize(12).text(safeName, { align: 'center' });
-            });
+            try {
+                doc.font('Helvetica'); // Set safe default
+                doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
+                doc.moveDown();
+                birthdays.list.forEach((item: any) => {
+                    const nameText = item.cleanName || item.fullName || "Unknown";
+                    const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
+                    doc.fontSize(12).text(safeName, { align: 'center' });
+                });
+            } catch (fallbackErr) {
+                console.error("[BirthdayCron] Fallback failed:", fallbackErr);
+            }
         }
         doc.end();
         console.log("[BirthdayCron] doc.end() called.");

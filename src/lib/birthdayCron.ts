@@ -249,32 +249,31 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const writeStream = fs.createWriteStream(pdfPath);
         doc.pipe(writeStream);
 
-        const getFontCron = (name: string) => {
+        const getFontCron = (name: string): Buffer | null => {
             const root = process.cwd();
             const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
             const candidates = [
-                `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
                 path.resolve(root, 'fonts', name),
                 path.resolve(root, 'public', 'fonts', name),
                 path.resolve(lambdaRoot, 'fonts', name),
                 path.resolve(lambdaRoot, 'public', 'fonts', name),
+                `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
                 ...(typeof __dirname !== 'undefined' ? [
                     path.resolve(__dirname, 'fonts', name),
                     path.resolve(__dirname, '..', 'fonts', name),
                     path.resolve(__dirname, '..', '..', 'fonts', name),
                     path.resolve(__dirname, '..', 'public', 'fonts', name),
+                    path.resolve(__dirname, '..', '..', '..', 'fonts', name),
                 ] : []),
             ];
             for (const p of candidates) {
                 try {
                     if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 10000) {
-                        const fd = fs.openSync(p, 'r');
-                        const buffer = Buffer.alloc(4);
-                        fs.readSync(fd, buffer, 0, 4, 0);
-                        fs.closeSync(fd);
-                        const header = buffer.toString('hex');
+                        const fontBuffer = fs.readFileSync(p);
+                        const header = fontBuffer.slice(0, 4).toString('hex');
                         if (header === '00010000' || header === '74727565') {
-                            return p;
+                            console.log(`[BirthdayCron] Loaded font: ${p} (${fontBuffer.length} bytes)`);
+                            return fontBuffer;
                         }
                     }
                 } catch (e) { continue; }
@@ -286,7 +285,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         const boldFontPath = getFontCron('Roboto-Bold.ttf');
         
         try {
-            if (regularFontPath && boldFontPath) {
+            if (Buffer.isBuffer(regularFontPath) && Buffer.isBuffer(boldFontPath)) {
                 doc.registerFont('Roboto-Regular', regularFontPath);
                 doc.registerFont('Roboto-Bold', boldFontPath);
 

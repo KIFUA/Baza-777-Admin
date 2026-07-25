@@ -257,7 +257,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 path.resolve(root, 'public', 'fonts', name),
                 path.resolve(root, 'public', 'fonts', fallbackWoff),
                 path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff),
-                // When bundled, __dirname is dist/
+                // When bundled on Vercel, __dirname is dist/
                 ...(typeof __dirname !== 'undefined' ? [
                     path.resolve(__dirname, 'fonts', name),
                     path.resolve(__dirname, 'fonts', fallbackWoff),
@@ -265,13 +265,14 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     path.resolve(__dirname, '..', 'fonts', fallbackWoff),
                     path.resolve(__dirname, '..', '..', 'fonts', name),
                     path.resolve(__dirname, '..', 'public', 'fonts', name),
+                    path.resolve(__dirname, '..', 'public', 'fonts', fallbackWoff),
                     path.resolve(__dirname, '..', 'node_modules', 'roboto-fontface', 'fonts', 'roboto', fallbackWoff)
                 ] : []),
                 `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`
             ];
             for (const p of candidates) {
                 try {
-                    if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 1000) {
+                    if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 5000) {
                         return p;
                     }
                 } catch (e) {

@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import axios from 'axios';
 import FormData from 'form-data';
+import { getRobotoRegularFont, getRobotoBoldFont } from './fontsBase64';
 
 export interface BirthdaySettings {
     mondayEmails: string;
@@ -252,45 +253,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             writeStream = fs.createWriteStream(pdfPath);
             doc.pipe(writeStream);
 
-        const getFontCron = (name: string): Uint8Array | null => {
-            const root = process.cwd();
-            const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
-            const candidates = [
-                path.resolve(root, 'fonts', name),
-                path.resolve(root, 'public', 'fonts', name),
-                path.resolve(lambdaRoot, 'fonts', name),
-                path.resolve(lambdaRoot, 'public', 'fonts', name),
-                path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name.replace('Roboto-', '')),
-                path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name),
-                `/var/task/fonts/${name}`,
-                `/var/task/public/fonts/${name}`,
-                `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
-                ...(typeof __dirname !== 'undefined' ? [
-                    path.resolve(__dirname, 'fonts', name),
-                    path.resolve(__dirname, '..', 'fonts', name),
-                    path.resolve(__dirname, '..', 'public', 'fonts', name),
-                    path.resolve(__dirname, '..', '..', 'fonts', name),
-                    path.resolve(__dirname, '..', '..', '..', 'fonts', name),
-                ] : []),
-            ];
-            for (const p of candidates) {
-                try {
-                    if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 10000) {
-                        const buf = fs.readFileSync(p);
-                        const header = buf.slice(0, 4).toString('hex');
-                        if (header === '00010000' || header === '74727565') {
-                            console.log(`[BirthdayCron] Loaded font from: ${p} (${buf.length} bytes)`);
-                            return new Uint8Array(buf);
-                        }
-                    }
-                } catch (e) { continue; }
-            }
-            console.error(`[BirthdayCron] Font NOT found: ${name}. Checked ${candidates.length} locations.`);
-            return null;
-        };
-
-        const regularFont = getFontCron('Roboto-Regular.ttf');
-        const boldFont = getFontCron('Roboto-Bold.ttf');
+        const regularFont = getRobotoRegularFont();
+        const boldFont = getRobotoBoldFont();
         
         let useRoboto = false;
         try {
@@ -300,6 +264,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 doc.font('Roboto-Bold');
                 doc.widthOfString('Тест');
                 useRoboto = true;
+                console.log("[BirthdayCron] Successfully registered embedded Roboto fonts.");
             }
         } catch (e) {
             console.error("[BirthdayCron] Error registering or testing fonts:", e);

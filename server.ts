@@ -7,6 +7,7 @@ import PDFDocument from "pdfkit";
 import axios from "axios";
 import FormData from "form-data";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
+import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
 import XLSX from "xlsx";
 import { 
   Member, 
@@ -1745,46 +1746,8 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', err => reject(err));
 
-      const getFont = (name: string): Uint8Array | null => {
-        const root = process.cwd();
-        const lambdaRoot = process.env.LAMBDA_TASK_ROOT || root;
-        const candidates = [
-          path.resolve(root, 'fonts', name),
-          path.resolve(root, 'public', 'fonts', name),
-          path.resolve(lambdaRoot, 'fonts', name),
-          path.resolve(lambdaRoot, 'public', 'fonts', name),
-          path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name.replace('Roboto-', '')),
-          path.resolve(root, 'node_modules', 'roboto-fontface', 'fonts', 'roboto', name),
-          `/var/task/fonts/${name}`,
-          `/var/task/public/fonts/${name}`,
-          `/usr/share/fonts/truetype/liberation/LiberationSans-${name.includes('Bold') ? 'Bold' : 'Regular'}.ttf`,
-          // Vercel bundle structure
-          ...(typeof __dirname !== 'undefined' ? [
-            path.resolve(__dirname, 'fonts', name),
-            path.resolve(__dirname, '..', 'fonts', name),
-            path.resolve(__dirname, '..', 'public', 'fonts', name),
-            path.resolve(__dirname, '..', '..', 'fonts', name),
-            path.resolve(__dirname, '..', '..', '..', 'fonts', name),
-          ] : []),
-        ];
-        for (const p of candidates) {
-          try {
-            if (fs.existsSync(p) && fs.statSync(p).isFile() && fs.statSync(p).size > 10000) {
-              const buf = fs.readFileSync(p);
-              const header = buf.slice(0, 4).toString('hex');
-              if (header === '00010000' || header === '74727565') {
-                console.log(`[PDF] Loaded font from: ${p} (${buf.length} bytes)`);
-                return new Uint8Array(buf);
-              }
-            }
-          } catch (e) { continue; }
-        }
-        console.error(`[PDF] Font NOT found: ${name}. Checked ${candidates.length} locations.`);
-        return null;
-      };
-
-      const regularFont = getFont('Roboto-Regular.ttf');
-      const boldFont = getFont('Roboto-Bold.ttf');
+      const regularFont = getRobotoRegularFont();
+      const boldFont = getRobotoBoldFont();
 
       let useRoboto = false;
       if (regularFont && boldFont) {
@@ -1795,6 +1758,7 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
           // Basic test to see if it can measure Cyrillic
           doc.widthOfString('Тест');
           useRoboto = true;
+          console.log("[PDF] Successfully registered embedded Roboto fonts.");
         } catch (e) {
           console.error("[PDF] Error registering or testing Roboto fonts:", e);
           useRoboto = false;

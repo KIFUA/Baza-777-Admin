@@ -595,31 +595,31 @@ export default function App() {
         <header className="sticky top-0 z-50 bg-[#264653] w-full shrink-0 border-b border-[#203a45]">
           {/* Info Bar (Date, Total Count, Logout) */}
           <div className="flex items-center justify-between py-1 gap-2 border-b border-[#1f3b47] scale-interface-down-33 sm:scale-100 origin-left">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <div className="text-[11px] sm:text-xs font-bold text-slate-400 leading-tight shrink-0 italic">
                 СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
                 ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
               </div>
               
               {getPermission('ВСЬОГО ЧЛЕНІВ ЦЕРКВИ').view && (
-                <div className="bg-[#1a3843] border border-[#142d36] rounded px-3 py-1 flex text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap shrink-0">
+                <div className="bg-[#1a3843] border border-[#142d36] rounded px-2 sm:px-3 py-1 flex text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap shrink-0">
                   <span className="hidden sm:inline mr-2">ВСЬОГО ЧЛЕНІВ ЦЕРКВИ</span>
                   <span className="sm:hidden mr-1">ВСЬОГО</span>
                   <span className="text-emerald-400 font-black">{members.length}</span>
                 </div>
               )}
-            </div>
 
-            <button
-              onClick={() => { 
-                handleUpdateSessionUser(null);
-                localStorage.removeItem("user_tg_id");
-              }}
-              className="px-3 sm:px-5 py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d] flex items-center gap-1.5"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>ВИХІД</span>
-            </button>
+              <button
+                onClick={() => { 
+                  handleUpdateSessionUser(null);
+                  localStorage.removeItem("user_tg_id");
+                }}
+                className="px-2 sm:px-4 h-[23px] text-[9px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d] flex items-center gap-1 sm:gap-1.5 shrink-0"
+              >
+                <LogOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>ВИХІД</span>
+              </button>
+            </div>
           </div>
 
           {/* Main Navigation (Sticky and prominent) */}

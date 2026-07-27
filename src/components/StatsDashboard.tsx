@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, DashboardStats } from '../types';
-import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, FileDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, FileDown, ChevronDown, ChevronUp, Send, Mail, Check, AlertCircle, FileText, X } from 'lucide-react';
 import { parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 interface StatsDashboardProps {
@@ -42,6 +42,14 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
   const [showTotalRegisterStats, setShowTotalRegisterStats] = useState<boolean>(false);
   const [isContactJournalOpen, setIsContactJournalOpen] = useState<boolean>(false);
 
+  // State for Manual Distribution
+  const [isSendModalOpen, setIsSendModalOpen] = useState<boolean>(false);
+  const [targetRayonForSend, setTargetRayonForSend] = useState<string>('');
+  const [customTelegramIds, setCustomTelegramIds] = useState<string>('');
+  const [customEmails, setCustomEmails] = useState<string>('');
+  const [sendingStatus, setSendingStatus] = useState<{ msg: string; success?: boolean } | null>(null);
+  const [isSending, setIsSending] = useState<boolean>(false);
+
   // Extract unique rayon/neighborhood names with "Всі райони" option
   const uniqueRayons = useMemo(() => {
     if (hasSpecificRayonLock) {
@@ -70,6 +78,38 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       setSelectedRayon(uniqueRayons[0]);
     }
   }, [uniqueRayons, selectedRayon, hasSpecificRayonLock]);
+
+  useEffect(() => {
+    if (selectedRayon) setTargetRayonForSend(selectedRayon);
+  }, [selectedRayon]);
+
+  // Handler for Manual Statistics Distribution
+  const handleSendStats = async (type: 'telegram_text' | 'telegram_pdf' | 'email_text' | 'email_pdf') => {
+    setIsSending(true);
+    setSendingStatus({ msg: 'Формування та надсилання розсилки статистики...' });
+    try {
+      const resp = await fetch('/api/stats/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rayon: targetRayonForSend || selectedRayon || "Всі райони",
+          type,
+          customChatId: customTelegramIds || undefined,
+          customEmails: customEmails || undefined
+        })
+      });
+      const json = await resp.json();
+      if (resp.ok && json.success) {
+        setSendingStatus({ success: true, msg: json.logs || json.message });
+      } else {
+        setSendingStatus({ success: false, msg: json.error || json.logs || 'Помилка виконання на сервері' });
+      }
+    } catch (err: any) {
+      setSendingStatus({ success: false, msg: err.message });
+    } finally {
+      setIsSending(false);
+    }
+  };
 
   // Compute active members in selected rayon
   const rayonMembers = useMemo(() => {
@@ -142,11 +182,22 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
 
     // Area/District stats client-side
     const area: Record<string, number> = {};
+    const education: Record<string, number> = {};
+    const socialCategory: Record<string, number> = {};
+
     rayonMembers.forEach(m => {
       const key = String(m.rayon2_ukr || '').trim() || 'н/д';
       area[key] = (area[key] || 0) + 1;
+
+      const edu = String(m.osvita || m.s_osvita_ukr || '').trim() || 'н/д';
+      education[edu] = (education[edu] || 0) + 1;
+
+      const soc = String(m.soc_status || m.s_soc_status_ukr || m.s_socialniy_ukr || '').trim() || 'н/д';
+      socialCategory[soc] = (socialCategory[soc] || 0) + 1;
     });
     const sortedArea = Object.entries(area).sort((a, b) => b[1] - a[1]);
+    const sortedEducation = Object.entries(education).sort((a, b) => b[1] - a[1]);
+    const sortedSocialCategory = Object.entries(socialCategory).sort((a, b) => b[1] - a[1]);
 
     return {
       total,
@@ -157,7 +208,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       attendance: sortedAttendance,
       presence: sortedPresence,
       caregivers: sortedCaregivers,
-      area: sortedArea
+      area: sortedArea,
+      education: sortedEducation,
+      socialCategory: sortedSocialCategory
     };
   }, [rayonMembers]);
 
@@ -541,7 +594,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       <!-- Header Card -->
       <div class="header-card">
         <div>
-          <h1 class="header-title">⛪ СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ ЦЕРКВИ</h1>
+          <h1 class="header-title">⛪ УЦХВЄ м. Івано-Франківськ</h1>
           <p class="header-sub">
             ${isAll ? "Узагальнена статистика по всіх районах" : `Звіт по району: ${selectedRayon}`}
           </p>
@@ -762,7 +815,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     <!-- Footer -->
     <div class="footer">
       <span>Звіт згенеровано автоматично з Системи Реєстру Громади. Для внутрішнього користування.</span>
-      <span style="font-weight: 700; color: #10b981;">Церква ЄХБ «Христа Спасителя»</span>
+      <span style="font-weight: 700; color: #10b981;">УЦХВЄ м. Івано-Франківськ</span>
     </div>
   </div>
 </body>
@@ -928,6 +981,139 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
         </div>
       )}
 
+      {/* Manual Statistics Distribution Modal */}
+      {isSendModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[2000] flex items-center justify-center p-3 animate-in fade-in duration-200">
+          <div className="bg-[#0e2128] border border-[#224853] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-[#1a3843] border-b border-[#224853] px-4 py-3 flex items-center justify-between">
+              <h3 className="text-white font-bold flex items-center gap-2 text-sm uppercase tracking-wide">
+                <Send className="h-4 w-4 text-emerald-400" />
+                Ручна розсилка статистики
+              </h3>
+              <button 
+                onClick={() => { setIsSendModalOpen(false); setSendingStatus(null); }}
+                className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* Select Rayon */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1.5 flex items-center gap-1">
+                  <MapPin className="w-3 h-3 text-emerald-400" /> Вибір району для звіту
+                </label>
+                <select
+                  value={targetRayonForSend}
+                  onChange={(e) => setTargetRayonForSend(e.target.value)}
+                  className="w-full bg-[#13282e] border border-[#224853] text-emerald-300 font-bold rounded-lg px-3 py-2 text-xs outline-none focus:border-emerald-500 uppercase cursor-pointer"
+                >
+                  {uniqueRayons.map(rayon => (
+                    <option key={rayon} value={rayon} className="bg-[#13282e] text-emerald-200 font-bold text-xs">
+                      {rayon}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Recipient inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#13282e]/80 border border-[#224853] p-3 rounded-lg">
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
+                    Telegram Chat ID
+                  </label>
+                  <input
+                    type="text"
+                    value={customTelegramIds}
+                    onChange={(e) => setCustomTelegramIds(e.target.value)}
+                    placeholder="За замовчуванням з налаштувань"
+                    className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
+                    Email отримувача
+                  </label>
+                  <input
+                    type="text"
+                    value={customEmails}
+                    onChange={(e) => setCustomEmails(e.target.value)}
+                    placeholder="email@example.com..."
+                    className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Канал розсилки:</span>
+                
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleSendStats('telegram_text')}
+                    disabled={isSending}
+                    className="bg-sky-800 hover:bg-sky-700 disabled:opacity-50 text-white p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-sky-600/40"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Telegram (Текст)
+                  </button>
+                  <button
+                    onClick={() => handleSendStats('telegram_pdf')}
+                    disabled={isSending}
+                    className="bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-emerald-500/40"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Telegram (PDF)
+                  </button>
+                  <button
+                    onClick={() => handleSendStats('email_text')}
+                    disabled={isSending}
+                    className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-slate-600/40"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Email (Текст)
+                  </button>
+                  <button
+                    onClick={() => handleSendStats('email_pdf')}
+                    disabled={isSending}
+                    className="bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white p-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all border border-teal-500/40"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    Email (PDF)
+                  </button>
+                </div>
+              </div>
+
+              {/* Sending status */}
+              {sendingStatus && (
+                <div className={`p-3 rounded-lg border text-xs leading-relaxed flex items-start gap-2 ${
+                  sendingStatus.success === true
+                    ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200'
+                    : sendingStatus.success === false
+                    ? 'bg-rose-950/80 border-rose-500/50 text-rose-200'
+                    : 'bg-sky-950/80 border-sky-500/50 text-sky-200 animate-pulse'
+                }`}>
+                  {sendingStatus.success === true && <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />}
+                  {sendingStatus.success === false && <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />}
+                  {sendingStatus.success === undefined && <Send className="w-4 h-4 text-sky-400 shrink-0 mt-0.5 animate-spin" />}
+                  <span className="font-medium">{sendingStatus.msg}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-[#13282e] border-t border-[#224853] px-4 py-2.5 flex justify-end">
+              <button
+                onClick={() => { setIsSendModalOpen(false); setSendingStatus(null); }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+              >
+                Закрити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* COMPACT PER-DISTRICT INDEPENDENT REPORT */}
       {selectedRayon && (
         <div className="bg-gradient-to-br from-emerald-950/20 to-teal-950/20 border border-emerald-500/20 rounded-xl p-3 sm:p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-lg">
@@ -971,6 +1157,13 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
               >
                 <FileDown className="h-3 w-3 shrink-0" />
                 {isHtmlGenerating ? 'HTML...' : 'Завантажити HTML'}
+              </button>
+              <button
+                onClick={() => setIsSendModalOpen(true)}
+                className="flex items-center gap-1 text-[10px] font-bold bg-sky-700 hover:bg-sky-600 text-white px-2.5 py-1 rounded-lg border border-sky-500/30 cursor-pointer shadow-sm transition-colors uppercase"
+              >
+                <Send className="h-3 w-3 shrink-0 text-sky-300" />
+                Розсилка статистики
               </button>
               <span className="text-[9px] font-black bg-emerald-900 border border-emerald-700 text-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
                 {rayonStats.total} ВСЬОГО ЧЛЕНІВ
@@ -1030,60 +1223,59 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                       )}
                     </div>
                   </div>
-                </div>
 
-                {/* 3. Reason for absence ("Прич. відсутності") */}
-                <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
-                  <div>
-                    <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
-                      Причини відсутності
-                    </span>
-                    <div className="space-y-1.5 mt-1.5">
-                      {rayonStats.presence.map(([lbl, val]) => 
-                        renderBar(lbl, val, rayonStats.total, "bg-red-400", true)
-                      )}
-                      {rayonStats.presence.length === 0 && (
-                        <div className="py-3 text-center text-[10px] text-slate-400 italic">
-                          Всі присутні
-                        </div>
-                      )}
+                  {/* 3. Reason for absence ("Прич. відсутності") */}
+                  <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
+                    <div>
+                      <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">
+                        Причини відсутності
+                      </span>
+                      <div className="space-y-1.5 mt-1.5">
+                        {rayonStats.presence.map(([lbl, val]) => 
+                          renderBar(lbl, val, rayonStats.total, "bg-red-400", true)
+                        )}
+                        {rayonStats.presence.length === 0 && (
+                          <div className="py-3 text-center text-[10px] text-slate-400 italic">
+                            Всі присутні
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              {/* Added Marital Status and Education Blocks */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                 <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
-                    <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Сімейний стан</span>
-                    <div className="space-y-1 mt-1.5 text-[10px]">
-                      {Object.entries(rayonStats.marital).map(([label, value]) =>
-                         renderBar(label, value as number, Object.values(rayonStats.marital as Record<string, number>).reduce((acc: number, curr: number) => acc + curr, 0), "bg-indigo-400", true)
-                      )}
-                    </div>
-                 </div>
-                 
-                 <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
-                    <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Освіта та Соц. статус</span>
-                    <div className="space-y-3 mt-1.5">
-                      <div className="space-y-1">
-                         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Рівень освіти</span>
-                         {Object.entries(stats.educationStats).map(([lbl, val]) => 
-                            renderBar(lbl, val, stats.activeMembers, "bg-violet-400")
-                         )}
+                
+                {/* Marital Status and Education / Social Category Blocks */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                   <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
+                      <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Сімейний стан</span>
+                      <div className="space-y-1 mt-1.5 text-[10px]">
+                        {Object.entries(rayonStats.marital).map(([label, value]) =>
+                           renderBar(label, value as number, Object.values(rayonStats.marital as Record<string, number>).reduce((acc: number, curr: number) => acc + curr, 0), "bg-indigo-400", true)
+                        )}
                       </div>
-                      <div className="space-y-1 pt-1">
-                         <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Соціальна категорія</span>
-                         {Object.entries(stats.socialStats)
-                           .sort((a, b) => b[1] - a[1])
-                           .slice(0, 4)
-                           .map(([lbl, val]) => 
-                             renderBar(lbl, val, stats.activeMembers, "bg-amber-400")
-                           )
-                         }
+                   </div>
+                   
+                   <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
+                      <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Освіта та Соц. статус</span>
+                      <div className="space-y-3 mt-1.5">
+                        <div className="space-y-1">
+                           <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Рівень освіти</span>
+                           {rayonStats.education.slice(0, 4).map(([lbl, val]) => 
+                              renderBar(lbl, val, rayonStats.total, "bg-violet-400")
+                           )}
+                        </div>
+                        <div className="space-y-1 pt-1">
+                           <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Соціальна категорія</span>
+                           {rayonStats.socialCategory
+                             .slice(0, 4)
+                             .map(([lbl, val]) => 
+                               renderBar(lbl, val, rayonStats.total, "bg-amber-400")
+                             )
+                           }
+                        </div>
                       </div>
-                    </div>
-                 </div>
+                   </div>
+                </div>
               </div>
             </div>
 

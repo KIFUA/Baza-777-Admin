@@ -42,7 +42,59 @@ export default function App() {
     }
   });
 
+  const triggerLoginAudit = async (user: any) => {
+    try {
+      if (!user) return;
+      const userPib = user.user || user.pib || user.position || "Керівник району";
+      const checkAdmin = (userPib + " " + String(user.position || "") + " " + String(user.level || "")).toLowerCase();
+      if (checkAdmin.includes("адміністр") || checkAdmin.includes("адмін") || String(user.level || "").trim() === "I-й") {
+        return; // Вхід адміністратора не фіксуємо
+      }
+
+      let activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      if (!activeSessionId) {
+        activeSessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
+        sessionStorage.setItem("baza_active_session_id", activeSessionId);
+      }
+      const rayon = user.rayon || user.rayon2_ukr || "";
+      await fetch('/api/audit/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userPib,
+          rayon,
+          position: user.position || "",
+          level: user.level || "",
+          sessionId: activeSessionId
+        })
+      });
+    } catch (err) {
+      console.error("[Login Tracking Error]", err);
+    }
+  };
+
+  const triggerLogoutAudit = async (user?: any) => {
+    try {
+      const activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      const userPib = user?.user || user?.pib || currentSessionUser?.user || currentSessionUser?.pib;
+      if (activeSessionId || userPib) {
+        await fetch('/api/audit/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: activeSessionId,
+            userPib
+          })
+        });
+        sessionStorage.removeItem("baza_active_session_id");
+      }
+    } catch (err) {
+      console.error("[Logout Tracking Error]", err);
+    }
+  };
+
   const handleUpdateSessionUser = (user: any, remember: boolean = true) => {
+    const prevUser = currentSessionUser;
     setCurrentSessionUser(user);
     if (user) {
       if (remember) {
@@ -53,12 +105,36 @@ export default function App() {
         localStorage.removeItem("baza_current_session_user");
       }
       setIsAuthenticated(true);
+      triggerLoginAudit(user);
     } else {
+      triggerLogoutAudit(prevUser);
       localStorage.removeItem("baza_current_session_user");
       sessionStorage.removeItem("baza_current_session_user");
       setIsAuthenticated(false);
     }
   };
+
+  useEffect(() => {
+    if (isAuthenticated && currentSessionUser) {
+      const activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      if (!activeSessionId) {
+        triggerLoginAudit(currentSessionUser);
+      }
+    }
+  }, [isAuthenticated, currentSessionUser]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      const activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      const userPib = currentSessionUser?.user || currentSessionUser?.pib;
+      if (activeSessionId || userPib) {
+        const payload = JSON.stringify({ sessionId: activeSessionId, userPib });
+        navigator.sendBeacon('/api/audit/logout', new Blob([payload], { type: 'application/json' }));
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [currentSessionUser]);
 
   const getPermission = (elementName: string): { view: boolean, edit: boolean } => {
     const level = currentSessionUser?.level || 'І-й';

@@ -1942,6 +1942,513 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
   });
 }
 
+// 2.3.1 Helper to compute stats for a rayon on server
+function computeRayonStatsOnServer(selectedRayon: string) {
+  let filtered = members.filter(m => m.id_vybuttya === 0);
+  if (selectedRayon && selectedRayon !== "Всі райони" && selectedRayon !== "ВСІ РАЙОНИ" && selectedRayon !== "ВСІ") {
+    filtered = filtered.filter(m => m.rayon2_ukr && m.rayon2_ukr.trim().toLowerCase() === selectedRayon.trim().toLowerCase());
+  }
+
+  const total = filtered.length;
+  const brothers = filtered.filter(m => String(m.gender || m.stat || '').trim().toLowerCase().includes('брат')).length;
+  const sisters = filtered.filter(m => String(m.gender || m.stat || '').trim().toLowerCase().includes('сестра') || String(m.gender || m.stat || '').trim().toLowerCase().includes('сес')).length;
+  const others = total - brothers - sisters;
+
+  let single = 0, married = 0, divorced = 0, widowed = 0, nd = 0;
+  filtered.forEach(m => {
+    const status = String(m.s_simeyniy_ukr || '').trim().toLowerCase();
+    if (!status || status === 'н/д' || status === 'не визначено' || status === '—') {
+      nd++;
+    } else if (status.startsWith('неодр') || status.includes('неод')) {
+      single++;
+    } else if (status.startsWith('одр') || status === 'одр.' || status === 'одружений' || status === 'одружена') {
+      married++;
+    } else if (status.startsWith('розл') || status.includes('розлуч')) {
+      divorced++;
+    } else if (status.startsWith('вд') || status.includes('вдов') || status.includes('вдiв')) {
+      widowed++;
+    } else {
+      nd++;
+    }
+  });
+
+  const attendance: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.vidviduvanist || '').trim() || 'н/д';
+    attendance[key] = (attendance[key] || 0) + 1;
+  });
+  const sortedAttendance = Object.entries(attendance).sort((a, b) => b[1] - a[1]);
+
+  const presence: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.prysutnist || '').trim();
+    const isNA = !key || key.toLowerCase() === 'н/д' || key === '—' || key === '-';
+    if (!isNA) {
+      presence[key] = (presence[key] || 0) + 1;
+    }
+  });
+  const sortedPresence = Object.entries(presence).sort((a, b) => b[1] - a[1]);
+
+  const education: Record<string, number> = {};
+  const socialCategory: Record<string, number> = {};
+  filtered.forEach(m => {
+    const edu = String(m.osvita || m.s_osvita_ukr || '').trim() || 'н/д';
+    education[edu] = (education[edu] || 0) + 1;
+
+    const soc = String(m.soc_status || m.s_soc_status_ukr || m.s_socialniy_ukr || '').trim() || 'н/д';
+    socialCategory[soc] = (socialCategory[soc] || 0) + 1;
+  });
+  const sortedEducation = Object.entries(education).sort((a, b) => b[1] - a[1]);
+  const sortedSocialCategory = Object.entries(socialCategory).sort((a, b) => b[1] - a[1]);
+
+  const rayons: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.rayon2_ukr || '').trim() || 'Без району';
+    rayons[key] = (rayons[key] || 0) + 1;
+  });
+  const sortedRayons = Object.entries(rayons).sort((a, b) => b[1] - a[1]);
+
+  const caregivers: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.presviter || '').trim() || 'Без опікуна';
+    caregivers[key] = (caregivers[key] || 0) + 1;
+  });
+  const sortedCaregivers = Object.entries(caregivers).sort((a, b) => b[1] - a[1]);
+
+  return {
+    rayonName: selectedRayon || "Всі райони",
+    total,
+    brothers,
+    sisters,
+    others,
+    marital: { "неодружені": single, "одружені": married, "розлучені": divorced, "вдова/вдівець": widowed, "не вказано": nd },
+    attendance: sortedAttendance,
+    presence: sortedPresence,
+    education: sortedEducation,
+    socialCategory: sortedSocialCategory,
+    rayons: sortedRayons,
+    caregivers: sortedCaregivers
+  };
+}
+
+function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 0 });
+      const chunks: Buffer[] = [];
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', err => reject(err));
+
+      const regularFont = getRobotoRegularFont();
+      const boldFont = getRobotoBoldFont();
+
+      let useRoboto = false;
+      if (regularFont && boldFont) {
+        try {
+          doc.registerFont('Roboto-Regular', regularFont as any);
+          doc.registerFont('Roboto-Bold', boldFont as any);
+          doc.font('Roboto-Bold');
+          doc.widthOfString('Тест');
+          useRoboto = true;
+        } catch (e) {
+          useRoboto = false;
+        }
+      }
+
+      const fontReg = useRoboto ? 'Roboto-Regular' : 'Helvetica';
+      const fontBold = useRoboto ? 'Roboto-Bold' : 'Helvetica-Bold';
+
+      const total = statsData.total;
+      const bPct = total > 0 ? Math.round((statsData.brothers / total) * 100) : 0;
+      const sPct = total > 0 ? Math.round((statsData.sisters / total) * 100) : 0;
+
+      // Fill full page light grey-green background (ink-saving)
+      doc.rect(0, 0, 595.28, 841.89).fill('#f4f8f6');
+
+      const nowStr = new Date().toLocaleDateString('uk-UA') + ' ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+
+      // Top Title Header
+      doc.font(fontBold).fontSize(10).fillColor('#134e4a').text('УЦХВЄ м. Івано-Франківськ', 20, 8, { align: 'center' });
+      doc.font(fontBold).fontSize(12).fillColor('#0f766e').text('СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ', 20, 21, { align: 'center' });
+      doc.font(fontBold).fontSize(8).fillColor('#0d9488').text(`РАЙОН: ${statsData.rayonName.toUpperCase()}    •    ОНОВЛЕНО: ${nowStr}`, 20, 36, { align: 'center' });
+
+      // Top Summary Banner
+      const bannerX = 20;
+      const bannerY = 49;
+      const bannerW = 555.28;
+      const bannerH = 38;
+
+      doc.roundedRect(bannerX, bannerY, bannerW, bannerH, 6).fillAndStroke('#e6f0ec', '#b2d4ca');
+
+      // Left total count
+      doc.font(fontReg).fontSize(6.5).fillColor('#475569').text('ЗАГАЛЬНА КІЛЬКІСТЬ ЧЛЕНІВ', bannerX + 12, bannerY + 5);
+      doc.font(fontBold).fontSize(16).fillColor('#0d2d26').text(`${total}`, bannerX + 12, bannerY + 15);
+
+      // Middle pill: Brothers
+      const bPillX = bannerX + 180;
+      const bPillY = bannerY + 7;
+      doc.roundedRect(bPillX, bPillY, 130, 24, 5).fillAndStroke('#e0f2fe', '#7dd3fc');
+      doc.font(fontBold).fontSize(8.5).fillColor('#0284c7').text(`БРАТИ  ${statsData.brothers} (${bPct}%)`, bPillX + 12, bPillY + 7);
+
+      // Right pill: Sisters
+      const sPillX = bannerX + 330;
+      const sPillY = bannerY + 7;
+      doc.roundedRect(sPillX, sPillY, 130, 24, 5).fillAndStroke('#fce7f3', '#f472b6');
+      doc.font(fontBold).fontSize(8.5).fillColor('#be185d').text(`СЕСТРИ  ${statsData.sisters} (${sPct}%)`, sPillX + 12, sPillY + 7);
+
+      // Column Coordinates
+      const col1X = 20;
+      const col2X = 302;
+      const colW = 273;
+
+      const drawCardHeader = (x: number, y: number, w: number, title: string) => {
+        doc.roundedRect(x, y, w, 19, 5).fillAndStroke('#e6f0ec', '#c2dcd4');
+        doc.font(fontBold).fontSize(8).fillColor('#0f5245').text(title.toUpperCase(), x + 8, y + 5);
+      };
+
+      const drawProgressRow = (x: number, y: number, w: number, label: string, val: number, tot: number, barColor: string) => {
+        const pct = tot > 0 ? Math.round((val / tot) * 100) : 0;
+        doc.font(fontReg).fontSize(7.5).fillColor('#1e293b').text(label, x + 8, y, { width: 140 });
+        doc.font(fontBold).fontSize(7.5).fillColor('#0f2922').text(`${val} (${pct}%)`, x + 150, y, { width: 115, align: 'right' });
+
+        // Progress Bar
+        const barY = y + 10;
+        const barW = 257;
+        const fillW = Math.max(2, Math.min(barW, Math.round((val / (tot || 1)) * barW)));
+        doc.roundedRect(x + 8, barY, barW, 3.5, 1.5).fill('#e6f0ed');
+        if (fillW > 0) {
+          doc.roundedRect(x + 8, barY, fillW, 3.5, 1.5).fill(barColor);
+        }
+      };
+
+      // LEFT COLUMN
+      let curY1 = 88;
+
+      // 1. АНАЛІЗ ВІДВІДУВАННЯ
+      const attItems = (statsData.attendance || []).slice(0, 5);
+      const attH = 22 + attItems.length * 16 + 4;
+      doc.roundedRect(col1X, curY1, colW, attH, 6).fillAndStroke('#ffffff', '#ccdcd6');
+      drawCardHeader(col1X, curY1, colW, 'АНАЛІЗ ВІДВІДУВАННЯ');
+      let rowY1 = curY1 + 22;
+      attItems.forEach(([lbl, val]: [string, number]) => {
+        drawProgressRow(col1X, rowY1, colW, lbl || 'н/д', val, total, '#2563eb');
+        rowY1 += 16;
+      });
+      curY1 += attH + 6;
+
+      // 2. ПРИЧИНИ ВІДСУТНОСТІ
+      const presItems = (statsData.presence || []).slice(0, 10);
+      if (presItems.length > 0) {
+        const presH = 22 + presItems.length * 16 + 4;
+        doc.roundedRect(col1X, curY1, colW, presH, 6).fillAndStroke('#ffffff', '#ccdcd6');
+        drawCardHeader(col1X, curY1, colW, 'ПРИЧИНИ ВІДСУТНОСТІ');
+        let rY = curY1 + 22;
+        presItems.forEach(([lbl, val]: [string, number]) => {
+          drawProgressRow(col1X, rY, colW, lbl, val, total, '#dc2626');
+          rY += 16;
+        });
+        curY1 += presH + 6;
+      }
+
+      // 3. СІМЕЙНИЙ СТАН
+      const maritalEntries = Object.entries(statsData.marital || {});
+      const marH = 22 + maritalEntries.length * 16 + 4;
+      doc.roundedRect(col1X, curY1, colW, marH, 6).fillAndStroke('#ffffff', '#ccdcd6');
+      drawCardHeader(col1X, curY1, colW, 'СІМЕЙНИЙ СТАН');
+      let marY = curY1 + 22;
+      maritalEntries.forEach(([lbl, val]: [string, any]) => {
+        drawProgressRow(col1X, marY, colW, lbl, val, total, '#4f46e5');
+        marY += 16;
+      });
+      curY1 += marH + 6;
+
+      // 4. ОСВІТА ТА СОЦ. СТАТУС
+      const eduItems = (statsData.education || []).slice(0, 4);
+      const socItems = (statsData.socialCategory || []).slice(0, 4);
+      const eduH = 22 + (eduItems.length > 0 ? 12 + eduItems.length * 15 : 0) + (socItems.length > 0 ? 12 + socItems.length * 15 : 0) + 6;
+      doc.roundedRect(col1X, curY1, colW, eduH, 6).fillAndStroke('#ffffff', '#ccdcd6');
+      drawCardHeader(col1X, curY1, colW, 'ОСВІТА ТА СОЦ. СТАТУС');
+      let eduY = curY1 + 22;
+      if (eduItems.length > 0) {
+        doc.font(fontBold).fontSize(7).fillColor('#64748b').text('РІВЕНЬ ОСВІТИ', col1X + 8, eduY);
+        eduY += 10;
+        eduItems.forEach(([lbl, val]: [string, number]) => {
+          drawProgressRow(col1X, eduY, colW, lbl, val, total, '#7c3aed');
+          eduY += 15;
+        });
+      }
+      if (socItems.length > 0) {
+        doc.font(fontBold).fontSize(7).fillColor('#64748b').text('СОЦІАЛЬНА КАТЕГОРІЯ', col1X + 8, eduY);
+        eduY += 10;
+        socItems.forEach(([lbl, val]: [string, number]) => {
+          drawProgressRow(col1X, eduY, colW, lbl, val, total, '#d97706');
+          eduY += 15;
+        });
+      }
+
+      // RIGHT COLUMN
+      let curY2 = 88;
+
+      // 1. РАЙОНИ СТРУКТУРИ
+      const rayonItems = (statsData.rayons || []).slice(0, 8);
+      if (rayonItems.length > 0) {
+        const rayH = 22 + rayonItems.length * 16 + 4;
+        doc.roundedRect(col2X, curY2, colW, rayH, 6).fillAndStroke('#ffffff', '#ccdcd6');
+        drawCardHeader(col2X, curY2, colW, 'РАЙОНИ СТРУКТУРИ');
+        let rY = curY2 + 22;
+        rayonItems.forEach(([lbl, val]: [string, number]) => {
+          drawProgressRow(col2X, rY, colW, lbl, val, total, '#059669');
+          rY += 16;
+        });
+        curY2 += rayH + 6;
+      }
+
+      // 2. СПИСОК ОПІКУНІВ
+      const cgItems = (statsData.caregivers || []).slice(0, 24);
+      if (cgItems.length > 0) {
+        const numRows = Math.ceil(cgItems.length / 2);
+        const cgH = 22 + numRows * 21 + 8;
+        doc.roundedRect(col2X, curY2, colW, cgH, 6).fillAndStroke('#ffffff', '#ccdcd6');
+        drawCardHeader(col2X, curY2, colW, 'СПИСОК ОПІКУНІВ');
+
+        let gridY = curY2 + 24;
+        for (let i = 0; i < cgItems.length; i += 2) {
+          const item1 = cgItems[i];
+          const badgeW = 127;
+
+          doc.roundedRect(col2X + 6, gridY, badgeW, 17, 4).fillAndStroke('#f2f8f6', '#c2dcd4');
+          const pct1 = total > 0 ? Math.round((item1[1] / total) * 100) : 0;
+          doc.font(fontReg).fontSize(7).fillColor('#0f2922').text(`👤 ${item1[0]}`, col2X + 10, gridY + 4, { width: 78 });
+          doc.font(fontBold).fontSize(7).fillColor('#047857').text(`${item1[1]} (${pct1}%)`, col2X + 88, gridY + 4, { width: 40, align: 'right' });
+
+          if (i + 1 < cgItems.length) {
+            const item2 = cgItems[i + 1];
+            doc.roundedRect(col2X + 139, gridY, badgeW, 17, 4).fillAndStroke('#f2f8f6', '#c2dcd4');
+            const pct2 = total > 0 ? Math.round((item2[1] / total) * 100) : 0;
+            doc.font(fontReg).fontSize(7).fillColor('#0f2922').text(`👤 ${item2[0]}`, col2X + 143, gridY + 4, { width: 78 });
+            doc.font(fontBold).fontSize(7).fillColor('#047857').text(`${item2[1]} (${pct2}%)`, col2X + 221, gridY + 4, { width: 40, align: 'right' });
+          }
+
+          gridY += 21;
+        }
+      }
+
+      // Footer
+      doc.font(fontReg).fontSize(7.5).fillColor('#64748b').text('УЦХВЄ м. Івано-Франківськ — Системний статистичний звіт', 20, 825, { width: 555, align: 'center' });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+// 2.3.2 API: Manual distribution of Statistics report (Telegram / Email)
+app.post("/api/stats/send", async (req, res) => {
+  const { rayon, type, customToken, customChatId, customEmails } = req.body;
+  const targetRayon = rayon || "Всі райони";
+  const statsData = computeRayonStatsOnServer(targetRayon);
+
+  const total = statsData.total;
+  const bPct = total > 0 ? Math.round((statsData.brothers / total) * 100) : 0;
+  const sPct = total > 0 ? Math.round((statsData.sisters / total) * 100) : 0;
+
+  // Text message
+  let msg = `📊 *СТАТИСТИЧНИЙ ЗВІТ ЦЕРКВИ* 📊\n`;
+  msg += `📍 *Район:* ${targetRayon.toUpperCase()}\n`;
+  msg += `📅 *Дата:* ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}\n\n`;
+  msg += `👥 *Загалом активних членів:* ${total}\n`;
+  msg += `👦 *Брати:* ${statsData.brothers} (${bPct}%)\n`;
+  msg += `👧 *Сестри:* ${statsData.sisters} (${sPct}%)\n\n`;
+
+  if (statsData.attendance && statsData.attendance.length > 0) {
+    msg += `📈 *Відвідуваність:*\n`;
+    statsData.attendance.slice(0, 5).forEach(([lbl, val]: [string, number]) => {
+      const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+      msg += `• ${lbl || 'н/д'}: ${val} (${pct}%)\n`;
+    });
+    msg += `\n`;
+  }
+
+  if (statsData.presence && statsData.presence.length > 0) {
+    msg += `📌 *Причини відсутності:*\n`;
+    statsData.presence.slice(0, 5).forEach(([lbl, val]: [string, number]) => {
+      const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+      msg += `• ${lbl}: ${val} (${pct}%)\n`;
+    });
+    msg += `\n`;
+  }
+
+  msg += `💍 *Сімейний стан:*\n`;
+  Object.entries(statsData.marital || {}).forEach(([lbl, val]) => {
+    msg += `• ${lbl}: ${val}\n`;
+  });
+
+  if (statsData.caregivers && statsData.caregivers.length > 0) {
+    msg += `\n👤 *Опікуни (топ):*\n`;
+    statsData.caregivers.slice(0, 6).forEach(([name, count]: [string, number]) => {
+      msg += `• ${name}: ${count}\n`;
+    });
+  }
+
+  let telegramLogs = "";
+  let emailLogs = "";
+
+  if (type === "telegram_text" || type === "telegram_pdf" || type === "telegram_me" || type === "telegram_group") {
+    const settings = getSettings();
+    const token = customToken || settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
+    const defaultChatId = settings.wednesdayTelegramIds || settings.mondayTelegramIds || "1919236304";
+    const chatIdStr = customChatId || defaultChatId;
+
+    if (!token) {
+      telegramLogs = `[Симуляція] Telegram бот токен НЕ налаштований. Звіт було б надіслано в чат: ${chatIdStr}.`;
+    } else {
+      const chatIds = Array.from(new Set(chatIdStr.split(",").map((id: any) => id.trim()).filter(Boolean)));
+      let tgSuccessCount = 0;
+      let tgFailCount = 0;
+      let lastError = "";
+
+      if (type === "telegram_pdf") {
+        try {
+          const pdfBuffer = await generateStatsPdfBuffer(statsData);
+
+          for (const singleChatId of chatIds) {
+            try {
+              const formData = new FormData();
+              formData.append('chat_id', singleChatId);
+              formData.append('document', pdfBuffer, {
+                filename: `Статистика_${targetRayon.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`,
+                contentType: 'application/pdf'
+              });
+
+              const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+                headers: formData.getHeaders(),
+                timeout: 15000
+              });
+              if (response.data.ok) tgSuccessCount++;
+              else {
+                tgFailCount++;
+                lastError = response.data.description;
+              }
+            } catch (err: any) {
+              tgFailCount++;
+              lastError = err.response?.data?.description || err.message;
+            }
+          }
+        } catch (pdfErr: any) {
+          tgFailCount = chatIds.length || 1;
+          lastError = `PDF gen error: ${pdfErr.message}`;
+        }
+      } else {
+        for (const singleChatId of chatIds) {
+          try {
+            const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+            const response = await fetch(tgUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: singleChatId,
+                text: msg,
+                parse_mode: "Markdown"
+              })
+            });
+            const rJson = await response.json() as any;
+            if (rJson.ok) {
+              tgSuccessCount++;
+            } else {
+              tgFailCount++;
+              lastError = rJson.description || "unknown error";
+            }
+          } catch (tgErr: any) {
+            tgFailCount++;
+            lastError = tgErr.message;
+          }
+        }
+      }
+
+      telegramLogs = `Telegram: успішно надіслано до ${tgSuccessCount} чатів. Помилок: ${tgFailCount}${lastError ? ' (' + lastError + ')' : ''}`;
+    }
+  } else if (type === "email_text" || type === "email_pdf") {
+    const settings = getSettings();
+    const appPassword = settings.appPassword;
+
+    let destinations: string[] = [];
+    if (customEmails) {
+      destinations = customEmails.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+    } else {
+      const emailField = settings.wednesdayEmails || settings.mondayEmails;
+      if (emailField) {
+        destinations = emailField.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+      }
+    }
+
+    destinations = Array.from(new Set(destinations));
+
+    if (destinations.length === 0) {
+      return res.status(400).json({ error: "Вкажіть хоча б одну адресу Email для розсилки." });
+    }
+
+    if (!appPassword) {
+      emailLogs = `[Помилка] Не вказано App Password (пароль додатка Gmail) в налаштуваннях.`;
+    } else {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: 'kostel.if.ua@gmail.com',
+            pass: appPassword
+          }
+        });
+
+        const subject = `📊 Статистичний звіт: ${targetRayon} (${new Date().toLocaleDateString('uk-UA')})`;
+        const mailOptions: any = {
+          from: '"База 777" <kostel.if.ua@gmail.com>',
+          to: destinations,
+          subject: subject,
+          text: msg.replace(/\*/g, "")
+        };
+
+        if (type === "email_pdf") {
+          try {
+            const pdfBuffer = await generateStatsPdfBuffer(statsData);
+            mailOptions.attachments = [{
+              filename: `Статистика_${targetRayon.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }];
+          } catch (pdfErr: any) {
+            console.error("Error generating PDF for email:", pdfErr);
+          }
+        }
+
+        await transporter.sendMail(mailOptions);
+        emailLogs = `Email: успішно надіслано на адреси: ${destinations.join(", ")}`;
+      } catch (mailErr: any) {
+        emailLogs = `Помилка надсилання пошти: ${mailErr.message}`;
+      }
+    }
+  }
+
+  // Insert Audit Log entry
+  auditLogs.push({
+    id: "stats_" + Date.now(),
+    timestamp: new Date().toISOString(),
+    memberId: 0,
+    memberName: "Система",
+    action: "stats_distribution",
+    details: `Ручна розсилка статистики: район "<b>${targetRayon}</b>", тип "<b>${type}</b>".`
+  });
+  saveDatabaseToCache();
+
+  res.json({
+    success: true,
+    message: "Розсилку статистики успішно опрацьовано.",
+    logs: telegramLogs || emailLogs,
+    rawText: msg
+  });
+});
+
 // 2.3 API: Send Birthday Celebrants reports (Email or Telegram Bot)
 app.post("/api/birthdays/send", async (req, res) => {
   const { type, customToken, customChatId } = req.body;
@@ -2968,6 +3475,7 @@ app.post("/api/members/:id", async (req, res) => {
         field: label,
         oldValue: String(oldVal),
         newValue: String(newVal),
+        rayon: orig.rayon2_ukr || "",
         details: `Оновлено поле "${label}" від "${oldVal}" до "${newVal}"`
       };
       
@@ -2982,7 +3490,7 @@ app.post("/api/members/:id", async (req, res) => {
 
 // 7. Add general audit logs / Custom event
 app.post("/api/audit", (req, res) => {
-  const { memberId, memberName, action, details, userPib, field, oldValue, newValue } = req.body;
+  const { memberId, memberName, action, details, userPib, field, oldValue, newValue, rayon } = req.body;
   const newLog: AuditLogItem = {
     id: "user_" + Date.now(),
     timestamp: new Date().toISOString(),
@@ -2993,12 +3501,88 @@ app.post("/api/audit", (req, res) => {
     userPib: userPib ? String(userPib).trim() : undefined,
     field: field ? String(field).trim() : undefined,
     oldValue: oldValue !== undefined ? String(oldValue) : undefined,
-    newValue: newValue !== undefined ? String(newValue) : undefined
+    newValue: newValue !== undefined ? String(newValue) : undefined,
+    rayon: rayon ? String(rayon).trim().toUpperCase() : undefined
   };
   auditLogs.push(newLog);
   saveDatabaseToCache();
   saveAuditLogToFirebase(newLog);
   res.json({ success: true, log: newLog });
+});
+
+// District leaders login tracking endpoint
+app.post("/api/audit/login", (req, res) => {
+  const { userPib, rayon, position, level, sessionId } = req.body;
+
+  const cleanPib = String(userPib || "Керівник").trim();
+  const lowerCheck = (cleanPib + " " + String(position || "") + " " + String(level || "")).toLowerCase();
+
+  // Вхід адміністратора не фіксуємо
+  if (lowerCheck.includes("адміністр") || lowerCheck.includes("адмін") || String(level || "").trim() === "I-й") {
+    return res.json({ success: true, ignored: true });
+  }
+
+  const now = new Date();
+  const formattedTime = now.toLocaleString('uk-UA', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+
+  const cleanRayon = String(rayon || "").trim().toUpperCase();
+  const cleanSessionId = String(sessionId || ("sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6)));
+
+  const logId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
+  const newLog: AuditLogItem = {
+    id: logId,
+    timestamp: now.toISOString(),
+    memberId: 0,
+    memberName: cleanPib,
+    action: "login_session",
+    details: `Вхід у систему керівника району ${cleanRayon}: ${cleanPib}`,
+    userPib: cleanPib,
+    field: "Вхід керівника",
+    oldValue: "-",
+    newValue: `Вхід: ${formattedTime}`,
+    rayon: cleanRayon,
+    loginTime: formattedTime,
+    logoutTime: "В мережі",
+    sessionId: cleanSessionId
+  };
+
+  auditLogs.push(newLog);
+  saveDatabaseToCache();
+  saveAuditLogToFirebase(newLog);
+
+  res.json({ success: true, log: newLog, sessionId: cleanSessionId });
+});
+
+// District leaders logout tracking endpoint
+app.post("/api/audit/logout", (req, res) => {
+  let body = req.body || {};
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch (_) {}
+  }
+  const { sessionId, userPib } = body;
+  const now = new Date();
+  const formattedLogout = now.toLocaleString('uk-UA', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+
+  let foundLog = auditLogs.find(l => l.action === "login_session" && l.sessionId === sessionId);
+  if (!foundLog && userPib) {
+    foundLog = [...auditLogs].reverse().find(l => l.action === "login_session" && l.userPib === userPib && l.logoutTime === "В мережі");
+  }
+
+  if (foundLog) {
+    foundLog.logoutTime = formattedLogout;
+    foundLog.newValue = `Вхід: ${foundLog.loginTime || ''} — Вихід: ${formattedLogout}`;
+    saveDatabaseToCache();
+    saveAuditLogToFirebase(foundLog);
+    return res.json({ success: true, log: foundLog });
+  }
+
+  res.json({ success: false, message: "Active session log not found" });
 });
 
 /**

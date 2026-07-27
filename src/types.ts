@@ -56,12 +56,16 @@ export interface AuditLogItem {
   timestamp: string;
   memberId: number;
   memberName: string;
-  action: string; // 'create' | 'update' | 'dismiss' | 'discipline' | 'add_ministry'
+  action: string; // 'create' | 'update' | 'dismiss' | 'discipline' | 'add_ministry' | 'login_session'
   details: string;
   userPib?: string;
   field?: string;
   oldValue?: string;
   newValue?: string;
+  rayon?: string;
+  loginTime?: string;
+  logoutTime?: string;
+  sessionId?: string;
 }
 
 export interface Member {
@@ -74,8 +78,11 @@ export interface Member {
   s_simeyniy_ukr: string;
   id_simeyniy: number;
   s_socialniy_ukr: string;
+  soc_status?: string;
+  s_soc_status_ukr?: string;
   id_socialniy: number;
   s_osvita_ukr: string;
+  osvita?: string;
   id_osvita: number;
   s_profesiya_ukr: string;
   id_profesiya: number;

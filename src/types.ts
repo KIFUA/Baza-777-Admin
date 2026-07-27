@@ -162,3 +162,52 @@ export interface DashboardStats {
   groupsCount: Record<string, number>;
   caregiversCount: Record<string, number>;
 }
+
+export interface TelegramBotConnector {
+  id: string;
+  name: string;
+  token: string;
+}
+
+export interface EmailConnector {
+  user: string;
+  appPassword: string;
+}
+
+export interface ConnectorSettings {
+  telegramBots: TelegramBotConnector[];
+  email: EmailConnector;
+}
+
+export interface BirthdayScheduleSettings {
+  day: number;
+  hour: number;
+  minute: number;
+  connectorType: 'telegram' | 'email';
+  connectorId: string; // "default" for email, or bot ID for telegram
+  recipientId: string; // chat IDs for telegram, emails for email
+}
+
+export interface AppSettings {
+  connectors: ConnectorSettings;
+  birthdays: {
+    text: BirthdayScheduleSettings;
+    pdf: BirthdayScheduleSettings;
+  };
+  notificationDays: number;
+  enableTestMode?: boolean;
+  testTelegramId?: string;
+  // Legacy fields for backward compatibility
+  mondayEmails?: string;
+  wednesdayEmails?: string;
+  mondayTelegramIds?: string;
+  wednesdayTelegramIds?: string;
+  botToken?: string;
+  appPassword?: string;
+  mondayMailingDay?: number;
+  mondayMailingHour?: number;
+  mondayMailingMinute?: number;
+  wednesdayMailingDay?: number;
+  wednesdayMailingHour?: number;
+  wednesdayMailingMinute?: number;
+}

@@ -8,19 +8,38 @@ import axios from 'axios';
 import FormData from 'form-data';
 import { getRobotoRegularFont, getRobotoBoldFont } from './fontsBase64';
 
-export interface BirthdaySettings {
-    mondayEmails: string;
-    wednesdayEmails: string;
-    mondayTelegramIds: string;
-    wednesdayTelegramIds: string;
-    botToken: string;
+export interface TelegramBotConnector {
+    id: string;
+    name: string;
+    token: string;
+}
+
+export interface EmailConnector {
+    user: string;
     appPassword: string;
-    mondayMailingDay?: number | string;
-    mondayMailingHour?: number | string;
-    mondayMailingMinute?: number | string;
-    wednesdayMailingDay?: number | string;
-    wednesdayMailingHour?: number | string;
-    wednesdayMailingMinute?: number | string;
+}
+
+export interface BirthdayScheduleSettings {
+    day: number;
+    hour: number;
+    minute: number;
+    connectorType: 'telegram' | 'email';
+    connectorId: string;
+    recipientId: string;
+}
+
+export interface BirthdaySettings {
+    connectors: {
+        telegramBots: TelegramBotConnector[];
+        email: EmailConnector;
+    };
+    birthdays: {
+        text: BirthdayScheduleSettings;
+        pdf: BirthdayScheduleSettings;
+    };
+    // Keep these for internal use if needed during transition, but interfaces should reflect new reality
+    botToken?: string;
+    appPassword?: string;
 }
 
 let isInitialized = false;
@@ -75,7 +94,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
     isInitialized = true;
     console.log("Initializing Birthday Cron Jobs (Europe/Kyiv)...");
 
-    const sendTelegram = async (chatIds: string, text: string, botToken: string, filePath?: string) => {
+    const sendTelegram = async (chatIds: string, text: string, botToken: string, filePath?: string, displayFilename?: string) => {
         if (!botToken) {
             console.warn("[BirthdayCron] No bot token provided for Telegram.");
             return;
@@ -91,10 +110,12 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 if (filePath && fs.existsSync(filePath)) {
                     console.log(`[BirthdayCron] Sending file to Telegram chat ${chatId}: ${filePath}`);
                     const fileBuffer = fs.readFileSync(filePath);
-                    const filename = path.basename(filePath);
+                    const filename = displayFilename || path.basename(filePath);
                     const formData = new FormData();
                     formData.append('chat_id', chatId);
-                    formData.append('caption', text);
+                    if (text) {
+                        formData.append('caption', text);
+                    }
                     formData.append('document', fileBuffer, { filename });
                     
                     const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendDocument`, formData, {
@@ -119,21 +140,21 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         }
     };
 
-    const sendEmails = async (emails: string, subject: string, text: string, appPassword: string, attachments?: { filename: string, path: string }[]) => {
-        if (!appPassword || !emails) return;
+    const sendEmails = async (emails: string, subject: string, text: string, emailConfig: EmailConnector, attachments?: { filename: string, path: string }[]) => {
+        if (!emailConfig.appPassword || !emails) return;
         const mailList = emails.split(',').map(e => e.trim()).filter(Boolean);
         if (mailList.length === 0) return;
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
-                user: 'kostel.if.ua@gmail.com',
-                pass: appPassword
+                user: emailConfig.user || 'kostel.if.ua@gmail.com',
+                pass: emailConfig.appPassword
             }
         });
 
         const mailOptions: any = {
-            from: '"База 777" <kostel.if.ua@gmail.com>',
+            from: `"База 777" <${emailConfig.user || 'kostel.if.ua@gmail.com'}>`,
             to: mailList,
             subject: subject,
             text: text
@@ -148,6 +169,18 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             console.log(`Emails sent to ${mailList.join(', ')}`);
         } catch (err) {
             console.error('Email send error:', err);
+        }
+    };
+
+    const sendToConnector = async (schedule: BirthdayScheduleSettings, connectors: BirthdaySettings['connectors'], text: string, subject: string, filePath?: string, attachments?: any[]) => {
+        if (schedule.connectorType === 'telegram') {
+            const bot = connectors.telegramBots.find(b => b.id === schedule.connectorId) || connectors.telegramBots[0];
+            if (bot) {
+                const displayFilename = attachments?.find(a => a.path === filePath)?.filename;
+                await sendTelegram(schedule.recipientId, text, bot.token, filePath, displayFilename);
+            }
+        } else if (schedule.connectorType === 'email') {
+            await sendEmails(schedule.recipientId, subject, text, connectors.email, attachments);
         }
     };
 
@@ -170,8 +203,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             msg += `${item.cleanName || item.fullName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
         });
 
-        await sendTelegram(settings.mondayTelegramIds, msg, settings.botToken);
-        await sendEmails(settings.mondayEmails, `Іменинники тижня (${birthdays.weekRangeText})`, msg, settings.appPassword);
+        const subject = `Іменинники тижня (${birthdays.weekRangeText})`;
+        await sendToConnector(settings.birthdays.text, settings.connectors, msg, subject);
         console.log("Distribution 1 completed.");
     };
 
@@ -288,8 +321,9 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 
                 doc.font('Roboto-Regular').fontSize(11);
                 doc.text(`/ ${birthdays.weekRangeText} /`, alignX);
-                doc.moveDown(1.5);
+                doc.moveDown(0.6);
 
+                doc.lineGap(2);
                 birthdays.list.forEach((item: any) => {
                     doc.font('Roboto-Bold').fontSize(14);
                     if (item.isJubilee) {
@@ -302,7 +336,6 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
                     doc.text(shortName, alignX);
                     doc.fillColor('black');
-                    doc.moveDown(0.1);
                 });
             } catch (drawErr) {
                 console.error("[BirthdayCron] Error drawing with Roboto, falling back:", drawErr);
@@ -341,29 +374,28 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                     if (fs.existsSync(pdfPath)) {
                         const stats = fs.statSync(pdfPath);
                         if (stats.size > 100) {
-                            attachments.push({ filename: 'Imenynnyky.pdf', path: pdfPath });
+                            attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.pdf`, path: pdfPath });
                             pdfSuccessful = true;
                         } else {
                             console.warn(`[BirthdayCron] Generated PDF is too small (${stats.size} bytes)!`);
                         }
                     }
                     if (fs.existsSync(htmlPath)) {
-                        attachments.push({ filename: 'Imenynnyky.html', path: htmlPath });
+                        attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.html`, path: htmlPath });
                     }
 
-                    let msg = `📄 Прикріплено список іменинників (${birthdays.weekRangeText}).`;
+                    let msg = "";
                     if (!pdfSuccessful) {
-                        msg += "\n\n⚠️ УВАГА: Виникла помилка при генерації PDF. Будь ласка, використайте HTML файл або текстовий список.";
+                        msg = `⚠️ УВАГА: Виникла помилка при генерації PDF для ${birthdays.weekRangeText}. Будь ласка, використайте HTML файл або текстовий список.`;
                     }
                     
-                    console.log("[BirthdayCron] Sending Telegram (Distribution 2)...");
-                    const telegramFilePath = attachments.find(a => a.filename === 'Imenynnyky.pdf')?.path 
-                                          || attachments.find(a => a.filename === 'Imenynnyky.html')?.path;
+                    console.log("[BirthdayCron] Sending via Connector (Distribution 2)...");
+                    const telegramAttachment = attachments.find(a => a.filename.endsWith('.pdf')) 
+                                           || attachments.find(a => a.filename.endsWith('.html'));
+                    const telegramFilePath = telegramAttachment?.path;
                     
-                    await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, telegramFilePath);
-
-                    console.log("[BirthdayCron] Sending Emails (Distribution 2)...");
-                    await sendEmails(settings.wednesdayEmails, `Іменинники тижня (${birthdays.weekRangeText})`, msg, settings.appPassword, attachments);
+                    const subject = `Іменинники тижня (${birthdays.weekRangeText})`;
+                    await sendToConnector(settings.birthdays.pdf, settings.connectors, msg, subject, telegramFilePath, attachments);
                     
                     // Cleanup
                     if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
@@ -394,13 +426,13 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
                 console.log(`[BirthdayCron] Heartbeat (Kyiv time): ${now.dateStr} ${now.hour}:${now.minute}, Day: ${now.dayOfWeek}`);
             }
 
-            const mondayDay = settings.mondayMailingDay !== undefined ? Number(settings.mondayMailingDay) : 1;
-            const mondayHour = settings.mondayMailingHour !== undefined ? Number(settings.mondayMailingHour) : 11;
-            const mondayMinute = settings.mondayMailingMinute !== undefined ? Number(settings.mondayMailingMinute) : 0;
+            const mondayDay = settings.birthdays.text.day;
+            const mondayHour = settings.birthdays.text.hour;
+            const mondayMinute = settings.birthdays.text.minute;
 
-            const wedDay = settings.wednesdayMailingDay !== undefined ? Number(settings.wednesdayMailingDay) : 3;
-            const wedHour = settings.wednesdayMailingHour !== undefined ? Number(settings.wednesdayMailingHour) : 11;
-            const wedMinute = settings.wednesdayMailingMinute !== undefined ? Number(settings.wednesdayMailingMinute) : 0;
+            const wedDay = settings.birthdays.pdf.day;
+            const wedHour = settings.birthdays.pdf.hour;
+            const wedMinute = settings.birthdays.pdf.minute;
 
             let state: any = {};
             if (fs.existsSync(STATE_FILE)) {

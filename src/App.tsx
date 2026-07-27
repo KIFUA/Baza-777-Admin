@@ -13,7 +13,7 @@ import LoginPage from './components/LoginPage';
 import { 
   Users, UserCheck, Heart, Shield, History, BarChart3, Search, 
   MapPin, Phone, UserPlus, Filter, RotateCcw, ChevronLeft, ChevronRight, BookOpen,
-  Table2, X
+  Table2, X, Settings, LogOut, FileText, LayoutGrid
 } from 'lucide-react';
 
 export default function App() {
@@ -591,176 +591,110 @@ export default function App() {
     <div className="h-screen flex flex-col font-sans select-none antialiased overflow-hidden" style={{ backgroundColor: '#264653' }}>
       
       <div className="w-full max-w-[1100px] mx-auto flex flex-col h-full min-h-0 px-4">
-        {/* SLIM TOP BAR (MIMICKING PHOTO 1) */}
-        <div 
-          style={{ fontSize: '16px' }}
-          className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0 scale-interface-down-33"
-        >
-          <div className="flex gap-3 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
-            <div 
-              style={{ fontWeight: 'normal', fontStyle: 'italic', fontSize: '12px' }}
-              className="text-[11px] sm:text-xs font-bold text-slate-300 leading-tight shrink-0"
-            >
-              СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
-              ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
-            </div>
-            
-            {getPermission('ВСЬОГО ЧЛЕНІВ ЦЕРКВИ').view && (
-              <div 
-                style={{ height: '30px' }}
-                className="bg-[#1a3843] border border-[#142d36] rounded px-3 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap shrink-0 min-w-fit"
-              >
-                <span 
-                  style={{ fontSize: '12px', lineHeight: '18px' }}
-                  className="hidden sm:inline mr-2"
-                >
-                  ВСЬОГО ЧЛЕНІВ ЦЕРКВИ
-                </span>
-                <span className="sm:hidden mr-1">ВСЬОГО</span>
-                <span 
-                  style={{ fontSize: '13px', fontWeight: 'bold', color: '#00cb4c' }}
-                  className="font-black text-[10px] sm:text-sm text-white"
-                >
-                  {members.length}
-                </span>
+        {/* STICKY HEADER SECTION */}
+        <header className="sticky top-0 z-50 bg-[#264653] w-full shrink-0 border-b border-[#203a45]">
+          {/* Info Bar (Date, Total Count, Logout) */}
+          <div className="flex items-center justify-between py-1 gap-2 border-b border-[#1f3b47] scale-interface-down-33 sm:scale-100 origin-left">
+            <div className="flex items-center gap-4">
+              <div className="text-[11px] sm:text-xs font-bold text-slate-400 leading-tight shrink-0 italic">
+                СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
+                ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
               </div>
-            )}
+              
+              {getPermission('ВСЬОГО ЧЛЕНІВ ЦЕРКВИ').view && (
+                <div className="bg-[#1a3843] border border-[#142d36] rounded px-3 py-1 flex text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap shrink-0">
+                  <span className="hidden sm:inline mr-2">ВСЬОГО ЧЛЕНІВ ЦЕРКВИ</span>
+                  <span className="sm:hidden mr-1">ВСЬОГО</span>
+                  <span className="text-emerald-400 font-black">{members.length}</span>
+                </div>
+              )}
+            </div>
 
-            <nav className="flex space-x-1 sm:space-x-2 shrink-0 ml-2">
-              <button
-                style={{
-                  fontSize: '12px',
-                  height: '30px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                onClick={() => { 
-                  handleUpdateSessionUser(null);
-                  localStorage.removeItem("user_tg_id");
-                }}
-                className="px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d]"
-              >
-                ВИХІД
-              </button>
-              {getPermission('СПИСОК').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onClick={() => { 
-                    setMainMode('spreadsheet'); 
-                    setSelectedMemberId(null); 
-                    setShowForm(false); 
-                    // Instant load using cache, reload synced changes in background in parallel
-                    Promise.all([
-                      fetchAllMembers(),
-                      fetchMembers(),
-                      fetchLookupsAndStats()
-                    ]).catch(err => console.error("Error updating tab data:", err));
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  СПИСОК
-                </button>
-              )}
-              {getPermission('АНКЕТИ').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Перейти до анкет"
-                  onClick={() => { 
-                    setMainMode('questionnaire'); 
-                    setSelectedMemberId(null); 
-                    setShowForm(false); 
-                    Promise.all([
-                      fetchAllMembers(),
-                      fetchMembers(),
-                      fetchLookupsAndStats()
-                    ]).catch(err => console.error("Error updating tab data:", err));
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  АНКЕТИ
-                </button>
-              )}
-              {isCurrentUserAdmin && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Журнал змін бази даних"
-                  onClick={() => { 
-                    setMainMode('journal'); 
-                    setSelectedMemberId(null); 
-                    setShowForm(false); 
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'journal' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  ЖУРНАЛ
-                </button>
-              )}
-              {getPermission('СТАТИСТИКА').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Аналітична статистика реєстру та зрізи за районами"
-                  onClick={() => {
-                    setMainMode('stats');
-                    setSelectedMemberId(null);
-                    setShowForm(false);
-                    Promise.all([
-                      fetchAllMembers(),
-                      fetchMembers(),
-                      fetchLookupsAndStats()
-                    ]).catch(err => console.error("Error updating tab data:", err));
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  СТАТИСТИКА
-                </button>
-              )}
-              {getPermission('НАЛАШТУВАННЯ').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Налаштування довідників та кольорів"
-                  onClick={() => {
-                    setMainMode('settings');
-                    setSelectedMemberId(null);
-                    setShowForm(false);
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  НАЛАШТУВАННЯ
-                </button>
-              )}
-            </nav>
+            <button
+              onClick={() => { 
+                handleUpdateSessionUser(null);
+                localStorage.removeItem("user_tg_id");
+              }}
+              className="px-3 sm:px-5 py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d] flex items-center gap-1.5"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>ВИХІД</span>
+            </button>
           </div>
-        </div>
+
+          {/* Main Navigation (Sticky and prominent) */}
+          <nav className="flex flex-wrap justify-around sm:justify-start gap-1 py-1 sm:py-2 w-full overflow-x-auto no-scrollbar">
+            {getPermission('СПИСОК').view && (
+              <button
+                onClick={() => { 
+                  setMainMode('spreadsheet'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                  Promise.all([fetchAllMembers(), fetchMembers(), fetchLookupsAndStats()]);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <Table2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>СПИСОК</span>
+              </button>
+            )}
+            {getPermission('АНКЕТИ').view && (
+              <button
+                onClick={() => { 
+                  setMainMode('questionnaire'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                  Promise.all([fetchAllMembers(), fetchMembers(), fetchLookupsAndStats()]);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>АНКЕТИ</span>
+              </button>
+            )}
+            {isCurrentUserAdmin && (
+              <button
+                onClick={() => { 
+                  setMainMode('journal'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'journal' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <History className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>ЖУРНАЛ</span>
+              </button>
+            )}
+            {getPermission('СТАТИСТИКА').view && (
+              <button
+                onClick={() => {
+                  setMainMode('stats');
+                  setSelectedMemberId(null);
+                  setShowForm(false);
+                  Promise.all([fetchAllMembers(), fetchMembers(), fetchLookupsAndStats()]);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'stats' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <BarChart3 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>СТАТ</span>
+              </button>
+            )}
+            {getPermission('НАЛАШТУВАННЯ').view && (
+              <button
+                onClick={() => {
+                  setMainMode('settings');
+                  setSelectedMemberId(null);
+                  setShowForm(false);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'settings' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span className="hidden sm:inline">НАЛАШТУВАННЯ</span>
+                <span className="sm:hidden">НАЛАШТ</span>
+              </button>
+            )}
+          </nav>
+        </header>
 
         {/* 2. MAIN HUB CANVAS CONTENT */}
         <main className="flex-1 min-h-0 w-full pb-2 flex flex-col overflow-y-auto">

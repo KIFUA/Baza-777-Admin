@@ -804,6 +804,39 @@ const SETTINGS_FILE = path.join(process.cwd(), "settings.json");
 let cachedSettings: any = null;
 
 const SETTINGS_DEFAULTS = {
+  // New architecture
+  connectors: {
+    telegramBots: [
+      { id: "default", name: "Основний бот", token: "" }
+    ],
+    email: {
+      user: "kostel.if.ua@gmail.com",
+      appPassword: ""
+    }
+  },
+  birthdays: {
+    text: {
+      day: 1,
+      hour: 11,
+      minute: 0,
+      connectorType: "telegram",
+      connectorId: "default",
+      recipientId: ""
+    },
+    pdf: {
+      day: 3,
+      hour: 11,
+      minute: 0,
+      connectorType: "telegram",
+      connectorId: "default",
+      recipientId: ""
+    }
+  },
+  notificationDays: 14,
+  enableTestMode: false,
+  testTelegramId: "",
+
+  // Legacy fields for backward compatibility
   mondayEmails: "",
   wednesdayEmails: "",
   mondayTelegramIds: "",
@@ -815,20 +848,100 @@ const SETTINGS_DEFAULTS = {
   mondayMailingMinute: 0,
   wednesdayMailingDay: 3,
   wednesdayMailingHour: 11,
-  wednesdayMailingMinute: 0,
-  notificationDays: 14
+  wednesdayMailingMinute: 0
 };
 
 function mergeSettings(data: any) {
   const merged = { ...SETTINGS_DEFAULTS, ...(data || {}) };
+  
+  // Ensure nested objects are properly merged/initialized
+  if (!merged.connectors) merged.connectors = JSON.parse(JSON.stringify(SETTINGS_DEFAULTS.connectors));
+  if (!merged.birthdays) merged.birthdays = JSON.parse(JSON.stringify(SETTINGS_DEFAULTS.birthdays));
+  if (!merged.connectors.telegramBots) merged.connectors.telegramBots = [...SETTINGS_DEFAULTS.connectors.telegramBots];
+  if (!merged.connectors.email) merged.connectors.email = { ...SETTINGS_DEFAULTS.connectors.email };
+  if (!merged.birthdays.text) merged.birthdays.text = { ...SETTINGS_DEFAULTS.birthdays.text };
+  if (!merged.birthdays.pdf) merged.birthdays.pdf = { ...SETTINGS_DEFAULTS.birthdays.pdf };
+
+  // Data Migration Logic: if new fields are empty but old ones have data, migrate them
+  if (merged.botToken && merged.connectors.telegramBots[0].token === "") {
+    merged.connectors.telegramBots[0].token = merged.botToken;
+  }
+  if (merged.appPassword && merged.connectors.email.appPassword === "") {
+    merged.connectors.email.appPassword = merged.appPassword;
+  }
+  
+  if (merged.mondayTelegramIds && merged.birthdays.text.recipientId === "") {
+    merged.birthdays.text.recipientId = merged.mondayTelegramIds;
+    merged.birthdays.text.connectorType = "telegram";
+    merged.birthdays.text.connectorId = "default";
+  } else if (merged.mondayEmails && merged.birthdays.text.recipientId === "") {
+    merged.birthdays.text.recipientId = merged.mondayEmails;
+    merged.birthdays.text.connectorType = "email";
+    merged.birthdays.text.connectorId = "default";
+  }
+
+  if (merged.wednesdayTelegramIds && merged.birthdays.pdf.recipientId === "") {
+    merged.birthdays.pdf.recipientId = merged.wednesdayTelegramIds;
+    merged.birthdays.pdf.connectorType = "telegram";
+    merged.birthdays.pdf.connectorId = "default";
+  } else if (merged.wednesdayEmails && merged.birthdays.pdf.recipientId === "") {
+    merged.birthdays.pdf.recipientId = merged.wednesdayEmails;
+    merged.birthdays.pdf.connectorType = "email";
+    merged.birthdays.pdf.connectorId = "default";
+  }
+
+  // Sync schedules - Prioritize nested fields if they are provided in the input, otherwise sync from root
+  if (data?.birthdays?.text?.day !== undefined) {
+    merged.birthdays.text.day = Number(data.birthdays.text.day);
+    merged.mondayMailingDay = merged.birthdays.text.day;
+  } else if (merged.mondayMailingDay !== undefined) {
+    merged.birthdays.text.day = Number(merged.mondayMailingDay);
+  }
+
+  if (data?.birthdays?.text?.hour !== undefined) {
+    merged.birthdays.text.hour = Number(data.birthdays.text.hour);
+    merged.mondayMailingHour = merged.birthdays.text.hour;
+  } else if (merged.mondayMailingHour !== undefined) {
+    merged.birthdays.text.hour = Number(merged.mondayMailingHour);
+  }
+
+  if (data?.birthdays?.text?.minute !== undefined) {
+    merged.birthdays.text.minute = Number(data.birthdays.text.minute);
+    merged.mondayMailingMinute = merged.birthdays.text.minute;
+  } else if (merged.mondayMailingMinute !== undefined) {
+    merged.birthdays.text.minute = Number(merged.mondayMailingMinute);
+  }
+  
+  if (data?.birthdays?.pdf?.day !== undefined) {
+    merged.birthdays.pdf.day = Number(data.birthdays.pdf.day);
+    merged.wednesdayMailingDay = merged.birthdays.pdf.day;
+  } else if (merged.wednesdayMailingDay !== undefined) {
+    merged.birthdays.pdf.day = Number(merged.wednesdayMailingDay);
+  }
+
+  if (data?.birthdays?.pdf?.hour !== undefined) {
+    merged.birthdays.pdf.hour = Number(data.birthdays.pdf.hour);
+    merged.wednesdayMailingHour = merged.birthdays.pdf.hour;
+  } else if (merged.wednesdayMailingHour !== undefined) {
+    merged.birthdays.pdf.hour = Number(merged.wednesdayMailingHour);
+  }
+
+  if (data?.birthdays?.pdf?.minute !== undefined) {
+    merged.birthdays.pdf.minute = Number(data.birthdays.pdf.minute);
+    merged.wednesdayMailingMinute = merged.birthdays.pdf.minute;
+  } else if (merged.wednesdayMailingMinute !== undefined) {
+    merged.birthdays.pdf.minute = Number(merged.wednesdayMailingMinute);
+  }
+
   // Enforce numbers for time fields
-  merged.mondayMailingDay = Number(merged.mondayMailingDay);
-  merged.mondayMailingHour = Number(merged.mondayMailingHour);
-  merged.mondayMailingMinute = Number(merged.mondayMailingMinute);
-  merged.wednesdayMailingDay = Number(merged.wednesdayMailingDay);
-  merged.wednesdayMailingHour = Number(merged.wednesdayMailingHour);
-  merged.wednesdayMailingMinute = Number(merged.wednesdayMailingMinute);
+  merged.birthdays.text.day = Number(merged.birthdays.text.day);
+  merged.birthdays.text.hour = Number(merged.birthdays.text.hour);
+  merged.birthdays.text.minute = Number(merged.birthdays.text.minute);
+  merged.birthdays.pdf.day = Number(merged.birthdays.pdf.day);
+  merged.birthdays.pdf.hour = Number(merged.birthdays.pdf.hour);
+  merged.birthdays.pdf.minute = Number(merged.birthdays.pdf.minute);
   merged.notificationDays = Number(merged.notificationDays);
+  
   return merged;
 }
 
@@ -1784,8 +1897,9 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
           doc.text(titleText, { align: 'center' });
           doc.moveDown(0.5);
           doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
-          doc.moveDown(1.5);
+          doc.moveDown(0.6);
 
+          doc.lineGap(2);
           birthdays.list.forEach((item: any) => {
             doc.font('Roboto-Bold').fontSize(14);
             if (item.isJubilee) doc.fillColor('red');
@@ -1797,7 +1911,6 @@ function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
             
             doc.text(shortName, alignX);
             doc.fillColor('black');
-            doc.moveDown(0.1);
           });
         } catch (drawErr) {
           console.error("[PDF] Error drawing with Roboto, falling back:", drawErr);
@@ -1886,8 +1999,7 @@ app.post("/api/birthdays/send", async (req, res) => {
             try {
               const formData = new FormData();
               formData.append('chat_id', singleChatId);
-              formData.append('document', pdfBuffer, { filename: 'imenynnyky.pdf', contentType: 'application/pdf' });
-              formData.append('caption', `🎂 Список іменинників на тиждень (${birthdays.weekRangeText})`);
+              formData.append('document', pdfBuffer, { filename: `Список іменинників ${birthdays.weekRangeText}.pdf`, contentType: 'application/pdf' });
 
               const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
                 headers: formData.getHeaders(),
@@ -1975,7 +2087,7 @@ app.post("/api/birthdays/send", async (req, res) => {
           to: destinations,
           subject: subject,
           text: type === "email_pdf"
-            ? `📄 Прикріплено файл ПДФ зі списком іменинників поточного тижня (${birthdays.weekRangeText}).`
+            ? ""
             : msg.replace(/\*\*/g, "") // Remove Markdown bold styling for plain text email
         };
 
@@ -1983,7 +2095,7 @@ app.post("/api/birthdays/send", async (req, res) => {
           try {
             const pdfBuffer = await generateBirthdayPdfBuffer(birthdays);
             mailOptions.attachments = [{
-              filename: 'Imenynnyky.pdf',
+              filename: `Список іменинників ${birthdays.weekRangeText}.pdf`,
               content: pdfBuffer,
               contentType: 'application/pdf'
             }];

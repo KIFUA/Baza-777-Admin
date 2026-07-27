@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Cake, ShieldCheck, RefreshCw, Send, Trash2, Plus, 
   CheckCircle, AlertCircle, Copy, Check, LogIn, LogOut, Mail, Clock, Palette,
-  Edit, UserPlus, ShieldAlert, Save, Settings, Bell, FileText
+  Edit, UserPlus, ShieldAlert, Save, Settings, Bell, FileText, Info
 } from 'lucide-react';
-import { Member } from '../types';
+import { Member, AppSettings } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
 import { NotificationSettings } from './NotificationSettings';
+import { PrintExport } from './PrintExport';
 
 interface DirectoriesManagerProps {
   lookups: any;
@@ -32,6 +33,8 @@ export default function DirectoriesManager({
   const [parsedAccessLevels, setParsedAccessLevels] = useState<any[]>([]);
   const [ignoreAdminLogs, setIgnoreAdminLogs] = useState<boolean>(true);
   const [clearingLogs, setClearingLogs] = useState<boolean>(false);
+  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
+  const [savingAppSettings, setSavingAppSettings] = useState(false);
 
   useEffect(() => {
     fetch('/api/settings/admin-logs')
@@ -743,6 +746,34 @@ export default function DirectoriesManager({
     onSetSessionUser(userRec);
   };
 
+  useEffect(() => {
+    fetch('/api/settings/notifications')
+      .then(res => res.json())
+      .then(data => setAppSettings(data))
+      .catch(err => console.error("Failed to load app settings:", err));
+  }, []);
+
+  const handleSaveAppSettings = async (updated?: AppSettings) => {
+    const toSave = updated || appSettings;
+    if (!toSave) return;
+    setSavingAppSettings(true);
+    try {
+      const res = await fetch('/api/settings/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(toSave)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAppSettings(data.settings);
+      }
+    } catch (err) {
+      console.error("Failed to save app settings:", err);
+    } finally {
+      setSavingAppSettings(false);
+    }
+  };
+
   const UKR_DAYS = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
 
   return (
@@ -960,147 +991,357 @@ export default function DirectoriesManager({
                     className="w-full flex items-center justify-between p-4 text-left focus:outline-none hover:bg-[#1a3843]/10 transition-colors"
                   >
                     <div>
-                      <h3 className="font-bold text-white text-xs tracking-wide flex items-center gap-1.5">📣 Канали оповіщення та розсилки</h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Швидке надсилання сформованого звіту тижня за вказаними координатами</p>
+                      <h3 className="font-bold text-white text-xs tracking-wide flex items-center gap-1.5">📣 Розсилки та налаштування сповіщень</h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Керування автоматичними та ручними розсилками списку іменинників</p>
                     </div>
                     <span className="text-[10px] bg-[#1a3843] hover:bg-[#387d7a] text-slate-300 hover:text-white px-2.5 py-1 rounded transition-colors font-bold flex items-center gap-1 shrink-0">
                       {newsletterExpanded ? "▲ Згорнути" : "▼ Розгорнути"}
                     </span>
                   </button>
 
-                  {newsletterExpanded && (
+                  {newsletterExpanded && appSettings && (
                     <div className="p-4 pt-0 space-y-3 border-t border-[#224853]/30 animate-fade-in">
-                      {sendingStatus && (
-                        <div className={`rounded-lg border p-2.5 flex items-start space-x-2 text-xs transition-all ${sendingStatus.success === undefined ? "bg-[#1a3843] border-blue-500/30 text-blue-300" : (sendingStatus.success ? "bg-emerald-950/80 border-emerald-500/30 text-emerald-300" : "bg-rose-950/80 border-rose-500/30 text-rose-300")}`}>
-                          {sendingStatus.success === undefined ? (
-                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-400 border-t-transparent shrink-0 mt-0.5"></div>
-                          ) : (
-                            sendingStatus.success ? <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                          )}
-                          <div className="leading-snug">
-                            <span className="font-bold block">Статус доставки:</span>
-                            <span className="font-mono text-[9px]">{sendingStatus.msg}</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3">
-                        {/* Channel 1: Telegram Bot Dispatch API */}
-                        <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
-                              <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
-                                <Send className="h-3.5 w-3.5 text-sky-400" />
-                              </span>
-                              <span>Телеграм сповіщення</span>
-                            </span>
-                            <span className="text-[8px] bg-[#1a3843] text-slate-350 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">Бот API</span>
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">TELEGRAM BOT TOKEN (опціонально для перевірки)</label>
-                            <input
-                              type="password"
-                              placeholder="Введіть токен бота (напр. 61234567:AAFe...)"
-                              value={tgToken}
-                              onChange={(e) => setTgToken(e.target.value)}
-                              className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">Отримувачі Chat ID (через кому)</label>
-                            <input
-                              type="text"
-                              placeholder="Напр: 1919236304, -1001914940560"
-                              value={customTelegramIds}
-                              onChange={(e) => setCustomTelegramIds(e.target.value)}
-                              className="w-full rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-sky-500 focus:outline-none placeholder-slate-500"
-                            />
-                            <p className="text-[8px] text-slate-450 mt-0.5 leading-tight">Бот повинен бути доданий у чат-отримувач для здійснення реальних відправок.</p>
-                          </div>
-
-                          <div className="flex flex-col sm:flex-row gap-1.5 pt-1">
-                            <button
-                              onClick={() => handleSendBirthdays('telegram_me')}
-                              className="flex-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-[#224853] text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
-                            >
-                              <Send className="h-3 w-3 text-sky-400" />
-                              <span>Надіслати мені</span>
-                            </button>
-                            <button
-                              onClick={() => handleSendBirthdays('telegram_group')}
-                              className="flex-1 rounded-lg bg-sky-700 hover:bg-sky-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
-                            >
-                              <Users className="h-3 w-3" />
-                              <span>Текст ЦР</span>
-                            </button>
-                            <button
-                              onClick={() => handleSendBirthdays('telegram_pdf')}
-                              className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-center text-[10px] font-bold tracking-tight shadow-md flex items-center justify-center space-x-1 transition-all outline-none"
-                            >
-                              <FileText className="h-3 w-3" />
-                              <span>PDF ЦР</span>
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Channel 2: Email PDF/HTML Report Delivery */}
-                        <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2.5 shadow-xs flex flex-col justify-between">
-                          <div>
+                      {/* Automatic Schedule Section */}
+                      <section className="pt-4 space-y-4">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-[#224853]/30 pb-1">📅 Автоматичний розклад розсилок</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Schedule 1: Text */}
+                          <div className="bg-[#0e2128] border border-[#224853] p-3 rounded-lg space-y-3">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-slate-200 flex items-center space-x-1.5">
-                                <span className="bg-[#1a3843] rounded-lg p-1 inline-block shrink-0 border border-[#224853]">
-                                  <Mail className="h-3.5 w-3.5 text-emerald-400" />
-                                </span>
-                                <span>Email Розсилка (Майже реальна)</span>
-                              </span>
-                              <span className="text-[8px] bg-[#1a3843] text-emerald-400 border border-[#224853]/60 font-bold px-1.5 py-0.5 rounded-full uppercase leading-none">PDF / Текст</span>
+                              <span className="text-[11px] font-bold text-sky-400">Розсилка 1: Текстовий список</span>
+                              <div className="flex items-center gap-1">
+                                <span className={`w-2 h-2 rounded-full ${appSettings.birthdays.text.recipientId ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                <span className="text-[9px] text-slate-500 uppercase">{appSettings.birthdays.text.recipientId ? 'Активна' : 'Не налаштована'}</span>
+                              </div>
                             </div>
                             
-                            <div className="space-y-1 mt-2">
-                              <label className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block">Отримувачі Email (через кому)</label>
-                              <textarea
-                                placeholder="Напр: email1@gmail.com, email2@gmail.com"
-                                value={customEmails}
-                                onChange={(e) => setCustomEmails(e.target.value)}
-                                className="w-full h-12 rounded bg-[#13282e] border border-[#224853] text-white p-1.5 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-none placeholder-slate-500 resize-none"
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">День</label>
+                                <select 
+                                  value={appSettings.birthdays.text.day}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, text: { ...appSettings.birthdays.text, day: Number(e.target.value) } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                >
+                                  {UKR_DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Година</label>
+                                <input 
+                                  type="number" min="0" max="23"
+                                  value={appSettings.birthdays.text.hour}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, text: { ...appSettings.birthdays.text, hour: Number(e.target.value) } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Хв.</label>
+                                <input 
+                                  type="number" min="0" max="59"
+                                  value={appSettings.birthdays.text.minute}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, text: { ...appSettings.birthdays.text, minute: Number(e.target.value) } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Конектор</label>
+                                <select 
+                                  value={appSettings.birthdays.text.connectorType}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, text: { ...appSettings.birthdays.text, connectorType: e.target.value as any } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                >
+                                  <option value="telegram">Telegram</option>
+                                  <option value="email">Email</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">ID Конектора</label>
+                                <select 
+                                  value={appSettings.birthdays.text.connectorId}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, text: { ...appSettings.birthdays.text, connectorId: e.target.value } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                >
+                                  {appSettings.birthdays.text.connectorType === 'telegram' ? (
+                                    appSettings.connectors.telegramBots.map(b => <option key={b.id} value={b.id}>{b.name}</option>)
+                                  ) : (
+                                    <option value="default">Основна пошта</option>
+                                  )}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">ID Отримувача (Chat ID або Email)</label>
+                              <input 
+                                type="text"
+                                value={appSettings.birthdays.text.recipientId}
+                                onChange={(e) => setAppSettings({
+                                  ...appSettings,
+                                  birthdays: { ...appSettings.birthdays, text: { ...appSettings.birthdays.text, recipientId: e.target.value } }
+                                })}
+                                placeholder={appSettings.birthdays.text.connectorType === 'telegram' ? "Напр. -100123456789" : "email@gmail.com"}
+                                className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
                               />
                             </div>
-                            
-                            <p className="text-[10px] text-slate-400 mt-1.5 leading-relaxed">
-                              Тригер надсилає листи на вказані вище адреси. Якщо поле порожнє, будуть використані адреси з налаштувань (Понеділок/Середа).
-                            </p>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row gap-1.5 pt-2">
-                            <button
-                              onClick={() => handleSendBirthdays('email_text')}
-                              className="flex-1 rounded-lg border border-[#224853] hover:bg-[#1a3843] text-slate-200 p-1.5 text-[10px] font-bold transition-all flex items-center justify-center space-x-1"
-                            >
-                              <Mail className="h-3 w-3" />
-                              <span>Надіслати Текст</span>
-                            </button>
-                            <button
-                              onClick={() => handleSendBirthdays('email_pdf')}
-                              className="flex-1 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white p-2 text-[10px] font-bold shadow-md transition-all flex items-center justify-center space-x-1"
-                            >
-                              <Send className="h-3 w-3" />
-                              <span>Надіслати PDF звіт</span>
-                            </button>
-                          </div>
-                          
-                          <div className="mt-3 flex justify-end">
-                            <button
-                              onClick={handleSaveManualRecipients}
-                              className="bg-sky-600/20 hover:bg-sky-600 text-sky-400 hover:text-white border border-sky-500/30 rounded px-3 py-1.5 text-[9px] font-bold flex items-center gap-1.5 transition-all outline-none"
-                            >
-                              <Save className="w-3 h-3" />
-                              Зберегти отримувачів (Email/TG)
-                            </button>
+                          {/* Schedule 2: PDF */}
+                          <div className="bg-[#0e2128] border border-[#224853] p-3 rounded-lg space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-emerald-400">Розсилка 2: PDF файл</span>
+                              <div className="flex items-center gap-1">
+                                <span className={`w-2 h-2 rounded-full ${appSettings.birthdays.pdf.recipientId ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                <span className="text-[9px] text-slate-500 uppercase">{appSettings.birthdays.pdf.recipientId ? 'Активна' : 'Не налаштована'}</span>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-3 gap-2">
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">День</label>
+                                <select 
+                                  value={appSettings.birthdays.pdf.day}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, pdf: { ...appSettings.birthdays.pdf, day: Number(e.target.value) } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                >
+                                  {UKR_DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Година</label>
+                                <input 
+                                  type="number" min="0" max="23"
+                                  value={appSettings.birthdays.pdf.hour}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, pdf: { ...appSettings.birthdays.pdf, hour: Number(e.target.value) } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Хв.</label>
+                                <input 
+                                  type="number" min="0" max="59"
+                                  value={appSettings.birthdays.pdf.minute}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, pdf: { ...appSettings.birthdays.pdf, minute: Number(e.target.value) } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Конектор</label>
+                                <select 
+                                  value={appSettings.birthdays.pdf.connectorType}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, pdf: { ...appSettings.birthdays.pdf, connectorType: e.target.value as any } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                >
+                                  <option value="telegram">Telegram</option>
+                                  <option value="email">Email</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">ID Конектора</label>
+                                <select 
+                                  value={appSettings.birthdays.pdf.connectorId}
+                                  onChange={(e) => setAppSettings({
+                                    ...appSettings,
+                                    birthdays: { ...appSettings.birthdays, pdf: { ...appSettings.birthdays.pdf, connectorId: e.target.value } }
+                                  })}
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                >
+                                  {appSettings.birthdays.pdf.connectorType === 'telegram' ? (
+                                    appSettings.connectors.telegramBots.map(b => <option key={b.id} value={b.id}>{b.name}</option>)
+                                  ) : (
+                                    <option value="default">Основна пошта</option>
+                                  )}
+                                </select>
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">ID Отримувача (Chat ID або Email)</label>
+                              <input 
+                                type="text"
+                                value={appSettings.birthdays.pdf.recipientId}
+                                onChange={(e) => setAppSettings({
+                                  ...appSettings,
+                                  birthdays: { ...appSettings.birthdays, pdf: { ...appSettings.birthdays.pdf, recipientId: e.target.value } }
+                                })}
+                                placeholder={appSettings.birthdays.pdf.connectorType === 'telegram' ? "Напр. -100123456789" : "email@gmail.com"}
+                                className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                              />
+                            </div>
                           </div>
                         </div>
-                      </div>
+                        <div className="flex justify-end">
+                          <button 
+                            onClick={() => handleSaveAppSettings()}
+                            disabled={savingAppSettings}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded text-[10px] font-bold transition-all flex items-center gap-1.5"
+                          >
+                            <Save className="w-3.5 h-3.5" />
+                            {savingAppSettings ? 'Збереження...' : 'Зберегти розклад'}
+                          </button>
+                        </div>
+                      </section>
+
+                      {/* Manual Triggers Section */}
+                      <section className="space-y-4">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-[#224853]/30 pb-1">🚀 Ручний запуск розсилок</h4>
+                        
+                        {sendingStatus && (
+                          <div className={`rounded-lg border p-2.5 flex items-start space-x-2 text-xs transition-all ${sendingStatus.success === undefined ? "bg-[#1a3843] border-blue-500/30 text-blue-300" : (sendingStatus.success ? "bg-emerald-950/80 border-emerald-500/30 text-emerald-300" : "bg-rose-950/80 border-rose-500/30 text-rose-300")}`}>
+                            {sendingStatus.success === undefined ? (
+                              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-400 border-t-transparent shrink-0 mt-0.5"></div>
+                            ) : (
+                              sendingStatus.success ? <CheckCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            )}
+                            <div className="leading-snug">
+                              <span className="font-bold block">Статус доставки:</span>
+                              <span className="font-mono text-[9px]">{sendingStatus.msg}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Manual Telegram */}
+                          <div className="bg-[#0e2128] border border-[#224853] p-3 rounded-lg space-y-3">
+                            <h5 className="text-[9px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                              <Send className="w-3 h-3 text-sky-400" /> Telegram Ручний запуск
+                            </h5>
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Обрати бота</label>
+                                  <select 
+                                    value={tgToken}
+                                    onChange={(e) => setTgToken(e.target.value)}
+                                    className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                  >
+                                    <option value="">— Налаштування —</option>
+                                    {appSettings.connectors.telegramBots.map(b => <option key={b.id} value={b.token}>{b.name}</option>)}
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Chat ID</label>
+                                  <input 
+                                    type="text"
+                                    value={customTelegramIds}
+                                    onChange={(e) => setCustomTelegramIds(e.target.value)}
+                                    placeholder="ID отримувача"
+                                    className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button onClick={() => handleSendBirthdays('telegram_me')} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-1.5 rounded text-[9px] font-bold border border-[#224853]">Мені</button>
+                                <button onClick={() => handleSendBirthdays('telegram_group')} className="flex-1 bg-sky-700 hover:bg-sky-600 text-white p-1.5 rounded text-[9px] font-bold">Текст ЦР</button>
+                                <button onClick={() => handleSendBirthdays('telegram_pdf')} className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white p-1.5 rounded text-[9px] font-bold">PDF ЦР</button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Manual Email */}
+                          <div className="bg-[#0e2128] border border-[#224853] p-3 rounded-lg space-y-3">
+                            <h5 className="text-[9px] font-black text-slate-300 uppercase tracking-widest flex items-center gap-1.5">
+                              <Mail className="w-3 h-3 text-amber-400" /> Email Ручний запуск
+                            </h5>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-[8px] font-bold text-slate-500 uppercase mb-1">Email отримувачі</label>
+                                <input 
+                                  type="text"
+                                  value={customEmails}
+                                  onChange={(e) => setCustomEmails(e.target.value)}
+                                  placeholder="через кому..."
+                                  className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2 py-1 text-[10px] outline-none"
+                                />
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button onClick={() => handleSendBirthdays('email_text')} className="flex-1 bg-slate-800 hover:bg-slate-700 text-white p-1.5 rounded text-[9px] font-bold border border-[#224853]">Текст</button>
+                                <button onClick={() => handleSendBirthdays('email_pdf')} className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white p-1.5 rounded text-[9px] font-bold">PDF звіт</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </section>
+
+                      {/* Global Notifications Section */}
+                      <section className="pt-2 space-y-4">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-[#224853]/30 pb-1">🔔 Загальні сповіщення</h4>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <div className="flex items-center bg-indigo-600/10 border border-indigo-500/30 rounded-lg overflow-hidden transition-all">
+                            <button
+                              onClick={async () => {
+                                if(!confirm(`Надіслати сповіщення керівникам про всіх нових членів, хто приєднався за останні ${appSettings.notificationDays || 14} днів?`)) return;
+                                try {
+                                  const res = await fetch('/api/admin/notify-recent-members', { 
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ days: appSettings.notificationDays || 14 })
+                                  });
+                                  const data = await res.json();
+                                  alert(`Готово! Опрацьовано людей: ${data.processed}. Надіслано сповіщень: ${data.sent}`);
+                                } catch (err) {
+                                  alert('Помилка при відправці');
+                                }
+                              }}
+                              className="flex items-center gap-1.5 hover:bg-indigo-600 text-indigo-400 hover:text-white px-3 py-1.5 text-[10px] font-bold transition-all outline-none border-r border-indigo-500/20"
+                            >
+                              <Bell className="w-3.5 h-3.5" />
+                              Сповістити про нових членів
+                            </button>
+                            <select 
+                              value={appSettings.notificationDays || 14}
+                              onChange={(e) => setAppSettings({ ...appSettings, notificationDays: parseInt(e.target.value) })}
+                              className="bg-transparent text-indigo-300 text-[10px] font-bold px-2 py-1.5 outline-none cursor-pointer hover:bg-indigo-600/20 appearance-none text-center min-w-[60px]"
+                            >
+                              <option value={7} className="bg-[#13282e]">7 днів</option>
+                              <option value={14} className="bg-[#13282e]">14 днів</option>
+                              <option value={30} className="bg-[#13282e]">30 днів</option>
+                              <option value={60} className="bg-[#13282e]">60 днів</option>
+                            </select>
+                          </div>
+                          
+                          <button
+                            onClick={handleSaveManualRecipients}
+                            className="bg-sky-600/20 hover:bg-sky-600 text-sky-400 hover:text-white border border-sky-500/30 rounded px-3 py-1.5 text-[9px] font-bold flex items-center gap-1.5 transition-all outline-none"
+                          >
+                            <Save className="w-3 h-3" />
+                            Зберегти отримувачів за замовчуванням
+                          </button>
+                        </div>
+                      </section>
 
                       {/* Clipboard Text generator */}
                       <div className="rounded-lg border border-[#224853]/45 bg-[#13282e] p-3 space-y-2 mt-3">
@@ -1137,6 +1378,49 @@ export default function DirectoriesManager({
                                     (item.rayon2_ukr ? `   📍 Район: ${item.rayon2_ukr}\n` : '');
                            }).join('\n')}
                         </pre>
+                      </div>
+
+                      {/* Additional Birthday Tools */}
+                      <div className="border-t border-[#224853]/30 pt-3 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-slate-400 text-[9px] uppercase tracking-widest">Додаткові інструменти</h4>
+                          <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-1.5 bg-[#0e2128] border border-amber-500/30 rounded px-2 py-1 transition-all">
+                              <input 
+                                type="checkbox"
+                                id="enableTestMode"
+                                checked={appSettings.enableTestMode}
+                                onChange={(e) => setAppSettings({ ...appSettings, enableTestMode: e.target.checked })}
+                                className="w-3.5 h-3.5 rounded border-[#224853] bg-[#1a3843] text-amber-500 focus:ring-amber-500 focus:ring-offset-0"
+                              />
+                              <label htmlFor="enableTestMode" className="text-[9px] font-bold text-amber-400 cursor-pointer select-none">
+                                ТЕСТОВИЙ РЕЖИМ
+                              </label>
+                            </div>
+                            {appSettings.enableTestMode && (
+                              <input 
+                                type="text"
+                                value={appSettings.testTelegramId}
+                                onChange={(e) => setAppSettings({ ...appSettings, testTelegramId: e.target.value })}
+                                placeholder="Тестовий Chat ID"
+                                className="bg-[#1a3843] border border-amber-500/30 text-white rounded px-2 py-1 text-[9px] outline-none w-32 placeholder-slate-600"
+                              />
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <PrintExport />
+                          <div className="bg-[#1a3843]/40 border border-[#224853] rounded-lg p-4 flex gap-3 text-[10px] text-slate-300 items-start">
+                            <Info className="w-4 h-4 flex-shrink-0 text-sky-400 mt-0.5" />
+                            <div className="space-y-1">
+                              <p className="font-bold text-white uppercase tracking-tight">Про тестовий режим</p>
+                              <p className="leading-relaxed">
+                                Якщо увімкнено, всі розсилки будуть перенаправлені на вказаний тестовий Chat ID замість реальних отримувачів. Корисно для перевірки форматування та контенту.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

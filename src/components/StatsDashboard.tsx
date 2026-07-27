@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Member, DashboardStats } from '../types';
-import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, FileDown, ChevronDown, ChevronUp, Send, Mail, Check, AlertCircle, FileText, X } from 'lucide-react';
+import { Users, UserCheck, UserMinus, ShieldAlert, MapPin, Heart, HelpCircle, Activity, User, ChevronDown, ChevronUp, Send, Mail, Check, AlertCircle, FileText, X } from 'lucide-react';
 import { parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 interface StatsDashboardProps {
@@ -38,7 +38,6 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
 
   // State for District selector
   const [selectedRayon, setSelectedRayon] = useState<string>('');
-  const [isHtmlGenerating, setIsHtmlGenerating] = useState<boolean>(false);
   const [showTotalRegisterStats, setShowTotalRegisterStats] = useState<boolean>(false);
   const [isContactJournalOpen, setIsContactJournalOpen] = useState<boolean>(false);
 
@@ -214,41 +213,8 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     };
   }, [rayonMembers]);
 
-  const handleDownloadHTML = () => {
-    if (!selectedRayon) return;
-    setIsHtmlGenerating(true);
-    try {
-      const isAll = selectedRayon === "Всі райони";
-      const totalActive = rayonStats.total;
-      const churchTotalActive = members.filter(m => m.id_vybuttya === 0).length;
-      const bPct = totalActive > 0 ? Math.round((rayonStats.brothers / totalActive) * 100) : 0;
-      const sPct = totalActive > 0 ? Math.round((rayonStats.sisters / totalActive) * 100) : 0;
-      const oPct = totalActive > 0 ? Math.round((rayonStats.others / totalActive) * 100) : 0;
-
-      // Extract unique area counts for HTML
-      const areaStats: Record<string, number> = {};
-      rayonMembers.forEach(m => {
-        const key = String(m.rayon2_ukr || '').trim() || 'н/д';
-        areaStats[key] = (areaStats[key] || 0) + 1;
-      });
-      const sortedAreaStats = Object.entries(areaStats).sort((a, b) => b[1] - a[1]);
-
-      // Extract unique education and social statistics for HTML
-      const educationStats: Record<string, number> = {};
-      const socialStats: Record<string, number> = {};
-      rayonMembers.forEach(m => {
-        const edu = String(m.osvita || '').trim() || 'н/д';
-        educationStats[edu] = (educationStats[edu] || 0) + 1;
-
-        const soc = String(m.soc_status || '').trim() || 'н/д';
-        socialStats[soc] = (socialStats[soc] || 0) + 1;
-      });
-      const sortedEducation = Object.entries(educationStats).sort((a, b) => b[1] - a[1]);
-      const sortedSocial = Object.entries(socialStats).sort((a, b) => b[1] - a[1]);
-
-      const reportDate = new Date().toLocaleDateString('uk-UA');
-      const reportTime = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
-
+  // HTML Download feature removed per user request
+  /* 
       const htmlContent = `<!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -819,23 +785,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
     </div>
   </div>
 </body>
-</html>`;
+</html>`; */
 
-      const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
-      const filename = `Statystyka_Rayonu_${selectedRayon.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.html`;
-      const link = document.createElement("a");
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error("HTML generation failed:", error);
-      alert("Не вдалося завантажити HTML звіт. Будь ласка, спробуйте ще раз.");
-    } finally {
-      setIsHtmlGenerating(false);
-    }
-  };
+  // HTML download removed
 
   if (!stats) {
     return (
@@ -1117,9 +1069,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
       {/* COMPACT PER-DISTRICT INDEPENDENT REPORT */}
       {selectedRayon && (
         <div className="bg-gradient-to-br from-emerald-950/20 to-teal-950/20 border border-emerald-500/20 rounded-xl p-3 sm:p-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200 shadow-lg">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <div className="flex items-center space-x-1.5">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
+            <div className="flex items-center space-x-1.5 min-w-0">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
               <h3 className="text-xs sm:text-xs font-bold text-slate-100 flex items-center gap-1.5 uppercase tracking-wide">
                 {hasSpecificRayonLock ? (
                   <span className="bg-[#244b5a]/40 border border-[#2c5869] text-emerald-400 font-black rounded-lg py-1 px-3.5 text-xs sm:text-sm md:text-base uppercase tracking-wider">
@@ -1140,7 +1092,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                 )}
               </h3>
             </div>
-            <div className="flex items-center space-x-3 shrink-0">
+            <div className="flex flex-wrap items-center gap-2">
               {selectedRayon !== "Всі райони" && selectedRayon !== "ВСІ РАЙОНИ" && (
                 <button
                   onClick={() => setIsContactJournalOpen(true)}
@@ -1150,14 +1102,6 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                   Журнал контактів
                 </button>
               )}
-              <button
-                onClick={handleDownloadHTML}
-                disabled={isHtmlGenerating}
-                className="flex items-center gap-1 text-[10px] font-bold bg-[#10b981] hover:bg-[#0d9488] disabled:bg-slate-850 disabled:text-slate-500 text-white px-2.5 py-1 rounded-lg border border-emerald-500/30 cursor-pointer shadow-sm transition-colors"
-              >
-                <FileDown className="h-3 w-3 shrink-0" />
-                {isHtmlGenerating ? 'HTML...' : 'Завантажити HTML'}
-              </button>
               <button
                 onClick={() => setIsSendModalOpen(true)}
                 className="flex items-center gap-1 text-[10px] font-bold bg-sky-700 hover:bg-sky-600 text-white px-2.5 py-1 rounded-lg border border-sky-500/30 cursor-pointer shadow-sm transition-colors uppercase"

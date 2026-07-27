@@ -670,8 +670,8 @@ export default function App() {
         {/* STICKY HEADER SECTION */}
         <header className="sticky top-0 z-50 bg-[#264653] w-full shrink-0 border-b border-[#203a45]">
           {/* Info Bar (Date, Total Count, Logout) */}
-          <div className="flex items-center justify-between py-1 gap-2 border-b border-[#1f3b47] scale-interface-down-33 sm:scale-100 origin-left">
-            <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex flex-wrap items-center justify-between py-1 gap-2 border-b border-[#1f3b47]">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <div className="text-[11px] sm:text-xs font-bold text-slate-400 leading-tight shrink-0 italic">
                 СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
                 ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
@@ -699,7 +699,7 @@ export default function App() {
           </div>
 
           {/* Main Navigation (Sticky and prominent) */}
-          <nav className="flex flex-wrap justify-around sm:justify-start gap-1 py-1 sm:py-2 w-full overflow-x-auto no-scrollbar">
+          <nav className="flex flex-wrap justify-start gap-1 sm:gap-1.5 py-1 sm:py-2 w-full">
             {getPermission('СПИСОК').view && (
               <button
                 onClick={() => { 

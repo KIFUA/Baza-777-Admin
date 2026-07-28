@@ -2461,12 +2461,25 @@ app.post("/api/birthdays/send", async (req, res) => {
   // Construct Ukrainian week days array
   const UKR_DAYS = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
 
+  // Helper function for Ukrainian age declension
+  const getYearsPlural = (age: number): string => {
+    if (age === undefined || age === null || isNaN(age)) return "років";
+    const absAge = Math.abs(Math.round(age));
+    const mod10 = absAge % 10;
+    const mod100 = absAge % 100;
+    if (mod100 >= 11 && mod100 <= 14) return "років";
+    if (mod10 === 1) return "рік";
+    if (mod10 >= 2 && mod10 <= 4) return "роки";
+    return "років";
+  };
+
   // Prepare beautifully formatted Markdown message text
   let msg = `🎂 **ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdays.weekRangeText}** 🎂\n\n`;
   birthdays.list.forEach((item, idx) => {
     const dayName = UKR_DAYS[item.dayOfWeekNum];
     const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
-    const jubileeText = item.isJubilee ? ` 🎂 **ЮВІЛЕЙ: ${item.age} років!**` : ` (${item.age} років)`;
+    const yearsWord = getYearsPlural(item.age);
+    const jubileeText = item.isJubilee ? ` 🎂 **ЮВІЛЕЙ: ${item.age} ${yearsWord}!**` : ` (${item.age} ${yearsWord})`;
     msg += `${idx + 1}. **${item.cleanName || item.fullName || item.shortName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
     if (item.tel_mob) msg += `   📞 Тел: ${item.tel_mob}\n`;
     if (item.rayon2_ukr) msg += `   📍 Район: ${item.rayon2_ukr} (Опікун: ${item.presviter || "не вказано"})\n`;

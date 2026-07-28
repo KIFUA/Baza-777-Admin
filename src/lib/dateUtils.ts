@@ -64,3 +64,33 @@ export const parseAndNormalizeContactDates = (dKontaktiv?: string): string[] => 
   
   return finalTokens.filter(p => p && p !== '—' && p !== 'н/д');
 };
+
+/**
+ * Returns the correct Ukrainian word form for age in years (рік, роки, років) based on the number.
+ */
+export const getYearsPlural = (age: number): string => {
+  if (age === undefined || age === null || isNaN(age)) return 'років';
+  const absAge = Math.abs(Math.round(age));
+  const mod10 = absAge % 10;
+  const mod100 = absAge % 100;
+
+  if (mod100 >= 11 && mod100 <= 14) {
+    return 'років';
+  }
+  if (mod10 === 1) {
+    return 'рік';
+  }
+  if (mod10 >= 2 && mod10 <= 4) {
+    return 'роки';
+  }
+  return 'років';
+};
+
+/**
+ * Formats a number with the correct Ukrainian word for years, e.g. "71 рік", "43 роки", "85 років".
+ */
+export const formatYears = (age: number): string => {
+  if (age === undefined || age === null || isNaN(age)) return 'невідомо років';
+  return `${age} ${getYearsPlural(age)}`;
+};
+

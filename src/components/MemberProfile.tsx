@@ -4,7 +4,7 @@ import {
   User, Phone, Mail, MapPin, Calendar, Heart, Baby, 
   Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink
 } from 'lucide-react';
-import { normalizeToDateStr } from '../lib/dateUtils';
+import { normalizeToDateStr, formatYears } from '../lib/dateUtils';
 
 interface MemberProfileProps {
   memberId: number;
@@ -336,7 +336,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                 {member.d_narodjennya && (
                   <span className="flex items-center space-x-1">
                     <Calendar className="h-3.5 w-3.5" />
-                    <span>{formatDate(member.d_narodjennya)} ({member.vik_rokiv1 || '?'} років)</span>
+                    <span>{formatDate(member.d_narodjennya)} ({member.vik_rokiv1 ? formatYears(member.vik_rokiv1) : '? років'})</span>
                   </span>
                 )}
                 <span className="flex items-center space-x-1"><MapPin className="h-3.5 w-3.5" /><span>{member.rayon2_ukr || "Район не вказано"} | {member.n_dilyci || "Дільниця"}</span></span>
@@ -968,7 +968,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </div>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 font-mono text-slate-600">
-                          {c.age ? `${c.age} р.` : 'н/д вік'}
+                          {c.age ? formatYears(c.age) : 'н/д вік'}
                         </span>
                       </div>
                     ))}

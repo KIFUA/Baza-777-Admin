@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Member, AppSettings } from '../types';
 import { parseAccessLevelsCSV, ACCESS_LEVELS_CSV_DATA } from '../accessLevels';
+import { getYearsPlural, formatYears } from '../lib/dateUtils';
 import { NotificationSettings } from './NotificationSettings';
 import { PrintExport } from './PrintExport';
 
@@ -906,7 +907,7 @@ export default function DirectoriesManager({
                   <div className="rounded-lg border border-[#224853]/40 bg-[#13282e] p-3 shadow-xs">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Середній вік</span>
                     <div className="font-display text-lg font-black text-emerald-400">
-                      {Math.round(birthdayData.list.reduce((acc: number, cur: any) => acc + cur.age, 0) / birthdayData.list.length)} років
+                      {formatYears(Math.round(birthdayData.list.reduce((acc: number, cur: any) => acc + cur.age, 0) / birthdayData.list.length))}
                     </div>
                   </div>
                 </div>
@@ -958,7 +959,7 @@ export default function DirectoriesManager({
                                 </td>
                                 <td className="p-2 px-2.5">
                                   <div className="flex items-center space-x-2">
-                                    <span className="font-medium text-slate-200">{item.age} років</span>
+                                    <span className="font-medium text-slate-200">{formatYears(item.age)}</span>
                                     {item.isJubilee && (
                                       <span className="bg-amber-950/80 border border-amber-600 text-amber-300 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider animate-pulse flex items-center shrink-0">
                                         🎂 Ювіляр
@@ -1351,9 +1352,10 @@ export default function DirectoriesManager({
                             onClick={() => {
                               let cleanText = `🎂 ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdayData.weekRangeText} 🎂\n\n`;
                               birthdayData.list.forEach((item: any, idx: number) => {
-                                const dayName = UKR_DAYS[item.dayOfWeekNum];
+                                 const dayName = UKR_DAYS[item.dayOfWeekNum];
                                 const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                                const jubileeText = item.isJubilee ? ` 🎂 ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
+                                const yearsWord = getYearsPlural(item.age);
+                                const jubileeText = item.isJubilee ? ` 🎂 ЮВІЛЕЙ: ${item.age} ${yearsWord}!` : ` (${item.age} ${yearsWord})`;
                                 cleanText += `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n`;
                                 if (item.tel_mob) cleanText += `   📞 Тел: ${item.tel_mob}\n`;
                                 if (item.rayon2_ukr) cleanText += `   📍 Район: ${item.rayon2_ukr}\n`;
@@ -1372,7 +1374,8 @@ export default function DirectoriesManager({
                            birthdayData.list.map((item: any, idx: number) => {
                              const dayName = UKR_DAYS[item.dayOfWeekNum];
                              const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                             const jubileeText = item.isJubilee ? ` 🎂 ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
+                             const yearsWord = getYearsPlural(item.age);
+                             const jubileeText = item.isJubilee ? ` 🎂 ЮВІЛЕЙ: ${item.age} ${yearsWord}!` : ` (${item.age} ${yearsWord})`;
                              return `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n` + 
                                     (item.tel_mob ? `   📞 Тел: ${item.tel_mob}\n` : '') + 
                                     (item.rayon2_ukr ? `   📍 Район: ${item.rayon2_ukr}\n` : '');

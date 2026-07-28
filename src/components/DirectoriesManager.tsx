@@ -900,7 +900,7 @@ export default function DirectoriesManager({
                   <div className="rounded-lg border border-[#224853]/40 bg-[#13282e] p-3 shadow-xs">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Ювілеї (кратні 10 рокам)</span>
                     <div className="font-display text-lg font-black text-amber-450">
-                      🎖️ {birthdayData.list.filter((x: any) => x.isJubilee).length} ювілярів
+                      🎂 {birthdayData.list.filter((x: any) => x.isJubilee).length} ювілярів
                     </div>
                   </div>
                   <div className="rounded-lg border border-[#224853]/40 bg-[#13282e] p-3 shadow-xs">
@@ -961,7 +961,7 @@ export default function DirectoriesManager({
                                     <span className="font-medium text-slate-200">{item.age} років</span>
                                     {item.isJubilee && (
                                       <span className="bg-amber-950/80 border border-amber-600 text-amber-300 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider animate-pulse flex items-center shrink-0">
-                                        🎖️ Ювіляр
+                                        🎂 Ювіляр
                                       </span>
                                     )}
                                   </div>
@@ -1353,7 +1353,7 @@ export default function DirectoriesManager({
                               birthdayData.list.forEach((item: any, idx: number) => {
                                 const dayName = UKR_DAYS[item.dayOfWeekNum];
                                 const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                                const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
+                                const jubileeText = item.isJubilee ? ` 🎂 ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
                                 cleanText += `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n`;
                                 if (item.tel_mob) cleanText += `   📞 Тел: ${item.tel_mob}\n`;
                                 if (item.rayon2_ukr) cleanText += `   📍 Район: ${item.rayon2_ukr}\n`;
@@ -1372,7 +1372,7 @@ export default function DirectoriesManager({
                            birthdayData.list.map((item: any, idx: number) => {
                              const dayName = UKR_DAYS[item.dayOfWeekNum];
                              const dateFormatted = item.celebrationDate.split('-').reverse().join('.');
-                             const jubileeText = item.isJubilee ? ` 🎖️ ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
+                             const jubileeText = item.isJubilee ? ` 🎂 ЮВІЛЕЙ: ${item.age} років!` : ` (${item.age} років)`;
                              return `${idx + 1}. ${item.cleanName || item.fullName || item.shortName} — ${dayName}, ${dateFormatted}${jubileeText}\n` + 
                                     (item.tel_mob ? `   📞 Тел: ${item.tel_mob}\n` : '') + 
                                     (item.rayon2_ukr ? `   📍 Район: ${item.rayon2_ukr}\n` : '');

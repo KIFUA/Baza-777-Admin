@@ -2258,9 +2258,9 @@ app.post("/api/stats/send", async (req, res) => {
   let msg = `📊 *СТАТИСТИЧНИЙ ЗВІТ ЦЕРКВИ* 📊\n`;
   msg += `📍 *Район:* ${targetRayon.toUpperCase()}\n`;
   msg += `📅 *Дата:* ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}\n\n`;
-  msg += `👥 *Загалом активних членів:* ${total}\n`;
-  msg += `👦 *Брати:* ${statsData.brothers} (${bPct}%)\n`;
-  msg += `👧 *Сестри:* ${statsData.sisters} (${sPct}%)\n\n`;
+  msg += `👥 *ВСЬОГО ЧЛЕНІВ:* ${total}\n`;
+  msg += `👨 *Брати:* ${statsData.brothers} (${bPct}%)\n`;
+  msg += `👩 *Сестри:* ${statsData.sisters} (${sPct}%)\n\n`;
 
   if (statsData.attendance && statsData.attendance.length > 0) {
     msg += `📈 *Відвідуваність:*\n`;
@@ -2286,8 +2286,8 @@ app.post("/api/stats/send", async (req, res) => {
   });
 
   if (statsData.caregivers && statsData.caregivers.length > 0) {
-    msg += `\n👤 *Опікуни (топ):*\n`;
-    statsData.caregivers.slice(0, 6).forEach(([name, count]: [string, number]) => {
+    msg += `\n👤 *Опікуни:*\n`;
+    statsData.caregivers.forEach(([name, count]: [string, number]) => {
       msg += `• ${name}: ${count}\n`;
     });
   }

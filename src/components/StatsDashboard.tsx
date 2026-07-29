@@ -595,11 +595,11 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
  
             <div class="gender-rows">
               <div class="gender-row gender-row-brothers">
-                <span style="font-weight: 700; color: #0369a1;">👦 Брати</span>
+                <span style="font-weight: 700; color: #0369a1;">👨 Брати</span>
                 <span style="font-weight: 800; color: #0369a1;">${rayonStats.brothers} (${bPct}%)</span>
               </div>
               <div class="gender-row gender-row-sisters">
-                <span style="font-weight: 700; color: #be123c;">👧 Сестри</span>
+                <span style="font-weight: 700; color: #be123c;">👩 Сестри</span>
                 <span style="font-weight: 800; color: #be123c;">${rayonStats.sisters} (${sPct}%)</span>
               </div>
             </div>

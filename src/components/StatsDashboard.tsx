@@ -44,10 +44,95 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
   // State for Manual Distribution
   const [isSendModalOpen, setIsSendModalOpen] = useState<boolean>(false);
   const [targetRayonForSend, setTargetRayonForSend] = useState<string>('');
-  const [customTelegramIds, setCustomTelegramIds] = useState<string>('');
-  const [customEmails, setCustomEmails] = useState<string>('');
+  const [customTelegramIds, setCustomTelegramIds] = useState<string>(() => {
+    try {
+      return localStorage.getItem('stats_custom_telegram_id') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [customEmails, setCustomEmails] = useState<string>(() => {
+    try {
+      return localStorage.getItem('stats_custom_email') || '';
+    } catch (_) {
+      return '';
+    }
+  });
   const [sendingStatus, setSendingStatus] = useState<{ msg: string; success?: boolean } | null>(null);
   const [isSending, setIsSending] = useState<boolean>(false);
+
+  const handleTelegramIdChange = (val: string) => {
+    setCustomTelegramIds(val);
+    try {
+      localStorage.setItem('stats_custom_telegram_id', val);
+    } catch (_) {}
+  };
+
+  const handleEmailChange = (val: string) => {
+    setCustomEmails(val);
+    try {
+      localStorage.setItem('stats_custom_email', val);
+    } catch (_) {}
+  };
+
+  const knownContactsList = useMemo(() => {
+    const DEFAULT_KNOWN_CONTACTS = [
+      { user: "Григорів В. (Адміністратор)", position: "Адміністратор", rayon: "ЦЕНТР", telegramId: "240931069", email: "240931069" },
+      { user: "Черняк Вал.", position: "Пресвітер (Старший)", rayon: "ЦЕНТР", telegramId: "969538290", email: "969538290" },
+      { user: "Скіцко І.", position: "Пресвітер", rayon: "КАСКАД", telegramId: "435624187", email: "435624187" },
+      { user: "Бевзюк В.", position: "Пресвітер", rayon: "АЕРОПОРТ", telegramId: "951757352", email: "951757352" },
+      { user: "Григорів Г.", position: "Тестувальник", rayon: "АЕРОПОРТ", telegramId: "858036501", email: "858036501" },
+      { user: "Бурчак Ю.", position: "Диякон", rayon: "ОБ'ЇЗНА / БАМ", telegramId: "61234567", email: "gvi.dim.777@gmail.com" },
+      { user: "Черняк Вас.", position: "Пресвітер", rayon: "ОБ'ЇЗНА / ХРИПЛИН", telegramId: "194850204", email: "cherniakvasylcherniak@gmail.com" },
+      { user: "Патлатай В.", position: "Пресвітер", rayon: "АЕРОПОРТ", telegramId: "593850384", email: "593850384" },
+      { user: "Черняк Вікт.", position: "Диякон", rayon: "КАСКАД", telegramId: "482057395", email: "482057395" },
+      { user: "Галюк Б.", position: "Диякон", rayon: "АЕРОПОРТ", telegramId: "748302049", email: "+380967303099" },
+      { user: "Самелюк О.", position: "Диякон", rayon: "АЕРОПОРТ", telegramId: "555", email: "solbo1971@gmail.com" },
+      { user: "Марунчак В.", position: "Відповідальний за опіку", rayon: "КРИХІВЦІ", telegramId: "920485058", email: "920485058" },
+      { user: "Несен Ю.", position: "Диякон / Відповідальний", rayon: "УГОРНИКИ / ЦЕНТР", telegramId: "384950204", email: "384950204" }
+    ];
+
+    const list: { user: string; position?: string; rayon?: string; telegramId: string; email?: string }[] = [];
+    const added = new Set<string>();
+
+    if (Array.isArray(lookups?.access)) {
+      lookups.access.forEach((ac: any) => {
+        const tg = String(ac.telegramId || '').trim();
+        if (tg && tg !== '—' && tg !== '-' && tg !== 'н/д') {
+          const key = `${ac.user}_${tg}`;
+          if (!added.has(key)) {
+            added.add(key);
+            list.push({
+              user: ac.user || 'Користувач',
+              position: ac.position || '',
+              rayon: ac.rayon || '',
+              telegramId: tg,
+              email: ac.email && ac.email.includes('@') ? ac.email : undefined
+            });
+          }
+        }
+      });
+    }
+
+    DEFAULT_KNOWN_CONTACTS.forEach((item) => {
+      const key = `${item.user}_${item.telegramId}`;
+      if (!added.has(key)) {
+        added.add(key);
+        list.push(item);
+      }
+    });
+
+    return list;
+  }, [lookups]);
+
+  const handleSelectContact = (tgId: string) => {
+    if (!tgId) return;
+    handleTelegramIdChange(tgId);
+    const found = knownContactsList.find(c => c.telegramId === tgId);
+    if (found?.email && found.email.includes('@')) {
+      handleEmailChange(found.email);
+    }
+  };
 
   // Extract unique rayon/neighborhood names with "Всі райони" option
   const uniqueRayons = useMemo(() => {
@@ -969,28 +1054,56 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                 </select>
               </div>
 
+              {/* Quick Contact Selector Dropdown */}
+              <div className="bg-[#13282e]/80 border border-[#224853] p-3 rounded-lg space-y-1.5">
+                <label className="block text-[10px] font-bold text-emerald-400 uppercase tracking-wider flex items-center justify-between">
+                  <span>📋 Вибір з відомих контактів (ПІБ / Chat ID):</span>
+                  {customTelegramIds && (
+                    <span className="text-[9px] text-emerald-300 font-normal">
+                      ✓ Збережено в пам'яті
+                    </span>
+                  )}
+                </label>
+                <select
+                  onChange={(e) => handleSelectContact(e.target.value)}
+                  value={knownContactsList.some(c => c.telegramId === customTelegramIds) ? customTelegramIds : ''}
+                  className="w-full bg-[#1a3843] border border-[#224853] text-emerald-200 font-medium rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500 cursor-pointer"
+                >
+                  <option value="" className="bg-[#13282e] text-slate-400">
+                    -- Оберіть контакт зі списку для автозаповнення --
+                  </option>
+                  {knownContactsList.map((contact, idx) => (
+                    <option key={`${contact.telegramId}_${idx}`} value={contact.telegramId} className="bg-[#13282e] text-white">
+                      👤 {contact.user} {contact.position ? `(${contact.position})` : ''} {contact.rayon ? `[${contact.rayon}]` : ''} — ID: {contact.telegramId}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Recipient inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#13282e]/80 border border-[#224853] p-3 rounded-lg">
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
-                    Telegram Chat ID
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 flex items-center justify-between">
+                    <span>Telegram Chat ID</span>
+                    {customTelegramIds && <span className="text-[8px] text-emerald-400 font-normal">✓ збережено</span>}
                   </label>
                   <input
                     type="text"
                     value={customTelegramIds}
-                    onChange={(e) => setCustomTelegramIds(e.target.value)}
-                    placeholder="За замовчуванням з налаштувань"
-                    className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500"
+                    onChange={(e) => handleTelegramIdChange(e.target.value)}
+                    placeholder="Введіть Chat ID або оберіть вище"
+                    className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">
-                    Email отримувача
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1 flex items-center justify-between">
+                    <span>Email отримувача</span>
+                    {customEmails && <span className="text-[8px] text-emerald-400 font-normal">✓ збережено</span>}
                   </label>
                   <input
                     type="text"
                     value={customEmails}
-                    onChange={(e) => setCustomEmails(e.target.value)}
+                    onChange={(e) => handleEmailChange(e.target.value)}
                     placeholder="email@example.com..."
                     className="w-full bg-[#1a3843] border border-[#224853] text-white rounded px-2.5 py-1.5 text-xs outline-none focus:border-emerald-500"
                   />

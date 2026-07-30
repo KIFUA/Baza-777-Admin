@@ -28,7 +28,8 @@ const PORT = 3000;
 const DB_CACHE_FILE = path.join(process.cwd(), "db_cache.json");
 const tablyciDir = path.join(process.cwd(), "tablyci");
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Prevent browser/proxy/CDN caching for all API endpoints to guarantee active synchronization
 app.use((req, res, next) => {
@@ -850,6 +851,14 @@ const SETTINGS_DEFAULTS = {
   wednesdayMailingHour: 11,
   wednesdayMailingMinute: 0
 };
+
+function getActiveTelegramToken(settings: any, customToken?: string): string {
+  if (customToken && customToken.trim()) return customToken.trim();
+  const botFromConnectors = settings?.connectors?.telegramBots?.find((b: any) => b.token && b.token.trim());
+  if (botFromConnectors?.token) return botFromConnectors.token.trim();
+  if (settings?.botToken && settings.botToken.trim()) return settings.botToken.trim();
+  return process.env.TELEGRAM_BOT_TOKEN || "";
+}
 
 function mergeSettings(data: any) {
   const merged = { ...SETTINGS_DEFAULTS, ...(data || {}) };
@@ -2297,7 +2306,11 @@ app.post("/api/stats/send", async (req, res) => {
 
   if (type === "telegram_text" || type === "telegram_pdf" || type === "telegram_me" || type === "telegram_group") {
     const settings = getSettings();
-    const token = customToken || settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
+    const token = getActiveTelegramToken(settings, customToken);
+    if (token) {
+      axios.post(`https://api.telegram.org/bot${token}/setDescription`, { description: "Офіційний бот сповіщень та статистичних звітів церкви." }).catch(() => {});
+      axios.post(`https://api.telegram.org/bot${token}/setShortDescription`, { short_description: "Офіційний бот обліку церкви." }).catch(() => {});
+    }
     const defaultChatId = settings.wednesdayTelegramIds || settings.mondayTelegramIds || "1919236304";
     const chatIdStr = customChatId || defaultChatId;
 
@@ -2447,6 +2460,247 @@ app.post("/api/stats/send", async (req, res) => {
     logs: telegramLogs || emailLogs,
     rawText: msg
   });
+});
+
+// Endpoint for sending custom generated PDF documents directly to Telegram recipients
+app.post("/api/telegram/send-pdf", async (req, res) => {
+  try {
+    const { chatId, pdfBase64, filename, caption } = req.body;
+    if (!chatId || !pdfBase64) {
+      return res.status(400).json({ success: false, message: "Chat ID та файл PDF є обов'язковими." });
+    }
+
+    const settings = getSettings();
+    const token = getActiveTelegramToken(settings);
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Токен Telegram-бота не налаштовано в розділі 'Налаштування'." });
+    }
+
+    const chatIds = String(chatId).split(/[,;\s]+/).map(s => s.trim()).filter(Boolean);
+    if (chatIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Не вказано жодного Chat ID." });
+    }
+
+    let cleanBase64 = String(pdfBase64 || "");
+    const base64Idx = cleanBase64.indexOf('base64,');
+    if (base64Idx !== -1) {
+      cleanBase64 = cleanBase64.substring(base64Idx + 7);
+    } else if (cleanBase64.includes(',')) {
+      cleanBase64 = cleanBase64.split(',')[1];
+    }
+    cleanBase64 = cleanBase64.trim().replace(/[\r\n\s]+/g, '');
+    const pdfBuffer = Buffer.from(cleanBase64, 'base64');
+
+    const pdfHeader = pdfBuffer.toString('latin1', 0, 5);
+    console.log(`[send-pdf] PDF Buffer length: ${pdfBuffer.length} bytes, Header: "${pdfHeader}"`);
+
+    if (pdfBuffer.length < 100 || !pdfHeader.startsWith('%PDF')) {
+      console.error("[send-pdf] Invalid PDF structure. Header:", pdfHeader);
+      return res.status(400).json({
+        success: false,
+        message: `Помилка структури PDF: отримано пошкоджений файл розміром ${pdfBuffer.length} Б.`
+      });
+    }
+
+    let tgSuccessCount = 0;
+    let tgFailCount = 0;
+    let lastError = "";
+
+    for (const singleChatId of chatIds) {
+      try {
+        const formData = new FormData();
+        formData.append('chat_id', singleChatId);
+        formData.append('document', pdfBuffer, {
+          filename: filename || `Zvit_${new Date().toISOString().slice(0, 10)}.pdf`,
+          contentType: 'application/pdf'
+        });
+        if (caption) {
+          formData.append('caption', caption);
+        }
+
+        const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+          headers: formData.getHeaders(),
+          timeout: 20000
+        });
+
+        if (response.data?.ok) {
+          tgSuccessCount++;
+        } else {
+          tgFailCount++;
+          lastError = response.data?.description || "Помилка надсилання";
+        }
+      } catch (err: any) {
+        tgFailCount++;
+        lastError = err.response?.data?.description || err.message;
+      }
+    }
+
+    if (tgSuccessCount > 0) {
+      auditLogs.push({
+        id: "tg_pdf_" + Date.now(),
+        timestamp: new Date().toISOString(),
+        memberId: 0,
+        memberName: "Система",
+        action: "send_pdf_telegram",
+        details: `Надіслано PDF-звіт у Telegram (${tgSuccessCount} чатів): filename "${filename || 'Zvit.pdf'}"`
+      });
+      saveDatabaseToCache();
+
+      return res.json({
+        success: true,
+        message: `Успішно надіслано в Telegram (успішно: ${tgSuccessCount}${tgFailCount > 0 ? `, помилок: ${tgFailCount} - ${lastError}` : ''})`
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Не вдалося надіслати: ${lastError || 'Помилка Telegram API'}`
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Помилка сервера" });
+  }
+});
+
+// Endpoint for Telegram broadcast/mailing of text, lists or PDF documents to multiple recipients
+app.post("/api/telegram/broadcast", async (req, res) => {
+  try {
+    const { recipients, materialType = 'pdf', text, pdfBase64, filename } = req.body;
+    let targetChatIds: string[] = [];
+
+    if (Array.isArray(recipients)) {
+      targetChatIds = recipients.map(r => String(r).trim()).filter(Boolean);
+    } else if (typeof recipients === 'string') {
+      targetChatIds = recipients.split(/[,;\s\n]+/).map(r => r.trim()).filter(Boolean);
+    }
+
+    if (targetChatIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Вкажіть хоча б одного отримувача (Chat ID)." });
+    }
+
+    // Deduplicate chat IDs
+    targetChatIds = Array.from(new Set(targetChatIds));
+
+    const settings = getSettings();
+    const token = getActiveTelegramToken(settings);
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Токен Telegram-бота не налаштовано в розділі 'Налаштування'." });
+    }
+
+    let tgSuccessCount = 0;
+    let tgFailCount = 0;
+    let lastError = "";
+
+    if (materialType === 'pdf' && pdfBase64) {
+      let cleanBase64 = String(pdfBase64 || "");
+      const base64Idx = cleanBase64.indexOf('base64,');
+      if (base64Idx !== -1) {
+        cleanBase64 = cleanBase64.substring(base64Idx + 7);
+      } else if (cleanBase64.includes(',')) {
+        cleanBase64 = cleanBase64.split(',')[1];
+      }
+      cleanBase64 = cleanBase64.trim().replace(/[\r\n\s]+/g, '');
+      const pdfBuffer = Buffer.from(cleanBase64, 'base64');
+
+      if (pdfBuffer.length < 100) {
+        return res.status(400).json({ success: false, message: "Некоректний розмір PDF-файлу." });
+      }
+
+      for (const singleChatId of targetChatIds) {
+        try {
+          const formData = new FormData();
+          formData.append('chat_id', singleChatId);
+          formData.append('document', pdfBuffer, {
+            filename: filename || `Zvit_${new Date().toISOString().slice(0, 10)}.pdf`,
+            contentType: 'application/pdf'
+          });
+          if (text) {
+            formData.append('caption', text);
+          }
+
+          const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+            headers: formData.getHeaders(),
+            timeout: 20000
+          });
+
+          if (response.data?.ok) {
+            tgSuccessCount++;
+          } else {
+            tgFailCount++;
+            lastError = response.data?.description || "Помилка Telegram API";
+          }
+        } catch (err: any) {
+          tgFailCount++;
+          lastError = err.response?.data?.description || err.message;
+        }
+      }
+    } else {
+      // Send text message or list message
+      const msgContent = text || "Повідомлення з бази даних";
+      for (const singleChatId of targetChatIds) {
+        try {
+          const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: singleChatId,
+              text: msgContent,
+              parse_mode: "HTML"
+            })
+          });
+          const rJson = await response.json() as any;
+          if (rJson.ok) {
+            tgSuccessCount++;
+          } else {
+            // Fallback without parse_mode if HTML parsing fails
+            const retryRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: singleChatId,
+                text: msgContent
+              })
+            });
+            const retryJson = await retryRes.json() as any;
+            if (retryJson.ok) {
+              tgSuccessCount++;
+            } else {
+              tgFailCount++;
+              lastError = retryJson.description || rJson.description || "Unknown error";
+            }
+          }
+        } catch (err: any) {
+          tgFailCount++;
+          lastError = err.message;
+        }
+      }
+    }
+
+    if (tgSuccessCount > 0) {
+      auditLogs.push({
+        id: "tg_bc_" + Date.now(),
+        timestamp: new Date().toISOString(),
+        memberId: 0,
+        memberName: "Система",
+        action: "telegram_broadcast",
+        details: `Розсилка Telegram (${materialType}): надіслано ${tgSuccessCount} з ${targetChatIds.length} отримувачів`
+      });
+      saveDatabaseToCache();
+
+      return res.json({
+        success: true,
+        message: `Успішно надіслано ${tgSuccessCount} з ${targetChatIds.length} отримувачів${tgFailCount > 0 ? ` (помилок: ${tgFailCount} - ${lastError})` : ''}`,
+        successCount: tgSuccessCount,
+        failCount: tgFailCount
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Не вдалося надіслати жодному отримувачу. ${lastError ? 'Помилка: ' + lastError : ''}`
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Помилка сервера" });
+  }
 });
 
 // 2.3 API: Send Birthday Celebrants reports (Email or Telegram Bot)

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Member } from '../types';
 import { 
   Filter, 
@@ -9,11 +9,31 @@ import {
   RefreshCw, 
   Plus, 
   ChevronDown,
-  Download
+  Download,
+  Send,
+  X,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { parseAndNormalizeContactDates } from '../lib/dateUtils';
+
+const DEFAULT_KNOWN_CONTACTS = [
+  { user: "Григорів В. (Адміністратор)", position: "Адміністратор", rayon: "ЦЕНТР", telegramId: "240931069" },
+  { user: "Черняк Вал.", position: "Пресвітер (Старший)", rayon: "ЦЕНТР", telegramId: "969538290" },
+  { user: "Скіцко І.", position: "Пресвітер", rayon: "КАСКАД", telegramId: "435624187" },
+  { user: "Бевзюк В.", position: "Пресвітер", rayon: "АЕРОПОРТ", telegramId: "951757352" },
+  { user: "Григорів Г.", position: "Тестувальник", rayon: "АЕРОПОРТ", telegramId: "858036501" },
+  { user: "Бурчак Ю.", position: "Диякон", rayon: "ОБ'ЇЗНА / БАМ", telegramId: "61234567" },
+  { user: "Черняк Вас.", position: "Пресвітер", rayon: "ОБ'ЇЗНА / ХРИПЛИН", telegramId: "194850204" },
+  { user: "Патлатай В.", position: "Пресвітер", rayon: "АЕРОПОРТ", telegramId: "593850384" },
+  { user: "Черняк Вікт.", position: "Диякон", rayon: "КАСКАД", telegramId: "482057395" },
+  { user: "Галюк Б.", position: "Диякон", rayon: "АЕРОПОРТ", telegramId: "748302049" },
+  { user: "Самелюк О.", position: "Диякон", rayon: "АЕРОПОРТ", telegramId: "555" },
+  { user: "Марунчак В.", position: "Відповідальний за опіку", rayon: "КРИХІВЦІ", telegramId: "920485058" },
+  { user: "Несен Ю.", position: "Диякон / Відповідальний", rayon: "УГОРНИКИ / ЦЕНТР", telegramId: "384950204" }
+];
 
 const cleanAddress = (address: string | undefined | null): string => {
   if (!address) return '';
@@ -79,10 +99,66 @@ interface ReportGeneratorProps {
       opika_bindings?: any[];
     };
     vybuv?: { ID: any; Value: string }[];
+    access?: any[];
   };
 }
 
 export default function ReportGenerator({ members = [], lookups }: ReportGeneratorProps) {
+  // Telegram Broadcast modal states
+  const [isTgModalOpen, setIsTgModalOpen] = useState<boolean>(false);
+  const [tgMaterialType, setTgMaterialType] = useState<'pdf' | 'text' | 'list'>('pdf');
+  const [tgCustomText, setTgCustomText] = useState<string>('');
+  const [tgSelectedContacts, setTgSelectedContacts] = useState<string[]>([]);
+  const [tgRecipientId, setTgRecipientId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('stats_custom_telegram_id') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [tgSending, setTgSending] = useState<boolean>(false);
+  const [tgStatus, setTgStatus] = useState<{ message: string; isError?: boolean } | null>(null);
+
+  const handleTgRecipientChange = (val: string) => {
+    setTgRecipientId(val);
+    try {
+      localStorage.setItem('stats_custom_telegram_id', val);
+    } catch (_) {}
+  };
+
+  const knownContactsList = useMemo(() => {
+    const list: { user: string; position?: string; rayon?: string; telegramId: string }[] = [];
+    const added = new Set<string>();
+
+    if (Array.isArray(lookups?.access)) {
+      lookups.access.forEach((ac: any) => {
+        const tg = String(ac.telegramId || '').trim();
+        if (tg && tg !== '—' && tg !== '-' && tg !== 'н/д') {
+          const key = `${ac.user}_${tg}`;
+          if (!added.has(key)) {
+            added.add(key);
+            list.push({
+              user: ac.user || 'Користувач',
+              position: ac.position || '',
+              rayon: ac.rayon || '',
+              telegramId: tg
+            });
+          }
+        }
+      });
+    }
+
+    DEFAULT_KNOWN_CONTACTS.forEach((item) => {
+      const key = `${item.user}_${item.telegramId}`;
+      if (!added.has(key)) {
+        added.add(key);
+        list.push(item);
+      }
+    });
+
+    return list;
+  }, [lookups]);
+
   // Get locked rayon for Level <= 3
   const hasSpecificRayonLock = useMemo(() => {
     try {
@@ -117,6 +193,13 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const [selectedVidviduvanist, setSelectedVidviduvanist] = useState<string>("");
   const [selectedPrysutnist, setSelectedPrysutnist] = useState<string>("");
   const [selectedStat, setSelectedStat] = useState<string>("");
+  const [selectedSimeyniy, setSelectedSimeyniy] = useState<string>("");
+  const [selectedSocialniy, setSelectedSocialniy] = useState<string>("");
+  const [selectedProfesiya, setSelectedProfesiya] = useState<string>("");
+  const [selectedOsvita, setSelectedOsvita] = useState<string>("");
+  const [selectedDilyntsya, setSelectedDilyntsya] = useState<string>("");
+  const [selectedAgeMin, setSelectedAgeMin] = useState<string>("");
+  const [selectedAgeMax, setSelectedAgeMax] = useState<string>("");
   const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
   const [internalSearch, setInternalSearch] = useState<string>("");
   const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
@@ -259,6 +342,13 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     setSelectedVidviduvanist("");
     setSelectedPrysutnist("");
     setSelectedStat("");
+    setSelectedSimeyniy("");
+    setSelectedSocialniy("");
+    setSelectedProfesiya("");
+    setSelectedOsvita("");
+    setSelectedDilyntsya("");
+    setSelectedAgeMin("");
+    setSelectedAgeMax("");
     setInternalSearch("");
   };
 
@@ -395,6 +485,52 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     return Array.from(set).sort();
   }, [lookups, members]);
 
+  const uniqueSimeyniy = useMemo(() => {
+    if ((lookups?.directories as any)?.simeyniy) return (lookups.directories as any).simeyniy;
+    const set = new Set<string>();
+    members.forEach(m => {
+      if (m.s_simeyniy_ukr) set.add(m.s_simeyniy_ukr.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  const uniqueSocialniy = useMemo(() => {
+    if ((lookups?.directories as any)?.socialniy) return (lookups.directories as any).socialniy;
+    const set = new Set<string>();
+    members.forEach(m => {
+      const v = m.s_socialniy_ukr || m.soc_status || m.s_soc_status_ukr;
+      if (v) set.add(v.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  const uniqueProfesiya = useMemo(() => {
+    if ((lookups?.directories as any)?.profesiya) return (lookups.directories as any).profesiya;
+    const set = new Set<string>();
+    members.forEach(m => {
+      if (m.s_profesiya_ukr) set.add(m.s_profesiya_ukr.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  const uniqueOsvita = useMemo(() => {
+    if ((lookups?.directories as any)?.osvita) return (lookups.directories as any).osvita;
+    const set = new Set<string>();
+    members.forEach(m => {
+      const v = m.s_osvita_ukr || m.osvita;
+      if (v) set.add(v.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  const uniqueDilyntsya = useMemo(() => {
+    const set = new Set<string>();
+    members.forEach(m => {
+      if (m.n_dilyci) set.add(m.n_dilyci.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [members]);
+
   const isMergedProfile = (m: Member, list: Member[]) => {
     const pibSelf = String(m.pib || "").trim().toLowerCase();
     if (!pibSelf) return false;
@@ -438,6 +574,31 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       if (selectedStat) {
         if (String(m.gender || m.stat || "").trim().toLowerCase() !== selectedStat.trim().toLowerCase()) return false;
       }
+      if (selectedSimeyniy) {
+        if (String(m.s_simeyniy_ukr || "").trim().toLowerCase() !== selectedSimeyniy.trim().toLowerCase()) return false;
+      }
+      if (selectedSocialniy) {
+        const socVal = String(m.s_socialniy_ukr || m.soc_status || m.s_soc_status_ukr || "").trim().toLowerCase();
+        if (socVal !== selectedSocialniy.trim().toLowerCase()) return false;
+      }
+      if (selectedProfesiya) {
+        if (String(m.s_profesiya_ukr || "").trim().toLowerCase() !== selectedProfesiya.trim().toLowerCase()) return false;
+      }
+      if (selectedOsvita) {
+        const osvVal = String(m.s_osvita_ukr || m.osvita || "").trim().toLowerCase();
+        if (osvVal !== selectedOsvita.trim().toLowerCase()) return false;
+      }
+      if (selectedDilyntsya) {
+        if (String(m.n_dilyci || "").trim().toLowerCase() !== selectedDilyntsya.trim().toLowerCase()) return false;
+      }
+      if (selectedAgeMin) {
+        const minVal = Number(selectedAgeMin);
+        if (!isNaN(minVal) && (m.vik_rokiv1 === undefined || m.vik_rokiv1 < minVal)) return false;
+      }
+      if (selectedAgeMax) {
+        const maxVal = Number(selectedAgeMax);
+        if (!isNaN(maxVal) && (m.vik_rokiv1 === undefined || m.vik_rokiv1 > maxVal)) return false;
+      }
 
       if (internalSearch) {
         const q = internalSearch.toLowerCase().trim();
@@ -446,14 +607,33 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         const addMatch = String(m.address || "").toLowerCase().includes(q);
         const caretMatch = String(m.presviter || "").toLowerCase().includes(q);
         const rayonMatch = String(m.rayon2_ukr || "").toLowerCase().includes(q);
-        if (!pibMatch && !telMatch && !addMatch && !caretMatch && !rayonMatch) return false;
+        const profMatch = String(m.s_profesiya_ukr || "").toLowerCase().includes(q);
+        if (!pibMatch && !telMatch && !addMatch && !caretMatch && !rayonMatch && !profMatch) return false;
       }
 
       return true;
     });
 
     return [...list].sort((a, b) => (a.pib || "").localeCompare(b.pib || "", "uk-UA"));
-  }, [members, selectedStatus, selectedVybuttyaId, selectedRayon, selectedPresviter, selectedSlujinnya, selectedVidviduvanist, selectedPrysutnist, selectedStat, internalSearch]);
+  }, [
+    members, 
+    selectedStatus, 
+    selectedVybuttyaId, 
+    selectedRayon, 
+    selectedPresviter, 
+    selectedSlujinnya, 
+    selectedVidviduvanist, 
+    selectedPrysutnist, 
+    selectedStat, 
+    selectedSimeyniy, 
+    selectedSocialniy, 
+    selectedProfesiya, 
+    selectedOsvita, 
+    selectedDilyntsya, 
+    selectedAgeMin, 
+    selectedAgeMax, 
+    internalSearch
+  ]);
 
   const handleToggleColumn = (colKey: string) => {
     setSelectedColumns(prev => 
@@ -478,6 +658,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
     if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
     if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
+    if (selectedSimeyniy) activeFiltersText.push(`Сім. стан: ${selectedSimeyniy}`);
+    if (selectedSocialniy) activeFiltersText.push(`Соц. стан: ${selectedSocialniy}`);
+    if (selectedProfesiya) activeFiltersText.push(`Професія: ${selectedProfesiya}`);
+    if (selectedOsvita) activeFiltersText.push(`Освіта: ${selectedOsvita}`);
+    if (selectedDilyntsya) activeFiltersText.push(`Дільниця: ${selectedDilyntsya}`);
+    if (selectedAgeMin || selectedAgeMax) activeFiltersText.push(`Вік: ${selectedAgeMin || 0}-${selectedAgeMax || '∞'} р.`);
 
     const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
     const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
@@ -960,14 +1146,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     }
   };
 
-  const handlePrint = async () => {
+  const buildPdfDoc = async (withBadgesOverride?: boolean): Promise<jsPDF | null> => {
+    const withBadges = withBadgesOverride !== undefined ? withBadgesOverride : printColors;
     if (filteredRecords.length === 0) {
       alert("Сформований список порожній. Будь ласка, змініть фільтри.");
-      return;
+      return null;
     }
 
-    setPdfGenerating(true);
-
+    let container: HTMLDivElement | null = null;
     try {
       const activeFiltersText: string[] = [];
       if (selectedStatus && selectedStatus !== 'Всі') {
@@ -994,14 +1180,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       container.style.position = 'absolute';
       container.style.left = '-9999px';
       container.style.top = '0px';
-      container.style.width = '1120px';
       container.style.background = '#ffffff';
       container.style.color = '#000000';
       document.body.appendChild(container);
 
       // Estimate adaptive column widths based on content lengths
       const estimatedWidths: Record<string, number> = {};
-      let totalEstimatedOthers = 0;
 
       displayColumns.forEach(col => {
         if (col.key === 'pib') return;
@@ -1044,24 +1228,35 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           }
         });
 
-        let charWidth = 6.2;
+        let charWidth = 6.5;
         if (['vidviduvanist', 'prysutnist', 'presviter'].includes(col.key)) {
-          charWidth = 7.5;
+          charWidth = 7.2;
         }
-        let estWidth = Math.max(50, Math.floor(maxLength * charWidth) + 16);
+        let estWidth = Math.max(45, Math.floor(maxLength * charWidth) + 16);
 
         if (col.key === 'vik_rokiv1' || col.key === 'stat') {
           estWidth = 38;
         } else if (col.key === 'd_narodjennya') {
-          estWidth = 70;
+          estWidth = 72;
         } else if (col.key === 'tel_mob') {
-          estWidth = 90;
+          estWidth = 92;
         } else if (col.key === 'address') {
-          estWidth = Math.min(220, Math.max(120, estWidth));
+          estWidth = Math.min(200, Math.max(110, estWidth));
+        } else if (col.key === 's_simeyniy_ukr') {
+          estWidth = 75;
+        } else if (col.key === 'presviter') {
+          estWidth = Math.min(105, Math.max(65, estWidth));
+        } else if (col.key === 'vidviduvanist') {
+          estWidth = Math.min(95, Math.max(65, estWidth));
+        } else if (col.key === 'prysutnist') {
+          estWidth = Math.min(115, Math.max(70, estWidth));
+        } else if (col.key === 'status_nazva') {
+          estWidth = Math.min(90, Math.max(60, estWidth));
+        } else if (col.key === 'rayon2_ukr') {
+          estWidth = Math.min(110, Math.max(70, estWidth));
         }
 
         estimatedWidths[col.key] = estWidth;
-        totalEstimatedOthers += estWidth;
       });
 
       let maxPibLength = 10;
@@ -1077,32 +1272,74 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           }
         }
       });
-      const pibEstimatedWidth = Math.max(120, Math.floor(maxPibLength * 7) + 20);
+      const pibEstimatedWidth = Math.max(130, Math.floor(maxPibLength * 7.5) + 24);
 
-      const totalTableWidth = 1040; // 1120px - 80px (padding)
-      const indexColWidth = 45;
-      const remainingWidth = totalTableWidth - indexColWidth;
+      const indexColWidth = 38;
 
-      const sumAllEstimated = totalEstimatedOthers + (displayColumns.some(c => c.key === 'pib') ? pibEstimatedWidth : 0);
+      const compactKeys = ['vik_rokiv1', 'stat', 'd_narodjennya', 'tel_mob', 's_simeyniy_ukr', 'presviter', 'vidviduvanist', 'prysutnist', 'status_nazva', 'rayon2_ukr'];
 
-      const colWidthsPx: Record<string, number> = {};
+      let compactSum = indexColWidth;
+      let flexNaturalSum = 0;
+
       displayColumns.forEach(col => {
-        if (col.key === 'pib') {
-          colWidthsPx[col.key] = Math.floor((pibEstimatedWidth / sumAllEstimated) * remainingWidth);
+        const nat = col.key === 'pib' ? pibEstimatedWidth : (estimatedWidths[col.key] || 60);
+        if (compactKeys.includes(col.key)) {
+          compactSum += nat;
         } else {
-          const est = estimatedWidths[col.key];
-          colWidthsPx[col.key] = Math.floor((est / sumAllEstimated) * remainingWidth);
+          flexNaturalSum += nat;
         }
       });
+
+      const totalNaturalWidth = compactSum + flexNaturalSum;
+
+      // Automatically determine if Portrait or Landscape mode should be used
+      const isLandscape = totalNaturalWidth > 732 || displayColumns.length >= 7;
+      const targetWidth = isLandscape ? 1040 : 732;
+      const pageWidthPx = isLandscape ? 1120 : 792;
+      const pageHeightPx = isLandscape ? 792 : 1120;
+      const pagePadding = isLandscape ? '38px 40px' : '36px 30px';
+      const maxContentHeight = isLandscape ? 625 : 940;
+
+      container.style.width = `${pageWidthPx}px`;
+
+      // Smart adaptive column width distribution:
+      // Compact columns stay strictly bounded to their natural content length.
+      // Flexible columns absorb remaining available space on full-width table.
+      const colWidthsPx: Record<string, number> = {};
+      let actualTableWidth = targetWidth;
+
+      if (totalNaturalWidth <= 580 && displayColumns.length <= 5) {
+        displayColumns.forEach(col => {
+          colWidthsPx[col.key] = col.key === 'pib' ? pibEstimatedWidth : (estimatedWidths[col.key] || 60);
+        });
+        actualTableWidth = totalNaturalWidth;
+      } else {
+        actualTableWidth = targetWidth;
+        const availableForFlex = Math.max(100, targetWidth - compactSum);
+
+        displayColumns.forEach(col => {
+          const nat = col.key === 'pib' ? pibEstimatedWidth : (estimatedWidths[col.key] || 60);
+          if (compactKeys.includes(col.key)) {
+            colWidthsPx[col.key] = nat;
+          } else {
+            colWidthsPx[col.key] = flexNaturalSum > 0
+              ? Math.floor((nat / flexNaturalSum) * availableForFlex)
+              : nat;
+          }
+        });
+      }
+
+      // Container width for header, table, and footer elements so they align cohesively
+      const contentBlockWidth = actualTableWidth < targetWidth ? Math.max(actualTableWidth, 480) : targetWidth;
 
       const styleEl = document.createElement('style');
       styleEl.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         .pdf-page {
-          width: 1120px;
-          height: 792px;
+          width: ${pageWidthPx}px;
+          height: ${pageHeightPx}px;
           box-sizing: border-box;
-          padding: 38px 40px;
+          padding: ${pagePadding};
           position: relative;
           background-color: #ffffff;
           display: flex;
@@ -1114,8 +1351,10 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
         .header {
           border-bottom: 2px solid #334155;
-          padding-bottom: 12px;
-          margin-bottom: 12px;
+          padding-bottom: 10px;
+          margin-bottom: 10px;
+          width: ${contentBlockWidth}px;
+          box-sizing: border-box;
         }
         .title-row {
           display: flex;
@@ -1123,7 +1362,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           align-items: flex-end;
         }
         .title {
-          font-size: 20px;
+          font-size: 18px;
           font-weight: 700;
           color: #1e293b;
           margin: 0;
@@ -1144,9 +1383,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           border-radius: 4px;
           color: #334155;
           font-weight: 500;
+          width: ${contentBlockWidth}px;
+          box-sizing: border-box;
         }
         .table-container {
-          width: 1040px;
+          width: ${actualTableWidth}px;
           margin-top: 10px;
           border-top: 1px solid #cbd5e1;
           border-left: 1px solid #cbd5e1;
@@ -1162,7 +1403,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           border-bottom: 1px solid #cbd5e1;
           box-sizing: border-box;
           background-color: #ffffff;
-          width: 1040px;
+          width: ${actualTableWidth}px;
         }
         .table-row.header-row {
           background-color: #f1f5f9;
@@ -1177,10 +1418,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           letter-spacing: 0.3px;
           display: flex;
           align-items: center;
+          align-content: center;
           box-sizing: border-box;
-          min-height: 30px;
+          min-height: 32px;
           height: auto;
-          line-height: 1.1;
+          line-height: 1.15;
         }
         .header-cell:not(:last-child) {
           border-right: 1px solid #cbd5e1;
@@ -1188,14 +1430,15 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         .table-cell {
           font-size: 10px;
           color: #1e293b;
-          padding: 3px 6px;
+          padding: 4px 6px;
           display: flex;
           align-items: center;
+          align-content: center;
           justify-content: flex-start;
           align-self: stretch;
           box-sizing: border-box;
-          min-height: 26px;
-          height: 100%;
+          min-height: 28px;
+          line-height: 1.25;
           overflow: hidden;
         }
         .table-cell:not(:last-child) {
@@ -1215,6 +1458,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           justify-content: space-between;
           border-top: 1px solid #cbd5e1;
           padding-top: 8px;
+          width: ${contentBlockWidth}px;
+          box-sizing: border-box;
         }
       `;
       container.appendChild(styleEl);
@@ -1261,7 +1506,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         headerRow.className = 'table-row header-row';
         
         let headerHtml = `
-          <div class="header-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; text-align: center;">№</div>
+          <div class="header-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; align-items: center; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; width: 100%; margin: auto 0; text-align: center;">№</div>
+          </div>
         `;
         displayColumns.forEach(col => {
           const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
@@ -1273,7 +1520,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           } else if (label.includes(' ')) {
             label = label.replace(/\s+/g, '<br/>');
           }
-          headerHtml += `<div class="header-cell" style="width: ${colWidthsPx[col.key]}px; flex: 0 0 ${colWidthsPx[col.key]}px; justify-content: ${justify}; text-align: ${textAlign};">${label}</div>`;
+          headerHtml += `<div class="header-cell" style="width: ${colWidthsPx[col.key]}px; flex: 0 0 ${colWidthsPx[col.key]}px; justify-content: ${justify}; align-items: center; text-align: ${textAlign};"><div style="display: flex; align-items: center; justify-content: ${justify}; width: 100%; margin: auto 0; text-align: ${textAlign};">${label}</div></div>`;
         });
         
         headerRow.innerHTML = headerHtml;
@@ -1309,8 +1556,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         tr.style.backgroundColor = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
 
         let cellsHtml = `
-          <div class="table-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; text-align: center; color: #64748b; font-weight: 500;">
-            ${idx + 1}
+          <div class="table-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; align-items: center; text-align: center; color: #64748b; font-weight: 500;">
+            <div style="display: flex; align-items: center; justify-content: center; width: 100%; margin: auto 0; text-align: center;">${idx + 1}</div>
           </div>
         `;
 
@@ -1338,29 +1585,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (parts.length > 1) {
               const lastName = parts[0];
               const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  align-items: flex-start;
-                  justify-content: center;
-                  height: 100%;
-                  line-height: 1.25;
-                ">
-                  <span style="font-weight: 700; color: #0f172a; display: block;">${lastName}</span>
-                  <span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span>
-                </div>`;
+              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.2;"><span style="font-weight: 700; color: #0f172a; display: block; margin: 0; padding: 0;">${lastName}</span><span style="font-size: 9.5px; color: #475569; font-weight: 500; display: block; margin: 0; padding: 0;">${givenAndPatronymic}</span></div>`;
             } else {
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  height: 100%;
-                  font-weight: 700;
-                  color: #0f172a;
-                  line-height: 1.25;
-                ">${cellVal}</div>`;
+              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; font-weight: 700; color: #0f172a; line-height: 1.2;">${cellVal}</div>`;
             }
           }
           else if (col.key === 'address' && cellVal && cellVal !== '—') {
@@ -1370,118 +1597,34 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             if (commaIdx !== -1 && !startsWithStreet) {
               const part1 = cleaned.substring(0, commaIdx).trim();
               const part2 = cleaned.substring(commaIdx + 1).trim();
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  height: 100%;
-                  text-align: left;
-                  line-height: 1.25;
-                ">
-                  <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span>
-                  <span style="font-weight: 400; color: #1e293b; display: block;">${part2}</span>
-                </div>`;
+              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.2;"><span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 1px;">${part1}</span><span style="font-weight: 400; color: #1e293b; display: block;">${part2}</span></div>`;
             } else {
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  height: 100%;
-                  text-align: left;
-                  font-weight: 400;
-                  color: #1e293b;
-                  line-height: 1.25;
-                ">${cleaned}</div>`;
+              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; font-weight: 400; color: #1e293b; line-height: 1.2;">${cleaned}</div>`;
             }
           }
           else {
-            if (col.key === 'presviter' && cellVal && cellVal !== '—') {
+            if (withBadges && col.key === 'presviter' && cellVal && cellVal !== '—') {
               const style = getCellStyling('presviter', String(cellVal));
               if (style) {
-                cellVal = `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 2.5px 7px;
-                    border-radius: 9999px;
-                    font-size: 8.5px;
-                    font-weight: 700;
-                    border: 1px solid ${style.border};
-                    background-color: ${style.bg};
-                    color: ${style.text};
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 1.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${cellVal}
-                  </span>`;
+                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${cellVal}</span>`;
               }
             }
-            else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
+            else if (withBadges && col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('vidviduvanist', String(cellVal));
               if (style) {
-                cellVal = `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 2.5px 7px;
-                    border-radius: 9999px;
-                    font-size: 8.5px;
-                    font-weight: 700;
-                    border: 1px solid ${style.border};
-                    background-color: ${style.bg};
-                    color: ${style.text};
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 1.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${cellVal}
-                  </span>`;
+                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${cellVal}</span>`;
               }
             }
-            else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
+            else if (withBadges && col.key === 'prysutnist' && cellVal && cellVal !== '—') {
               const style = getCellStyling('prysutnist', String(cellVal));
               if (style) {
-                cellVal = `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 2.5px 7px;
-                    border-radius: 9999px;
-                    font-size: 8.5px;
-                    font-weight: 700;
-                    border: 1px solid ${style.border};
-                    background-color: ${style.bg};
-                    color: ${style.text};
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 1.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${cellVal}
-                  </span>`;
+                cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${cellVal}</span>`;
               }
             }
             else if (col.key === 'tel_mob' && cellVal && cellVal !== '—') {
               const strVal = String(cellVal).trim();
               if (strVal.includes(' / ')) {
-                cellVal = `
-                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.25;">
-                    ${strVal.split(/\s*\/\s*/).map(p => `<span style="white-space: nowrap;">${p}</span>`).join('')}
-                  </div>`;
+                cellVal = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.2;">${strVal.split(/\s*\/\s*/).map(p => `<span style="white-space: nowrap;">${p}</span>`).join('')}</div>`;
               } else {
                 cellVal = `<span style="white-space: nowrap;">${strVal}</span>`;
               }
@@ -1490,74 +1633,29 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               const strVal = String(cellVal).trim();
               const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
               
-              const badgeHtmls = names.map(name => {
-                const style = getCellStyling('s_slujinnya_spysok', name);
-                const paddingStyle = "padding: 1.5px 5px;";
-                const fontSizeStyle = "font-size: 8px;";
-                if (style) {
-                  return `
-                    <span style="
-                      display: inline-flex;
-                      align-items: center;
-                      justify-content: center;
-                      ${paddingStyle}
-                      border-radius: 9999px;
-                      ${fontSizeStyle}
-                      font-weight: 700;
-                      border: 1px solid ${style.border};
-                      background-color: ${style.bg};
-                      color: ${style.text};
-                      white-space: nowrap;
-                      line-height: 1;
-                      text-align: center;
-                      vertical-align: middle;
-                      margin: 0.5px;
-                      box-sizing: border-box;
-                    ">
-                      ${name}
-                    </span>`;
+              if (withBadges) {
+                const badgeHtmls = names.map(name => {
+                  const style = getCellStyling('s_slujinnya_spysok', name);
+                  const fontSizeStyle = "font-size: 8px;";
+                  if (style) {
+                    return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 6px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${name}</span>`;
+                  }
+                  return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 6px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${name}</span>`;
+                });
+
+                const badgeRows: string[] = [];
+                for (let i = 0; i < badgeHtmls.length; i += 2) {
+                  const pair = badgeHtmls.slice(i, i + 2).join('');
+                  badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 3px;">${pair}</div>`);
                 }
-                return `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    ${paddingStyle}
-                    border-radius: 9999px;
-                    ${fontSizeStyle}
-                    font-weight: 700;
-                    border: 1px solid #cbd5e1;
-                    background-color: #f1f5f9;
-                    color: #475569;
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 0.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${name}
-                  </span>`;
-              });
 
-              const badgeRows: string[] = [];
-              for (let i = 0; i < badgeHtmls.length; i += 2) {
-                const pair = badgeHtmls.slice(i, i + 2).join('');
-                badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 2px;">${pair}</div>`);
+                cellVal = `<div style="line-height: 1.2; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 2px; height: 100%;">${badgeRows.join('')}</div>`;
+              } else {
+                cellVal = `<div style="line-height: 1.2; text-align: left; font-size: 9.5px; color: #1e293b;">${names.join(', ')}</div>`;
               }
-
-              cellVal = `
-                <div style="
-                  line-height: 1.2;
-                  text-align: left;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  gap: 2px;
-                  height: 100%;
-                ">
-                  ${badgeRows.join('')}
-                </div>`;
+            }
+            else if (!withBadges && ['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal && cellVal !== '—') {
+              cellVal = `<span style="font-size: 9.5px; font-weight: 500; color: #1e293b;">${cellVal}</span>`;
             }
           }
 
@@ -1569,7 +1667,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               align-items: center;
               text-align: ${textAlign};
             ">
-              ${cellVal}
+              <div style="display: flex; align-items: center; justify-content: ${justify}; width: 100%; margin: auto 0; text-align: ${textAlign};">
+                ${cellVal}
+              </div>
             </div>
           `;
         }).join('');
@@ -1579,7 +1679,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
         const currentHeight = current.contentWrapper.offsetHeight;
         const rowCount = current.tbody.children.length;
-        if (currentHeight > 625 && rowCount > 1) {
+        if (currentHeight > maxContentHeight && rowCount > 1) {
           current.tbody.removeChild(tr);
           current = createPageElement("PAGE_NUM");
           pages.push(current);
@@ -1609,7 +1709,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       await new Promise(resolve => setTimeout(resolve, 150));
 
       const pdf = new jsPDF({
-        orientation: 'landscape',
+        orientation: isLandscape ? 'landscape' : 'portrait',
         unit: 'mm',
         format: 'a4'
       });
@@ -1628,18 +1728,175 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         if (i > 0) {
           pdf.addPage();
         }
-        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
+        if (isLandscape) {
+          pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
+        } else {
+          pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+        }
       }
 
-      document.body.removeChild(container);
-
-      const todayString = new Date().toISOString().slice(0, 10);
-      pdf.save(`Zvit_Chleniv_Tserkvy_${todayString}.pdf`);
+      return pdf;
     } catch (err) {
       console.error("Error generating PDF:", err);
-      alert("Виникла помилка під час формування PDF-файлу. Спробуйте ще раз.");
+      return null;
+    } finally {
+      if (container && document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    }
+  };
+
+  const handlePrint = async (withBadgesOverride?: boolean) => {
+    setPdfGenerating(true);
+    try {
+      const pdf = await buildPdfDoc(withBadgesOverride);
+      if (pdf) {
+        const todayString = new Date().toISOString().slice(0, 10);
+        pdf.save(`Zvit_Chleniv_Tserkvy_${todayString}.pdf`);
+      } else {
+        alert("Виникла помилка під час формування PDF-файлу. Спробуйте ще раз.");
+      }
+    } catch (err) {
+      console.error("Print PDF error:", err);
+      alert("Помилка друку PDF.");
     } finally {
       setPdfGenerating(false);
+    }
+  };
+
+  const generateTextList = useCallback(() => {
+    const activeFiltersText: string[] = [];
+    if (selectedStatus && selectedStatus !== 'Всі') activeFiltersText.push(`Статус: ${selectedStatus}`);
+    if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
+    if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
+    if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
+    if (selectedSimeyniy) activeFiltersText.push(`Сім. стан: ${selectedSimeyniy}`);
+    if (selectedSocialniy) activeFiltersText.push(`Соц. стан: ${selectedSocialniy}`);
+    if (selectedProfesiya) activeFiltersText.push(`Професія: ${selectedProfesiya}`);
+    if (selectedOsvita) activeFiltersText.push(`Освіта: ${selectedOsvita}`);
+    if (selectedDilyntsya) activeFiltersText.push(`Дільниця: ${selectedDilyntsya}`);
+    if (selectedAgeMin || selectedAgeMax) activeFiltersText.push(`Вік: ${selectedAgeMin || 0}-${selectedAgeMax || '∞'} р.`);
+
+    const filterHeader = activeFiltersText.length > 0 ? `\n📌 <b>Фільтри:</b> ${activeFiltersText.join(' | ')}` : '';
+
+    const lines = [
+      `📋 <b>Сформований список осіб (${filteredRecords.length})</b>`,
+      `<i>Дата: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</i>${filterHeader}\n`
+    ];
+    filteredRecords.slice(0, 100).forEach((m, idx) => {
+      let line = `${idx + 1}. <b>${m.pib}</b>`;
+      if (m.tel_mob) line += ` • 📞 ${m.tel_mob}`;
+      if (m.rayon2_ukr) line += ` • 📍 ${m.rayon2_ukr}`;
+      lines.push(line);
+    });
+    if (filteredRecords.length > 100) {
+      lines.push(`\n<i>...і ще ${filteredRecords.length - 100} осіб у вибірці</i>`);
+    }
+    return lines.join('\n');
+  }, [
+    filteredRecords, 
+    selectedStatus, 
+    selectedRayon, 
+    selectedPresviter, 
+    selectedSlujinnya, 
+    selectedSimeyniy, 
+    selectedSocialniy, 
+    selectedProfesiya, 
+    selectedOsvita, 
+    selectedDilyntsya, 
+    selectedAgeMin, 
+    selectedAgeMax
+  ]);
+
+  const handleMaterialTypeChange = (type: 'pdf' | 'text' | 'list') => {
+    setTgMaterialType(type);
+    if (type === 'list') {
+      setTgCustomText(generateTextList());
+    } else if (type === 'pdf') {
+      if (!tgCustomText) {
+        setTgCustomText(`📄 Сформований звіт з конструктора списків від ${new Date().toLocaleDateString('uk-UA')} (${filteredRecords.length} осіб)`);
+      }
+    }
+  };
+
+  const handleToggleContact = (telegramId: string) => {
+    setTgSelectedContacts(prev => 
+      prev.includes(telegramId) ? prev.filter(id => id !== telegramId) : [...prev, telegramId]
+    );
+  };
+
+  const handleSelectAllContacts = () => {
+    const allIds = knownContactsList.map(c => c.telegramId);
+    setTgSelectedContacts(allIds);
+  };
+
+  const handleClearContacts = () => {
+    setTgSelectedContacts([]);
+  };
+
+  const handleSendTelegramBroadcast = async () => {
+    const manualIds = tgRecipientId.split(/[,;\s\n]+/).map(s => s.trim()).filter(Boolean);
+    const allRecipients = Array.from(new Set([...tgSelectedContacts, ...manualIds]));
+
+    if (allRecipients.length === 0) {
+      setTgStatus({ message: "Оберіть або введіть хоча б один Chat ID отримувача.", isError: true });
+      return;
+    }
+
+    setTgSending(true);
+    setTgStatus(null);
+    try {
+      let pdfBase64 = undefined;
+      let filename = undefined;
+
+      if (tgMaterialType === 'pdf') {
+        const pdf = await buildPdfDoc(printColors);
+        if (!pdf) {
+          setTgStatus({ message: "Не вдалося сформувати PDF-документ.", isError: true });
+          return;
+        }
+        const arrayBuffer = pdf.output('arraybuffer');
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        pdfBase64 = window.btoa(binary);
+        const todayString = new Date().toISOString().slice(0, 10);
+        filename = `Zvit_Chleniv_Tserkvy_${todayString}.pdf`;
+      }
+
+      const res = await fetch('/api/telegram/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipients: allRecipients,
+          materialType: tgMaterialType,
+          text: tgCustomText || (tgMaterialType === 'list' ? generateTextList() : undefined),
+          pdfBase64,
+          filename
+        })
+      });
+
+      let data: any = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const rawText = await res.text();
+        throw new Error(`Сервер повернув помилку (${res.status}): ${rawText.slice(0, 100)}`);
+      }
+
+      if (res.ok && data.success) {
+        setTgStatus({ message: data.message || `Успішно надіслано розсилку ${allRecipients.length} отримувачам!`, isError: false });
+      } else {
+        setTgStatus({ message: data.message || "Помилка розсилки в Telegram.", isError: true });
+      }
+    } catch (err: any) {
+      setTgStatus({ message: err.message || "Помилка сервера під час відправки.", isError: true });
+    } finally {
+      setTgSending(false);
     }
   };
 
@@ -1679,22 +1936,52 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <Download className="h-4 w-4" />
             <span>В HTML</span>
           </button>
+          <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-[#1a3843] border border-[#2d5d70] rounded-lg shadow-sm cursor-pointer select-none hover:bg-[#224b5a] transition-all">
+            <input 
+              type="checkbox" 
+              checked={printColors} 
+              onChange={e => setPrintColors(e.target.checked)}
+              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+            />
+            <span>Плашки у PDF</span>
+          </label>
           <button 
             type="button" 
-            onClick={handlePrint}
+            onClick={() => handlePrint()}
             disabled={filteredRecords.length === 0 || pdfGenerating}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
               filteredRecords.length > 0 && !pdfGenerating
                 ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
                 : "bg-slate-700 cursor-not-allowed opacity-50"
             }`}
+            title={printColors ? "Друк PDF-звіту з кольоровими плашками" : "Друк PDF-звіту простим текстом без плашок"}
           >
             {pdfGenerating ? (
               <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
             ) : (
               <Printer className="h-4 w-4" />
             )}
-            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : "ДРУК (PDF)"}</span>
+            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : printColors ? "ДРУК (PDF)" : "ДРУК (БЕЗ ПЛАШОК)"}</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={() => { 
+              setIsTgModalOpen(true); 
+              setTgStatus(null); 
+              if (tgMaterialType === 'list' && !tgCustomText) {
+                setTgCustomText(generateTextList());
+              }
+            }}
+            disabled={pdfGenerating || tgSending}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              !pdfGenerating && !tgSending
+                ? "bg-teal-600 hover:bg-teal-500 cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Відкрити розсилку матеріалів (звіт PDF, текстовий список або повідомлення) в Telegram"
+          >
+            <Send className="h-4 w-4" />
+            <span>РОЗСИЛКА В TELEGRAM</span>
           </button>
         </div>
       </div>
@@ -1814,7 +2101,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 </div>
               </div>
 
-              {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || internalSearch) && (
+              {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || selectedSimeyniy || selectedSocialniy || selectedProfesiya || selectedOsvita || selectedDilyntsya || selectedAgeMin || selectedAgeMax || internalSearch) && (
                 <div className="mt-3 pt-2.5 border-t border-[#1f424f]/60 flex flex-wrap items-center gap-1.5">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Активні:</span>
                   {selectedStatus && selectedStatus !== 'Всі' && (
@@ -1871,6 +2158,78 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       <button 
                         type="button" 
                         onClick={() => setSelectedSlujinnya("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedSimeyniy && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Сім. стан: {selectedSimeyniy}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedSimeyniy("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedSocialniy && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Соц. стан: {selectedSocialniy}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedSocialniy("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedProfesiya && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Професія: {selectedProfesiya}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedProfesiya("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedOsvita && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Освіта: {selectedOsvita}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedOsvita("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedDilyntsya && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Дільниця: {selectedDilyntsya}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedDilyntsya("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {(selectedAgeMin || selectedAgeMax) && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Вік: {selectedAgeMin || 0}-{selectedAgeMax || '∞'} р.</span>
+                      <button 
+                        type="button" 
+                        onClick={() => { setSelectedAgeMin(""); setSelectedAgeMax(""); }}
                         className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
                       >
                         ×
@@ -1937,15 +2296,125 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   className="group flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-teal-300 transition-colors cursor-pointer outline-none"
                 >
                   <Plus className={`h-3 w-3 transition-transform ${showExtraFilters ? "rotate-45 text-teal-400" : "text-slate-400"}`} />
-                  <span>{showExtraFilters ? "Сховати фільтри" : "Показати більше фільтрів..."}</span>
+                  <span>{showExtraFilters ? "Сховати фільтри" : "Показати більше фільтрів (Вік, Сім. стан, Соц. стан, Професія, Освіта, Дільниця)..."}</span>
                 </button>
-                <span className="text-[10px] font-mono text-slate-405">
-                  Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong>
-                </span>
+                <div className="flex items-center gap-2">
+                  {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || selectedSimeyniy || selectedSocialniy || selectedProfesiya || selectedOsvita || selectedDilyntsya || selectedAgeMin || selectedAgeMax || internalSearch) && (
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                    >
+                      Скинути все
+                    </button>
+                  )}
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong>
+                  </span>
+                </div>
               </div>
 
               {showExtraFilters && (
                 <div className="flex flex-wrap gap-2 pt-3 mt-2 border-t border-[#1f424f]/60 animate-fade-in items-end">
+                  {/* Вік від - до */}
+                  <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Вік (років)</label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        placeholder="Від"
+                        value={selectedAgeMin}
+                        onChange={e => setSelectedAgeMin(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold placeholder-slate-500"
+                      />
+                      <span className="text-slate-500 text-[10px]">-</span>
+                      <input
+                        type="number"
+                        placeholder="До"
+                        value={selectedAgeMax}
+                        onChange={e => setSelectedAgeMax(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold placeholder-slate-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Сімейний стан */}
+                  <div className="flex flex-col space-y-0.5 w-[130px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Сімейний стан</label>
+                    <select 
+                      value={selectedSimeyniy} 
+                      onChange={e => setSelectedSimeyniy(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueSimeyniy.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Соціальний стан */}
+                  <div className="flex flex-col space-y-0.5 w-[130px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Соціальний стан</label>
+                    <select 
+                      value={selectedSocialniy} 
+                      onChange={e => setSelectedSocialniy(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueSocialniy.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Професія */}
+                  <div className="flex flex-col space-y-0.5 w-[130px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Професія</label>
+                    <select 
+                      value={selectedProfesiya} 
+                      onChange={e => setSelectedProfesiya(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueProfesiya.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Освіта */}
+                  <div className="flex flex-col space-y-0.5 w-[120px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Освіта</label>
+                    <select 
+                      value={selectedOsvita} 
+                      onChange={e => setSelectedOsvita(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueOsvita.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Дільниця */}
+                  {uniqueDilyntsya.length > 0 && (
+                    <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
+                      <label className="text-[9px] font-bold text-slate-400">Дільниця</label>
+                      <select 
+                        value={selectedDilyntsya} 
+                        onChange={e => setSelectedDilyntsya(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                      >
+                        <option value="">- Всі -</option>
+                        {uniqueDilyntsya.map(v => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
                     <label className="text-[9px] font-bold text-slate-400">Відвідування</label>
                     <select 
@@ -2148,6 +2617,269 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           )}
         </div>
       </div>
+
+      {/* Modal for Telegram Broadcast / Mailing */}
+      {isTgModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#11252d] border border-[#1f424f] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="bg-[#16303a] border-b border-[#1f424f] px-5 py-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-teal-500/10 border border-teal-500/20 rounded-xl text-teal-400">
+                  <Send className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white tracking-tight">Розсилка матеріалу в Telegram</h3>
+                  <p className="text-[11px] text-slate-400">Надішліть PDF-звіт, список осіб або текстове повідомлення кільком отримувачам</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTgModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#1a3843] transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Material Type Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                  <span>📦 1. Тип матеріалу для розсилки:</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleMaterialTypeChange('pdf')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      tgMaterialType === 'pdf'
+                        ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-sm'
+                        : 'bg-[#16303a] border-[#275060] text-slate-300 hover:bg-[#1c3c49]'
+                    }`}
+                  >
+                    <span className="text-sm mb-1">📄</span>
+                    <span>Файл звіту (PDF)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMaterialTypeChange('list')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      tgMaterialType === 'list'
+                        ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-sm'
+                        : 'bg-[#16303a] border-[#275060] text-slate-300 hover:bg-[#1c3c49]'
+                    }`}
+                  >
+                    <span className="text-sm mb-1">📋</span>
+                    <span>Список осіб (Текст)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMaterialTypeChange('text')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      tgMaterialType === 'text'
+                        ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-sm'
+                        : 'bg-[#16303a] border-[#275060] text-slate-300 hover:bg-[#1c3c49]'
+                    }`}
+                  >
+                    <span className="text-sm mb-1">💬</span>
+                    <span>Повідомлення</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Recipients Multi-Selection */}
+              <div className="space-y-2 border-t border-[#1f424f] pt-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                    <span>👥 2. Отримувачі розсилки (Telegram Chat ID):</span>
+                  </label>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllContacts}
+                      className="text-teal-400 hover:text-teal-300 underline font-semibold cursor-pointer"
+                    >
+                      Вибрати всіх
+                    </button>
+                    <span className="text-slate-600">•</span>
+                    <button
+                      type="button"
+                      onClick={handleClearContacts}
+                      className="text-slate-400 hover:text-slate-300 underline cursor-pointer"
+                    >
+                      Скинути
+                    </button>
+                  </div>
+                </div>
+
+                {/* Known Contacts Checklist */}
+                {knownContactsList.length > 0 && (
+                  <div className="bg-[#16303a]/80 border border-[#275060] rounded-xl p-2.5 max-h-36 overflow-y-auto space-y-1.5 custom-scrollbar">
+                    {knownContactsList.map((contact, idx) => {
+                      const isChecked = tgSelectedContacts.includes(contact.telegramId);
+                      return (
+                        <label
+                          key={idx}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                            isChecked
+                              ? 'bg-teal-500/15 border-teal-500/40 text-white'
+                              : 'bg-[#11252d]/60 border-transparent text-slate-300 hover:bg-[#11252d]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleContact(contact.telegramId)}
+                              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+                            />
+                            <span className="font-semibold">{contact.user}</span>
+                            {contact.position && (
+                              <span className="text-[10px] text-slate-400">({contact.position})</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-teal-400/90 bg-teal-950/40 px-1.5 py-0.5 rounded border border-teal-800/40">
+                            ID: {contact.telegramId}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Additional Manual Chat IDs Input */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Додаткові Chat ID (через кому або пробіл):
+                  </label>
+                  <input
+                    type="text"
+                    value={tgRecipientId}
+                    onChange={(e) => handleTgRecipientChange(e.target.value)}
+                    placeholder="Наприклад: 240931069, 969538290, 435624187"
+                    className="w-full bg-[#16303a] border border-[#275060] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
+                  />
+                </div>
+
+                {/* Selected Recipients Counter */}
+                {(() => {
+                  const manualIds = tgRecipientId.split(/[,;\s\n]+/).map(s => s.trim()).filter(Boolean);
+                  const totalCount = Array.from(new Set([...tgSelectedContacts, ...manualIds])).length;
+                  return (
+                    <div className="flex items-center justify-between text-[11px] bg-[#142d36] px-3 py-1.5 rounded-lg border border-[#1f424f]">
+                      <span className="text-slate-300">Унікальних отримувачів для розсилки:</span>
+                      <strong className={`font-bold ${totalCount > 0 ? 'text-teal-400' : 'text-amber-400'}`}>
+                        {totalCount} чат(ів)
+                      </strong>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Text / Caption Content Area */}
+              <div className="space-y-1.5 border-t border-[#1f424f] pt-3">
+                <div className="flex items-center justify-between text-xs font-bold text-teal-400">
+                  <span>✏️ 3. {tgMaterialType === 'pdf' ? 'Супровідний текст (коментар до PDF):' : 'Текст розсилки:'}</span>
+                  {tgMaterialType === 'list' && (
+                    <button
+                      type="button"
+                      onClick={() => setTgCustomText(generateTextList())}
+                      className="text-[10px] text-teal-400 hover:text-teal-300 underline font-normal cursor-pointer"
+                    >
+                      Оновити список з вибірки
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  rows={4}
+                  value={tgCustomText}
+                  onChange={(e) => setTgCustomText(e.target.value)}
+                  placeholder={
+                    tgMaterialType === 'pdf'
+                      ? "Введіть коментар до PDF-файлу..."
+                      : tgMaterialType === 'list'
+                      ? "Сформований текстовий список осіб..."
+                      : "Введіть текст вашого повідомлення для розсилки..."
+                  }
+                  className="w-full bg-[#16303a] border border-[#275060] rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 custom-scrollbar font-mono leading-relaxed"
+                />
+              </div>
+
+              {/* PDF Settings if PDF chosen */}
+              {tgMaterialType === 'pdf' && (
+                <div className="bg-[#16303a]/60 border border-[#1f424f] rounded-lg p-2.5 text-xs text-slate-300 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400">Формат плашок:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-teal-300 select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={printColors} 
+                        onChange={(e) => setPrintColors(e.target.checked)}
+                        className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+                      />
+                      <span>{printColors ? "З кольоровими плашками" : "Простий текст"}</span>
+                    </label>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Записів у звіті: <strong className="text-teal-400">{filteredRecords.length}</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Status notice */}
+              {tgStatus && (
+                <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                  tgStatus.isError 
+                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' 
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                }`}>
+                  {tgStatus.isError ? (
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+                  )}
+                  <div className="flex-1 font-medium">{tgStatus.message}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-[#16303a] border-t border-[#1f424f] px-5 py-3 flex items-center justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsTgModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg transition-colors cursor-pointer"
+              >
+                Скасувати
+              </button>
+              <button
+                type="button"
+                onClick={handleSendTelegramBroadcast}
+                disabled={tgSending || (tgMaterialType === 'pdf' && filteredRecords.length === 0)}
+                className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-lg shadow-md transition-all ${
+                  tgSending || (tgMaterialType === 'pdf' && filteredRecords.length === 0)
+                    ? 'bg-slate-700 opacity-50 cursor-not-allowed'
+                    : 'bg-teal-600 hover:bg-teal-500 cursor-pointer'
+                }`}
+              >
+                {tgSending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>НАДСИЛАННЯ РОЗСИЛКИ...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    <span>НАДІСЛАТИ РОЗСИЛКУ В TELEGRAM</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

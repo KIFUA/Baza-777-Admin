@@ -2561,6 +2561,86 @@ app.post("/api/telegram/send-pdf", async (req, res) => {
   }
 });
 
+// Endpoint for sending custom generated reports directly to Telegram
+app.post("/api/telegram/send", async (req, res) => {
+  try {
+    const { message, pdfBase64, filename, chatId } = req.body;
+    const targetChatId = chatId ? String(chatId).trim() : "1919236304";
+
+    const settings = getSettings();
+    const token = getActiveTelegramToken(settings);
+    if (!token) {
+      return res.status(400).json({ success: false, error: "Токен Telegram-бота не налаштовано в розділі 'Налаштування'." });
+    }
+
+    if (pdfBase64) {
+      let cleanBase64 = String(pdfBase64 || "");
+      const base64Idx = cleanBase64.indexOf('base64,');
+      if (base64Idx !== -1) {
+        cleanBase64 = cleanBase64.substring(base64Idx + 7);
+      } else if (cleanBase64.includes(',')) {
+        cleanBase64 = cleanBase64.split(',')[1];
+      }
+      cleanBase64 = cleanBase64.trim().replace(/[\r\n\s]+/g, '');
+      const pdfBuffer = Buffer.from(cleanBase64, 'base64');
+
+      const formData = new FormData();
+      formData.append('chat_id', targetChatId);
+      formData.append('document', pdfBuffer, {
+        filename: filename || `Zvit_${new Date().toISOString().slice(0, 10)}.pdf`,
+        contentType: 'application/pdf'
+      });
+      if (message) {
+        formData.append('caption', message);
+      }
+
+      const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+        headers: formData.getHeaders(),
+        timeout: 20000
+      });
+
+      if (response.data?.ok) {
+        return res.json({ success: true, message: "PDF звіт успішно надіслано в Telegram!" });
+      } else {
+        return res.status(400).json({ success: false, error: response.data?.description || "Помилка Telegram API" });
+      }
+    } else {
+      const msgContent = message || "Повідомлення з бази даних";
+      const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: targetChatId,
+          text: msgContent,
+          parse_mode: "HTML"
+        })
+      });
+      const rJson = await response.json() as any;
+      if (rJson.ok) {
+        return res.json({ success: true, message: "Повідомлення успішно надіслано в Telegram!" });
+      } else {
+        const retryRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: targetChatId,
+            text: msgContent
+          })
+        });
+        const retryJson = await retryRes.json() as any;
+        if (retryJson.ok) {
+          return res.json({ success: true, message: "Повідомлення успішно надіслано в Telegram!" });
+        } else {
+          return res.status(400).json({ success: false, error: retryJson.description || rJson.description || "Unknown error" });
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error("[/api/telegram/send Error]", err);
+    return res.status(500).json({ success: false, error: err.message || "Помилка сервера" });
+  }
+});
+
 // Endpoint for Telegram broadcast/mailing of text, lists or PDF documents to multiple recipients
 app.post("/api/telegram/broadcast", async (req, res) => {
   try {

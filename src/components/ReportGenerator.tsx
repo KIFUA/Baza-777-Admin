@@ -1549,14 +1549,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           }
 
           if (col.key === 'pib' && cellVal && cellVal !== '—') {
-            const parts = String(cellVal).trim().split(/\s+/);
-            if (parts.length > 1) {
-              const lastName = parts[0];
-              const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.2;"><span style="font-weight: 700; color: #0f172a; display: block; margin: 0; padding: 0;">${lastName}</span><span style="font-size: 9.5px; color: #475569; font-weight: 500; display: block; margin: 0; padding: 0;">${givenAndPatronymic}</span></div>`;
-            } else {
-              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; font-weight: 700; color: #0f172a; line-height: 1.2;">${cellVal}</div>`;
-            }
+            cellVal = `<span style="white-space: nowrap; font-weight: 700; color: #0f172a;">${String(cellVal).trim()}</span>`;
           }
           else if (col.key === 'address' && cellVal && cellVal !== '—') {
             const cleaned = cleanAddress(cellVal);

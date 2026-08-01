@@ -201,6 +201,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const [selectedAgeMin, setSelectedAgeMin] = useState<string>("");
   const [selectedAgeMax, setSelectedAgeMax] = useState<string>("");
   const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
+  const [showResultsTable, setShowResultsTable] = useState<boolean>(false);
   const [internalSearch, setInternalSearch] = useState<string>("");
   const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
   const [printColors, setPrintColors] = useState<boolean>(true);
@@ -669,16 +670,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
     const todayString = new Date().toLocaleDateString('uk-UA') + " " + new Date().toLocaleTimeString('uk-UA');
 
-    let tableHeadersHtml = `<th style="width: 1%; white-space: nowrap; text-align: center;">№</th>`;
+    let tableHeadersHtml = `<th style="width: 40px; text-align: center;">№</th>`;
     displayColumns.forEach(col => {
       let label = col.label;
-      if (col.key === 'd_narodjennya') {
-        label = 'ДАТА<br/>НАРОДЖ.';
-      } else if (label.includes(' ')) {
-        label = label.replace(/\s+/g, '<br/>');
-      }
-      const textAlign = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key) ? 'center' : 'left';
-      tableHeadersHtml += `<th style="text-align: ${textAlign}; width: 1%; white-space: nowrap;">${label}</th>`;
+      if (col.key === 'd_narodjennya') label = 'ДАТА<br/>НАРОДЖ.';
+      else if (label.includes(' ')) label = label.replace(/\s+/g, '<br/>');
+      tableHeadersHtml += `<th style="text-align: ${['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key) ? 'center' : 'left'};">${label}</th>`;
     });
 
     let tableRowsHtml = "";
@@ -707,7 +704,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         if (col.key === 'pib' && cellVal !== '—') {
           // Ensure it's just the name in one line
           const sanitizedVal = String(cellVal).trim().replace(/\n/g, ' ').replace(/<br\s*\/?>/gi, ' ');
-          cellVal = `<span>${sanitizedVal}</span>`;
+          cellVal = `<span style="font-weight: 700; color: #0f172a; white-space: nowrap;">${sanitizedVal}</span>`;
         }
         else if (col.key === 'address' && cellVal !== '—') {
           const cleaned = cleanAddress(String(cellVal));
@@ -796,17 +793,13 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
         const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
         const textAlign = isCenterVal ? 'center' : 'left';
-        if (col.key === 'pib' || col.key === 'address' || col.key === 'tel_mob') {
-          cellsHtml += `<td style="text-align: ${textAlign};">${cellVal}</td>`;
-        } else {
-          cellsHtml += `<td style="text-align: ${textAlign}; white-space: nowrap;">${cellVal}</td>`;
-        }
+        cellsHtml += `<td style="text-align: ${textAlign}; vertical-align: middle; padding: 12px 6px; ${col.key !== 'pib' && col.key !== 'address' && col.key !== 'tel_mob' ? 'white-space: nowrap;' : ''}">${cellVal}</td>`;
       });
 
       const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
       tableRowsHtml += `
         <tr style="background-color: ${rowBg};">
-          <td style="text-align: center; color: #64748b; font-weight: 500; white-space: nowrap;">${idx + 1}</td>
+          <td style="text-align: center; vertical-align: middle; padding: 12px 6px; color: #64748b; font-weight: 500; white-space: nowrap;">${idx + 1}</td>
           ${cellsHtml}
         </tr>
       `;
@@ -905,24 +898,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             color: #334155;
             font-weight: 500;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            margin-top: 10px;
-        }
-        th {
-            background-color: #e2e8f0;
-            color: #0f172a;
-            font-weight: 700;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            border: 1px solid #94a3b8;
-            padding: 3.5px 5px;
-            vertical-align: middle;
-            line-height: 1.25;
-        }
         td {
             border: 1px solid #cbd5e1;
             padding: 3.5px 5px;
@@ -1019,12 +994,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             .no-print-btn-container {
                 display: none;
             }
-            tr {
+            .row {
                 page-break-inside: avoid;
                 break-inside: avoid;
-            }
-            thead {
-                display: table-header-group;
             }
         }
     </style>
@@ -2480,104 +2452,114 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider">
               Перегляд результатів відбору ({filteredRecords.length} записів)
             </h3>
+            <button
+              type="button"
+              onClick={() => setShowResultsTable(!showResultsTable)}
+              className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold text-teal-300 bg-[#16303a] hover:bg-[#1a3843] border border-[#1f424f] hover:border-teal-500/50 rounded-lg transition-all cursor-pointer shadow-xs"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showResultsTable ? "rotate-180 text-teal-400" : "text-slate-400"}`} />
+              <span>{showResultsTable ? "Згорнути таблицю" : "Розгорнути таблицю"}</span>
+            </button>
           </div>
 
-          {filteredRecords.length === 0 ? (
-            <div className="text-center text-slate-450 py-12 bg-[#11252d] rounded-xl border border-[#1f424f] text-xs font-semibold">
-              Жодного запису не знайдено за вказаними критеріями відбору
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-[#1f424f] bg-[#11252d]">
-              <table className="w-full border-collapse text-left text-xs text-slate-300">
-                <thead>
-                  <tr className="bg-[#16303a] border-b border-[#1f424f]">
-                    <th className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">#</th>
-                    {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
-                      const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
-                      return (
-                        <th key={col.key} className={`py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200 ${isCenter ? 'text-center' : 'text-left'}`}>{col.label}</th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.slice(0, 100).map((m, index) => (
-                    <tr key={m.id} className="border-b border-[#1f424f]/65 hover:bg-[#16323c]/45 transition-colors">
-                      <td className="py-2 px-4 border-r border-[#1f424f]/40 font-semibold text-slate-400">{index + 1}</td>
+          {showResultsTable && (
+            filteredRecords.length === 0 ? (
+              <div className="text-center text-slate-450 py-12 bg-[#11252d] rounded-xl border border-[#1f424f] text-xs font-semibold">
+                Жодного запису не знайдено за вказаними критеріями відбору
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-[#1f424f] bg-[#11252d]">
+                <table className="w-full border-collapse text-left text-xs text-slate-300">
+                  <thead>
+                    <tr className="bg-[#16303a] border-b border-[#1f424f]">
+                      <th className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">#</th>
                       {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
-                        let val = m[col.key as keyof Member];
-                        if (col.key === 'd_narodjennya' && val) {
-                          try {
-                            const p = String(val).split('-');
-                            if (p.length === 3) val = `${p[2]}.${p[1]}.${p[0]}`;
-                          } catch {}
-                        }
-                        if (col.key === 's_simeyniy_ukr' && val) {
-                          val = formatMaritalStatus(val);
-                        }
                         const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
                         return (
-                          <td key={col.key} className={`py-2 px-4 border-r border-[#1f424f]/40 ${isCenter ? 'text-center' : ''}`}>
-                            {col.key === 'presviter' && val && val !== '—' ? (
-                              (() => {
-                                const st = getCellStyling('presviter', String(val));
-                                return st ? (
-                                  <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                    {String(val)}
-                                  </span>
-                                ) : String(val);
-                              })()
-                            ) : col.key === 'vidviduvanist' && val && val !== '—' ? (
-                              (() => {
-                                const st = getCellStyling('vidviduvanist', String(val));
-                                return st ? (
-                                  <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                    {String(val)}
-                                  </span>
-                                ) : String(val);
-                              })()
-                            ) : col.key === 'prysutnist' && val && val !== '—' ? (
-                              (() => {
-                                const st = getCellStyling('prysutnist', String(val));
-                                return st ? (
-                                  <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                    {String(val)}
-                                  </span>
-                                ) : String(val);
-                              })()
-                            ) : col.key === 's_slujinnya_spysok' && val && val !== '—' ? (
-                              <div className="flex flex-wrap gap-1">
-                                {String(val).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map((n, i) => {
-                                  const st = getCellStyling('s_slujinnya_spysok', n);
-                                  return st ? (
-                                    <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                      {n}
-                                    </span>
-                                  ) : (
-                                    <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-medium px-1.5 py-0.5 bg-slate-700/60 border border-slate-600 text-slate-300">
-                                      {n}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            ) : col.key === 'address' ? (
-                              cleanAddress(String(val || ""))
-                            ) : (
-                              String(val || '—')
-                            )}
-                          </td>
+                          <th key={col.key} className={`py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200 ${isCenter ? 'text-center' : 'text-left'}`}>{col.label}</th>
                         );
                       })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredRecords.length > 100 && (
-                <div className="py-3 px-4 bg-[#142d36] text-center text-[11px] text-slate-400 font-medium">
-                  Показано перші 100 результатів пошуку. Повний список із {filteredRecords.length} записів буде експортовано до файлу PDF.
-                </div>
-              )}
-            </div>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.slice(0, 100).map((m, index) => (
+                      <tr key={m.id} className="border-b border-[#1f424f]/65 hover:bg-[#16323c]/45 transition-colors">
+                        <td className="py-2 px-4 border-r border-[#1f424f]/40 font-semibold text-slate-400">{index + 1}</td>
+                        {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
+                          let val = m[col.key as keyof Member];
+                          if (col.key === 'd_narodjennya' && val) {
+                            try {
+                              const p = String(val).split('-');
+                              if (p.length === 3) val = `${p[2]}.${p[1]}.${p[0]}`;
+                            } catch {}
+                          }
+                          if (col.key === 's_simeyniy_ukr' && val) {
+                            val = formatMaritalStatus(val);
+                          }
+                          const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+                          return (
+                            <td key={col.key} className={`py-2 px-4 border-r border-[#1f424f]/40 ${isCenter ? 'text-center' : ''}`}>
+                              {col.key === 'presviter' && val && val !== '—' ? (
+                                (() => {
+                                  const st = getCellStyling('presviter', String(val));
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {String(val)}
+                                    </span>
+                                  ) : String(val);
+                                })()
+                              ) : col.key === 'vidviduvanist' && val && val !== '—' ? (
+                                (() => {
+                                  const st = getCellStyling('vidviduvanist', String(val));
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {String(val)}
+                                    </span>
+                                  ) : String(val);
+                                })()
+                              ) : col.key === 'prysutnist' && val && val !== '—' ? (
+                                (() => {
+                                  const st = getCellStyling('prysutnist', String(val));
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {String(val)}
+                                    </span>
+                                  ) : String(val);
+                                })()
+                              ) : col.key === 's_slujinnya_spysok' && val && val !== '—' ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {String(val).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map((n, i) => {
+                                    const st = getCellStyling('s_slujinnya_spysok', n);
+                                    return st ? (
+                                      <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                        {n}
+                                      </span>
+                                    ) : (
+                                      <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-medium px-1.5 py-0.5 bg-slate-700/60 border border-slate-600 text-slate-300">
+                                        {n}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : col.key === 'address' ? (
+                                cleanAddress(String(val || ""))
+                              ) : (
+                                String(val || '—')
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredRecords.length > 100 && (
+                  <div className="py-3 px-4 bg-[#142d36] text-center text-[11px] text-slate-400 font-medium">
+                    Показано перші 100 результатів пошуку. Повний список із {filteredRecords.length} записів буде експортовано до файлу PDF.
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
       </div>

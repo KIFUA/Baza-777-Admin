@@ -890,7 +890,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   </div>
                 ) : (
                   <div className="text-xs text-slate-500 italic py-2">
-                    Станом на зараз в системі немає зв'язаного шлюбного партнера у базі simya.xlsx для цього ID, або сімейний стан не одружений ({member.s_simeyniy_ukr}).
+                    Станом на зараз в системі немає зв'язаного шлюбного партнера у базі simya.xlsx для цього ID, або Сім. стан не одруж. ({member.s_simeyniy_ukr}).
                   </div>
                 )}
               </div>

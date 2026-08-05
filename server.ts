@@ -340,7 +340,13 @@ function loadDatabase() {
       ignoreAdminLogs = db.ignoreAdminLogs !== undefined ? db.ignoreAdminLogs : true;
       s_osvita = db.s_osvita || [];
       s_socialniy = db.s_socialniy || [];
-      s_simeyniy = db.s_simeyniy || [];
+      s_simeyniy = [
+        { ID: 1, Value: 'неодруж.' },
+        { ID: 2, Value: 'одруж.' },
+        { ID: 3, Value: 'розлуч.' },
+        { ID: 4, Value: 'вдов.' },
+        { ID: 5, Value: 'н/д' }
+      ];
       s_vybuv = db.s_vybuv || [];
       s_profesiya = db.s_profesiya || [];
       s_selo = db.s_selo || [];
@@ -387,7 +393,13 @@ function loadDatabase() {
       // Load static catalog lists
       s_osvita = loadExcelSheet("s_osvita.xlsx");
       s_socialniy = loadExcelSheet("s_socialniy.xlsx");
-      s_simeyniy = loadExcelSheet("s_simeyniy.xlsx");
+      s_simeyniy = [
+        { ID: 1, Value: 'неодруж.' },
+        { ID: 2, Value: 'одруж.' },
+        { ID: 3, Value: 'розлуч.' },
+        { ID: 4, Value: 'вдов.' },
+        { ID: 5, Value: 'н/д' }
+      ];
       s_vybuv = loadExcelSheet("s_vybuv.xlsx");
       s_profesiya = loadExcelSheet("s_profesiya.xlsx");
       s_selo = loadExcelSheet("s_selo.xlsx");
@@ -650,7 +662,7 @@ app.use('/api/firebase', async (req, res) => {
                       d_shlyubu_end: sh["d_shlyubu_end"] || "",
                       podruzhzhya_id: id,
                       podrujya_id: id,
-                      status: sh["status"] || "одр."
+                      status: sh["status"] || "одруж."
                     };
                     const updatedSpouseShlyubArr = [...spouseShlyubArr, newShRecord];
                     spouseОсобисте["4_shlyub_history"] = updatedSpouseShlyubArr;
@@ -2160,11 +2172,11 @@ function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
         curY1 += presH + 6;
       }
 
-      // 3. СІМЕЙНИЙ СТАН
+      // 3. СІМ. СТАН
       const maritalEntries = Object.entries(statsData.marital || {});
       const marH = 22 + maritalEntries.length * 16 + 4;
       doc.roundedRect(col1X, curY1, colW, marH, 6).fillAndStroke('#ffffff', '#ccdcd6');
-      drawCardHeader(col1X, curY1, colW, 'СІМЕЙНИЙ СТАН');
+      drawCardHeader(col1X, curY1, colW, 'СІМ. СТАН');
       let marY = curY1 + 22;
       maritalEntries.forEach(([lbl, val]: [string, any]) => {
         drawProgressRow(col1X, marY, colW, lbl, val, total, '#4f46e5');
@@ -2289,7 +2301,7 @@ app.post("/api/stats/send", async (req, res) => {
     msg += `\n`;
   }
 
-  msg += `💍 *Сімейний стан:*\n`;
+  msg += `💍 *Сім. стан:*\n`;
   Object.entries(statsData.marital || {}).forEach(([lbl, val]) => {
     msg += `• ${lbl}: ${val}\n`;
   });
@@ -3015,6 +3027,221 @@ app.post("/api/members/invalidate-cache", async (req, res) => {
   res.json({ success: true });
 });
 
+function normalizeSurnameLocal(s: string): string {
+  if (!s) return '';
+  let str = s.trim().toLowerCase();
+  str = str.replace(/(ський|ська|цький|цька|зький|зька)$/g, '');
+  str = str.replace(/(ович|евич|євич|ич|іч)$/g, '');
+  str = str.replace(/(івна|ївна|вна)$/g, '');
+  str = str.replace(/(ов|ова|ев|ева|єв|єва|ін|іна|їн|їна)$/g, '');
+  str = str.replace(/(ий|ій|а|я)$/g, '');
+  return str;
+}
+
+function areSurnamesMatchingLocal(pib1: string, pib2: string): boolean {
+  if (!pib1 || !pib2) return false;
+  const w1 = pib1.trim().toLowerCase().split(/\s+/)[0];
+  const w2 = pib2.trim().toLowerCase().split(/\s+/)[0];
+  if (!w1 || !w2 || w1.length < 3 || w2.length < 3) return false;
+  if (w1 === w2) return true;
+
+  const n1 = normalizeSurnameLocal(w1);
+  const n2 = normalizeSurnameLocal(w2);
+
+  if (n1.length >= 3 && n1 === n2) return true;
+
+  if (w1.endsWith('а') && w1.slice(0, -1) === w2) return true;
+  if (w2.endsWith('а') && w2.slice(0, -1) === w1) return true;
+
+  return false;
+}
+
+function getPatronymicRootLocal(pib: string): string {
+  if (!pib) return '';
+  const parts = pib.trim().split(/\s+/);
+  const patStr = parts.length >= 3 ? parts[2] : parts[0];
+  let pat = patStr.toLowerCase();
+  pat = pat.replace(/(ович|евич|євич|ич|іч)$/, '');
+  pat = pat.replace(/(ічна|їчна|івна|ївна|вна)$/, '');
+  pat = pat.replace(/(й|ь|о|а|е|є|і|я|у|ій|ей|ов|ев|єв)$/, '');
+  return pat;
+}
+
+function getFirstnameRootLocal(pib: string): string {
+  if (!pib) return '';
+  const parts = pib.trim().split(/\s+/);
+  if (parts.length < 2) return '';
+  let fn = parts[1].toLowerCase();
+  fn = fn.replace(/(й|ь|о|а|е|є|і|я|у|ій|ей)$/, '');
+  return fn;
+}
+
+function isBrotherSisterLocal(pib1: string, pib2: string): boolean {
+  const r1 = getPatronymicRootLocal(pib1);
+  const r2 = getPatronymicRootLocal(pib2);
+  if (r1 && r2 && r1.length >= 3 && r1 === r2) return true;
+  return false;
+}
+
+function isParentChildOrLargeAgeGapLocal(m1: any, m2: any): boolean {
+  const p1 = m1.pib || '';
+  const p2 = m2.pib || '';
+  
+  const fnRoot1 = getFirstnameRootLocal(p1);
+  const patRoot2 = getPatronymicRootLocal(p2);
+  if (fnRoot1 && patRoot2 && fnRoot1.length >= 3 && fnRoot1 === patRoot2) return true;
+
+  const fnRoot2 = getFirstnameRootLocal(p2);
+  const patRoot1 = getPatronymicRootLocal(p1);
+  if (fnRoot2 && patRoot1 && fnRoot2.length >= 3 && fnRoot1 === patRoot1) return true;
+
+  const age1 = Number(m1.vik_rokiv1);
+  const age2 = Number(m2.vik_rokiv1);
+  if (age1 > 0 && age2 > 0 && Math.abs(age1 - age2) >= 15) return true;
+
+  return false;
+}
+
+function isUnmarriedStatusLocal(m: any): boolean {
+  if (!m) return true;
+  const s = String(m.s_simeyniy_ukr || '').toLowerCase();
+  if (m.id_simeyniy === 1 || m.id_simeyniy === 3 || m.id_simeyniy === 4 || m.id_simeyniy === 5) {
+    if (s.includes('одр') && !s.includes('неодр') && !s.includes('розл')) return false;
+    return true;
+  }
+  if (s.includes('неодр') || s.includes('розл') || s.includes('вдов') || s.includes('н/д') || s === '') return true;
+  return false;
+}
+
+function areFirstNamesMatchingLocal(fn1: string, fn2: string): boolean {
+  if (!fn1 || !fn2) return true;
+  const a = fn1.toLowerCase().trim();
+  const b = fn2.toLowerCase().trim();
+  if (a === b) return true;
+  const pA = a.slice(0, 3);
+  const pB = b.slice(0, 3);
+  return pA === pB || a.startsWith(pB) || b.startsWith(pA);
+}
+
+function arePatronymicsMatchingLocal(pat1: string, pat2: string): boolean {
+  if (!pat1 || !pat2) return true;
+  const p1 = pat1.toLowerCase().trim();
+  const p2 = pat2.toLowerCase().trim();
+  if (p1 === p2) return true;
+  const r1 = getPatronymicRootLocal(p1);
+  const r2 = getPatronymicRootLocal(p2);
+  if (r1 && r2 && r1.length >= 3 && r2.length >= 3) {
+    return r1 === r2 || r1.startsWith(r2) || r2.startsWith(r1);
+  }
+  return false;
+}
+
+function areNamesMatchingLocal(nameA: string, nameB: string): boolean {
+  if (!nameA || !nameB) return false;
+  const a = nameA.trim().toLowerCase();
+  const b = nameB.trim().toLowerCase();
+  if (a === '—' || a === '-' || a === 'н/д' || b === '—' || b === '-' || b === 'н/д') return false;
+  if (a === b) return true;
+
+  const wordsA = a.split(/\s+/).filter(w => w.length >= 2);
+  const wordsB = b.split(/\s+/).filter(w => w.length >= 2);
+
+  if (wordsA.length >= 1 && wordsB.length >= 1) {
+    if (areSurnamesMatchingLocal(wordsA[0], wordsB[0])) {
+      if (wordsA.length === 1 || wordsB.length === 1) return true;
+      
+      const fnA = wordsA[1];
+      const fnB = wordsB[1];
+      if (fnA && fnB && !areFirstNamesMatchingLocal(fnA, fnB)) {
+        return false;
+      }
+
+      if (wordsA.length >= 3 && wordsB.length >= 3) {
+        const patA = wordsA[2];
+        const patB = wordsB[2];
+        if (patA && patB && !arePatronymicsMatchingLocal(patA, patB)) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    if (wordsA.length >= 2 && wordsB.length >= 2) {
+      if (areSurnamesMatchingLocal(wordsA[0], wordsB[1]) && areSurnamesMatchingLocal(wordsA[1], wordsB[0])) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function getBestMarriageRecord(m: any, marriagesList: any[], membersList: any[]) {
+  if (!m || isUnmarriedStatusLocal(m)) return null;
+
+  const mRecs = marriagesList.filter(mar => 
+    (Number(mar.id_cholovik) === m.id || Number(mar.id_drujina) === m.id) &&
+    (!mar.d_end || mar.d_end === '' || mar.d_end === '0')
+  );
+  if (mRecs.length === 0) return null;
+
+  function getGenderCatLocal(mem: any) {
+    const g = (mem?.gender || mem?.stat || '').toLowerCase().trim();
+    if (g.includes('брат') || g.includes('чол') || g === 'ч' || g === 'm') return 'male';
+    if (g.includes('сестр') || g.includes('жін') || g === 'ж' || g === 'f') return 'female';
+    const n = (mem?.pib || '').trim().toLowerCase();
+    if (/(ич|іч|ович|евич|євич)$/i.test(n)) return 'male';
+    if (/(вна|івна|ївна)$/i.test(n)) return 'female';
+    return 'unknown';
+  }
+
+  let best = null;
+  let bestScore = -999;
+  for (const mar of mRecs) {
+    const isCholovik = Number(mar.id_cholovik) === m.id;
+    const spId = isCholovik ? Number(mar.id_drujina) : Number(mar.id_cholovik);
+    if (spId <= 0) continue;
+    const spMem = membersList.find(mem => mem.id === spId && (mem.id_vybuttya === 0 || !mem.id_vybuttya));
+    if (!spMem) continue;
+
+    // Safety checks against invalid marriages
+    if (isUnmarriedStatusLocal(spMem)) continue;
+    if (isBrotherSisterLocal(m.pib, spMem.pib)) continue;
+    if (isParentChildOrLargeAgeGapLocal(m, spMem)) continue;
+
+    let score = 0;
+    const cholovikMem = membersList.find(mem => mem.id === Number(mar.id_cholovik));
+    const drujinaMem = membersList.find(mem => mem.id === Number(mar.id_drujina));
+    if (cholovikMem && getGenderCatLocal(cholovikMem) === 'female') score -= 50;
+    if (drujinaMem && getGenderCatLocal(drujinaMem) === 'male') score -= 50;
+
+    const surnameMatch = areSurnamesMatchingLocal(m.pib, spMem.pib);
+    const partnerNameMatch = (m.pib_partnera && areNamesMatchingLocal(m.pib_partnera, spMem.pib)) ||
+                             (spMem.pib_partnera && areNamesMatchingLocal(spMem.pib_partnera, m.pib));
+    const cleanAddrSelf = String(m.address || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const cleanAddrSp = String(spMem.address || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const addrMatch = cleanAddrSelf && cleanAddrSp && cleanAddrSelf === cleanAddrSp;
+
+    if (surnameMatch) score += 30;
+    if (partnerNameMatch) score += 40;
+    if (addrMatch) score += 20;
+
+    if (Number(mar.id) >= 2000) {
+      score += 25;
+    } else {
+      if (!surnameMatch && !partnerNameMatch) {
+        score -= 60;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = mar;
+    }
+  }
+  return bestScore > 0 ? best : null;
+}
+
 // 3. Get Members (summary list with options to search, filter by tag, caretakers, etc)
 app.get("/api/members", async (req, res) => {
   await ensureDatabaseIsFresh();
@@ -3068,7 +3295,7 @@ app.get("/api/members", async (req, res) => {
     }
   }
 
-  // Enrich with active disciplines
+  // Enrich with active disciplines and family/spouse information
   const enrichedResult = result.map(m => {
     // Check if member has active discipline
     const activeDiscipline = disciplines.find(d => Number(d.id_anketa) === m.id && !d.d_znyato && !d.d_end);
@@ -3079,8 +3306,28 @@ app.get("/api/members", async (req, res) => {
       startDate = activeDiscipline.d_begin ? formatExcelDate(activeDiscipline.d_begin) : startDate;
     }
 
+    let partnerName = m.pib_partnera || '';
+    let marriageDate = m.d_shlyubu || '';
+    
+    const chosenMarriageRec = getBestMarriageRecord(m, marriages, members);
+    if (chosenMarriageRec) {
+      const isCholovik = Number(chosenMarriageRec.id_cholovik) === m.id;
+      const spId = isCholovik ? Number(chosenMarriageRec.id_drujina) : Number(chosenMarriageRec.id_cholovik);
+      if (spId > 0) {
+        const spMem = members.find(mem => mem.id === spId);
+        if (spMem && !partnerName) {
+          partnerName = spMem.pib;
+        }
+      }
+      if (!marriageDate && chosenMarriageRec.d_begin) {
+        marriageDate = toISODateFormat(formatExcelDate(chosenMarriageRec.d_begin));
+      }
+    }
+
     return {
       ...m,
+      pib_partnera: partnerName,
+      d_shlyubu: marriageDate,
       discipline_reason: reason,
       discipline_date_start: startDate
     };
@@ -3149,16 +3396,22 @@ app.get("/api/members/:id", async (req, res) => {
 
   // A. Determine spouse
   let spouse: Spouse | null = null;
-  let marriageRec = marriages.find(m => Number(m.id_cholovik) === id || Number(m.id_drujina) === id);
+  const marriageRec = getBestMarriageRecord(member, marriages, members);
   if (marriageRec) {
     const isCholovik = Number(marriageRec.id_cholovik) === id;
     const spId = isCholovik ? Number(marriageRec.id_drujina) : Number(marriageRec.id_cholovik);
     if (spId > 0) {
-      const spName = members.find(m => m.id === spId)?.pib || `Член ID ${spId}`;
-      spouse = { id: spId, pib: spName };
-      member.pib_partnera = spName;
+      const spMem = members.find(mem => mem.id === spId && (mem.id_vybuttya === 0 || !mem.id_vybuttya));
+      if (spMem) {
+        spouse = { id: spId, pib: spMem.pib };
+        if (!member.pib_partnera) {
+          member.pib_partnera = spMem.pib;
+        }
+      }
     }
-    member.d_shlyubu = toISODateFormat(formatExcelDate(marriageRec.d_begin));
+    if (marriageRec.d_begin) {
+      member.d_shlyubu = toISODateFormat(formatExcelDate(marriageRec.d_begin));
+    }
   }
 
   // B. Get Children
@@ -3294,7 +3547,7 @@ function getAbbreviatedMaritalStatus(simeyniyStr: string): string {
   if (!simeyniyStr) return "неодруж.";
   const s = simeyniyStr.toLowerCase();
   if (s.includes("неодр")) return "неодруж.";
-  if (s.includes("одруж") || s.includes("заміж") || s.includes("одр")) return "одр.";
+  if (s.includes("одруж") || s.includes("заміж") || s.includes("одр")) return "одруж.";
   if (s.includes("розлуч") || s.includes("розл")) return "розлуч.";
   if (s.includes("вдов")) return "вдов.";
   return "неодруж.";
@@ -3431,7 +3684,7 @@ async function syncMemberToFirebase(id: number, member: Member) {
   const sSimeyniy = String(member.s_simeyniy_ukr || "").toLowerCase();
   if (member.id_simeyniy === 2 || sSimeyniy.includes("одр") || sSimeyniy.includes("заміж")) {
     shlyubHistory.push({
-      status: "одр.",
+      status: "одруж.",
       d_shlyubu_begin: toUADateFormat(member.d_shlyubu || ""),
       d_shlyubu_end: "",
       podruzhzhya_id: spouseId || "",
@@ -3699,7 +3952,7 @@ app.post("/api/members/:id", async (req, res) => {
     tel_mob: "Моб. телефон",
     s_osvita_ukr: "Освіта",
     s_socialniy_ukr: "Соціальний стан",
-    s_simeyniy_ukr: "Сімейний стан",
+    s_simeyniy_ukr: "Сім. стан",
     s_profesiya_ukr: "Професія",
     s_slujinnya_spysok: "Служіння",
     zaklad_osv: "Заклад освіти",

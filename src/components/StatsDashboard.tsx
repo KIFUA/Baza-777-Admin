@@ -715,9 +715,9 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
             </div>
           </div>
  
-          <!-- СІМЕЙНИЙ СТАН -->
+          <!-- СІМ. СТАН -->
           <div class="marital-card">
-            <h3 class="marital-title">💍 Сімейний Стан</h3>
+            <h3 class="marital-title">💍 Сім. стан</h3>
             <div class="marital-rows">
               <div class="marital-row">
                 <span style="font-weight: 600; color: #334155;">одружені</span>
@@ -1304,7 +1304,7 @@ export default function StatsDashboard({ stats, members, lookups }: StatsDashboa
                 {/* Marital Status and Education / Social Category Blocks */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                    <div className="bg-[#1a3843]/85 border border-[#204250] rounded-lg p-2.5 shadow-sm space-y-2 h-fit">
-                      <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Сімейний стан</span>
+                      <span className="text-[9px] font-bold text-slate-350 uppercase tracking-widest block border-b border-white/5 pb-1">Сім. стан</span>
                       <div className="space-y-1 mt-1.5 text-[10px]">
                         {Object.entries(rayonStats.marital).map(([label, value]) =>
                            renderBar(label, value as number, Object.values(rayonStats.marital as Record<string, number>).reduce((acc: number, curr: number) => acc + curr, 0), "bg-indigo-400", true)

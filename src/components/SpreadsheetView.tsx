@@ -2106,7 +2106,7 @@ export default function SpreadsheetView({
                     {getPermission('СІМ. СТАН').view && (
                       <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px] truncate">
                         {m.s_simeyniy_ukr ? (
-                          /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
+                          /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодруж.' : (m.s_simeyniy_ukr === 'одр.' ? 'одруж.' : m.s_simeyniy_ukr)
                         ) : '—'}
                       </td>
                     )}

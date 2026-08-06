@@ -129,6 +129,63 @@ const calculateMarriageYears = (dShlyubu?: string): number | null => {
   return years >= 0 ? years : null;
 };
 
+const formatContactDatesTwoRows = (rawVal: any) => {
+  if (!rawVal || rawVal === '—') return { row1: '—', row2: '', fullHtml: '—', maxLineLen: 1 };
+  const dates = parseAndNormalizeContactDates(String(rawVal));
+  if (!dates || dates.length === 0) return { row1: '—', row2: '', fullHtml: '—', maxLineLen: 1 };
+  if (dates.length === 1) {
+    return {
+      row1: dates[0],
+      row2: '',
+      fullHtml: `<span style="white-space: nowrap;">${dates[0]}</span>`,
+      maxLineLen: dates[0].length
+    };
+  }
+  let row1 = '';
+  let row2 = '';
+  if (dates.length === 2) {
+    row1 = dates[0];
+    row2 = dates[1];
+  } else if (dates.length === 3) {
+    row1 = `${dates[0]} / ${dates[1]}`;
+    row2 = dates[2];
+  } else {
+    const half = Math.ceil(dates.length / 2);
+    row1 = dates.slice(0, half).join(' / ');
+    row2 = dates.slice(half).join(' / ');
+  }
+  const maxLineLen = Math.max(row1.length, row2.length);
+  const fullHtml = `
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.2; text-align: center;">
+      <span style="white-space: nowrap; display: block;">${row1}</span>
+      <span style="white-space: nowrap; display: block;">${row2}</span>
+    </div>`;
+  return { row1, row2, fullHtml, maxLineLen };
+};
+
+const formatPibTwoLines = (rawPib: any) => {
+  if (!rawPib || rawPib === '—') return { surname: '—', name: '', fullHtml: '—', maxLineLen: 1 };
+  const str = String(rawPib).trim().replace(/\s+/g, ' ');
+  const parts = str.split(' ');
+  if (parts.length <= 1) {
+    return {
+      surname: str,
+      name: '',
+      fullHtml: `<span style="font-weight: 700; color: #0f172a; white-space: nowrap;">${str}</span>`,
+      maxLineLen: str.length
+    };
+  }
+  const surname = parts[0];
+  const namePatronymic = parts.slice(1).join(' ');
+  const fullHtml = `
+    <div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.25; text-align: left;">
+      <span style="font-weight: 700; color: #0f172a; white-space: nowrap; display: block;">${surname}</span>
+      <span style="font-weight: 600; color: #334155; white-space: nowrap; display: block;">${namePatronymic}</span>
+    </div>`;
+  const maxLineLen = Math.max(surname.length, namePatronymic.length);
+  return { surname, name: namePatronymic, fullHtml, maxLineLen };
+};
+
 interface AvailableColumn {
   key: string;
   label: string;
@@ -1846,6 +1903,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             let strVal = '—';
             if (col.key === 'vik_shlyubu') strVal = c.marriageYearsText;
             else if (col.key === 'vik_rokiv1') strVal = c.husbandAge && c.wifeAge ? `${c.husbandAge} ${c.wifeAge}` : (c.husbandAge || c.wifeAge || '—');
+            else if (col.key === 'd_kontaktiv') {
+              const dVal = c.husband?.d_kontaktiv || c.wife?.d_kontaktiv || c.singleMember?.d_kontaktiv;
+              const res = formatContactDatesTwoRows(dVal);
+              strVal = 'X'.repeat(res.maxLineLen);
+            }
             else if (col.key === 'address') {
               const addr = c.addressText;
               if (addr && addr !== '—') {
@@ -1878,7 +1940,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             else if (col.key === 'presviter') strVal = c.presviter;
             else if (col.key === 'vidviduvanist') strVal = c.vidviduvanist;
             else if (col.key === 'prysutnist') strVal = c.prysutnist;
-            else if (col.key === 's_slujinnya_spysok') strVal = c.slujinnya;
+            else if (col.key === 's_slujinnya_spysok') {
+              const str = c.slujinnya || '';
+              const badges = str.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+              const maxSingleLen = badges.reduce((max, b) => b.length > max ? b.length : max, 0);
+              strVal = badges.length > 0 ? 'X'.repeat(maxSingleLen) : '—';
+            }
             else {
               const m = c.husband || c.wife || c.singleMember;
               if (m) strVal = String(m[col.key as keyof Member] || '—');
@@ -1899,12 +1966,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 strVal = yrs !== null ? `${yrs} р.` : '—';
               } else if (col.key === 'd_narodjennya') {
                 strVal = '21.05.1947';
+              } else if (col.key === 'd_kontaktiv') {
+                const res = formatContactDatesTwoRows(strVal);
+                strVal = 'X'.repeat(res.maxLineLen);
               } else if (col.key === 'tel_mob') {
                 const parts = strVal.split(/[,;\/]+/).map(p => p.trim()).filter(Boolean);
                 strVal = parts.reduce((max, cur) => cur.length > max.length ? cur : max, '');
               } else if (col.key === 's_slujinnya_spysok') {
                 const badges = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-                strVal = badges.join(' ');
+                const maxSingleLen = badges.reduce((max, b) => b.length > max ? b.length : max, 0);
+                strVal = badges.length > 0 ? 'X'.repeat(maxSingleLen) : '—';
               } else if (col.key === 'address') {
                 const cleaned = cleanAddress(strVal);
                 const commaIdx = cleaned.indexOf(',');
@@ -1934,6 +2005,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           estWidth = Math.max(38, Math.min(50, Math.floor(maxValLen * 6.2) + 12));
         } else if (col.key === 'd_narodjennya' || col.key === 'd_khreshchennya' || col.key === 'd_pruyniatia') {
           estWidth = Math.max(68, Math.min(78, Math.floor(maxValLen * 6.5) + 12));
+        } else if (col.key === 'd_kontaktiv') {
+          estWidth = Math.max(65, Math.min(105, Math.floor(maxValLen * 6.5) + 12));
         } else if (col.key === 'tel_mob') {
           estWidth = Math.max(85, Math.min(115, Math.floor(maxValLen * 6.8) + 16));
         } else if (col.key === 'address') {
@@ -1948,6 +2021,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           estWidth = Math.max(75, Math.min(100, estWidth));
         } else if (col.key === 'presviter') {
           estWidth = Math.max(75, Math.min(110, estWidth));
+        } else if (col.key === 's_slujinnya_spysok') {
+          estWidth = Math.max(55, Math.min(105, estWidth));
         } else if (col.key === 'rayon2_ukr') {
           estWidth = Math.max(75, Math.min(110, estWidth));
         } else if (col.key === 'n_dilyci') {
@@ -1957,27 +2032,28 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         estimatedWidths[col.key] = estWidth;
       });
 
-      // Measure PIB content length naturally
-      let maxPibFullNameLen = 15;
+      // Measure PIB content line length naturally (2 rows)
+      let maxPibLineLen = 10;
       if (combineCouples) {
         coupleGroupedRecords.forEach(c => {
-          const l1 = c.husbandName ? c.husbandName.length : 0;
-          const l2 = c.wifeName ? c.wifeName.length : 0;
-          const mL = Math.max(l1, l2);
-          if (mL > maxPibFullNameLen) maxPibFullNameLen = mL;
+          if (c.husbandName) {
+            const l = formatPibTwoLines(c.husbandName).maxLineLen;
+            if (l > maxPibLineLen) maxPibLineLen = l;
+          }
+          if (c.wifeName) {
+            const l = formatPibTwoLines(c.wifeName).maxLineLen;
+            if (l > maxPibLineLen) maxPibLineLen = l;
+          }
         });
       } else {
         filteredRecords.forEach(m => {
-          let val = m.pib;
-          if (val) {
-            const trimmed = String(val).trim();
-            if (trimmed.length > maxPibFullNameLen) {
-              maxPibFullNameLen = trimmed.length;
-            }
+          if (m.pib) {
+            const l = formatPibTwoLines(m.pib).maxLineLen;
+            if (l > maxPibLineLen) maxPibLineLen = l;
           }
         });
       }
-      const pibEstimatedWidth = Math.max(160, Math.floor(maxPibFullNameLen * 7.2) + 20);
+      const pibEstimatedWidth = Math.max(85, Math.min(155, Math.floor(maxPibLineLen * 6.8) + 16));
 
       // Index column № natural width based on count of records
       const maxIndexDigits = String(recordsToRender.length).length;
@@ -1991,8 +2067,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
       displayColumns.forEach(col => {
         const rawNat = col.key === 'pib' ? pibEstimatedWidth : (estimatedWidths[col.key] || 60);
-        // Weight multiplier for long text fields to ensure adequate allocation
-        const weight = col.key === 'pib' ? 1.4 : (col.key === 's_slujinnya_spysok' ? 1.1 : 1.0);
+        const weight = col.key === 'pib' ? 1.2 : 1.0;
         const nat = Math.floor(rawNat * weight);
 
         if (compactKeys.includes(col.key)) {
@@ -2014,17 +2089,29 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
       container.style.width = `${pageWidthPx}px`;
 
+      // Auto-scale font size and column widths if total table width exceeds target printable width for A4
+      let scaleFactor = 1.0;
+      if (totalNaturalWidth > targetWidth) {
+        scaleFactor = targetWidth / totalNaturalWidth;
+      }
+
       const colWidthsPx: Record<string, number> = {};
       displayColumns.forEach(col => {
         const rawNat = col.key === 'pib' ? pibEstimatedWidth : (estimatedWidths[col.key] || 60);
-        colWidthsPx[col.key] = rawNat;
+        colWidthsPx[col.key] = Math.max(24, Math.floor(rawNat * scaleFactor));
       });
+      const scaledIndexColWidth = Math.max(20, Math.floor(indexColWidth * scaleFactor));
 
-      const actualTableWidth = indexColWidth + displayColumns.reduce((sum, col) => sum + (colWidthsPx[col.key] || 0), 0);
+      const actualTableWidth = scaledIndexColWidth + displayColumns.reduce((sum, col) => sum + (colWidthsPx[col.key] || 0), 0);
+      const contentBlockWidth = Math.min(targetWidth, Math.max(actualTableWidth, 480));
+
+      // Scaled font sizes and cell padding for fitting A4
+      const cellFontSize = Math.max(6.5, Math.round(10 * scaleFactor * 10) / 10);
+      const headerFontSize = Math.max(6.5, Math.round(10 * scaleFactor * 10) / 10);
+      const cellPadV = Math.max(1.5, Math.round(3 * scaleFactor * 10) / 10);
+      const cellPadH = Math.max(2, Math.round(5 * scaleFactor * 10) / 10);
 
       // Container width for header, table, and footer elements so they align cohesively with the natural table width
-      const contentBlockWidth = Math.max(actualTableWidth, 480);
-
       const styleEl = document.createElement('style');
       styleEl.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -2105,15 +2192,15 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         .header-cell {
           color: #0f172a;
           font-weight: 600;
-          font-size: 10px;
-          padding: 4px 6px;
+          font-size: ${headerFontSize}px;
+          padding: ${cellPadV}px ${cellPadH}px;
           text-transform: uppercase;
           letter-spacing: 0.3px;
           display: flex;
           align-items: center;
           align-content: center;
           box-sizing: border-box;
-          min-height: 32px;
+          min-height: 28px;
           height: auto;
           line-height: 1.15;
         }
@@ -2121,18 +2208,18 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           border-right: 1px solid #cbd5e1;
         }
         .table-cell {
-          font-size: 10px;
+          font-size: ${cellFontSize}px;
           color: #1e293b;
-          padding: 3px 6px 5px 6px;
+          padding: ${cellPadV}px ${cellPadH}px;
           display: flex;
           align-items: center;
           align-content: center;
           justify-content: flex-start;
           align-self: stretch;
           box-sizing: border-box;
-          min-height: 28px;
-          line-height: 1.35;
-          overflow: visible;
+          min-height: 26px;
+          line-height: 1.25;
+          overflow: hidden;
         }
         .table-cell:not(:last-child) {
           border-right: 1px solid #cbd5e1;
@@ -2264,9 +2351,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
             let cellVal: string = '—';
             if (col.key === 'pib') {
-              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.35;">
-                ${c.husbandName ? `<span style="font-weight: 700; color: #0f172a; white-space: nowrap;">${c.husbandName}</span>` : ''}
-                ${c.wifeName ? `<span style="font-weight: 700; color: #0f172a; white-space: nowrap;">${c.wifeName}</span>` : ''}
+              const p1 = c.husbandName ? formatPibTwoLines(c.husbandName).fullHtml : '';
+              const p2 = c.wifeName ? formatPibTwoLines(c.wifeName).fullHtml : '';
+              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.25; gap: 3px;">
+                ${p1}
+                ${p1 && p2 ? `<div style="border-top: 1px dashed #cbd5e1; margin: 1px 0;"></div>` : ''}
+                ${p2}
               </div>`;
             } else if (col.key === 'vik_rokiv1') {
               cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.35;">
@@ -2275,6 +2365,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
               </div>`;
             } else if (col.key === 'vik_shlyubu') {
               cellVal = `<span style="font-weight: 700; color: #0f766e; white-space: nowrap; line-height: 1.35; display: inline-block;">${c.marriageYearsText}</span>`;
+            } else if (col.key === 'd_kontaktiv') {
+              const dVal = c.husband?.d_kontaktiv || c.wife?.d_kontaktiv || c.singleMember?.d_kontaktiv;
+              cellVal = formatContactDatesTwoRows(dVal).fullHtml;
             } else if (col.key === 'address') {
               const cleaned = cleanAddress(c.addressText);
               const commaIdx = cleaned.indexOf(',');
@@ -2334,16 +2427,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   const badgeHtmls = names.map(name => {
                     const style = getCellStyling('s_slujinnya_spysok', name);
                     if (style) {
-                      return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${name}</span>`;
+                      return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
                     }
-                    return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 6px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${name}</span>`;
+                    return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
                   });
-                  const badgeRows: string[] = [];
-                  for (let i = 0; i < badgeHtmls.length; i += 2) {
-                    const pair = badgeHtmls.slice(i, i + 2).join('');
-                    badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 3px;">${pair}</div>`);
-                  }
-                  cellVal = `<div style="line-height: 1.2; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 2px; height: 100%;">${badgeRows.join('')}</div>`;
+                  cellVal = `<div style="line-height: 1.25; text-align: left; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 2px 3px; width: 100%; box-sizing: border-box;">${badgeHtmls.join('')}</div>`;
                 } else {
                   cellVal = `<div style="line-height: 1.2; text-align: left; font-size: 9.5px; color: #1e293b;">${names.join(', ')}</div>`;
                 }
@@ -2393,7 +2481,10 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             }
 
             if (col.key === 'pib' && cellVal && cellVal !== '—') {
-              cellVal = `<span style="white-space: nowrap; font-weight: 700; color: #0f172a;">${String(cellVal).trim()}</span>`;
+              cellVal = formatPibTwoLines(cellVal).fullHtml;
+            }
+            else if (col.key === 'd_kontaktiv' && cellVal) {
+              cellVal = formatContactDatesTwoRows(cellVal).fullHtml;
             }
             else if (col.key === 'address' && cellVal && cellVal !== '—') {
               const cleaned = cleanAddress(cellVal);
@@ -2450,18 +2541,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                     const style = getCellStyling('s_slujinnya_spysok', name);
                     const fontSizeStyle = "font-size: 8px;";
                     if (style) {
-                      return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 6px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${name}</span>`;
+                      return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
                     }
-                    return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 6px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${name}</span>`;
+                    return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
                   });
 
-                  const badgeRows: string[] = [];
-                  for (let i = 0; i < badgeHtmls.length; i += 2) {
-                    const pair = badgeHtmls.slice(i, i + 2).join('');
-                    badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 3px;">${pair}</div>`);
-                  }
-
-                  cellVal = `<div style="line-height: 1.2; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: 2px; height: 100%;">${badgeRows.join('')}</div>`;
+                  cellVal = `<div style="line-height: 1.25; text-align: left; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 2px 3px; width: 100%; box-sizing: border-box;">${badgeHtmls.join('')}</div>`;
                 } else {
                   cellVal = `<div style="line-height: 1.2; text-align: left; font-size: 9.5px; color: #1e293b;">${names.join(', ')}</div>`;
                 }

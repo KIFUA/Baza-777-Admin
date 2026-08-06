@@ -2529,21 +2529,21 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       for (let i = 0; i < pages.length; i++) {
         const pageEl = pages[i].pageDiv;
         const canvas = await html2canvas(pageEl, {
-          scale: 2.0,
+          scale: 1.5,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
           logging: false
         });
 
-        const imgData = canvas.toDataURL('image/png');
+        const imgData = canvas.toDataURL('image/jpeg', 0.8);
         if (i > 0) {
           pdf.addPage();
         }
         if (isLandscape) {
-          pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
+          pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210, undefined, 'FAST');
         } else {
-          pdf.addImage(imgData, 'PNG', 0, 0, 210, 297, undefined, 'FAST');
+          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         }
       }
 
@@ -2598,16 +2598,44 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
     if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
 
-    const filterHeader = activeFiltersText.length > 0 ? `\n📌 <b>Фільтри:</b> ${activeFiltersText.join(' | ')}` : '';
+    const escapeHtml = (str: string) => (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const filterHeader = activeFiltersText.length > 0 ? `\n📌 <b>Фільтри:</b> ${escapeHtml(activeFiltersText.join(' | '))}` : '';
+
+    if (combineCouples) {
+      const lines = [
+        `📋 <b>Сформований список сімейних пар / родин (${coupleGroupedRecords.length})</b>`,
+        `<i>Дата: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</i>${filterHeader}\n`
+      ];
+      coupleGroupedRecords.slice(0, 100).forEach((c, idx) => {
+        let line = `${idx + 1}. <b>${escapeHtml(c.pibText)}</b>`;
+        const phones: string[] = [];
+        [c.husbandPhone, c.wifePhone, c.phoneText].forEach(pStr => {
+          if (pStr && pStr !== '—') {
+            pStr.split(/[,;\/]+/).forEach(p => {
+              const trimmed = p.trim();
+              if (trimmed && !phones.includes(trimmed)) phones.push(trimmed);
+            });
+          }
+        });
+        if (phones.length > 0) line += ` • 📞 ${escapeHtml(phones.join(', '))}`;
+        if (c.addressText && c.addressText !== '—') line += ` • 🏠 ${escapeHtml(c.addressText)}`;
+        if (c.rayon && c.rayon !== '—') line += ` • 📍 ${escapeHtml(c.rayon)}`;
+        lines.push(line);
+      });
+      if (coupleGroupedRecords.length > 100) {
+        lines.push(`\n<i>...і ще ${coupleGroupedRecords.length - 100} пар у вибірці</i>`);
+      }
+      return lines.join('\n');
+    }
 
     const lines = [
       `📋 <b>Сформований список осіб (${filteredRecords.length})</b>`,
       `<i>Дата: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</i>${filterHeader}\n`
     ];
     filteredRecords.slice(0, 100).forEach((m, idx) => {
-      let line = `${idx + 1}. <b>${m.pib}</b>`;
-      if (m.tel_mob) line += ` • 📞 ${m.tel_mob}`;
-      if (m.rayon2_ukr) line += ` • 📍 ${m.rayon2_ukr}`;
+      let line = `${idx + 1}. <b>${escapeHtml(m.pib)}</b>`;
+      if (m.tel_mob) line += ` • 📞 ${escapeHtml(m.tel_mob)}`;
+      if (m.rayon2_ukr) line += ` • 📍 ${escapeHtml(m.rayon2_ukr)}`;
       lines.push(line);
     });
     if (filteredRecords.length > 100) {
@@ -2615,6 +2643,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     }
     return lines.join('\n');
   }, [
+    combineCouples,
+    coupleGroupedRecords,
     filteredRecords, 
     selectedStatus, 
     selectedRayon, 
@@ -2626,7 +2656,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     selectedOsvita, 
     selectedDilyntsya, 
     selectedAgeMin, 
-    selectedAgeMax
+    selectedAgeMax,
+    selectedVidviduvanist,
+    selectedPrysutnist,
+    selectedStat,
+    isMarriedSelected,
+    selectedFamilyType
   ]);
 
   const handleMaterialTypeChange = (type: 'pdf' | 'text' | 'list') => {
@@ -2635,7 +2670,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       setTgCustomText(generateTextList());
     } else if (type === 'pdf') {
       if (!tgCustomText) {
-        setTgCustomText(`📄 Сформований звіт з конструктора списків від ${new Date().toLocaleDateString('uk-UA')} (${filteredRecords.length} осіб)`);
+        const totalCountStr = combineCouples ? `${coupleGroupedRecords.length} пар` : `${filteredRecords.length} осіб`;
+        setTgCustomText(`📄 Сформований звіт з конструктора списків від ${new Date().toLocaleDateString('uk-UA')} (${totalCountStr})`);
       }
     }
   };

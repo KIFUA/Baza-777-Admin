@@ -2604,8 +2604,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   <meta charset="UTF-8" />
   <title>Звіт членів церкви</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
-    
     @page {
       size: A4 ${isLandscape ? 'landscape' : 'portrait'};
       margin: 0;

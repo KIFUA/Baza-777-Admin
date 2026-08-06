@@ -25,6 +25,13 @@ export const app = express();
 if (process.env.FIREBASE_SECRET === "YOUR_FIREBASE_SECRET_KEY") {
   process.env.FIREBASE_SECRET = "";
 }
+
+export let FIREBASE_URL = (process.env.FIREBASE_URL || "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app").trim();
+if (FIREBASE_URL.endsWith("/")) {
+  FIREBASE_URL = FIREBASE_URL.slice(0, -1);
+}
+export const FIREBASE_SECRET = (process.env.FIREBASE_SECRET && process.env.FIREBASE_SECRET.trim()) || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
+
 const PORT = 3000;
 const DB_CACHE_FILE = path.join(process.cwd(), "db_cache.json");
 const tablyciDir = path.join(process.cwd(), "tablyci");
@@ -510,6 +517,14 @@ function loadDatabase() {
   saveDatabaseToCache();
 }
 
+// Execute immediate database initialization on module startup
+try {
+  loadDatabase();
+  console.log(`[Module Init] Initialized local database cache successfully: ${members.length} members loaded.`);
+} catch (err: any) {
+  console.error("[Module Init] Failed to initialize local database cache:", err.message);
+}
+
 let cachedMembersJson: any = null;
 let lastCacheUpdateTime = 0;
 let lastDatabaseSyncTime = 0;
@@ -578,12 +593,6 @@ async function saveDisciplineToFirebase(row: any) {
 // --- API REST ROUTES ---
 
 // 0. Transparent Firebase Proxy for legacy app with optimized memory caching
-let FIREBASE_URL = process.env.FIREBASE_URL || "https://baza-777-default-rtdb.europe-west1.firebasedatabase.app";
-if (FIREBASE_URL.endsWith("/")) {
-  FIREBASE_URL = FIREBASE_URL.slice(0, -1);
-}
-const FIREBASE_SECRET = process.env.FIREBASE_SECRET || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
-
 const CACHE_TTL_MS = 60000; // 1 minute local server-side cache
 
 app.use('/api/firebase', async (req, res) => {
@@ -5868,10 +5877,10 @@ async function startServer() {
 if (!process.env.VERCEL) {
   startServer();
 } else {
-  // On Vercel, we do NOT trigger sync on module load.
-  // The first incoming HTTP request will trigger and await ensureInitialSync() via the middleware.
-  // This guarantees reliable execution in the request execution sandbox.
-  console.log("[Vercel Module Load] Server initialized. Sync will trigger on first request.");
+  console.log("[Vercel Module Load] Server initialized. Triggering background initial sync...");
+  ensureInitialSync().catch((err) => {
+    console.error("[Vercel Module Load] Initial sync error:", err);
+  });
 }
 
 export default app;

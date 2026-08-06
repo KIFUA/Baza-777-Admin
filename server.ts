@@ -1875,64 +1875,76 @@ async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
   const UKR_DAYS: Record<number, string> = {
     1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Нд'
   };
-  const listRows = (birthdays.list || []).map((item: any) => {
-    const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
-    const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
-    const name = item.cleanName || item.fullName || item.shortName || '';
-    return `<tr style="${item.isJubilee ? 'color:#dc2626; font-weight:bold;' : ''}">
-      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dayName}</td>
-      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dateFormatted}</td>
-      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0;">${name} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
-    </tr>`;
-  }).join('');
 
-  const html = `<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-    body { font-family: 'Roboto', sans-serif; padding: 24px; color: #0f172a; margin:0; }
-    h1 { text-align: center; font-size: 18px; margin-bottom: 4px; color: #1e293b; }
-    .sub { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight:500; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #f8fafc; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: left; color:#475569; }
-    .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; }
-  </style>
-</head>
-<body>
-  <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
-  <div class="sub">/ ${birthdays.weekRangeText || ''} /</div>
-  <table>
-    <thead>
-      <tr>
-        <th style="text-align:center; width:60px;">День</th>
-        <th style="text-align:center; width:90px;">Дата</th>
-        <th>ПІБ / Ім'я</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${listRows || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#94a3b8;">На цьому тижні немає іменинників</td></tr>'}
-    </tbody>
-  </table>
-  <div class="footer">Згенеровано автоматично системою "База 777"</div>
-</body>
-</html>`;
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A5', margin: 30 });
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-  const puppeteerModule = await import("puppeteer");
-  const puppeteer = puppeteerModule.default || puppeteerModule;
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      const robotoRegular = Buffer.from(getRobotoRegularFont());
+      const robotoBold = Buffer.from(getRobotoBoldFont());
+      doc.registerFont('Roboto-Regular', robotoRegular);
+      doc.registerFont('Roboto-Bold', robotoBold);
+
+      // Title
+      doc.font('Roboto-Bold').fontSize(16).fillColor('#1e293b').text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+      doc.moveDown(0.2);
+
+      // Subtitle
+      doc.font('Roboto-Regular').fontSize(10).fillColor('#64748b').text(`/ ${birthdays.weekRangeText || ''} /`, { align: 'center' });
+      doc.moveDown(1.5);
+
+      // Table Headers
+      const startX = 30;
+      let currentY = doc.y;
+      
+      doc.rect(startX, currentY, 360, 24).fill('#f8fafc');
+      doc.fillColor('#475569').font('Roboto-Bold').fontSize(10);
+      doc.text('День', startX + 10, currentY + 6, { width: 50, align: 'center' });
+      doc.text('Дата', startX + 70, currentY + 6, { width: 70, align: 'center' });
+      doc.text("ПІБ / Ім'я", startX + 150, currentY + 6, { width: 200, align: 'left' });
+      
+      currentY += 24;
+      doc.moveTo(startX, currentY).lineTo(startX + 360, currentY).strokeColor('#cbd5e1').lineWidth(1).stroke();
+
+      const items = birthdays.list || [];
+      if (items.length === 0) {
+        doc.font('Roboto-Regular').fontSize(11).fillColor('#94a3b8').text('На цьому тижні немає іменинників', startX, currentY + 15, { align: 'center', width: 360 });
+      } else {
+        items.forEach((item: any) => {
+          if (currentY > 520) {
+            doc.addPage();
+            currentY = 30;
+          }
+          const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
+          const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
+          let name = item.cleanName || item.fullName || item.shortName || '';
+          if (item.isJubilee) {
+            name += ' (Ювілей!)';
+            doc.fillColor('#dc2626').font('Roboto-Bold');
+          } else {
+            doc.fillColor('#0f172a').font('Roboto-Regular');
+          }
+          doc.fontSize(10);
+          doc.text(dayName, startX + 10, currentY + 8, { width: 50, align: 'center' });
+          doc.text(dateFormatted, startX + 70, currentY + 8, { width: 70, align: 'center' });
+          doc.text(name, startX + 150, currentY + 8, { width: 200, align: 'left' });
+          
+          currentY += 26;
+          doc.moveTo(startX, currentY).lineTo(startX + 360, currentY).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+        });
+      }
+
+      // Footer
+      doc.font('Roboto-Regular').fontSize(8).fillColor('#94a3b8').text('Згенеровано автоматично системою "База 777"', 30, 545, { align: 'center', width: 360 });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
   });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded' });
-    const pdfBuf = await page.pdf({ format: 'A5', printBackground: true });
-    return Buffer.from(pdfBuf);
-  } finally {
-    await browser.close();
-  }
 }
 
 // 2.3.1 Helper to compute stats for a rayon on server
@@ -2030,150 +2042,237 @@ async function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
   const sPct = total > 0 ? Math.round((statsData.sisters / total) * 100) : 0;
   const nowStr = new Date().toLocaleDateString('uk-UA') + ' ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
-  const renderProgressRows = (items: [string, number][], barColor: string) => {
-    if (!items || items.length === 0) return '<div class="empty">Немає даних</div>';
-    return items.map(([lbl, val]) => {
-      const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-      return `<div class="row">
-        <div class="row-text">
-          <span class="label">${lbl || 'н/д'}</span>
-          <span class="val">${val} (${pct}%)</span>
-        </div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
-      </div>`;
-    }).join('');
-  };
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 36 });
+      const chunks: Buffer[] = [];
+      doc.on('data', chunk => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
 
-  const attItems = (statsData.attendance || []).slice(0, 6) as [string, number][];
-  const presItems = (statsData.presence || []).slice(0, 10) as [string, number][];
-  const maritalEntries = Object.entries(statsData.marital || {}) as [string, number][];
-  const eduItems = (statsData.education || []).slice(0, 4) as [string, number][];
-  const socItems = (statsData.socialCategory || []).slice(0, 4) as [string, number][];
-  const rayonItems = (statsData.rayons || []).slice(0, 8) as [string, number][];
-  const cgItems = (statsData.caregivers || []).slice(0, 24) as [string, number][];
+      const robotoRegular = Buffer.from(getRobotoRegularFont());
+      const robotoBold = Buffer.from(getRobotoBoldFont());
+      doc.registerFont('Roboto-Regular', robotoRegular);
+      doc.registerFont('Roboto-Bold', robotoBold);
 
-  let cgHtml = '';
-  if (cgItems.length > 0) {
-    cgHtml += `<div class="card"><div class="card-title">Список опікунів</div><div class="cg-grid">`;
-    cgItems.forEach(([name, count]) => {
-      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-      cgHtml += `<div class="cg-badge">👤 <span class="cg-name">${name}</span> <span class="cg-val">${count} (${pct}%)</span></div>`;
-    });
-    cgHtml += `</div></div>`;
-  }
+      // Header
+      doc.font('Roboto-Bold').fontSize(10).fillColor('#134e4a').text('УЦХВЄ м. Івано-Франківськ', { align: 'center' });
+      doc.moveDown(0.2);
+      doc.font('Roboto-Bold').fontSize(16).fillColor('#0f766e').text('СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ', { align: 'center' });
+      doc.moveDown(0.2);
+      doc.font('Roboto-Bold').fontSize(9).fillColor('#0d9488').text(`РАЙОН: ${String(statsData.rayonName || 'ВСІ').toUpperCase()}  •  ОНОВЛЕНО: ${nowStr}`, { align: 'center' });
+      doc.moveDown(1);
 
-  const html = `<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
-    @page { size: A4 portrait; margin: 0; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Roboto', sans-serif; background: #f4f8f6; color: #0f172a; margin: 0; padding: 12mm; }
-    
-    .header { text-align: center; margin-bottom: 12px; }
-    .header .org { font-size: 11px; font-weight: 700; color: #134e4a; text-transform: uppercase; letter-spacing: 0.5px; }
-    .header h1 { font-size: 16px; font-weight: 700; color: #0f766e; margin: 3px 0; }
-    .header .meta { font-size: 10px; font-weight: 700; color: #0d9488; }
+      let currentY = doc.y;
 
-    .banner { background: #e6f0ec; border: 1px solid #b2d4ca; border-radius: 8px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .banner .total-box { display: flex; flex-direction: column; }
-    .banner .total-lbl { font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase; }
-    .banner .total-val { font-size: 20px; font-weight: 700; color: #0d2d26; line-height: 1.1; }
-    
-    .pills { display: flex; gap: 12px; }
-    .pill { padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; }
-    .pill-b { background: #e0f2fe; border: 1px solid #7dd3fc; color: #0284c7; }
-    .pill-s { background: #fce7f3; border: 1px solid #f472b6; color: #be185d; }
+      // Banner Box (Total count and brothers/sisters)
+      doc.rect(36, currentY, 523, 44).fill('#e6f0ec');
+      doc.rect(36, currentY, 523, 44).strokeColor('#b2d4ca').lineWidth(1).stroke();
+      
+      // Left side of banner: Total count
+      doc.fillColor('#475569').font('Roboto-Bold').fontSize(8).text('ЗАГАЛЬНА КІЛЬКІСТЬ ЧЛЕНІВ', 50, currentY + 10);
+      doc.fillColor('#0d2d26').font('Roboto-Bold').fontSize(18).text(String(total), 50, currentY + 20);
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .card { background: #ffffff; border: 1px solid #ccdcd6; border-radius: 8px; padding: 10px; margin-bottom: 10px; break-inside: avoid; }
-    .card-title { background: #e6f0ec; border: 1px solid #c2dcd4; border-radius: 6px; padding: 5px 8px; font-size: 10px; font-weight: 700; color: #0f5245; text-transform: uppercase; margin-bottom: 8px; }
-    
-    .row { margin-bottom: 6px; }
-    .row-text { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
-    .row-text .label { font-weight: 400; color: #1e293b; }
-    .row-text .val { font-weight: 700; color: #0f2922; }
-    .bar-bg { background: #e6f0ed; height: 5px; border-radius: 3px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 3px; }
-    .sub-title { font-size: 9px; font-weight: 700; color: #64748b; margin: 8px 0 4px 0; text-transform: uppercase; }
-    .empty { font-size: 10px; color: #94a3b8; font-style: italic; }
+      // Right side of banner: Pills for Brothers and Sisters
+      // Brothers Pill
+      doc.rect(330, currentY + 10, 100, 24).fill('#e0f2fe');
+      doc.rect(330, currentY + 10, 100, 24).strokeColor('#7dd3fc').stroke();
+      doc.fillColor('#0284c7').font('Roboto-Bold').fontSize(9).text(`БРАТИ: ${statsData.brothers || 0} (${bPct}%)`, 335, currentY + 18, { width: 90, align: 'center' });
 
-    .cg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .cg-badge { background: #f2f8f6; border: 1px solid #c2dcd4; border-radius: 4px; padding: 4px 6px; font-size: 9px; display: flex; justify-content: space-between; align-items: center; }
-    .cg-name { font-weight: 400; color: #0f2922; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75px; }
-    .cg-val { font-weight: 700; color: #047857; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="org">УЦХВЄ м. Івано-Франківськ</div>
-    <h1>СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ</h1>
-    <div class="meta">РАЙОН: ${String(statsData.rayonName || 'ВСІ').toUpperCase()} &nbsp;•&nbsp; ОНОВЛЕНО: ${nowStr}</div>
-  </div>
+      // Sisters Pill
+      doc.rect(440, currentY + 10, 100, 24).fill('#fce7f3');
+      doc.rect(440, currentY + 10, 100, 24).strokeColor('#f472b6').stroke();
+      doc.fillColor('#be185d').font('Roboto-Bold').fontSize(9).text(`СЕСТРИ: ${statsData.sisters || 0} (${sPct}%)`, 445, currentY + 18, { width: 90, align: 'center' });
 
-  <div class="banner">
-    <div class="total-box">
-      <span class="total-lbl">Загальна кількість членів</span>
-      <span class="total-val">${total}</span>
-    </div>
-    <div class="pills">
-      <div class="pill pill-b">БРАТИ: ${statsData.brothers || 0} (${bPct}%)</div>
-      <div class="pill pill-s">СЕСТРИ: ${statsData.sisters || 0} (${sPct}%)</div>
-    </div>
-  </div>
+      currentY += 56;
 
-  <div class="grid">
-    <div class="col">
-      <div class="card">
-        <div class="card-title">Аналіз відвідування</div>
-        ${renderProgressRows(attItems, '#2563eb')}
-      </div>
+      // Helper to render a Card with title and rows of progress bars
+      const drawCard = (x: number, y: number, width: number, title: string, items: [string, number][], barColor: string): number => {
+        let cardY = y;
+        
+        // Estimate height needed
+        const headerHeight = 22;
+        const rowHeight = 24;
+        const totalRowsHeight = items.length === 0 ? 20 : items.length * rowHeight;
+        const padding = 10;
+        const cardHeight = headerHeight + totalRowsHeight + padding * 2;
 
-      ${presItems.length > 0 ? `<div class="card">
-        <div class="card-title">Причини відсутності</div>
-        ${renderProgressRows(presItems, '#dc2626')}
-      </div>` : ''}
+        // If card exceeds page height, add a new page
+        if (cardY + cardHeight > 780) {
+          doc.addPage();
+          cardY = 36;
+        }
 
-      <div class="card">
-        <div class="card-title">Сім'я та сімейний стан</div>
-        ${renderProgressRows(maritalEntries, '#4f46e5')}
-      </div>
-    </div>
+        // Draw card background border
+        doc.rect(x, cardY, width, cardHeight).fill('#ffffff');
+        doc.rect(x, cardY, width, cardHeight).strokeColor('#ccdcd6').lineWidth(1).stroke();
 
-    <div class="col">
-      ${rayonItems.length > 0 ? `<div class="card">
-        <div class="card-title">Райони структури</div>
-        ${renderProgressRows(rayonItems, '#059669')}
-      </div>` : ''}
+        // Draw Card Title Background
+        doc.rect(x + 8, cardY + 8, width - 16, 18).fill('#e6f0ec');
+        doc.rect(x + 8, cardY + 8, width - 16, 18).strokeColor('#c2dcd4').lineWidth(0.5).stroke();
+        doc.fillColor('#0f5245').font('Roboto-Bold').fontSize(9).text(title, x + 14, cardY + 13);
 
-      <div class="card">
-        <div class="card-title">Освіта та соціальний статус</div>
-        ${eduItems.length > 0 ? `<div class="sub-title">Рівень освіти</div>${renderProgressRows(eduItems, '#7c3aed')}` : ''}
-        ${socItems.length > 0 ? `<div class="sub-title">Соціальна категорія</div>${renderProgressRows(socItems, '#d97706')}` : ''}
-      </div>
+        let rowY = cardY + 32;
+        if (!items || items.length === 0) {
+          doc.fillColor('#94a3b8').font('Roboto-Regular').fontSize(9).text('Немає даних', x + 12, rowY + 5);
+        } else {
+          items.forEach(([lbl, val]) => {
+            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+            
+            // Text line
+            doc.fillColor('#1e293b').font('Roboto-Regular').fontSize(9).text(lbl || 'н/д', x + 12, rowY);
+            doc.fillColor('#0f2922').font('Roboto-Bold').fontSize(9).text(`${val} (${pct}%)`, x + 12, rowY, { align: 'right', width: width - 24 });
+            
+            // Progress Bar Background
+            doc.rect(x + 12, rowY + 12, width - 24, 4).fill('#e6f0ec');
+            // Progress Bar Fill
+            if (pct > 0) {
+              const fillWidth = Math.max(2, Math.round(((width - 24) * pct) / 100));
+              doc.rect(x + 12, rowY + 12, fillWidth, 4).fill(barColor);
+            }
 
-      ${cgHtml}
-    </div>
-  </div>
-</body>
-</html>`;
+            rowY += rowHeight;
+          });
+        }
 
-  const puppeteerModule = await import("puppeteer");
-  const puppeteer = puppeteerModule.default || puppeteerModule;
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        return cardY + cardHeight + 12; // Return the bottom coordinate of this card + spacing
+      };
+
+      const attItems = (statsData.attendance || []).slice(0, 6) as [string, number][];
+      const presItems = (statsData.presence || []).slice(0, 10) as [string, number][];
+      const maritalEntries = Object.entries(statsData.marital || {}) as [string, number][];
+      const eduItems = (statsData.education || []).slice(0, 4) as [string, number][];
+      const socItems = (statsData.socialCategory || []).slice(0, 4) as [string, number][];
+      const rayonItems = (statsData.rayons || []).slice(0, 8) as [string, number][];
+      const cgItems = (statsData.caregivers || []).slice(0, 24) as [string, number][];
+
+      // Two column layout
+      // Left Column: Attendance, Absence, Marital Status
+      let leftY = currentY;
+      leftY = drawCard(36, leftY, 250, 'АНАЛІЗ ВІДВІДУВАННЯ', attItems, '#2563eb');
+      if (presItems.length > 0) {
+        leftY = drawCard(36, leftY, 250, 'ПРИЧИНИ ВІДСУТНОСТІ', presItems, '#dc2626');
+      }
+      leftY = drawCard(36, leftY, 250, "СІМ'Я ТА СІМЕЙНИЙ СТАН", maritalEntries, '#4f46e5');
+
+      // Right Column: Structure districts, Education, Social category
+      let rightY = currentY;
+      if (rayonItems.length > 0) {
+        rightY = drawCard(300, rightY, 250, 'РАЙОНИ СТРУКТУРИ', rayonItems, '#059669');
+      }
+      
+      // Education and Social category in one card
+      const combinedEduSocItems: [string, number][] = [];
+      if (eduItems.length > 0) {
+        combinedEduSocItems.push(['--- Рівень освіти ---', 0]);
+        eduItems.forEach(item => combinedEduSocItems.push(item));
+      }
+      if (socItems.length > 0) {
+        combinedEduSocItems.push(['--- Соціальна категорія ---', 0]);
+        socItems.forEach(item => combinedEduSocItems.push(item));
+      }
+      
+      // Let's draw the card for Education and Social category
+      const drawSpecialCard = (x: number, y: number, width: number, title: string, items: [string, number][]): number => {
+        let cardY = y;
+        const headerHeight = 22;
+        const rowHeight = 24;
+        let cardHeight = headerHeight + 16;
+        items.forEach(([lbl, val]) => {
+          if (lbl.startsWith('---')) {
+            cardHeight += 16;
+          } else {
+            cardHeight += rowHeight;
+          }
+        });
+
+        if (cardY + cardHeight > 780) {
+          doc.addPage();
+          cardY = 36;
+        }
+
+        doc.rect(x, cardY, width, cardHeight).fill('#ffffff');
+        doc.rect(x, cardY, width, cardHeight).strokeColor('#ccdcd6').lineWidth(1).stroke();
+
+        doc.rect(x + 8, cardY + 8, width - 16, 18).fill('#e6f0ec');
+        doc.rect(x + 8, cardY + 8, width - 16, 18).strokeColor('#c2dcd4').lineWidth(0.5).stroke();
+        doc.fillColor('#0f5245').font('Roboto-Bold').fontSize(9).text(title, x + 14, cardY + 13);
+
+        let rowY = cardY + 32;
+        items.forEach(([lbl, val]) => {
+          if (lbl.startsWith('---')) {
+            rowY += 4;
+            doc.fillColor('#64748b').font('Roboto-Bold').fontSize(8).text(lbl.replace(/---/g, '').trim(), x + 12, rowY);
+            rowY += 12;
+          } else {
+            const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+            doc.fillColor('#1e293b').font('Roboto-Regular').fontSize(9).text(lbl, x + 12, rowY);
+            doc.fillColor('#0f2922').font('Roboto-Bold').fontSize(9).text(`${val} (${pct}%)`, x + 12, rowY, { align: 'right', width: width - 24 });
+            doc.rect(x + 12, rowY + 12, width - 24, 4).fill('#e6f0ec');
+            if (pct > 0) {
+              const fillWidth = Math.max(2, Math.round(((width - 24) * pct) / 100));
+              doc.rect(x + 12, rowY + 12, fillWidth, 4).fill('#7c3aed');
+            }
+            rowY += rowHeight;
+          }
+        });
+
+        return cardY + cardHeight + 12;
+      };
+
+      rightY = drawSpecialCard(300, rightY, 250, 'ОСВІТА ТА СОЦІАЛЬНИЙ СТАТУС', combinedEduSocItems);
+
+      // Caregivers Grid (List of caregivers)
+      let finalY = Math.max(leftY, rightY);
+      if (cgItems.length > 0) {
+        const headerHeight = 22;
+        const rowHeight = 16;
+        const numRows = Math.ceil(cgItems.length / 2);
+        const cardHeight = headerHeight + numRows * rowHeight + 20;
+
+        if (finalY + cardHeight > 780) {
+          doc.addPage();
+          finalY = 36;
+        }
+
+        doc.rect(36, finalY, 514, cardHeight).fill('#ffffff');
+        doc.rect(36, finalY, 514, cardHeight).strokeColor('#ccdcd6').lineWidth(1).stroke();
+
+        doc.rect(44, finalY + 8, 498, 18).fill('#e6f0ec');
+        doc.rect(44, finalY + 8, 498, 18).strokeColor('#c2dcd4').lineWidth(0.5).stroke();
+        doc.fillColor('#0f5245').font('Roboto-Bold').fontSize(9).text('СПИСОК ОПІКУНІВ', 50, finalY + 13);
+
+        let rowY = finalY + 32;
+        for (let i = 0; i < cgItems.length; i += 2) {
+          // Column 1
+          const [name1, count1] = cgItems[i];
+          const pct1 = total > 0 ? Math.round((count1 / total) * 100) : 0;
+          doc.rect(48, rowY, 240, 12).fill('#f2f8f6');
+          doc.rect(48, rowY, 240, 12).strokeColor('#c2dcd4').lineWidth(0.5).stroke();
+          doc.fillColor('#0f2922').font('Roboto-Regular').fontSize(8).text(`👤 ${name1}`, 52, rowY + 2, { width: 150 });
+          doc.fillColor('#047857').font('Roboto-Bold').fontSize(8).text(`${count1} (${pct1}%)`, 52, rowY + 2, { align: 'right', width: 232 });
+
+          // Column 2
+          if (i + 1 < cgItems.length) {
+            const [name2, count2] = cgItems[i + 1];
+            const pct2 = total > 0 ? Math.round((count2 / total) * 100) : 0;
+            doc.rect(302, rowY, 240, 12).fill('#f2f8f6');
+            doc.rect(302, rowY, 240, 12).strokeColor('#c2dcd4').lineWidth(0.5).stroke();
+            doc.fillColor('#0f2922').font('Roboto-Regular').fontSize(8).text(`👤 ${name2}`, 306, rowY + 2, { width: 150 });
+            doc.fillColor('#047857').font('Roboto-Bold').fontSize(8).text(`${count2} (${pct2}%)`, 306, rowY + 2, { align: 'right', width: 232 });
+          }
+
+          rowY += rowHeight;
+        }
+      }
+
+      // Footer
+      doc.font('Roboto-Regular').fontSize(8).fillColor('#94a3b8').text('Згенеровано автоматично системою "База " + statsData.rayonName || "777"', 36, 805, { align: 'center', width: 523 });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
   });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded' });
-    const pdfBuf = await page.pdf({ format: 'A4', printBackground: true });
-    return Buffer.from(pdfBuf);
-  } finally {
-    await browser.close();
-  }
 }
 
 // 2.3.2 API: Manual distribution of Statistics report (Telegram / Email)

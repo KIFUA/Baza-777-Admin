@@ -33,8 +33,12 @@ if (FIREBASE_URL.endsWith("/")) {
 export const FIREBASE_SECRET = (process.env.FIREBASE_SECRET && process.env.FIREBASE_SECRET.trim()) || "CXo9DIfFBm1Y4JlKACL7PFPLUFKYjpNgUXyzSRwf";
 
 const PORT = 3000;
-const DB_CACHE_FILE = path.join(process.cwd(), "db_cache.json");
-const tablyciDir = path.join(process.cwd(), "tablyci");
+const DB_CACHE_FILE = fs.existsSync(path.join(process.cwd(), "db_cache.json"))
+  ? path.join(process.cwd(), "db_cache.json")
+  : path.resolve(__dirname, "db_cache.json");
+const tablyciDir = fs.existsSync(path.join(process.cwd(), "tablyci"))
+  ? path.join(process.cwd(), "tablyci")
+  : path.resolve(__dirname, "tablyci");
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -5340,10 +5344,10 @@ async function syncDatabaseWithFirebase() {
   console.log("[Firebase Startup Sync] Loading database from Firebase RTDB...");
   
   // Load specialized lookup directories from Firebase RTDB
-  await syncDirectoriesFromFirebase();
+  await syncDirectoriesFromFirebase().catch((err) => console.error("[Firebase Startup Sync] Directories error:", err.message));
 
   // Load access control lists from Firebase RTDB
-  await syncAccessDostupFromFirebase();
+  await syncAccessDostupFromFirebase().catch((err) => console.error("[Firebase Startup Sync] Access error:", err.message));
   await syncPermissionLevelsFromFirebase().catch(() => {});
   
   // Load custom colors configuration from Firebase RTDB
@@ -5487,58 +5491,37 @@ async function syncDatabaseWithFirebase() {
       }
     });
 
-    if (Object.keys(statusMigrationUpdates).length > 0) {
-      console.log(`[Firebase Status Migration] Found ${Object.keys(statusMigrationUpdates).length} records with legacy 'активний' status. Performing atomic migration to 'наявний' status...`);
-      try {
-        const migRes = await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(statusMigrationUpdates)
-        });
-        if (migRes.ok) {
-          console.log(`[Firebase Status Migration] Atomic migration succeeded for ${Object.keys(statusMigrationUpdates).length} records!`);
-        } else {
-          console.error(`[Firebase Status Migration] Failed with status: ${migRes.status}`);
+    // Background atomic patches to Firebase if needed (non-blocking)
+    if (Object.keys(statusMigrationUpdates).length > 0 || Object.keys(dilyciaCleanupUpdates).length > 0 || Object.keys(pibCleanupUpdates).length > 0) {
+      (async () => {
+        if (Object.keys(statusMigrationUpdates).length > 0) {
+          try {
+            await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(statusMigrationUpdates)
+            });
+          } catch (e) {}
         }
-      } catch (migErr: any) {
-        console.error(`[Firebase Status Migration] Failed with error:`, migErr.message);
-      }
-    }
-
-    if (Object.keys(dilyciaCleanupUpdates).length > 0) {
-      console.log(`[Firebase Dilycia Cleanup] Found dilycia records on active members. Performing atomic cleanup from database...`);
-      try {
-        const cleanRes = await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(dilyciaCleanupUpdates)
-        });
-        if (cleanRes.ok) {
-          console.log(`[Firebase Dilycia Cleanup] Atomic cleanup of dilycia from active records succeeded!`);
-        } else {
-          console.error(`[Firebase Dilycia Cleanup] Cleanup failed with status: ${cleanRes.status}`);
+        if (Object.keys(dilyciaCleanupUpdates).length > 0) {
+          try {
+            await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(dilyciaCleanupUpdates)
+            });
+          } catch (e) {}
         }
-      } catch (cleanErr: any) {
-        console.error(`[Firebase Dilycia Cleanup] Cleanup failed:`, cleanErr.message);
-      }
-    }
-
-    if (Object.keys(pibCleanupUpdates).length > 0) {
-      console.log(`[Firebase PIB Cleanup] Found ${Object.keys(pibCleanupUpdates).length} fields with parentheses in PIB. Performing atomic cleanup...`);
-      try {
-        const pibRes = await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(pibCleanupUpdates)
-        });
-        if (pibRes.ok) {
-          console.log(`[Firebase PIB Cleanup] Atomic cleanup of parenthesized names succeeded!`);
-        } else {
-          console.error(`[Firebase PIB Cleanup] Cleanup failed with status: ${pibRes.status}`);
+        if (Object.keys(pibCleanupUpdates).length > 0) {
+          try {
+            await fetch(`${FIREBASE_URL}/members.json?auth=${DB_SECRET}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(pibCleanupUpdates)
+            });
+          } catch (e) {}
         }
-      } catch (pibErr: any) {
-        console.error(`[Firebase PIB Cleanup] Cleanup failed:`, pibErr.message);
-      }
+      })().catch(e => console.error("Background patch error:", e));
     }
 
     // Parse each record

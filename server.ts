@@ -2484,7 +2484,7 @@ app.post("/api/stats/send", async (req, res) => {
   });
 });
 
-// Endpoint for generating vector PDF with true selectable text layer via headless Puppeteer
+// Endpoint for generating vector PDF with true selectable text layer via Puppeteer
 app.post("/api/generate-pdf", async (req, res) => {
   try {
     const { html, isLandscape = false, filename = "Zvit.pdf", returnBase64 = false } = req.body;
@@ -2492,14 +2492,15 @@ app.post("/api/generate-pdf", async (req, res) => {
       return res.status(400).json({ success: false, message: "HTML вміст обов'язковий." });
     }
 
-      const puppeteerModule = await import("puppeteer");
-      const puppeteer = puppeteerModule.default || puppeteerModule;
-      const browser = await puppeteer.launch({
+    const puppeteerModule = await import("puppeteer");
+    const puppeteer = puppeteerModule.default || puppeteerModule;
+    const browser = await puppeteer.launch({
       headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
+        '--disable-gpu',
         '--font-render-hinting=medium'
       ]
     });

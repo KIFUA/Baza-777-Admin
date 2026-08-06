@@ -1,5 +1,4 @@
 import cron from 'node-cron';
-import puppeteer from 'puppeteer';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
@@ -280,6 +279,8 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
 
         // --- PDF Generation via Puppeteer ---
         try {
+            const puppeteerModule = await import('puppeteer');
+            const puppeteer = puppeteerModule.default || puppeteerModule;
             const browser = await puppeteer.launch({
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']

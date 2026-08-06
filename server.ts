@@ -6,7 +6,6 @@ import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import axios from "axios";
 import FormData from "form-data";
-import puppeteer from "puppeteer";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
 import XLSX from "xlsx";
@@ -1920,6 +1919,8 @@ async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
 </body>
 </html>`;
 
+  const puppeteerModule = await import("puppeteer");
+  const puppeteer = puppeteerModule.default || puppeteerModule;
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -2159,6 +2160,8 @@ async function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
 </body>
 </html>`;
 
+  const puppeteerModule = await import("puppeteer");
+  const puppeteer = puppeteerModule.default || puppeteerModule;
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
@@ -2390,7 +2393,9 @@ app.post("/api/generate-pdf", async (req, res) => {
       return res.status(400).json({ success: false, message: "HTML вміст обов'язковий." });
     }
 
-    const browser = await puppeteer.launch({
+      const puppeteerModule = await import("puppeteer");
+      const puppeteer = puppeteerModule.default || puppeteerModule;
+      const browser = await puppeteer.launch({
       headless: true,
       args: [
         '--no-sandbox',

@@ -6,6 +6,7 @@ import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import axios from "axios";
 import FormData from "form-data";
+import puppeteer from "puppeteer";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
 import XLSX from "xlsx";
@@ -1871,96 +1872,66 @@ app.get("/api/birthdays/print", async (req, res) => {
   res.send(html);
 });
 
-function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
-      const chunks: Buffer[] = [];
-      doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', err => reject(err));
+async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
+  const UKR_DAYS: Record<number, string> = {
+    1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Нд'
+  };
+  const listRows = (birthdays.list || []).map((item: any) => {
+    const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
+    const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
+    const name = item.cleanName || item.fullName || item.shortName || '';
+    return `<tr style="${item.isJubilee ? 'color:#dc2626; font-weight:bold;' : ''}">
+      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dayName}</td>
+      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dateFormatted}</td>
+      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0;">${name} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
+    </tr>`;
+  }).join('');
 
-      const regularFont = getRobotoRegularFont();
-      const boldFont = getRobotoBoldFont();
+  const html = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+    body { font-family: 'Roboto', sans-serif; padding: 24px; color: #0f172a; margin:0; }
+    h1 { text-align: center; font-size: 18px; margin-bottom: 4px; color: #1e293b; }
+    .sub { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight:500; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f8fafc; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: left; color:#475569; }
+    .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
+  <div class="sub">/ ${birthdays.weekRangeText || ''} /</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center; width:60px;">День</th>
+        <th style="text-align:center; width:90px;">Дата</th>
+        <th>ПІБ / Ім'я</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${listRows || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#94a3b8;">На цьому тижні немає іменинників</td></tr>'}
+    </tbody>
+  </table>
+  <div class="footer">Згенеровано автоматично системою "База 777"</div>
+</body>
+</html>`;
 
-      let useRoboto = false;
-      if (regularFont && boldFont) {
-        try {
-          doc.registerFont('Roboto-Regular', regularFont as any);
-          doc.registerFont('Roboto-Bold', boldFont as any);
-          doc.font('Roboto-Bold');
-          // Basic test to see if it can measure Cyrillic
-          doc.widthOfString('Тест');
-          useRoboto = true;
-          console.log("[PDF] Successfully registered embedded Roboto fonts.");
-        } catch (e) {
-          console.error("[PDF] Error registering or testing Roboto fonts:", e);
-          useRoboto = false;
-        }
-      }
-
-      const safeWidth = (text: string) => {
-        try {
-          return doc.widthOfString(text);
-        } catch (e) {
-          return text.length * 8;
-        }
-      };
-
-      if (useRoboto) {
-        try {
-          doc.font('Roboto-Bold').fontSize(16);
-          const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
-          const titleWidth = safeWidth(titleText);
-          const titleStartX = (doc.page.width - titleWidth) / 2;
-          const alignX = titleStartX + safeWidth('ІМЕНИН');
-
-          doc.text(titleText, { align: 'center' });
-          doc.moveDown(0.5);
-          doc.font('Roboto-Regular').fontSize(11).text(`/ ${birthdays.weekRangeText} /`, alignX);
-          doc.moveDown(0.6);
-
-          doc.lineGap(2);
-          birthdays.list.forEach((item: any) => {
-            doc.font('Roboto-Bold').fontSize(14);
-            if (item.isJubilee) doc.fillColor('red');
-            else doc.fillColor('black');
-            
-            const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
-            const nameParts = rawName.split(/\s+/);
-            const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
-            
-            doc.text(shortName, alignX);
-            doc.fillColor('black');
-          });
-        } catch (drawErr) {
-          console.error("[PDF] Error drawing with Roboto, falling back:", drawErr);
-          useRoboto = false;
-        }
-      }
-      
-      if (!useRoboto) {
-        console.warn("[PDF] Using fallback font Helvetica (No Cyrillic support)");
-        try {
-          doc.font('Helvetica');
-          doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
-          doc.moveDown();
-          birthdays.list.forEach((item: any) => {
-            const nameText = item.cleanName || item.fullName || item.shortName || 'Unknown';
-            // Filter out non-ASCII to prevent pdfkit crashes with Helvetica
-            const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
-            doc.fontSize(12).text(safeName, { align: 'center' });
-          });
-        } catch (fallbackErr) {
-          console.error("[PDF] Fallback also failed:", fallbackErr);
-        }
-      }
-
-      doc.end();
-    } catch (err) {
-      reject(err);
-    }
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    const pdfBuf = await page.pdf({ format: 'A5', printBackground: true });
+    return Buffer.from(pdfBuf);
+  } finally {
+    await browser.close();
+  }
 }
 
 // 2.3.1 Helper to compute stats for a rayon on server
@@ -2052,217 +2023,154 @@ function computeRayonStatsOnServer(selectedRayon: string) {
   };
 }
 
-function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: 0 });
-      const chunks: Buffer[] = [];
-      doc.on('data', chunk => chunks.push(chunk));
-      doc.on('end', () => resolve(Buffer.concat(chunks)));
-      doc.on('error', err => reject(err));
+async function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
+  const total = statsData.total || 0;
+  const bPct = total > 0 ? Math.round((statsData.brothers / total) * 100) : 0;
+  const sPct = total > 0 ? Math.round((statsData.sisters / total) * 100) : 0;
+  const nowStr = new Date().toLocaleDateString('uk-UA') + ' ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
 
-      const regularFont = getRobotoRegularFont();
-      const boldFont = getRobotoBoldFont();
+  const renderProgressRows = (items: [string, number][], barColor: string) => {
+    if (!items || items.length === 0) return '<div class="empty">Немає даних</div>';
+    return items.map(([lbl, val]) => {
+      const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+      return `<div class="row">
+        <div class="row-text">
+          <span class="label">${lbl || 'н/д'}</span>
+          <span class="val">${val} (${pct}%)</span>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
+      </div>`;
+    }).join('');
+  };
 
-      let useRoboto = false;
-      if (regularFont && boldFont) {
-        try {
-          doc.registerFont('Roboto-Regular', regularFont as any);
-          doc.registerFont('Roboto-Bold', boldFont as any);
-          doc.font('Roboto-Bold');
-          doc.widthOfString('Тест');
-          useRoboto = true;
-        } catch (e) {
-          useRoboto = false;
-        }
-      }
+  const attItems = (statsData.attendance || []).slice(0, 6) as [string, number][];
+  const presItems = (statsData.presence || []).slice(0, 10) as [string, number][];
+  const maritalEntries = Object.entries(statsData.marital || {}) as [string, number][];
+  const eduItems = (statsData.education || []).slice(0, 4) as [string, number][];
+  const socItems = (statsData.socialCategory || []).slice(0, 4) as [string, number][];
+  const rayonItems = (statsData.rayons || []).slice(0, 8) as [string, number][];
+  const cgItems = (statsData.caregivers || []).slice(0, 24) as [string, number][];
 
-      const fontReg = useRoboto ? 'Roboto-Regular' : 'Helvetica';
-      const fontBold = useRoboto ? 'Roboto-Bold' : 'Helvetica-Bold';
+  let cgHtml = '';
+  if (cgItems.length > 0) {
+    cgHtml += `<div class="card"><div class="card-title">Список опікунів</div><div class="cg-grid">`;
+    cgItems.forEach(([name, count]) => {
+      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+      cgHtml += `<div class="cg-badge">👤 <span class="cg-name">${name}</span> <span class="cg-val">${count} (${pct}%)</span></div>`;
+    });
+    cgHtml += `</div></div>`;
+  }
 
-      const total = statsData.total;
-      const bPct = total > 0 ? Math.round((statsData.brothers / total) * 100) : 0;
-      const sPct = total > 0 ? Math.round((statsData.sisters / total) * 100) : 0;
+  const html = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+    @page { size: A4 portrait; margin: 0; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: 'Roboto', sans-serif; background: #f4f8f6; color: #0f172a; margin: 0; padding: 12mm; }
+    
+    .header { text-align: center; margin-bottom: 12px; }
+    .header .org { font-size: 11px; font-weight: 700; color: #134e4a; text-transform: uppercase; letter-spacing: 0.5px; }
+    .header h1 { font-size: 16px; font-weight: 700; color: #0f766e; margin: 3px 0; }
+    .header .meta { font-size: 10px; font-weight: 700; color: #0d9488; }
 
-      // Fill full page light grey-green background (ink-saving)
-      doc.rect(0, 0, 595.28, 841.89).fill('#f4f8f6');
+    .banner { background: #e6f0ec; border: 1px solid #b2d4ca; border-radius: 8px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .banner .total-box { display: flex; flex-direction: column; }
+    .banner .total-lbl { font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase; }
+    .banner .total-val { font-size: 20px; font-weight: 700; color: #0d2d26; line-height: 1.1; }
+    
+    .pills { display: flex; gap: 12px; }
+    .pill { padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; }
+    .pill-b { background: #e0f2fe; border: 1px solid #7dd3fc; color: #0284c7; }
+    .pill-s { background: #fce7f3; border: 1px solid #f472b6; color: #be185d; }
 
-      const nowStr = new Date().toLocaleDateString('uk-UA') + ' ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { background: #ffffff; border: 1px solid #ccdcd6; border-radius: 8px; padding: 10px; margin-bottom: 10px; break-inside: avoid; }
+    .card-title { background: #e6f0ec; border: 1px solid #c2dcd4; border-radius: 6px; padding: 5px 8px; font-size: 10px; font-weight: 700; color: #0f5245; text-transform: uppercase; margin-bottom: 8px; }
+    
+    .row { margin-bottom: 6px; }
+    .row-text { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
+    .row-text .label { font-weight: 400; color: #1e293b; }
+    .row-text .val { font-weight: 700; color: #0f2922; }
+    .bar-bg { background: #e6f0ed; height: 5px; border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; }
+    .sub-title { font-size: 9px; font-weight: 700; color: #64748b; margin: 8px 0 4px 0; text-transform: uppercase; }
+    .empty { font-size: 10px; color: #94a3b8; font-style: italic; }
 
-      // Top Title Header
-      doc.font(fontBold).fontSize(10).fillColor('#134e4a').text('УЦХВЄ м. Івано-Франківськ', 20, 8, { align: 'center' });
-      doc.font(fontBold).fontSize(12).fillColor('#0f766e').text('СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ', 20, 21, { align: 'center' });
-      doc.font(fontBold).fontSize(8).fillColor('#0d9488').text(`РАЙОН: ${statsData.rayonName.toUpperCase()}    •    ОНОВЛЕНО: ${nowStr}`, 20, 36, { align: 'center' });
+    .cg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .cg-badge { background: #f2f8f6; border: 1px solid #c2dcd4; border-radius: 4px; padding: 4px 6px; font-size: 9px; display: flex; justify-content: space-between; align-items: center; }
+    .cg-name { font-weight: 400; color: #0f2922; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75px; }
+    .cg-val { font-weight: 700; color: #047857; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="org">УЦХВЄ м. Івано-Франківськ</div>
+    <h1>СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ</h1>
+    <div class="meta">РАЙОН: ${String(statsData.rayonName || 'ВСІ').toUpperCase()} &nbsp;•&nbsp; ОНОВЛЕНО: ${nowStr}</div>
+  </div>
 
-      // Top Summary Banner
-      const bannerX = 20;
-      const bannerY = 49;
-      const bannerW = 555.28;
-      const bannerH = 38;
+  <div class="banner">
+    <div class="total-box">
+      <span class="total-lbl">Загальна кількість членів</span>
+      <span class="total-val">${total}</span>
+    </div>
+    <div class="pills">
+      <div class="pill pill-b">БРАТИ: ${statsData.brothers || 0} (${bPct}%)</div>
+      <div class="pill pill-s">СЕСТРИ: ${statsData.sisters || 0} (${sPct}%)</div>
+    </div>
+  </div>
 
-      doc.roundedRect(bannerX, bannerY, bannerW, bannerH, 6).fillAndStroke('#e6f0ec', '#b2d4ca');
+  <div class="grid">
+    <div class="col">
+      <div class="card">
+        <div class="card-title">Аналіз відвідування</div>
+        ${renderProgressRows(attItems, '#2563eb')}
+      </div>
 
-      // Left total count
-      doc.font(fontReg).fontSize(6.5).fillColor('#475569').text('ЗАГАЛЬНА КІЛЬКІСТЬ ЧЛЕНІВ', bannerX + 12, bannerY + 5);
-      doc.font(fontBold).fontSize(16).fillColor('#0d2d26').text(`${total}`, bannerX + 12, bannerY + 15);
+      ${presItems.length > 0 ? `<div class="card">
+        <div class="card-title">Причини відсутності</div>
+        ${renderProgressRows(presItems, '#dc2626')}
+      </div>` : ''}
 
-      // Middle pill: Brothers
-      const bPillX = bannerX + 180;
-      const bPillY = bannerY + 7;
-      doc.roundedRect(bPillX, bPillY, 130, 24, 5).fillAndStroke('#e0f2fe', '#7dd3fc');
-      doc.font(fontBold).fontSize(8.5).fillColor('#0284c7').text(`БРАТИ  ${statsData.brothers} (${bPct}%)`, bPillX + 12, bPillY + 7);
+      <div class="card">
+        <div class="card-title">Сім'я та сімейний стан</div>
+        ${renderProgressRows(maritalEntries, '#4f46e5')}
+      </div>
+    </div>
 
-      // Right pill: Sisters
-      const sPillX = bannerX + 330;
-      const sPillY = bannerY + 7;
-      doc.roundedRect(sPillX, sPillY, 130, 24, 5).fillAndStroke('#fce7f3', '#f472b6');
-      doc.font(fontBold).fontSize(8.5).fillColor('#be185d').text(`СЕСТРИ  ${statsData.sisters} (${sPct}%)`, sPillX + 12, sPillY + 7);
+    <div class="col">
+      ${rayonItems.length > 0 ? `<div class="card">
+        <div class="card-title">Райони структури</div>
+        ${renderProgressRows(rayonItems, '#059669')}
+      </div>` : ''}
 
-      // Column Coordinates
-      const col1X = 20;
-      const col2X = 302;
-      const colW = 273;
+      <div class="card">
+        <div class="card-title">Освіта та соціальний статус</div>
+        ${eduItems.length > 0 ? `<div class="sub-title">Рівень освіти</div>${renderProgressRows(eduItems, '#7c3aed')}` : ''}
+        ${socItems.length > 0 ? `<div class="sub-title">Соціальна категорія</div>${renderProgressRows(socItems, '#d97706')}` : ''}
+      </div>
 
-      const drawCardHeader = (x: number, y: number, w: number, title: string) => {
-        doc.roundedRect(x, y, w, 19, 5).fillAndStroke('#e6f0ec', '#c2dcd4');
-        doc.font(fontBold).fontSize(8).fillColor('#0f5245').text(title.toUpperCase(), x + 8, y + 5);
-      };
+      ${cgHtml}
+    </div>
+  </div>
+</body>
+</html>`;
 
-      const drawProgressRow = (x: number, y: number, w: number, label: string, val: number, tot: number, barColor: string) => {
-        const pct = tot > 0 ? Math.round((val / tot) * 100) : 0;
-        doc.font(fontReg).fontSize(7.5).fillColor('#1e293b').text(label, x + 8, y, { width: 140 });
-        doc.font(fontBold).fontSize(7.5).fillColor('#0f2922').text(`${val} (${pct}%)`, x + 150, y, { width: 115, align: 'right' });
-
-        // Progress Bar
-        const barY = y + 10;
-        const barW = 257;
-        const fillW = Math.max(2, Math.min(barW, Math.round((val / (tot || 1)) * barW)));
-        doc.roundedRect(x + 8, barY, barW, 3.5, 1.5).fill('#e6f0ed');
-        if (fillW > 0) {
-          doc.roundedRect(x + 8, barY, fillW, 3.5, 1.5).fill(barColor);
-        }
-      };
-
-      // LEFT COLUMN
-      let curY1 = 88;
-
-      // 1. АНАЛІЗ ВІДВІДУВАННЯ
-      const attItems = (statsData.attendance || []).slice(0, 5);
-      const attH = 22 + attItems.length * 16 + 4;
-      doc.roundedRect(col1X, curY1, colW, attH, 6).fillAndStroke('#ffffff', '#ccdcd6');
-      drawCardHeader(col1X, curY1, colW, 'АНАЛІЗ ВІДВІДУВАННЯ');
-      let rowY1 = curY1 + 22;
-      attItems.forEach(([lbl, val]: [string, number]) => {
-        drawProgressRow(col1X, rowY1, colW, lbl || 'н/д', val, total, '#2563eb');
-        rowY1 += 16;
-      });
-      curY1 += attH + 6;
-
-      // 2. ПРИЧИНИ ВІДСУТНОСТІ
-      const presItems = (statsData.presence || []).slice(0, 10);
-      if (presItems.length > 0) {
-        const presH = 22 + presItems.length * 16 + 4;
-        doc.roundedRect(col1X, curY1, colW, presH, 6).fillAndStroke('#ffffff', '#ccdcd6');
-        drawCardHeader(col1X, curY1, colW, 'ПРИЧИНИ ВІДСУТНОСТІ');
-        let rY = curY1 + 22;
-        presItems.forEach(([lbl, val]: [string, number]) => {
-          drawProgressRow(col1X, rY, colW, lbl, val, total, '#dc2626');
-          rY += 16;
-        });
-        curY1 += presH + 6;
-      }
-
-      // 3. СІМ. СТАН
-      const maritalEntries = Object.entries(statsData.marital || {});
-      const marH = 22 + maritalEntries.length * 16 + 4;
-      doc.roundedRect(col1X, curY1, colW, marH, 6).fillAndStroke('#ffffff', '#ccdcd6');
-      drawCardHeader(col1X, curY1, colW, 'СІМ. СТАН');
-      let marY = curY1 + 22;
-      maritalEntries.forEach(([lbl, val]: [string, any]) => {
-        drawProgressRow(col1X, marY, colW, lbl, val, total, '#4f46e5');
-        marY += 16;
-      });
-      curY1 += marH + 6;
-
-      // 4. ОСВІТА ТА СОЦ. СТАТУС
-      const eduItems = (statsData.education || []).slice(0, 4);
-      const socItems = (statsData.socialCategory || []).slice(0, 4);
-      const eduH = 22 + (eduItems.length > 0 ? 12 + eduItems.length * 15 : 0) + (socItems.length > 0 ? 12 + socItems.length * 15 : 0) + 6;
-      doc.roundedRect(col1X, curY1, colW, eduH, 6).fillAndStroke('#ffffff', '#ccdcd6');
-      drawCardHeader(col1X, curY1, colW, 'ОСВІТА ТА СОЦ. СТАТУС');
-      let eduY = curY1 + 22;
-      if (eduItems.length > 0) {
-        doc.font(fontBold).fontSize(7).fillColor('#64748b').text('РІВЕНЬ ОСВІТИ', col1X + 8, eduY);
-        eduY += 10;
-        eduItems.forEach(([lbl, val]: [string, number]) => {
-          drawProgressRow(col1X, eduY, colW, lbl, val, total, '#7c3aed');
-          eduY += 15;
-        });
-      }
-      if (socItems.length > 0) {
-        doc.font(fontBold).fontSize(7).fillColor('#64748b').text('СОЦІАЛЬНА КАТЕГОРІЯ', col1X + 8, eduY);
-        eduY += 10;
-        socItems.forEach(([lbl, val]: [string, number]) => {
-          drawProgressRow(col1X, eduY, colW, lbl, val, total, '#d97706');
-          eduY += 15;
-        });
-      }
-
-      // RIGHT COLUMN
-      let curY2 = 88;
-
-      // 1. РАЙОНИ СТРУКТУРИ
-      const rayonItems = (statsData.rayons || []).slice(0, 8);
-      if (rayonItems.length > 0) {
-        const rayH = 22 + rayonItems.length * 16 + 4;
-        doc.roundedRect(col2X, curY2, colW, rayH, 6).fillAndStroke('#ffffff', '#ccdcd6');
-        drawCardHeader(col2X, curY2, colW, 'РАЙОНИ СТРУКТУРИ');
-        let rY = curY2 + 22;
-        rayonItems.forEach(([lbl, val]: [string, number]) => {
-          drawProgressRow(col2X, rY, colW, lbl, val, total, '#059669');
-          rY += 16;
-        });
-        curY2 += rayH + 6;
-      }
-
-      // 2. СПИСОК ОПІКУНІВ
-      const cgItems = (statsData.caregivers || []).slice(0, 24);
-      if (cgItems.length > 0) {
-        const numRows = Math.ceil(cgItems.length / 2);
-        const cgH = 22 + numRows * 21 + 8;
-        doc.roundedRect(col2X, curY2, colW, cgH, 6).fillAndStroke('#ffffff', '#ccdcd6');
-        drawCardHeader(col2X, curY2, colW, 'СПИСОК ОПІКУНІВ');
-
-        let gridY = curY2 + 24;
-        for (let i = 0; i < cgItems.length; i += 2) {
-          const item1 = cgItems[i];
-          const badgeW = 127;
-
-          doc.roundedRect(col2X + 6, gridY, badgeW, 17, 4).fillAndStroke('#f2f8f6', '#c2dcd4');
-          const pct1 = total > 0 ? Math.round((item1[1] / total) * 100) : 0;
-          doc.font(fontReg).fontSize(7).fillColor('#0f2922').text(`👤 ${item1[0]}`, col2X + 10, gridY + 4, { width: 78 });
-          doc.font(fontBold).fontSize(7).fillColor('#047857').text(`${item1[1]} (${pct1}%)`, col2X + 88, gridY + 4, { width: 40, align: 'right' });
-
-          if (i + 1 < cgItems.length) {
-            const item2 = cgItems[i + 1];
-            doc.roundedRect(col2X + 139, gridY, badgeW, 17, 4).fillAndStroke('#f2f8f6', '#c2dcd4');
-            const pct2 = total > 0 ? Math.round((item2[1] / total) * 100) : 0;
-            doc.font(fontReg).fontSize(7).fillColor('#0f2922').text(`👤 ${item2[0]}`, col2X + 143, gridY + 4, { width: 78 });
-            doc.font(fontBold).fontSize(7).fillColor('#047857').text(`${item2[1]} (${pct2}%)`, col2X + 221, gridY + 4, { width: 40, align: 'right' });
-          }
-
-          gridY += 21;
-        }
-      }
-
-      // Footer
-      doc.font(fontReg).fontSize(7.5).fillColor('#64748b').text('УЦХВЄ м. Івано-Франківськ — Системний статистичний звіт', 20, 825, { width: 555, align: 'center' });
-
-      doc.end();
-    } catch (err) {
-      reject(err);
-    }
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    const pdfBuf = await page.pdf({ format: 'A4', printBackground: true });
+    return Buffer.from(pdfBuf);
+  } finally {
+    await browser.close();
+  }
 }
 
 // 2.3.2 API: Manual distribution of Statistics report (Telegram / Email)
@@ -2472,6 +2380,64 @@ app.post("/api/stats/send", async (req, res) => {
     logs: telegramLogs || emailLogs,
     rawText: msg
   });
+});
+
+// Endpoint for generating vector PDF with true selectable text layer via headless Puppeteer
+app.post("/api/generate-pdf", async (req, res) => {
+  try {
+    const { html, isLandscape = false, filename = "Zvit.pdf", returnBase64 = false } = req.body;
+    if (!html) {
+      return res.status(400).json({ success: false, message: "HTML вміст обов'язковий." });
+    }
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--font-render-hinting=medium'
+      ]
+    });
+
+    try {
+      const page = await browser.newPage();
+
+      await page.setViewport({
+        width: isLandscape ? 1123 : 794,
+        height: isLandscape ? 794 : 1123,
+        deviceScaleFactor: 1
+      });
+
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+
+      try {
+        await page.evaluateHandle('document.fonts.ready');
+      } catch (fErr) {}
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        landscape: Boolean(isLandscape),
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
+      });
+
+      if (returnBase64) {
+        const base64Str = Buffer.from(pdfBuffer).toString('base64');
+        return res.json({ success: true, pdfBase64: base64Str });
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+      return res.send(Buffer.from(pdfBuffer));
+    } finally {
+      await browser.close();
+    }
+  } catch (err: any) {
+    console.error("Server PDF generation error:", err);
+    return res.status(500).json({ success: false, message: "Помилка генерації PDF на сервері: " + err.message });
+  }
 });
 
 // Endpoint for sending custom generated PDF documents directly to Telegram recipients

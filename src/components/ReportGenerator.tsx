@@ -16,6 +16,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { getRobotoRegularFont } from '../lib/fontsBase64';
 import { parseAndNormalizeContactDates } from '../lib/dateUtils';
@@ -2681,31 +2682,94 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           blob
         };
       } catch (srvErr: any) {
-        console.warn("Server PDF generation failed, falling back to client-side canvas generation:", srvErr);
+        console.warn("Server PDF generation failed, falling back to client-side vector text PDF generation:", srvErr);
         
-        // Fallback: Generate PDF client-side using html2canvas and jsPDF for 100% stability on Vercel
+        // Fallback: Generate 100% text-based vector PDF client-side using jsPDF and jspdf-autotable
         const pdf = new jsPDF({
           orientation: isLandscape ? 'landscape' : 'portrait',
-          unit: 'px',
-          format: [pageWidthPx, pageHeightPx]
+          unit: 'mm',
+          format: 'a4'
         });
 
-        for (let i = 0; i < pages.length; i++) {
-          if (i > 0) {
-            pdf.addPage([pageWidthPx, pageHeightPx], isLandscape ? 'landscape' : 'portrait');
-          }
-          
-          const canvas = await html2canvas(pages[i].pageDiv, {
-            scale: 2, // high-definition visual quality
-            useCORS: true,
-            logging: false,
-            width: pageWidthPx,
-            height: pageHeightPx
-          });
-          
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          pdf.addImage(imgData, 'JPEG', 0, 0, pageWidthPx, pageHeightPx);
+        const fontBytes = getRobotoRegularFont();
+        let binaryStr = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < fontBytes.length; i += chunkSize) {
+          const chunk = fontBytes.subarray(i, i + chunkSize);
+          binaryStr += String.fromCharCode.apply(null, Array.from(chunk));
         }
+        const base64Font = window.btoa(binaryStr);
+
+        pdf.addFileToVFS('Roboto-Regular.ttf', base64Font);
+        pdf.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+        pdf.setFont('Roboto', 'normal');
+
+        const head = [displayColumns.map(col => col.label)];
+        const body = recordsToRender.map((item: any) => {
+          return displayColumns.map(col => {
+            let textVal = '—';
+            if (col.key === 'pib') {
+              const p1 = item.husbandName || '';
+              const p2 = item.wifeName || '';
+              if (p1 && p2) textVal = `${p1} / ${p2}`;
+              else textVal = p1 || p2 || item.singleMember?.pib || '—';
+            } else if (col.key === 'vik_rokiv1') {
+              const v1 = item.husbandAge || '';
+              const v2 = item.wifeAge || '';
+              if (v1 && v2) textVal = `${v1} / ${v2}`;
+              else textVal = String(v1 || v2 || '—');
+            } else if (col.key === 'vik_shlyubu') {
+              textVal = item.marriageYearsText || '—';
+            } else if (col.key === 'd_kontaktiv') {
+              const dVal = item.husband?.d_kontaktiv || item.wife?.d_kontaktiv || item.singleMember?.d_kontaktiv || '—';
+              textVal = dVal;
+            } else if (col.key === 'address') {
+              textVal = item.addressText || '—';
+            } else if (col.key === 'tel_mob') {
+              const phones: string[] = [];
+              [item.husbandPhone, item.wifePhone, item.phoneText].forEach(p => {
+                if (p && p !== '—') phones.push(p);
+              });
+              textVal = phones.length > 0 ? phones.join(', ') : '—';
+            } else if (col.key === 'rayon2_ukr') {
+              textVal = item.rayon || '—';
+            } else if (col.key === 'presviter') {
+              textVal = item.presviter || '—';
+            } else if (col.key === 'vidviduvanist') {
+              textVal = item.vidviduvanist || '—';
+            } else if (col.key === 'prysutnist') {
+              textVal = item.prysutnist || '—';
+            } else if (col.key === 's_slujinnya_spysok') {
+              textVal = item.slujinnya || '—';
+            } else {
+              const m = item.husband || item.wife || item.singleMember;
+              textVal = m ? String(m[col.key as keyof Member] || '—') : '—';
+            }
+            return textVal;
+          });
+        });
+
+        (pdf as any).autoTable({
+          head: head,
+          body: body,
+          startY: 35,
+          styles: { font: 'Roboto', fontSize: 8, cellPadding: 2, textColor: [15, 23, 42] },
+          headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', font: 'Roboto' },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          margin: { top: 35, right: 14, bottom: 20, left: 14 },
+          didDrawPage: (data: any) => {
+            pdf.setFont('Roboto', 'bold');
+            pdf.setFontSize(12);
+            pdf.text("Звіт членів церкви", 14, 15);
+            pdf.setFont('Roboto', 'normal');
+            pdf.setFontSize(8);
+            pdf.text(`Фільтри: ${filterSpec}`, 14, 21);
+            pdf.text(`Дата: ${new Date().toLocaleDateString('uk-UA')}`, 14, 26);
+
+            const pageNum = (pdf as any).getCurrentPageInfo().pageNumber;
+            pdf.text(`Сторінка ${pageNum}`, pdf.internal.pageSize.getWidth() - 20, pdf.internal.pageSize.getHeight() - 10, { align: 'right' });
+          }
+        });
 
         const pdfBase64 = pdf.output('datauristring').split(',')[1];
         const blob = pdf.output('blob');

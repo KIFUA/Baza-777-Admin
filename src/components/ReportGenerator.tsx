@@ -2899,6 +2899,78 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             Відберіть осіб за критеріями, відзначте необхідні колонки, завантажте HTML-таблицю або сформуйте PDF-документ.
           </p>
         </div>
+        <div className="flex items-center gap-2 shrink-0 scale-interface-down-33 origin-right">
+          <button 
+            type="button" 
+            onClick={handleResetFilters}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer outline-none focus:outline-none"
+            title="Очистити всі фільтри"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>Скинути</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={handleExportHtml}
+            disabled={filteredRecords.length === 0}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0
+                ? "bg-[#10b981] hover:bg-[#059669] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Зберегти як автономну HTML-сторінку для друку або збереження"
+          >
+            <Download className="h-4 w-4" />
+            <span>В HTML</span>
+          </button>
+          <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-[#1a3843] border border-[#2d5d70] rounded-lg shadow-sm cursor-pointer select-none hover:bg-[#224b5a] transition-all">
+            <input 
+              type="checkbox" 
+              checked={printColors} 
+              onChange={e => setPrintColors(e.target.checked)}
+              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+            />
+            <span>Плашки у PDF</span>
+          </label>
+          <button 
+            type="button" 
+            onClick={() => handlePrint()}
+            disabled={filteredRecords.length === 0 || pdfGenerating}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0 && !pdfGenerating
+                ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title={printColors ? "Друк PDF-звіту з кольоровими плашками" : "Друк PDF-звіту простим текстом без плашок"}
+          >
+            {pdfGenerating ? (
+              <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
+            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : printColors ? "ДРУК (PDF)" : "ДРУК (БЕЗ ПЛАШОК)"}</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={() => { 
+              setIsTgModalOpen(true); 
+              setTgStatus(null); 
+              if (tgMaterialType === 'list' && !tgCustomText) {
+                setTgCustomText(generateTextList());
+              }
+            }}
+            disabled={pdfGenerating || tgSending}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              !pdfGenerating && !tgSending
+                ? "bg-teal-600 hover:bg-teal-500 cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Відкрити розсилку матеріалів (звіт PDF, текстовий список або повідомлення) в Telegram"
+          >
+            <Send className="h-4 w-4" />
+            <span>РОЗСИЛКА В TELEGRAM</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -3513,80 +3585,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           </div>
         </div>
 
-
-        {/* Панель дій (кнопки) над переглядом результатів */}
-        <div className="flex flex-wrap items-center justify-end gap-2 bg-[#11252d] p-3 rounded-xl border border-[#1f424f]">
-          <button 
-            type="button" 
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer outline-none focus:outline-none"
-            title="Очистити всі фільтри"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Скинути</span>
-          </button>
-          <button 
-            type="button" 
-            onClick={handleExportHtml}
-            disabled={filteredRecords.length === 0}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              filteredRecords.length > 0
-                ? "bg-[#10b981] hover:bg-[#059669] cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-            title="Зберегти як автономну HTML-сторінку для друку або збереження"
-          >
-            <Download className="h-4 w-4" />
-            <span>В HTML</span>
-          </button>
-          <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-[#1a3843] border border-[#2d5d70] rounded-lg shadow-sm cursor-pointer select-none hover:bg-[#224b5a] transition-all">
-            <input 
-              type="checkbox" 
-              checked={printColors} 
-              onChange={e => setPrintColors(e.target.checked)}
-              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
-            />
-            <span>Плашки у PDF</span>
-          </label>
-          <button 
-            type="button" 
-            onClick={() => handlePrint()}
-            disabled={filteredRecords.length === 0 || pdfGenerating}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              filteredRecords.length > 0 && !pdfGenerating
-                ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-            title={printColors ? "Друк PDF-звіту з кольоровими плашками" : "Друк PDF-звіту простим текстом без плашок"}
-          >
-            {pdfGenerating ? (
-              <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
-            ) : (
-              <Printer className="h-4 w-4" />
-            )}
-            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : printColors ? "ДРУК (PDF)" : "ДРУК (БЕЗ ПЛАШОК)"}</span>
-          </button>
-          <button 
-            type="button" 
-            onClick={() => { 
-              setIsTgModalOpen(true); 
-              setTgStatus(null); 
-              if (tgMaterialType === 'list' && !tgCustomText) {
-                setTgCustomText(generateTextList());
-              }
-            }}
-            disabled={pdfGenerating || tgSending}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              !pdfGenerating && !tgSending
-                ? "bg-teal-600 hover:bg-teal-500 cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-            title="Відкрити розсилку матеріалів (звіт PDF, текстовий список або повідомлення) в Telegram"
-          >
-            <Send className="h-4 w-4" />
-            <span>РОЗСИЛКА В TELEGRAM</span>
-          </button>
-        </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center border-b border-[#1f424f] pb-2">

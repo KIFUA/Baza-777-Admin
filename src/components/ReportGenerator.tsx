@@ -16,7 +16,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import { getRobotoRegularFont } from '../lib/fontsBase64';
 import { parseAndNormalizeContactDates } from '../lib/dateUtils';
@@ -2749,7 +2749,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           });
         });
 
-        (pdf as any).autoTable({
+        autoTable(pdf, {
           head: head,
           body: body,
           startY: 35,

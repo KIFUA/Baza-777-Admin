@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import puppeteer from 'puppeteer';
+import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
@@ -278,62 +278,141 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         `;
         fs.writeFileSync(htmlPath, htmlContent);
 
-        // --- PDF Generation via Puppeteer ---
+        // --- PDF Generation ---
+        let doc: any;
+        let writeStream: any;
         try {
-            const browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-            });
+            doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
+            writeStream = fs.createWriteStream(pdfPath);
+            doc.pipe(writeStream);
+
+        const regularFont = getRobotoRegularFont();
+        const boldFont = getRobotoBoldFont();
+        
+        let useRoboto = false;
+        try {
+            if (regularFont && boldFont) {
+                doc.registerFont('Roboto-Regular', regularFont as any);
+                doc.registerFont('Roboto-Bold', boldFont as any);
+                doc.font('Roboto-Bold');
+                doc.widthOfString('Тест');
+                useRoboto = true;
+                console.log("[BirthdayCron] Successfully registered embedded Roboto fonts.");
+            }
+        } catch (e) {
+            console.error("[BirthdayCron] Error registering or testing fonts:", e);
+            useRoboto = false;
+        }
+
+        const safeWidth = (text: string) => {
+            try { return doc.widthOfString(text); } catch (e) { return text.length * 8; }
+        };
+
+        if (useRoboto) {
             try {
-                const page = await browser.newPage();
-                await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
-                const pdfBuffer = await page.pdf({ format: 'A5', printBackground: true });
-                fs.writeFileSync(pdfPath, pdfBuffer);
-                console.log(`[BirthdayCron] Puppeteer generated PDF at ${pdfPath}`);
-            } finally {
-                await browser.close();
-            }
-        } catch (pdfErr) {
-            console.error("[BirthdayCron] Error during PDF drawing:", pdfErr);
-        }
+                doc.font('Roboto-Bold').fontSize(16);
+                const titleText = 'ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ';
+                const titleWidth = safeWidth(titleText);
+                const titleStartX = (doc.page.width - titleWidth) / 2;
+                const alignX = titleStartX + safeWidth('ІМЕНИН');
 
-        try {
-            const attachments = [];
-            let pdfSuccessful = false;
-            if (fs.existsSync(pdfPath)) {
-                const stats = fs.statSync(pdfPath);
-                if (stats.size > 100) {
-                    attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.pdf`, path: pdfPath });
-                    pdfSuccessful = true;
-                } else {
-                    console.warn(`[BirthdayCron] Generated PDF is too small (${stats.size} bytes)!`);
+                doc.text(titleText, { align: 'center' });
+                doc.moveDown(0.5);
+                
+                doc.font('Roboto-Regular').fontSize(11);
+                doc.text(`/ ${birthdays.weekRangeText} /`, alignX);
+                doc.moveDown(0.6);
+
+                doc.lineGap(2);
+                birthdays.list.forEach((item: any) => {
+                    doc.font('Roboto-Bold').fontSize(14);
+                    if (item.isJubilee) {
+                        doc.fillColor('red');
+                    } else {
+                        doc.fillColor('black');
+                    }
+                    const rawName = (item.cleanName || item.fullName || item.shortName || "").trim();
+                    const nameParts = rawName.split(/\s+/);
+                    const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : (nameParts[0] || 'Без імені');
+                    doc.text(shortName, alignX);
+                    doc.fillColor('black');
+                });
+            } catch (drawErr) {
+                console.error("[BirthdayCron] Error drawing with Roboto, falling back:", drawErr);
+                useRoboto = false;
+            }
+        }
+        
+        if (!useRoboto) {
+            console.warn("[BirthdayCron] Using fallback font Helvetica (No Cyrillic support)");
+            try {
+                doc.font('Helvetica'); // Set safe default
+                doc.fontSize(14).text('BIRTHDAYS OF THE WEEK (FONTS MISSING)', { align: 'center' });
+                doc.moveDown();
+                birthdays.list.forEach((item: any) => {
+                    const nameText = item.cleanName || item.fullName || "Unknown";
+                    const safeName = String(nameText).normalize('NFD').replace(/[^\x00-\x7F]/g, '?');
+                    doc.fontSize(12).text(safeName, { align: 'center' });
+                });
+            } catch (fallbackErr) {
+                console.error("[BirthdayCron] Fallback failed:", fallbackErr);
+            }
+        }
+        doc.end();
+        console.log("[BirthdayCron] doc.end() called.");
+    } catch (pdfErr) {
+        console.error("[BirthdayCron] Error during PDF drawing:", pdfErr);
+        try { doc.end(); } catch (e) {}
+    }
+
+        await new Promise<void>((resolve, reject) => {
+            writeStream.on('finish', async () => {
+                console.log(`[BirthdayCron] writeStream finished: ${pdfPath}`);
+                try {
+                    const attachments = [];
+                    let pdfSuccessful = false;
+                    if (fs.existsSync(pdfPath)) {
+                        const stats = fs.statSync(pdfPath);
+                        if (stats.size > 100) {
+                            attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.pdf`, path: pdfPath });
+                            pdfSuccessful = true;
+                        } else {
+                            console.warn(`[BirthdayCron] Generated PDF is too small (${stats.size} bytes)!`);
+                        }
+                    }
+                    if (fs.existsSync(htmlPath)) {
+                        attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.html`, path: htmlPath });
+                    }
+
+                    let msg = "";
+                    if (!pdfSuccessful) {
+                        msg = `⚠️ УВАГА: Виникла помилка при генерації PDF для ${birthdays.weekRangeText}. Будь ласка, використайте HTML файл або текстовий список.`;
+                    }
+                    
+                    console.log("[BirthdayCron] Sending via Connector (Distribution 2)...");
+                    const telegramAttachment = attachments.find(a => a.filename.endsWith('.pdf')) 
+                                           || attachments.find(a => a.filename.endsWith('.html'));
+                    const telegramFilePath = telegramAttachment?.path;
+                    
+                    const subject = `Іменинники тижня (${birthdays.weekRangeText})`;
+                    await sendToConnector(settings.birthdays.pdf, settings.connectors, msg, subject, telegramFilePath, attachments);
+                    
+                    // Cleanup
+                    if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+                    if (fs.existsSync(htmlPath)) fs.unlinkSync(htmlPath);
+                    
+                    console.log("[BirthdayCron] Distribution 2 completed successfully.");
+                    resolve();
+                } catch (err) {
+                    console.error("[BirthdayCron] Error in distribution 2 writeStream finish handler:", err);
+                    reject(err);
                 }
-            }
-            if (fs.existsSync(htmlPath)) {
-                attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.html`, path: htmlPath });
-            }
-
-            let msg = "";
-            if (!pdfSuccessful) {
-                msg = `⚠️ УВАГА: Виникла помилка при генерації PDF для ${birthdays.weekRangeText}. Будь ласка, використайте HTML файл або текстовий список.`;
-            }
-            
-            console.log("[BirthdayCron] Sending via Connector (Distribution 2)...");
-            const telegramAttachment = attachments.find(a => a.filename.endsWith('.pdf')) 
-                                   || attachments.find(a => a.filename.endsWith('.html'));
-            const telegramFilePath = telegramAttachment?.path;
-            
-            const subject = `Іменинники тижня (${birthdays.weekRangeText})`;
-            await sendToConnector(settings.birthdays.pdf, settings.connectors, msg, subject, telegramFilePath, attachments);
-            
-            // Cleanup
-            if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
-            if (fs.existsSync(htmlPath)) fs.unlinkSync(htmlPath);
-            
-            console.log("[BirthdayCron] Distribution 2 completed successfully.");
-        } catch (err) {
-            console.error("[BirthdayCron] Error in distribution 2 handler:", err);
-        }
+            });
+            writeStream.on('error', (err) => {
+                console.error("[BirthdayCron] WriteStream error:", err);
+                reject(err);
+            });
+        });
     };
 
     // Check every minute for scheduled distributions

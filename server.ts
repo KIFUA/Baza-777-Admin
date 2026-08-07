@@ -6,6 +6,7 @@ import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import axios from "axios";
 import FormData from "form-data";
+import puppeteer from "puppeteer";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
 import XLSX from "xlsx";
@@ -2472,6 +2473,64 @@ app.post("/api/stats/send", async (req, res) => {
     logs: telegramLogs || emailLogs,
     rawText: msg
   });
+});
+
+// Endpoint for generating vector PDF with true selectable text layer via headless Puppeteer
+app.post("/api/generate-pdf", async (req, res) => {
+  try {
+    const { html, isLandscape = false, filename = "Zvit.pdf", returnBase64 = false } = req.body;
+    if (!html) {
+      return res.status(400).json({ success: false, message: "HTML вміст обов'язковий." });
+    }
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--font-render-hinting=medium'
+      ]
+    });
+
+    try {
+      const page = await browser.newPage();
+
+      await page.setViewport({
+        width: isLandscape ? 1123 : 794,
+        height: isLandscape ? 794 : 1123,
+        deviceScaleFactor: 1
+      });
+
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+
+      try {
+        await page.evaluateHandle('document.fonts.ready');
+      } catch (fErr) {}
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        landscape: Boolean(isLandscape),
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
+      });
+
+      if (returnBase64) {
+        const base64Str = Buffer.from(pdfBuffer).toString('base64');
+        return res.json({ success: true, pdfBase64: base64Str });
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+      return res.send(Buffer.from(pdfBuffer));
+    } finally {
+      await browser.close();
+    }
+  } catch (err: any) {
+    console.error("Server PDF generation error:", err);
+    return res.status(500).json({ success: false, message: "Помилка генерації PDF на сервері: " + err.message });
+  }
 });
 
 // Endpoint for sending custom generated PDF documents directly to Telegram recipients

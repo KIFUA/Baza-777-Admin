@@ -45,6 +45,15 @@ app.use((req, res, next) => {
 let initialSyncPromise: Promise<void> | null = null;
 
 function ensureInitialSync() {
+  if (members.length === 0) {
+    try {
+      console.log("[ensureInitialSync] Memory database is empty. Pre-loading cache/Excel before sync...");
+      loadDatabase();
+    } catch (dbErr: any) {
+      console.error("[ensureInitialSync] Failed to load local database cache:", dbErr.message);
+    }
+  }
+
   if (!initialSyncPromise) {
     initialSyncPromise = syncDatabaseWithFirebase()
       .then(async () => {

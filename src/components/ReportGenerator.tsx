@@ -15,10 +15,11 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import html2canvas from 'html2canvas';
-import { getRobotoRegularFont } from '../lib/fontsBase64';
+// import jsPDF from 'jspdf';
+// import autoTable from 'jspdf-autotable';
+// import html2canvas from 'html2canvas';
+import pdfMake from 'pdfmake/build/pdfmake';
+import { getRobotoRegularFont, getRobotoBoldFont } from '../lib/fontsBase64';
 import { parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 const DEFAULT_KNOWN_CONTACTS = [
@@ -1842,6 +1843,87 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     }
   };
 
+  const buildPdfDocPdfMake = async (withBadgesOverride?: boolean) => {
+    const isLandscape = true;
+    
+    const regularBase64 = Buffer.from(getRobotoRegularFont()).toString('base64');
+    const boldBase64 = Buffer.from(getRobotoBoldFont()).toString('base64');
+
+    pdfMake.vfs = {
+      'Roboto-Regular.ttf': regularBase64,
+      'Roboto-Bold.ttf': boldBase64
+    };
+    pdfMake.fonts = {
+      Roboto: {
+        normal: 'Roboto-Regular.ttf',
+        bold: 'Roboto-Bold.ttf',
+        italics: 'Roboto-Regular.ttf',
+        bolditalics: 'Roboto-Bold.ttf'
+      }
+    };
+
+    const tableBody = [
+      displayColumns.map((col: any) => ({ text: col.label, style: 'tableHeader' })),
+      ...recordsToRender.map((item: any) => {
+        return displayColumns.map((col: any) => {
+          let textVal = '—';
+          if (col.key === 'pib') {
+            const p1 = item.husbandName || '';
+            const p2 = item.wifeName || '';
+            if (p1 && p2) textVal = `${p1} / ${p2}`;
+            else textVal = p1 || p2 || item.singleMember?.pib || '—';
+          } else if (col.key === 'vik_rokiv1') {
+            const v1 = item.husbandAge || '';
+            const v2 = item.wifeAge || '';
+            if (v1 && v2) textVal = `${v1} / ${v2}`;
+            else textVal = String(v1 || v2 || '—');
+          } else if (col.key === 'tel_mob') {
+             const phones: string[] = [];
+             [item.husbandPhone, item.wifePhone, item.phoneText].forEach((p: any) => {
+               if (p && p !== '—') phones.push(p);
+             });
+             textVal = phones.length > 0 ? phones.join(', ') : '—';
+          } else {
+            textVal = item[col.key] || '—';
+          }
+          
+          return { text: textVal, style: 'tableCell' };
+        });
+      })
+    ];
+
+    const docDefinition: any = {
+      pageOrientation: isLandscape ? 'landscape' : 'portrait',
+      pageSize: 'A4',
+      pageMargins: [20, 40, 20, 40],
+      defaultStyle: { font: 'Roboto' },
+      styles: {
+        header: { fontSize: 14, bold: true, margin: [0, 0, 0, 10] },
+        tableHeader: { bold: true, fontSize: 8, fillColor: '#0f172a', color: 'white', alignment: 'center', margin: [0, 5, 0, 5] },
+        tableCell: { fontSize: 7, margin: [0, 2, 0, 2] }
+      },
+      content: [
+        { text: 'СФОРМОВАНИЙ СПИСОК ЧЛЕНІВ ЦЕРКВИ', style: 'header' },
+        { text: `Дата: ${new Date().toLocaleDateString('uk-UA')}`, fontSize: 8 },
+        { text: `Параметри відбору: Список членів церкви`, fontSize: 8, margin: [0, 5, 0, 15] },
+        {
+          table: {
+            headerRows: 1,
+            widths: Array(displayColumns.length).fill('*'),
+            body: tableBody
+          },
+          layout: 'lightHorizontalLines'
+        }
+      ]
+    };
+
+    return new Promise((resolve) => {
+      pdfMake.createPdf(docDefinition).getBlob((blob) => {
+        resolve({ blob });
+      });
+    });
+  };
+
   const buildPdfDoc = async (withBadgesOverride?: boolean): Promise<{ pdfBase64: string; blob: Blob } | null> => {
     const withBadges = withBadgesOverride !== undefined ? withBadgesOverride : printColors;
     const recordsToRender = combineCouples ? coupleGroupedRecords : filteredRecords;
@@ -2645,6 +2727,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 </body>
 </html>`;
 
+      return buildPdfDocPdfMake(withBadgesOverride);
       try {
         const response = await fetch('/api/generate-pdf', {
           method: 'POST',

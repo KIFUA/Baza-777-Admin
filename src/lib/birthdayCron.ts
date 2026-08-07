@@ -1,12 +1,111 @@
 import cron from 'node-cron';
 import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { execSync } from 'child_process';
 import axios from 'axios';
 import FormData from 'form-data';
 import { getRobotoRegularFont, getRobotoBoldFont } from './fontsBase64';
+
+async function getPuppeteerExecutablePath(): Promise<string | undefined> {
+  const customPaths = [
+    '/www-data-home/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-151.0.7922.71', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-133.0.6943.53', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-128.0.6613.119', 'chrome-linux64', 'chrome'),
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/root/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+  ];
+  for (const p of customPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  const checkDirs = [
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome'),
+    '/www-data-home/.cache/puppeteer/chrome',
+    '/root/.cache/puppeteer/chrome',
+    path.join(os.homedir(), '.cache', 'puppeteer', 'chrome')
+  ];
+
+  for (const dir of checkDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        const versions = fs.readdirSync(dir);
+        for (const ver of versions) {
+          const candidate = path.join(dir, ver, 'chrome-linux64', 'chrome');
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const cacheDir = '/root/.cache/puppeteer/chrome';
+    if (fs.existsSync(cacheDir)) {
+      const versions = fs.readdirSync(cacheDir);
+      for (const ver of versions) {
+        const candidate = path.join(cacheDir, ver, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const p = await (puppeteer as any).executablePath();
+    if (p && fs.existsSync(p)) return p;
+  } catch (e) {}
+
+  try {
+    console.log('[Puppeteer] Chrome not found in cache, attempting installation...');
+    execSync('PUPPETEER_CACHE_DIR=' + path.join(process.cwd(), '.cache', 'puppeteer') + ' npx puppeteer browsers install chrome', { stdio: 'inherit' });
+    const wsCacheDir = path.join(process.cwd(), '.cache', 'puppeteer', 'chrome');
+    if (fs.existsSync(wsCacheDir)) {
+      const versions = fs.readdirSync(wsCacheDir);
+      for (const ver of versions) {
+        const candidate = path.join(wsCacheDir, ver, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  } catch (e) {
+    console.error('[Puppeteer] Failed to auto-install chrome:', e);
+  }
+
+  return undefined;
+}
+
+async function launchBrowser() {
+  try {
+    const sparticuzPath = await chromium.executablePath();
+    if (sparticuzPath) {
+      return await puppeteer.launch({
+        args: chromium.args,
+        executablePath: sparticuzPath,
+        headless: (chromium as any).headless ?? true,
+      });
+    }
+  } catch (e) {
+    console.log('[Puppeteer] @sparticuz/chromium fallback:', e);
+  }
+
+  const execPath = await getPuppeteerExecutablePath();
+  const options: any = {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=medium']
+  };
+  if (execPath) {
+    options.executablePath = execPath;
+  }
+  return await puppeteer.launch(options);
+}
 
 export interface TelegramBotConnector {
     id: string;
@@ -280,10 +379,7 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
 
         // --- PDF Generation via Puppeteer ---
         try {
-            const browser = await puppeteer.launch({
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-            });
+            const browser = await launchBrowser();
             try {
                 const page = await browser.newPage();
                 await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });

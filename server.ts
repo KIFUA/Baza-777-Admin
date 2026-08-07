@@ -2,14 +2,102 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import { execSync } from "child_process";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
 import axios from "axios";
 import FormData from "form-data";
 import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
 import XLSX from "xlsx";
+
+async function getPuppeteerExecutablePath(): Promise<string | undefined> {
+  const customPaths = [
+    '/www-data-home/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-151.0.7922.71', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-133.0.6943.53', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-128.0.6613.119', 'chrome-linux64', 'chrome'),
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/root/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+  ];
+  for (const p of customPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  const checkDirs = [
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome'),
+    '/www-data-home/.cache/puppeteer/chrome',
+    '/root/.cache/puppeteer/chrome',
+    path.join(os.homedir(), '.cache', 'puppeteer', 'chrome')
+  ];
+
+  for (const dir of checkDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        const versions = fs.readdirSync(dir);
+        for (const ver of versions) {
+          const candidate = path.join(dir, ver, 'chrome-linux64', 'chrome');
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const p = await (puppeteer as any).executablePath();
+    if (p && fs.existsSync(p)) return p;
+  } catch (e) {}
+
+  try {
+    console.log('[Puppeteer] Chrome not found in cache, attempting installation...');
+    execSync('PUPPETEER_CACHE_DIR=' + path.join(process.cwd(), '.cache', 'puppeteer') + ' npx puppeteer browsers install chrome', { stdio: 'inherit' });
+    const wsCacheDir = path.join(process.cwd(), '.cache', 'puppeteer', 'chrome');
+    if (fs.existsSync(wsCacheDir)) {
+      const versions = fs.readdirSync(wsCacheDir);
+      for (const ver of versions) {
+        const candidate = path.join(wsCacheDir, ver, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  } catch (e) {
+    console.error('[Puppeteer] Failed to auto-install chrome:', e);
+  }
+
+  return undefined;
+}
+
+async function launchBrowser() {
+  try {
+    const sparticuzPath = await chromium.executablePath();
+    if (sparticuzPath) {
+      return await puppeteer.launch({
+        args: chromium.args,
+        executablePath: sparticuzPath,
+        headless: (chromium as any).headless ?? true,
+      });
+    }
+  } catch (e) {
+    console.log('[Puppeteer] @sparticuz/chromium fallback:', e);
+  }
+
+  const execPath = await getPuppeteerExecutablePath();
+  const options: any = {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=medium']
+  };
+  if (execPath) {
+    options.executablePath = execPath;
+  }
+  return await puppeteer.launch(options);
+}
 import { 
   Member, 
   Spouse, 
@@ -45,15 +133,6 @@ app.use((req, res, next) => {
 let initialSyncPromise: Promise<void> | null = null;
 
 function ensureInitialSync() {
-  if (members.length === 0) {
-    try {
-      console.log("[ensureInitialSync] Memory database is empty. Pre-loading cache/Excel before sync...");
-      loadDatabase();
-    } catch (dbErr: any) {
-      console.error("[ensureInitialSync] Failed to load local database cache:", dbErr.message);
-    }
-  }
-
   if (!initialSyncPromise) {
     initialSyncPromise = syncDatabaseWithFirebase()
       .then(async () => {
@@ -1929,10 +2008,7 @@ async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
 </body>
 </html>`;
 
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-  });
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'domcontentloaded' });
@@ -2033,153 +2109,67 @@ function computeRayonStatsOnServer(selectedRayon: string) {
 }
 
 async function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
-  const total = statsData.total || 0;
-  const bPct = total > 0 ? Math.round((statsData.brothers / total) * 100) : 0;
-  const sPct = total > 0 ? Math.round((statsData.sisters / total) * 100) : 0;
-  const nowStr = new Date().toLocaleDateString('uk-UA') + ' ' + new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 30 });
+      doc.registerFont('Roboto', Buffer.from(getRobotoRegularFont()));
+      doc.registerFont('Roboto-Bold', Buffer.from(getRobotoBoldFont()));
 
-  const renderProgressRows = (items: [string, number][], barColor: string) => {
-    if (!items || items.length === 0) return '<div class="empty">Немає даних</div>';
-    return items.map(([lbl, val]) => {
-      const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-      return `<div class="row">
-        <div class="row-text">
-          <span class="label">${lbl || 'н/д'}</span>
-          <span class="val">${val} (${pct}%)</span>
-        </div>
-        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
-      </div>`;
-    }).join('');
-  };
+      const bufs: Buffer[] = [];
+      doc.on('data', chunk => bufs.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(bufs)));
+      doc.on('error', err => reject(err));
 
-  const attItems = (statsData.attendance || []).slice(0, 6) as [string, number][];
-  const presItems = (statsData.presence || []).slice(0, 10) as [string, number][];
-  const maritalEntries = Object.entries(statsData.marital || {}) as [string, number][];
-  const eduItems = (statsData.education || []).slice(0, 4) as [string, number][];
-  const socItems = (statsData.socialCategory || []).slice(0, 4) as [string, number][];
-  const rayonItems = (statsData.rayons || []).slice(0, 8) as [string, number][];
-  const cgItems = (statsData.caregivers || []).slice(0, 24) as [string, number][];
+      const rayonName = statsData.rayonName || 'Всі райони';
+      const total = statsData.total || 0;
+      const brothers = statsData.brothers || 0;
+      const sisters = statsData.sisters || 0;
 
-  let cgHtml = '';
-  if (cgItems.length > 0) {
-    cgHtml += `<div class="card"><div class="card-title">Список опікунів</div><div class="cg-grid">`;
-    cgItems.forEach(([name, count]) => {
-      const pct = total > 0 ? Math.round((count / total) * 100) : 0;
-      cgHtml += `<div class="cg-badge">👤 <span class="cg-name">${name}</span> <span class="cg-val">${count} (${pct}%)</span></div>`;
-    });
-    cgHtml += `</div></div>`;
-  }
+      doc.font('Roboto-Bold').fontSize(16).text('СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.font('Roboto').fontSize(10).text(`РАЙОН: ${rayonName.toUpperCase()} • ОНОВЛЕНО: ${new Date().toLocaleString('uk-UA')}`, { align: 'center' });
+      doc.moveDown(1);
 
-  const html = `<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
-    @page { size: A4 portrait; margin: 0; }
-    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: 'Roboto', sans-serif; background: #f4f8f6; color: #0f172a; margin: 0; padding: 12mm; }
-    
-    .header { text-align: center; margin-bottom: 12px; }
-    .header .org { font-size: 11px; font-weight: 700; color: #134e4a; text-transform: uppercase; letter-spacing: 0.5px; }
-    .header h1 { font-size: 16px; font-weight: 700; color: #0f766e; margin: 3px 0; }
-    .header .meta { font-size: 10px; font-weight: 700; color: #0d9488; }
+      doc.font('Roboto-Bold').fontSize(12).text(`Загальна кількість членів: ${total}`);
+      doc.font('Roboto').fontSize(11).text(`Брати: ${brothers} | Сестри: ${sisters}`);
+      doc.moveDown(1);
 
-    .banner { background: #e6f0ec; border: 1px solid #b2d4ca; border-radius: 8px; padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .banner .total-box { display: flex; flex-direction: column; }
-    .banner .total-lbl { font-size: 8px; font-weight: 700; color: #475569; text-transform: uppercase; }
-    .banner .total-val { font-size: 20px; font-weight: 700; color: #0d2d26; line-height: 1.1; }
-    
-    .pills { display: flex; gap: 12px; }
-    .pill { padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; }
-    .pill-b { background: #e0f2fe; border: 1px solid #7dd3fc; color: #0284c7; }
-    .pill-s { background: #fce7f3; border: 1px solid #f472b6; color: #be185d; }
+      if (statsData.attendance && statsData.attendance.length > 0) {
+        doc.font('Roboto-Bold').fontSize(11).text('Аналіз відвідування:');
+        statsData.attendance.forEach(([lbl, val]: [string, number]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${lbl}: ${val}`);
+        });
+        doc.moveDown(0.8);
+      }
 
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .card { background: #ffffff; border: 1px solid #ccdcd6; border-radius: 8px; padding: 10px; margin-bottom: 10px; break-inside: avoid; }
-    .card-title { background: #e6f0ec; border: 1px solid #c2dcd4; border-radius: 6px; padding: 5px 8px; font-size: 10px; font-weight: 700; color: #0f5245; text-transform: uppercase; margin-bottom: 8px; }
-    
-    .row { margin-bottom: 6px; }
-    .row-text { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
-    .row-text .label { font-weight: 400; color: #1e293b; }
-    .row-text .val { font-weight: 700; color: #0f2922; }
-    .bar-bg { background: #e6f0ed; height: 5px; border-radius: 3px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 3px; }
-    .sub-title { font-size: 9px; font-weight: 700; color: #64748b; margin: 8px 0 4px 0; text-transform: uppercase; }
-    .empty { font-size: 10px; color: #94a3b8; font-style: italic; }
+      if (statsData.presence && statsData.presence.length > 0) {
+        doc.font('Roboto-Bold').fontSize(11).text('Причини відсутності:');
+        statsData.presence.forEach(([lbl, val]: [string, number]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${lbl}: ${val}`);
+        });
+        doc.moveDown(0.8);
+      }
 
-    .cg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .cg-badge { background: #f2f8f6; border: 1px solid #c2dcd4; border-radius: 4px; padding: 4px 6px; font-size: 9px; display: flex; justify-content: space-between; align-items: center; }
-    .cg-name { font-weight: 400; color: #0f2922; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 75px; }
-    .cg-val { font-weight: 700; color: #047857; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <div class="org">УЦХВЄ м. Івано-Франківськ</div>
-    <h1>СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ</h1>
-    <div class="meta">РАЙОН: ${String(statsData.rayonName || 'ВСІ').toUpperCase()} &nbsp;•&nbsp; ОНОВЛЕНО: ${nowStr}</div>
-  </div>
+      if (statsData.marital) {
+        doc.font('Roboto-Bold').fontSize(11).text("Сімейний стан:");
+        Object.entries(statsData.marital).forEach(([lbl, val]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${lbl}: ${val}`);
+        });
+        doc.moveDown(0.8);
+      }
 
-  <div class="banner">
-    <div class="total-box">
-      <span class="total-lbl">Загальна кількість членів</span>
-      <span class="total-val">${total}</span>
-    </div>
-    <div class="pills">
-      <div class="pill pill-b">БРАТИ: ${statsData.brothers || 0} (${bPct}%)</div>
-      <div class="pill pill-s">СЕСТРИ: ${statsData.sisters || 0} (${sPct}%)</div>
-    </div>
-  </div>
+      if (statsData.caregivers && statsData.caregivers.length > 0) {
+        doc.font('Roboto-Bold').fontSize(11).text("Опікуни:");
+        statsData.caregivers.forEach(([name, count]: [string, number]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${name}: ${count}`);
+        });
+      }
 
-  <div class="grid">
-    <div class="col">
-      <div class="card">
-        <div class="card-title">Аналіз відвідування</div>
-        ${renderProgressRows(attItems, '#2563eb')}
-      </div>
-
-      ${presItems.length > 0 ? `<div class="card">
-        <div class="card-title">Причини відсутності</div>
-        ${renderProgressRows(presItems, '#dc2626')}
-      </div>` : ''}
-
-      <div class="card">
-        <div class="card-title">Сім'я та сімейний стан</div>
-        ${renderProgressRows(maritalEntries, '#4f46e5')}
-      </div>
-    </div>
-
-    <div class="col">
-      ${rayonItems.length > 0 ? `<div class="card">
-        <div class="card-title">Райони структури</div>
-        ${renderProgressRows(rayonItems, '#059669')}
-      </div>` : ''}
-
-      <div class="card">
-        <div class="card-title">Освіта та соціальний статус</div>
-        ${eduItems.length > 0 ? `<div class="sub-title">Рівень освіти</div>${renderProgressRows(eduItems, '#7c3aed')}` : ''}
-        ${socItems.length > 0 ? `<div class="sub-title">Соціальна категорія</div>${renderProgressRows(socItems, '#d97706')}` : ''}
-      </div>
-
-      ${cgHtml}
-    </div>
-  </div>
-</body>
-</html>`;
-
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      doc.end();
+    } catch (e) {
+      reject(e);
+    }
   });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded' });
-    const pdfBuf = await page.pdf({ format: 'A4', printBackground: true });
-    return Buffer.from(pdfBuf);
-  } finally {
-    await browser.close();
-  }
 }
 
 // 2.3.2 API: Manual distribution of Statistics report (Telegram / Email)
@@ -2391,7 +2381,7 @@ app.post("/api/stats/send", async (req, res) => {
   });
 });
 
-// Endpoint for generating vector PDF with true selectable text layer via headless Puppeteer
+// Endpoint for generating PDF via headless Puppeteer
 app.post("/api/generate-pdf", async (req, res) => {
   try {
     const { html, isLandscape = false, filename = "Zvit.pdf", returnBase64 = false } = req.body;
@@ -2399,15 +2389,7 @@ app.post("/api/generate-pdf", async (req, res) => {
       return res.status(400).json({ success: false, message: "HTML вміст обов'язковий." });
     }
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--font-render-hinting=medium'
-      ]
-    });
+    const browser = await launchBrowser();
 
     try {
       const page = await browser.newPage();
@@ -5874,13 +5856,4 @@ async function startServer() {
   initBirthdayCron(getBirthdaysForThisWeek, getSettings);
 }
 
-if (!process.env.VERCEL) {
-  startServer();
-} else {
-  // On Vercel, we do NOT trigger sync on module load.
-  // The first incoming HTTP request will trigger and await ensureInitialSync() via the middleware.
-  // This guarantees reliable execution in the request execution sandbox.
-  console.log("[Vercel Module Load] Server initialized. Sync will trigger on first request.");
-}
-
-export default app;
+startServer();

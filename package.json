@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
+    "@sparticuz/chromium": "^149.0.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "axios": "^1.18.1",
@@ -28,6 +29,7 @@
     "nodemailer": "^9.0.3",
     "pdfkit": "^0.19.1",
     "puppeteer": "^25.5.0",
+    "puppeteer-core": "^25.5.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "roboto-fontface": "^0.10.0",

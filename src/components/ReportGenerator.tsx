@@ -15,11 +15,9 @@ import {
   CheckCircle,
   AlertTriangle
 } from 'lucide-react';
-// import jsPDF from 'jspdf';
-// import autoTable from 'jspdf-autotable';
-// import html2canvas from 'html2canvas';
-import pdfMake from 'pdfmake/build/pdfmake';
-import { getRobotoRegularFont, getRobotoBoldFont } from '../lib/fontsBase64';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import { getRobotoRegularFont } from '../lib/fontsBase64';
 import { parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 const DEFAULT_KNOWN_CONTACTS = [
@@ -1843,87 +1841,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     }
   };
 
-  const buildPdfDocPdfMake = async (withBadgesOverride?: boolean) => {
-    const isLandscape = true;
-    
-    const regularBase64 = Buffer.from(getRobotoRegularFont()).toString('base64');
-    const boldBase64 = Buffer.from(getRobotoBoldFont()).toString('base64');
-
-    pdfMake.vfs = {
-      'Roboto-Regular.ttf': regularBase64,
-      'Roboto-Bold.ttf': boldBase64
-    };
-    pdfMake.fonts = {
-      Roboto: {
-        normal: 'Roboto-Regular.ttf',
-        bold: 'Roboto-Bold.ttf',
-        italics: 'Roboto-Regular.ttf',
-        bolditalics: 'Roboto-Bold.ttf'
-      }
-    };
-
-    const tableBody = [
-      displayColumns.map((col: any) => ({ text: col.label, style: 'tableHeader' })),
-      ...recordsToRender.map((item: any) => {
-        return displayColumns.map((col: any) => {
-          let textVal = '—';
-          if (col.key === 'pib') {
-            const p1 = item.husbandName || '';
-            const p2 = item.wifeName || '';
-            if (p1 && p2) textVal = `${p1} / ${p2}`;
-            else textVal = p1 || p2 || item.singleMember?.pib || '—';
-          } else if (col.key === 'vik_rokiv1') {
-            const v1 = item.husbandAge || '';
-            const v2 = item.wifeAge || '';
-            if (v1 && v2) textVal = `${v1} / ${v2}`;
-            else textVal = String(v1 || v2 || '—');
-          } else if (col.key === 'tel_mob') {
-             const phones: string[] = [];
-             [item.husbandPhone, item.wifePhone, item.phoneText].forEach((p: any) => {
-               if (p && p !== '—') phones.push(p);
-             });
-             textVal = phones.length > 0 ? phones.join(', ') : '—';
-          } else {
-            textVal = item[col.key] || '—';
-          }
-          
-          return { text: textVal, style: 'tableCell' };
-        });
-      })
-    ];
-
-    const docDefinition: any = {
-      pageOrientation: isLandscape ? 'landscape' : 'portrait',
-      pageSize: 'A4',
-      pageMargins: [20, 40, 20, 40],
-      defaultStyle: { font: 'Roboto' },
-      styles: {
-        header: { fontSize: 14, bold: true, margin: [0, 0, 0, 10] },
-        tableHeader: { bold: true, fontSize: 8, fillColor: '#0f172a', color: 'white', alignment: 'center', margin: [0, 5, 0, 5] },
-        tableCell: { fontSize: 7, margin: [0, 2, 0, 2] }
-      },
-      content: [
-        { text: 'СФОРМОВАНИЙ СПИСОК ЧЛЕНІВ ЦЕРКВИ', style: 'header' },
-        { text: `Дата: ${new Date().toLocaleDateString('uk-UA')}`, fontSize: 8 },
-        { text: `Параметри відбору: Список членів церкви`, fontSize: 8, margin: [0, 5, 0, 15] },
-        {
-          table: {
-            headerRows: 1,
-            widths: Array(displayColumns.length).fill('*'),
-            body: tableBody
-          },
-          layout: 'lightHorizontalLines'
-        }
-      ]
-    };
-
-    return new Promise((resolve) => {
-      pdfMake.createPdf(docDefinition).getBlob((blob) => {
-        resolve({ blob });
-      });
-    });
-  };
-
   const buildPdfDoc = async (withBadgesOverride?: boolean): Promise<{ pdfBase64: string; blob: Blob } | null> => {
     const withBadges = withBadgesOverride !== undefined ? withBadgesOverride : printColors;
     const recordsToRender = combineCouples ? coupleGroupedRecords : filteredRecords;
@@ -2686,6 +2603,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   <meta charset="UTF-8" />
   <title>Звіт членів церкви</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+    
     @page {
       size: A4 ${isLandscape ? 'landscape' : 'portrait'};
       margin: 0;
@@ -2727,139 +2646,39 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 </body>
 </html>`;
 
-      return buildPdfDocPdfMake(withBadgesOverride);
-      try {
-        const response = await fetch('/api/generate-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            html: fullHtmlDocument,
-            isLandscape,
-            returnBase64: true,
-            filename: `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}.pdf`
-          })
-        });
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html: fullHtmlDocument,
+          isLandscape,
+          returnBase64: true,
+          filename: `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}.pdf`
+        })
+      });
 
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({}));
-          throw new Error(errData.message || `Сервер повернув помилку ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (!data.success || !data.pdfBase64) {
-          throw new Error(data.message || 'Не вдалося отримати PDF-файл з сервера');
-        }
-
-        const binaryStr = window.atob(data.pdfBase64);
-        const len = binaryStr.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: 'application/pdf' });
-
-        return {
-          pdfBase64: data.pdfBase64,
-          blob
-        };
-      } catch (srvErr: any) {
-        console.warn("Server PDF generation failed, falling back to client-side vector text PDF generation:", srvErr);
-        
-        // Fallback: Generate 100% text-based vector PDF client-side using jsPDF and jspdf-autotable
-        const pdf = new jsPDF({
-          orientation: isLandscape ? 'landscape' : 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
-
-        const fontBytes = getRobotoRegularFont();
-        let binaryStr = '';
-        const chunkSize = 8192;
-        for (let i = 0; i < fontBytes.length; i += chunkSize) {
-          const chunk = fontBytes.subarray(i, i + chunkSize);
-          binaryStr += String.fromCharCode.apply(null, Array.from(chunk));
-        }
-        const base64Font = window.btoa(binaryStr);
-
-        pdf.addFileToVFS('Roboto-Regular.ttf', base64Font);
-        pdf.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-        pdf.setFont('Roboto', 'normal');
-
-        const head = [displayColumns.map(col => col.label)];
-        const body = recordsToRender.map((item: any) => {
-          return displayColumns.map(col => {
-            let textVal = '—';
-            if (col.key === 'pib') {
-              const p1 = item.husbandName || '';
-              const p2 = item.wifeName || '';
-              if (p1 && p2) textVal = `${p1} / ${p2}`;
-              else textVal = p1 || p2 || item.singleMember?.pib || '—';
-            } else if (col.key === 'vik_rokiv1') {
-              const v1 = item.husbandAge || '';
-              const v2 = item.wifeAge || '';
-              if (v1 && v2) textVal = `${v1} / ${v2}`;
-              else textVal = String(v1 || v2 || '—');
-            } else if (col.key === 'vik_shlyubu') {
-              textVal = item.marriageYearsText || '—';
-            } else if (col.key === 'd_kontaktiv') {
-              const dVal = item.husband?.d_kontaktiv || item.wife?.d_kontaktiv || item.singleMember?.d_kontaktiv || '—';
-              textVal = dVal;
-            } else if (col.key === 'address') {
-              textVal = item.addressText || '—';
-            } else if (col.key === 'tel_mob') {
-              const phones: string[] = [];
-              [item.husbandPhone, item.wifePhone, item.phoneText].forEach(p => {
-                if (p && p !== '—') phones.push(p);
-              });
-              textVal = phones.length > 0 ? phones.join(', ') : '—';
-            } else if (col.key === 'rayon2_ukr') {
-              textVal = item.rayon || '—';
-            } else if (col.key === 'presviter') {
-              textVal = item.presviter || '—';
-            } else if (col.key === 'vidviduvanist') {
-              textVal = item.vidviduvanist || '—';
-            } else if (col.key === 'prysutnist') {
-              textVal = item.prysutnist || '—';
-            } else if (col.key === 's_slujinnya_spysok') {
-              textVal = item.slujinnya || '—';
-            } else {
-              const m = item.husband || item.wife || item.singleMember;
-              textVal = m ? String(m[col.key as keyof Member] || '—') : '—';
-            }
-            return textVal;
-          });
-        });
-
-        autoTable(pdf, {
-          head: head,
-          body: body,
-          startY: 35,
-          styles: { font: 'Roboto', fontSize: 8, cellPadding: 2, textColor: [15, 23, 42] },
-          headStyles: { fillColor: [15, 23, 42], textColor: 255, fontStyle: 'bold', font: 'Roboto' },
-          alternateRowStyles: { fillColor: [248, 250, 252] },
-          margin: { top: 35, right: 14, bottom: 20, left: 14 },
-          didDrawPage: (data: any) => {
-            pdf.setFont('Roboto', 'bold');
-            pdf.setFontSize(12);
-            pdf.text("Звіт членів церкви", 14, 15);
-            pdf.setFont('Roboto', 'normal');
-            pdf.setFontSize(8);
-            pdf.text(`Фільтри: ${filterSpec}`, 14, 21);
-            pdf.text(`Дата: ${new Date().toLocaleDateString('uk-UA')}`, 14, 26);
-
-            const pageNum = (pdf as any).getCurrentPageInfo().pageNumber;
-            pdf.text(`Сторінка ${pageNum}`, pdf.internal.pageSize.getWidth() - 20, pdf.internal.pageSize.getHeight() - 10, { align: 'right' });
-          }
-        });
-
-        const pdfBase64 = pdf.output('datauristring').split(',')[1];
-        const blob = pdf.output('blob');
-
-        return {
-          pdfBase64,
-          blob
-        };
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `Сервер повернув помилку ${response.status}`);
       }
+
+      const data = await response.json();
+      if (!data.success || !data.pdfBase64) {
+        throw new Error(data.message || 'Не вдалося отримати PDF-файл з сервера');
+      }
+
+      const binaryStr = window.atob(data.pdfBase64);
+      const len = binaryStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+
+      return {
+        pdfBase64: data.pdfBase64,
+        blob
+      };
     } catch (err: any) {
       console.error("Error generating PDF:", err);
       alert("Помилка генерації PDF: " + (err.message || err));
@@ -3079,6 +2898,78 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           <p className="text-xs text-slate-300 font-medium mt-1">
             Відберіть осіб за критеріями, відзначте необхідні колонки, завантажте HTML-таблицю або сформуйте PDF-документ.
           </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 scale-interface-down-33 origin-right">
+          <button 
+            type="button" 
+            onClick={handleResetFilters}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer outline-none focus:outline-none"
+            title="Очистити всі фільтри"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>Скинути</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={handleExportHtml}
+            disabled={filteredRecords.length === 0}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0
+                ? "bg-[#10b981] hover:bg-[#059669] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Зберегти як автономну HTML-сторінку для друку або збереження"
+          >
+            <Download className="h-4 w-4" />
+            <span>В HTML</span>
+          </button>
+          <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-[#1a3843] border border-[#2d5d70] rounded-lg shadow-sm cursor-pointer select-none hover:bg-[#224b5a] transition-all">
+            <input 
+              type="checkbox" 
+              checked={printColors} 
+              onChange={e => setPrintColors(e.target.checked)}
+              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+            />
+            <span>Плашки у PDF</span>
+          </label>
+          <button 
+            type="button" 
+            onClick={() => handlePrint()}
+            disabled={filteredRecords.length === 0 || pdfGenerating}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0 && !pdfGenerating
+                ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title={printColors ? "Друк PDF-звіту з кольоровими плашками" : "Друк PDF-звіту простим текстом без плашок"}
+          >
+            {pdfGenerating ? (
+              <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
+            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : printColors ? "ДРУК (PDF)" : "ДРУК (БЕЗ ПЛАШОК)"}</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={() => { 
+              setIsTgModalOpen(true); 
+              setTgStatus(null); 
+              if (tgMaterialType === 'list' && !tgCustomText) {
+                setTgCustomText(generateTextList());
+              }
+            }}
+            disabled={pdfGenerating || tgSending}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              !pdfGenerating && !tgSending
+                ? "bg-teal-600 hover:bg-teal-500 cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Відкрити розсилку матеріалів (звіт PDF, текстовий список або повідомлення) в Telegram"
+          >
+            <Send className="h-4 w-4" />
+            <span>РОЗСИЛКА В TELEGRAM</span>
+          </button>
         </div>
       </div>
 
@@ -3694,80 +3585,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           </div>
         </div>
 
-
-        {/* Панель дій (кнопки) над переглядом результатів */}
-        <div className="flex flex-wrap items-center justify-end gap-2 bg-[#11252d] p-3 rounded-xl border border-[#1f424f]">
-          <button 
-            type="button" 
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer outline-none focus:outline-none"
-            title="Очистити всі фільтри"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Скинути</span>
-          </button>
-          <button 
-            type="button" 
-            onClick={handleExportHtml}
-            disabled={filteredRecords.length === 0}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              filteredRecords.length > 0
-                ? "bg-[#10b981] hover:bg-[#059669] cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-            title="Зберегти як автономну HTML-сторінку для друку або збереження"
-          >
-            <Download className="h-4 w-4" />
-            <span>В HTML</span>
-          </button>
-          <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-[#1a3843] border border-[#2d5d70] rounded-lg shadow-sm cursor-pointer select-none hover:bg-[#224b5a] transition-all">
-            <input 
-              type="checkbox" 
-              checked={printColors} 
-              onChange={e => setPrintColors(e.target.checked)}
-              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
-            />
-            <span>Плашки у PDF</span>
-          </label>
-          <button 
-            type="button" 
-            onClick={() => handlePrint()}
-            disabled={filteredRecords.length === 0 || pdfGenerating}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              filteredRecords.length > 0 && !pdfGenerating
-                ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-            title={printColors ? "Друк PDF-звіту з кольоровими плашками" : "Друк PDF-звіту простим текстом без плашок"}
-          >
-            {pdfGenerating ? (
-              <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
-            ) : (
-              <Printer className="h-4 w-4" />
-            )}
-            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : printColors ? "ДРУК (PDF)" : "ДРУК (БЕЗ ПЛАШОК)"}</span>
-          </button>
-          <button 
-            type="button" 
-            onClick={() => { 
-              setIsTgModalOpen(true); 
-              setTgStatus(null); 
-              if (tgMaterialType === 'list' && !tgCustomText) {
-                setTgCustomText(generateTextList());
-              }
-            }}
-            disabled={pdfGenerating || tgSending}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              !pdfGenerating && !tgSending
-                ? "bg-teal-600 hover:bg-teal-500 cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-            title="Відкрити розсилку матеріалів (звіт PDF, текстовий список або повідомлення) в Telegram"
-          >
-            <Send className="h-4 w-4" />
-            <span>РОЗСИЛКА В TELEGRAM</span>
-          </button>
-        </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center border-b border-[#1f424f] pb-2">

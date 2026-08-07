@@ -1,11 +1,11 @@
 import cron from 'node-cron';
+import puppeteer from 'puppeteer';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import axios from 'axios';
 import FormData from 'form-data';
-import PDFDocument from 'pdfkit';
 import { getRobotoRegularFont, getRobotoBoldFont } from './fontsBase64';
 
 export interface TelegramBotConnector {
@@ -278,75 +278,23 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         `;
         fs.writeFileSync(htmlPath, htmlContent);
 
-        // --- PDF Generation via PDFKit ---
+        // --- PDF Generation via Puppeteer ---
         try {
-            const doc = new PDFDocument({ size: 'A5', margin: 30 });
-            const writeStream = fs.createWriteStream(pdfPath);
-            doc.pipe(writeStream);
-
-            const robotoRegular = Buffer.from(getRobotoRegularFont());
-            const robotoBold = Buffer.from(getRobotoBoldFont());
-            doc.registerFont('Roboto-Regular', robotoRegular);
-            doc.registerFont('Roboto-Bold', robotoBold);
-
-            // Title
-            doc.font('Roboto-Bold').fontSize(16).fillColor('#1e293b').text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-            doc.moveDown(0.2);
-
-            // Subtitle
-            doc.font('Roboto-Regular').fontSize(10).fillColor('#64748b').text(`/ ${birthdays.weekRangeText || ''} /`, { align: 'center' });
-            doc.moveDown(1.5);
-
-            // Table Headers
-            const startX = 30;
-            let currentY = doc.y;
-            
-            doc.rect(startX, currentY, 360, 24).fill('#f8fafc');
-            doc.fillColor('#475569').font('Roboto-Bold').fontSize(10);
-            doc.text('День', startX + 10, currentY + 6, { width: 50, align: 'center' });
-            doc.text('Дата', startX + 70, currentY + 6, { width: 70, align: 'center' });
-            doc.text("ПІБ / Ім'я", startX + 150, currentY + 6, { width: 200, align: 'left' });
-            
-            currentY += 24;
-            doc.moveTo(startX, currentY).lineTo(startX + 360, currentY).strokeColor('#cbd5e1').lineWidth(1).stroke();
-
-            const items = birthdays.list || [];
-            items.forEach((item: any) => {
-              if (currentY > 520) {
-                doc.addPage();
-                currentY = 30;
-              }
-              const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
-              const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
-              let name = item.cleanName || item.fullName || item.shortName || '';
-              if (item.isJubilee) {
-                name += ' (Ювілей!)';
-                doc.fillColor('#dc2626').font('Roboto-Bold');
-              } else {
-                doc.fillColor('#0f172a').font('Roboto-Regular');
-              }
-              doc.fontSize(10);
-              doc.text(dayName, startX + 10, currentY + 8, { width: 50, align: 'center' });
-              doc.text(dateFormatted, startX + 70, currentY + 8, { width: 70, align: 'center' });
-              doc.text(name, startX + 150, currentY + 8, { width: 200, align: 'left' });
-              
-              currentY += 26;
-              doc.moveTo(startX, currentY).lineTo(startX + 360, currentY).strokeColor('#e2e8f0').lineWidth(0.5).stroke();
+            const browser = await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
             });
-
-            // Footer
-            doc.font('Roboto-Regular').fontSize(8).fillColor('#94a3b8').text('Згенеровано автоматично системою "База 777"', 30, 545, { align: 'center', width: 360 });
-
-            doc.end();
-            
-            // Wait for the stream to write completely
-            await new Promise((resolveStream, rejectStream) => {
-                writeStream.on('finish', () => resolveStream(null));
-                writeStream.on('error', rejectStream);
-            });
-            console.log(`[BirthdayCron] PDFKit generated PDF at ${pdfPath}`);
+            try {
+                const page = await browser.newPage();
+                await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
+                const pdfBuffer = await page.pdf({ format: 'A5', printBackground: true });
+                fs.writeFileSync(pdfPath, pdfBuffer);
+                console.log(`[BirthdayCron] Puppeteer generated PDF at ${pdfPath}`);
+            } finally {
+                await browser.close();
+            }
         } catch (pdfErr) {
-            console.error("[BirthdayCron] Error during PDFKit drawing:", pdfErr);
+            console.error("[BirthdayCron] Error during PDF drawing:", pdfErr);
         }
 
         try {

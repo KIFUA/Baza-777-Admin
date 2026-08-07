@@ -1784,7 +1784,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     }
   };
 
-  const buildPdfDoc = async (withBadgesOverride?: boolean): Promise<{ pdfBase64: string; blob: Blob } | null> => {
+  const buildPdfDoc = async (withBadgesOverride?: boolean): Promise<jsPDF | null> => {
     const withBadges = withBadgesOverride !== undefined ? withBadgesOverride : printColors;
     const recordsToRender = combineCouples ? coupleGroupedRecords : filteredRecords;
     if (recordsToRender.length === 0) {
@@ -2509,94 +2509,93 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
       });
 
-      // Extract page HTMLs and wrap into a complete document for Puppeteer server rendering
-      const pagesHtml = pages.map(p => `<div class="pdf-page">${p.pageDiv.innerHTML}</div>`).join('\n');
-      
-      const fullHtmlDocument = `<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8" />
-  <title>Звіт членів церкви</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
-    
-    @page {
-      size: A4 ${isLandscape ? 'landscape' : 'portrait'};
-      margin: 0;
-    }
-    
-    * {
-      box-sizing: border-box;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-    }
-    
-    html, body {
-      margin: 0;
-      padding: 0;
-      background-color: #ffffff;
-      font-family: 'Roboto', 'Noto Sans', system-ui, -apple-system, sans-serif;
-      color: #0f172a;
-    }
+      // Ensure all custom fonts are completely ready before rendering
+      try {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+      } catch (fErr) {
+        console.warn("Fonts ready promise error:", fErr);
+      }
 
-    .pdf-page {
-      width: ${isLandscape ? '297mm' : '210mm'};
-      height: ${isLandscape ? '210mm' : '297mm'};
-      padding: 12mm;
-      box-sizing: border-box;
-      page-break-after: always;
-      break-after: page;
-      position: relative;
-      background-color: #ffffff;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
+      // Small tick for stable font rendering/layout engine settle
+      await new Promise(resolve => setTimeout(resolve, 150));
 
-    ${styleEl.innerHTML}
-  </style>
-</head>
-<body>
-  ${pagesHtml}
-</body>
-</html>`;
-
-      const response = await fetch('/api/generate-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          html: fullHtmlDocument,
-          isLandscape,
-          returnBase64: true,
-          filename: `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}.pdf`
-        })
+      const pdf = new jsPDF({
+        orientation: isLandscape ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: 'a4'
       });
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.message || `Сервер повернув помилку ${response.status}`);
+      try {
+        const fontBytes = getRobotoRegularFont();
+        let binaryStr = '';
+        const fontLen = fontBytes.byteLength;
+        for (let b = 0; b < fontLen; b++) {
+          binaryStr += String.fromCharCode(fontBytes[b]);
+        }
+        const fontBase64 = window.btoa(binaryStr);
+        pdf.addFileToVFS('Roboto-Regular.ttf', fontBase64);
+        pdf.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+        pdf.setFont('Roboto', 'normal');
+      } catch (fErr) {
+        console.warn("Could not register Roboto font for PDF text layer:", fErr);
       }
 
-      const data = await response.json();
-      if (!data.success || !data.pdfBase64) {
-        throw new Error(data.message || 'Не вдалося отримати PDF-файл з сервера');
+      for (let i = 0; i < pages.length; i++) {
+        const pageEl = pages[i].pageDiv;
+        const canvas = await html2canvas(pageEl, {
+          scale: 1.5,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          logging: false
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.8);
+        if (i > 0) {
+          pdf.addPage();
+        }
+        if (isLandscape) {
+          pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210, undefined, 'FAST');
+        } else {
+          pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        }
+
+        // Overlay selectable/searchable text layer for PDF text extraction and copying
+        try {
+          const pageRect = pageEl.getBoundingClientRect();
+          const pageWidthMm = isLandscape ? 297 : 210;
+          const pageHeightMm = isLandscape ? 210 : 297;
+          const scaleX = pageWidthMm / (pageRect.width || 1);
+          const scaleY = pageHeightMm / (pageRect.height || 1);
+
+          const textEls = pageEl.querySelectorAll('th, td, .table-cell, h1, h2, p, .page-num-indicator, span');
+          textEls.forEach((el) => {
+            if (el.children.length > 0) return;
+            const txt = (el.textContent || '').trim().replace(/\s+/g, ' ');
+            if (!txt || txt === '—') return;
+
+            const rect = el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) return;
+
+            const x = (rect.left - pageRect.left + 2) * scaleX;
+            const y = (rect.top - pageRect.top + rect.height * 0.72) * scaleY;
+            const computedStyle = window.getComputedStyle(el);
+            const fontPx = parseFloat(computedStyle.fontSize) || 10;
+            const fontSizePt = fontPx * 0.72;
+
+            pdf.setFontSize(Math.max(5, Math.min(13, fontSizePt)));
+            pdf.text(txt, x, y, { renderingMode: 'invisible', maxWidth: Math.max(10, rect.width * scaleX) });
+          });
+        } catch (tOverlayErr) {
+          console.warn("PDF text layer overlay error:", tOverlayErr);
+        }
       }
 
-      const binaryStr = window.atob(data.pdfBase64);
-      const len = binaryStr.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: 'application/pdf' });
-
-      return {
-        pdfBase64: data.pdfBase64,
-        blob
-      };
-    } catch (err: any) {
+      return pdf;
+    } catch (err) {
       console.error("Error generating PDF:", err);
-      alert("Помилка генерації PDF: " + (err.message || err));
       return null;
     } finally {
       if (container && document.body.contains(container)) {
@@ -2608,19 +2607,14 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const handlePrint = async (withBadgesOverride?: boolean) => {
     setPdfGenerating(true);
     try {
-      const res = await buildPdfDoc(withBadgesOverride);
-      if (res && res.blob) {
+      const pdf = await buildPdfDoc(withBadgesOverride);
+      if (pdf) {
         const todayString = new Date().toISOString().slice(0, 10);
-        const url = URL.createObjectURL(res.blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Zvit_Chleniv_Tserkvy_${todayString}.pdf`;
-        a.click();
-        URL.revokeObjectURL(url);
+        pdf.save(`Zvit_Chleniv_Tserkvy_${todayString}.pdf`);
       } else {
         alert("Виникла помилка під час формування PDF-файлу. Спробуйте ще раз.");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Print PDF error:", err);
       alert("Помилка друку PDF.");
     } finally {
@@ -2759,12 +2753,19 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       let filename = undefined;
 
       if (tgMaterialType === 'pdf') {
-        const res = await buildPdfDoc(printColors);
-        if (!res || !res.pdfBase64) {
+        const pdf = await buildPdfDoc(printColors);
+        if (!pdf) {
           setTgStatus({ message: "Не вдалося сформувати PDF-документ.", isError: true });
           return;
         }
-        pdfBase64 = res.pdfBase64;
+        const arrayBuffer = pdf.output('arraybuffer');
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        pdfBase64 = window.btoa(binary);
         const todayString = new Date().toISOString().slice(0, 10);
         filename = `Zvit_Chleniv_Tserkvy_${todayString}.pdf`;
       }

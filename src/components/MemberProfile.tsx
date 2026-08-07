@@ -4,6 +4,7 @@ import {
   User, Phone, Mail, MapPin, Calendar, Heart, Baby, 
   Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink
 } from 'lucide-react';
+import { normalizeToDateStr, formatYears } from '../lib/dateUtils';
 
 interface MemberProfileProps {
   memberId: number;
@@ -20,10 +21,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
   const [loading, setLoading] = useState(true);
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'дд.мм.рррр';
-    if (dateStr.includes('.')) return dateStr;
-    const [y, m, d] = dateStr.split('-');
-    if (!y || !m || !d) return dateStr;
-    return `${d}.${m}.${y}`;
+    return normalizeToDateStr(dateStr);
   };
 
   const [activeTab, setActiveTab] = useState<'info' | 'family' | 'history' | 'discipline'>('info');
@@ -338,7 +336,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                 {member.d_narodjennya && (
                   <span className="flex items-center space-x-1">
                     <Calendar className="h-3.5 w-3.5" />
-                    <span>{formatDate(member.d_narodjennya)} ({member.vik_rokiv1 || '?'} років)</span>
+                    <span>{formatDate(member.d_narodjennya)} ({member.vik_rokiv1 ? formatYears(member.vik_rokiv1) : '? років'})</span>
                   </span>
                 )}
                 <span className="flex items-center space-x-1"><MapPin className="h-3.5 w-3.5" /><span>{member.rayon2_ukr || "Район не вказано"} | {member.n_dilyci || "Дільниця"}</span></span>
@@ -892,7 +890,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   </div>
                 ) : (
                   <div className="text-xs text-slate-500 italic py-2">
-                    Станом на зараз в системі немає зв'язаного шлюбного партнера у базі simya.xlsx для цього ID, або сімейний стан не одружений ({member.s_simeyniy_ukr}).
+                    Станом на зараз в системі немає зв'язаного шлюбного партнера у базі simya.xlsx для цього ID, або Сім. стан не одруж. ({member.s_simeyniy_ukr}).
                   </div>
                 )}
               </div>
@@ -970,7 +968,7 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                           </div>
                         </div>
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 font-mono text-slate-600">
-                          {c.age ? `${c.age} р.` : 'н/д вік'}
+                          {c.age ? formatYears(c.age) : 'н/д вік'}
                         </span>
                       </div>
                     ))}

@@ -56,12 +56,16 @@ export interface AuditLogItem {
   timestamp: string;
   memberId: number;
   memberName: string;
-  action: string; // 'create' | 'update' | 'dismiss' | 'discipline' | 'add_ministry'
+  action: string; // 'create' | 'update' | 'dismiss' | 'discipline' | 'add_ministry' | 'login_session'
   details: string;
   userPib?: string;
   field?: string;
   oldValue?: string;
   newValue?: string;
+  rayon?: string;
+  loginTime?: string;
+  logoutTime?: string;
+  sessionId?: string;
 }
 
 export interface Member {
@@ -74,8 +78,11 @@ export interface Member {
   s_simeyniy_ukr: string;
   id_simeyniy: number;
   s_socialniy_ukr: string;
+  soc_status?: string;
+  s_soc_status_ukr?: string;
   id_socialniy: number;
   s_osvita_ukr: string;
+  osvita?: string;
   id_osvita: number;
   s_profesiya_ukr: string;
   id_profesiya: number;
@@ -161,4 +168,53 @@ export interface DashboardStats {
   areaStats: Record<string, number>;
   groupsCount: Record<string, number>;
   caregiversCount: Record<string, number>;
+}
+
+export interface TelegramBotConnector {
+  id: string;
+  name: string;
+  token: string;
+}
+
+export interface EmailConnector {
+  user: string;
+  appPassword: string;
+}
+
+export interface ConnectorSettings {
+  telegramBots: TelegramBotConnector[];
+  email: EmailConnector;
+}
+
+export interface BirthdayScheduleSettings {
+  day: number;
+  hour: number;
+  minute: number;
+  connectorType: 'telegram' | 'email';
+  connectorId: string; // "default" for email, or bot ID for telegram
+  recipientId: string; // chat IDs for telegram, emails for email
+}
+
+export interface AppSettings {
+  connectors: ConnectorSettings;
+  birthdays: {
+    text: BirthdayScheduleSettings;
+    pdf: BirthdayScheduleSettings;
+  };
+  notificationDays: number;
+  enableTestMode?: boolean;
+  testTelegramId?: string;
+  // Legacy fields for backward compatibility
+  mondayEmails?: string;
+  wednesdayEmails?: string;
+  mondayTelegramIds?: string;
+  wednesdayTelegramIds?: string;
+  botToken?: string;
+  appPassword?: string;
+  mondayMailingDay?: number;
+  mondayMailingHour?: number;
+  mondayMailingMinute?: number;
+  wednesdayMailingDay?: number;
+  wednesdayMailingHour?: number;
+  wednesdayMailingMinute?: number;
 }

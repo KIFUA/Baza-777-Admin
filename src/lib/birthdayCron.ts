@@ -1,76 +1,266 @@
 import cron from 'node-cron';
-import PDFDocument from 'pdfkit';
+import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
 import nodemailer from 'nodemailer';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import { execSync } from 'child_process';
+import axios from 'axios';
+import FormData from 'form-data';
+import { getRobotoRegularFont, getRobotoBoldFont } from './fontsBase64';
 
-export interface BirthdaySettings {
-    mondayEmails: string;
-    wednesdayEmails: string;
-    mondayTelegramIds: string;
-    wednesdayTelegramIds: string;
-    botToken: string;
+async function getPuppeteerExecutablePath(): Promise<string | undefined> {
+  const customPaths = [
+    '/www-data-home/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-151.0.7922.71', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-133.0.6943.53', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-128.0.6613.119', 'chrome-linux64', 'chrome'),
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/root/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+  ];
+  for (const p of customPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  const checkDirs = [
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome'),
+    '/www-data-home/.cache/puppeteer/chrome',
+    '/root/.cache/puppeteer/chrome',
+    path.join(os.homedir(), '.cache', 'puppeteer', 'chrome')
+  ];
+
+  for (const dir of checkDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        const versions = fs.readdirSync(dir);
+        for (const ver of versions) {
+          const candidate = path.join(dir, ver, 'chrome-linux64', 'chrome');
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const cacheDir = '/root/.cache/puppeteer/chrome';
+    if (fs.existsSync(cacheDir)) {
+      const versions = fs.readdirSync(cacheDir);
+      for (const ver of versions) {
+        const candidate = path.join(cacheDir, ver, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const p = await (puppeteer as any).executablePath();
+    if (p && fs.existsSync(p)) return p;
+  } catch (e) {}
+
+  try {
+    console.log('[Puppeteer] Chrome not found in cache, attempting installation...');
+    execSync('PUPPETEER_CACHE_DIR=' + path.join(process.cwd(), '.cache', 'puppeteer') + ' npx puppeteer browsers install chrome', { stdio: 'inherit' });
+    const wsCacheDir = path.join(process.cwd(), '.cache', 'puppeteer', 'chrome');
+    if (fs.existsSync(wsCacheDir)) {
+      const versions = fs.readdirSync(wsCacheDir);
+      for (const ver of versions) {
+        const candidate = path.join(wsCacheDir, ver, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  } catch (e) {
+    console.error('[Puppeteer] Failed to auto-install chrome:', e);
+  }
+
+  return undefined;
+}
+
+async function launchBrowser() {
+  try {
+    const sparticuzPath = await chromium.executablePath();
+    if (sparticuzPath) {
+      return await puppeteer.launch({
+        args: chromium.args,
+        executablePath: sparticuzPath,
+        headless: (chromium as any).headless ?? true,
+      });
+    }
+  } catch (e) {
+    console.log('[Puppeteer] @sparticuz/chromium fallback:', e);
+  }
+
+  const execPath = await getPuppeteerExecutablePath();
+  const options: any = {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=medium']
+  };
+  if (execPath) {
+    options.executablePath = execPath;
+  }
+  return await puppeteer.launch(options);
+}
+
+export interface TelegramBotConnector {
+    id: string;
+    name: string;
+    token: string;
+}
+
+export interface EmailConnector {
+    user: string;
     appPassword: string;
 }
 
-export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () => BirthdaySettings) {
-    console.log("Initializing Birthday Cron Jobs...");
+export interface BirthdayScheduleSettings {
+    day: number;
+    hour: number;
+    minute: number;
+    connectorType: 'telegram' | 'email';
+    connectorId: string;
+    recipientId: string;
+}
 
-    const sendTelegram = async (chatIds: string, text: string, botToken: string, pdfPath?: string) => {
-        if (!botToken) return;
+export interface BirthdaySettings {
+    connectors: {
+        telegramBots: TelegramBotConnector[];
+        email: EmailConnector;
+    };
+    birthdays: {
+        text: BirthdayScheduleSettings;
+        pdf: BirthdayScheduleSettings;
+    };
+    // Keep these for internal use if needed during transition, but interfaces should reflect new reality
+    botToken?: string;
+    appPassword?: string;
+}
+
+let isInitialized = false;
+
+const STATE_FILE = path.join(os.tmpdir(), 'last_sent_distributions.json');
+
+const getKyivDateTime = () => {
+    const d = new Date();
+    // Use a formatter that gives us exactly what we need
+    const options: Intl.DateTimeFormatOptions = {
+        timeZone: 'Europe/Kyiv',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false
+    };
+
+    const formatter = new Intl.DateTimeFormat('en-US', options);
+    const parts = formatter.formatToParts(d);
+    const getPart = (type: string) => parts.find(p => p.type === type)?.value || "";
+    
+    const year = parseInt(getPart('year'), 10);
+    const month = parseInt(getPart('month'), 10);
+    const day = parseInt(getPart('day'), 10);
+    const hour = parseInt(getPart('hour'), 10);
+    const minute = parseInt(getPart('minute'), 10);
+    
+    // For day of week, it's safer to use a specific formatter part if possible, 
+    // or just calculate it correctly from the parts.
+    // In 'en-US' with weekday: 'short', we get "Sun", "Mon", etc.
+    const dayOfWeekStr = new Intl.DateTimeFormat('en-US', { timeZone: 'Europe/Kyiv', weekday: 'short' }).format(d);
+    const dayMap: Record<string, number> = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6 };
+    const dayOfWeek = dayMap[dayOfWeekStr] ?? 0;
+    
+    const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    
+    return {
+        dateStr,
+        dayOfWeek,
+        hour,
+        minute
+    };
+};
+
+export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () => BirthdaySettings) {
+    if (isInitialized) {
+        console.log("[BirthdayCron] Already initialized, skipping.");
+        return;
+    }
+    isInitialized = true;
+    console.log("Initializing Birthday Cron Jobs (Europe/Kyiv)...");
+
+    const sendTelegram = async (chatIds: string, text: string, botToken: string, filePath?: string, displayFilename?: string) => {
+        if (!botToken) {
+            console.warn("[BirthdayCron] No bot token provided for Telegram.");
+            return;
+        }
         const ids = chatIds.split(',').map(id => id.trim()).filter(Boolean);
+        if (ids.length === 0) {
+            console.warn("[BirthdayCron] No Telegram chat IDs provided.");
+            return;
+        }
+
         for (const chatId of ids) {
             try {
-                if (pdfPath) {
+                if (filePath && fs.existsSync(filePath)) {
+                    console.log(`[BirthdayCron] Sending file to Telegram chat ${chatId}: ${filePath}`);
+                    const fileBuffer = fs.readFileSync(filePath);
+                    const filename = displayFilename || path.basename(filePath);
                     const formData = new FormData();
                     formData.append('chat_id', chatId);
-                    const fileBuffer = fs.readFileSync(pdfPath);
-                    const blob = new Blob([fileBuffer]);
-                    formData.append('document', blob, 'Imenynnyky.pdf');
+                    if (text) {
+                        formData.append('caption', text);
+                    }
+                    formData.append('document', fileBuffer, { filename });
                     
-                    await fetch(`https://api.telegram.org/bot${botToken}/sendDocument`, {
-                        method: 'POST',
-                        body: formData
+                    const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendDocument`, formData, {
+                        headers: formData.getHeaders()
                     });
+                    if (response.data.ok) {
+                        console.log(`[BirthdayCron] File ${filename} sent successfully to Telegram chat ${chatId}`);
+                    } else {
+                        console.error(`[BirthdayCron] Telegram sendDocument failed for ${chatId}:`, response.data);
+                    }
                 } else {
-                    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+                    console.log(`[BirthdayCron] Sending text message to ${chatId}`);
+                    await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        chat_id: chatId,
+                        text: text,
+                        parse_mode: 'Markdown'
                     });
                 }
-            } catch (err) {
-                console.error(`Telegram send error to ${chatId}:`, err);
+            } catch (err: any) {
+                console.error(`[BirthdayCron] Telegram send error to ${chatId}:`, err.response?.data || err.message);
             }
         }
     };
 
-    const sendEmails = async (emails: string, subject: string, text: string, appPassword: string, pdfPath?: string) => {
-        if (!appPassword || !emails) return;
+    const sendEmails = async (emails: string, subject: string, text: string, emailConfig: EmailConnector, attachments?: { filename: string, path: string }[]) => {
+        if (!emailConfig.appPassword || !emails) return;
         const mailList = emails.split(',').map(e => e.trim()).filter(Boolean);
         if (mailList.length === 0) return;
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
-                user: 'kostel.if.ua@gmail.com', // fallback hardcoded for now or use what's provided? Let's use env or standard.
-                pass: appPassword
+                user: emailConfig.user || 'kostel.if.ua@gmail.com',
+                pass: emailConfig.appPassword
             }
         });
 
         const mailOptions: any = {
-            from: '"База 777" <kostel.if.ua@gmail.com>',
+            from: `"База 777" <${emailConfig.user || 'kostel.if.ua@gmail.com'}>`,
             to: mailList,
             subject: subject,
             text: text
         };
 
-        if (pdfPath && fs.existsSync(pdfPath)) {
-            const pdfBuffer = fs.readFileSync(pdfPath);
-            mailOptions.attachments = [{
-                filename: 'Imenynnyky.pdf',
-                content: pdfBuffer
-            }];
+        if (attachments && attachments.length > 0) {
+            mailOptions.attachments = attachments;
         }
 
         try {
@@ -81,12 +271,26 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         }
     };
 
-    // Monday 11:00
-    cron.schedule('0 11 * * 1', async () => {
-        console.log("Running Monday Birthday Cron...");
+    const sendToConnector = async (schedule: BirthdayScheduleSettings, connectors: BirthdaySettings['connectors'], text: string, subject: string, filePath?: string, attachments?: any[]) => {
+        if (schedule.connectorType === 'telegram') {
+            const bot = connectors.telegramBots.find(b => b.id === schedule.connectorId) || connectors.telegramBots[0];
+            if (bot) {
+                const displayFilename = attachments?.find(a => a.path === filePath)?.filename;
+                await sendTelegram(schedule.recipientId, text, bot.token, filePath, displayFilename);
+            }
+        } else if (schedule.connectorType === 'email') {
+            await sendEmails(schedule.recipientId, subject, text, connectors.email, attachments);
+        }
+    };
+
+    const runMondayDistribution = async () => {
+        console.log("Running Distribution 1 (Text)...");
         const settings = getSettingsFn();
         const birthdays = getBirthdaysFn();
-        if (birthdays.list.length === 0) return;
+        if (birthdays.list.length === 0) {
+            console.log("No birthdays this week, skipping distribution 1.");
+            return;
+        }
 
         const UKR_DAYS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
         let msg = `🎂 *ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ* 🎂\n/ ${birthdays.weekRangeText} /\n\n`;
@@ -95,59 +299,190 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
             const dayName = UKR_DAYS[item.dayOfWeekNum];
             const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
             const jubileeText = item.isJubilee ? `ювілей` : ``;
-            msg += `${item.cleanName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
+            msg += `${item.cleanName || item.fullName} (${dayName}, ${dateFormatted}${jubileeText ? ' - ' + jubileeText : ''})\n`;
         });
 
-        await sendTelegram(settings.mondayTelegramIds, msg, settings.botToken);
-        await sendEmails(settings.mondayEmails, `Іменинники тижня (${birthdays.weekRangeText})`, msg, settings.appPassword);
-    });
+        const subject = `Іменинники тижня (${birthdays.weekRangeText})`;
+        await sendToConnector(settings.birthdays.text, settings.connectors, msg, subject);
+        console.log("Distribution 1 completed.");
+    };
 
-    // Wednesday 11:00
-    cron.schedule('0 11 * * 3', async () => {
-        console.log("Running Wednesday Birthday Cron...");
+    const runWednesdayDistribution = async () => {
+        console.log("[BirthdayCron] Running Distribution 2 (PDF & HTML)...");
         const settings = getSettingsFn();
         const birthdays = getBirthdaysFn();
-        if (birthdays.list.length === 0) return;
-
-        const pdfPath = path.join(process.cwd(), 'birthdays_temp.pdf');
-        const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
-        const writeStream = fs.createWriteStream(pdfPath);
-        doc.pipe(writeStream);
-
-        const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-        const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
-        
-        if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-            doc.moveDown(0.5);
-            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-            doc.moveDown(2);
-
-            const dateText = `/ ${birthdays.weekRangeText} /`;
-            const dateWidth = doc.widthOfString(dateText);
-            const prefixWidth = doc.widthOfString("/ ");
-            const dateStartX = (doc.page.width - dateWidth) / 2;
-            const namesStartX = dateStartX + prefixWidth;
-
-            doc.x = namesStartX;
-            birthdays.list.forEach((item: any) => {
-                doc.font(boldFont).fontSize(12);
-                if (item.isJubilee) {
-                    doc.fillColor('red');
-                } else {
-                    doc.fillColor('black');
-                }
-                doc.text(item.shortName || item.cleanName, { align: 'left' });
-            });
+        if (!birthdays || !birthdays.list || birthdays.list.length === 0) {
+            console.log("[BirthdayCron] No birthdays this week, skipping distribution 2.");
+            return;
         }
-        
-        doc.end();
 
-        writeStream.on('finish', async () => {
-            let msg = `📄 Прикріплено файл ПДФ зі списком іменинників поточного тижня (${birthdays.weekRangeText}).`;
-            await sendTelegram(settings.wednesdayTelegramIds, msg, settings.botToken, pdfPath);
-            await sendEmails(settings.wednesdayEmails, `Іменинники тижня PDF (${birthdays.weekRangeText})`, msg, settings.appPassword, pdfPath);
-            fs.unlinkSync(pdfPath); // Cleanup
+        const nowTs = Date.now();
+        const pdfPath = path.join(os.tmpdir(), `birthdays_${nowTs}.pdf`);
+        const htmlPath = path.join(os.tmpdir(), `birthdays_${nowTs}.html`);
+        
+        console.log(`[BirthdayCron] Generating files: ${pdfPath}, ${htmlPath}`);
+
+        // --- HTML Generation ---
+        const UKR_DAYS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+        let htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; }
+                h1 { text-align: center; color: #000; font-size: 24px; margin-bottom: 5px; }
+                .subtitle { text-align: center; font-size: 16px; color: #666; margin-bottom: 30px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+                th { background-color: #f2f2f2; font-weight: bold; }
+                .jubilee { color: #e74c3c; font-weight: bold; }
+                .day-col { width: 60px; text-align: center; }
+                .date-col { width: 100px; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
+            <div class="subtitle">/ ${birthdays.weekRangeText} /</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="day-col">День</th>
+                        <th class="date-col">Дата</th>
+                        <th>ПІБ / Ім'я</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        birthdays.list.forEach((item: any) => {
+            const dayName = UKR_DAYS[item.dayOfWeekNum];
+            const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
+            const jubileeClass = item.isJubilee ? 'class="jubilee"' : '';
+            htmlContent += `
+                <tr ${jubileeClass}>
+                    <td class="day-col">${dayName}</td>
+                    <td class="date-col">${dateFormatted}</td>
+                    <td>${item.cleanName || item.fullName} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
+                </tr>
+            `;
         });
+
+        htmlContent += `
+                </tbody>
+            </table>
+            <p style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">Згенеровано автоматично системою "База 777"</p>
+        </body>
+        </html>
+        `;
+        fs.writeFileSync(htmlPath, htmlContent);
+
+        // --- PDF Generation via Puppeteer ---
+        try {
+            const browser = await launchBrowser();
+            try {
+                const page = await browser.newPage();
+                await page.setContent(htmlContent, { waitUntil: 'domcontentloaded' });
+                const pdfBuffer = await page.pdf({ format: 'A5', printBackground: true });
+                fs.writeFileSync(pdfPath, pdfBuffer);
+                console.log(`[BirthdayCron] Puppeteer generated PDF at ${pdfPath}`);
+            } finally {
+                await browser.close();
+            }
+        } catch (pdfErr) {
+            console.error("[BirthdayCron] Error during PDF drawing:", pdfErr);
+        }
+
+        try {
+            const attachments = [];
+            let pdfSuccessful = false;
+            if (fs.existsSync(pdfPath)) {
+                const stats = fs.statSync(pdfPath);
+                if (stats.size > 100) {
+                    attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.pdf`, path: pdfPath });
+                    pdfSuccessful = true;
+                } else {
+                    console.warn(`[BirthdayCron] Generated PDF is too small (${stats.size} bytes)!`);
+                }
+            }
+            if (fs.existsSync(htmlPath)) {
+                attachments.push({ filename: `Список іменинників ${birthdays.weekRangeText}.html`, path: htmlPath });
+            }
+
+            let msg = "";
+            if (!pdfSuccessful) {
+                msg = `⚠️ УВАГА: Виникла помилка при генерації PDF для ${birthdays.weekRangeText}. Будь ласка, використайте HTML файл або текстовий список.`;
+            }
+            
+            console.log("[BirthdayCron] Sending via Connector (Distribution 2)...");
+            const telegramAttachment = attachments.find(a => a.filename.endsWith('.pdf')) 
+                                   || attachments.find(a => a.filename.endsWith('.html'));
+            const telegramFilePath = telegramAttachment?.path;
+            
+            const subject = `Іменинники тижня (${birthdays.weekRangeText})`;
+            await sendToConnector(settings.birthdays.pdf, settings.connectors, msg, subject, telegramFilePath, attachments);
+            
+            // Cleanup
+            if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath);
+            if (fs.existsSync(htmlPath)) fs.unlinkSync(htmlPath);
+            
+            console.log("[BirthdayCron] Distribution 2 completed successfully.");
+        } catch (err) {
+            console.error("[BirthdayCron] Error in distribution 2 handler:", err);
+        }
+    };
+
+    // Check every minute for scheduled distributions
+    cron.schedule('* * * * *', async () => {
+        try {
+            const now = getKyivDateTime();
+            const settings = getSettingsFn();
+            
+            // Log every hour to show we're alive
+            if (now.minute === 0) {
+                console.log(`[BirthdayCron] Heartbeat (Kyiv time): ${now.dateStr} ${now.hour}:${now.minute}, Day: ${now.dayOfWeek}`);
+            }
+
+            const mondayDay = settings.birthdays.text.day;
+            const mondayHour = settings.birthdays.text.hour;
+            const mondayMinute = settings.birthdays.text.minute;
+
+            const wedDay = settings.birthdays.pdf.day;
+            const wedHour = settings.birthdays.pdf.hour;
+            const wedMinute = settings.birthdays.pdf.minute;
+
+            let state: any = {};
+            if (fs.existsSync(STATE_FILE)) {
+                try {
+                    state = JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+                } catch (e) {
+                    console.error("[BirthdayCron] Error reading state file:", e);
+                }
+            }
+
+            // Distribution 1
+            if (now.dayOfWeek === mondayDay && now.hour === mondayHour && now.minute === mondayMinute) {
+                if (state.lastMondaySent !== now.dateStr) {
+                    console.log(`[BirthdayCron] Triggering Monday Distribution 1 (Day=${now.dayOfWeek}, Time=${now.hour}:${now.minute})`);
+                    await runMondayDistribution();
+                    state.lastMondaySent = now.dateStr;
+                    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+                }
+            }
+
+            // Distribution 2
+            if (now.dayOfWeek === wedDay && now.hour === wedHour && now.minute === wedMinute) {
+                if (state.lastWednesdaySent !== now.dateStr) {
+                    console.log(`[BirthdayCron] Triggering Wednesday Distribution 2 (Day=${now.dayOfWeek}, Time=${now.hour}:${now.minute})`);
+                    await runWednesdayDistribution();
+                    state.lastWednesdaySent = now.dateStr;
+                    fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2));
+                }
+            }
+        } catch (globalErr) {
+            console.error("[BirthdayCron] Global error in cron tick:", globalErr);
+        }
+    }, {
+        timezone: "Europe/Kyiv"
     });
 }

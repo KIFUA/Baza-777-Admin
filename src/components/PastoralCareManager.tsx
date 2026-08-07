@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Member } from '../types';
 import { Shield, Users, MapPin, UserCheck, ArrowRight } from 'lucide-react';
+import { formatYears } from '../lib/dateUtils';
 
 interface PastoralCareProps {
   members: Member[];
@@ -109,8 +110,8 @@ export default function PastoralCareManager({ members, onSelectMember }: Pastora
                             {m.gender || m.stat}
                           </span>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3.5 px-4 font-mono font-semibold text-slate-600">
-                          {m.vik_rokiv1 || 'н/д'} р.
+                        <td className="whitespace-nowrap px-4 py-3.5 font-mono font-semibold text-slate-600">
+                          {m.vik_rokiv1 ? formatYears(m.vik_rokiv1) : 'н/д'}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3.5">
                           <span className="flex items-center space-x-1 font-medium text-slate-700">

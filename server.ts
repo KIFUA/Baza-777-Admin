@@ -1,10 +1,103 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import os from "os";
+import { execSync } from "child_process";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
+import axios from "axios";
+import FormData from "form-data";
+import puppeteer from "puppeteer";
+import chromium from "@sparticuz/chromium";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
+import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
 import XLSX from "xlsx";
+
+async function getPuppeteerExecutablePath(): Promise<string | undefined> {
+  const customPaths = [
+    '/www-data-home/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/www-data-home/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-151.0.7922.71', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-133.0.6943.53', 'chrome-linux64', 'chrome'),
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-128.0.6613.119', 'chrome-linux64', 'chrome'),
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/root/.cache/puppeteer/chrome/linux-151.0.7922.71/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-133.0.6943.53/chrome-linux64/chrome',
+    '/root/.cache/puppeteer/chrome/linux-128.0.6613.119/chrome-linux64/chrome',
+  ];
+  for (const p of customPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  const checkDirs = [
+    path.join(process.cwd(), '.cache', 'puppeteer', 'chrome'),
+    '/www-data-home/.cache/puppeteer/chrome',
+    '/root/.cache/puppeteer/chrome',
+    path.join(os.homedir(), '.cache', 'puppeteer', 'chrome')
+  ];
+
+  for (const dir of checkDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        const versions = fs.readdirSync(dir);
+        for (const ver of versions) {
+          const candidate = path.join(dir, ver, 'chrome-linux64', 'chrome');
+          if (fs.existsSync(candidate)) return candidate;
+        }
+      }
+    } catch (e) {}
+  }
+
+  try {
+    const p = await (puppeteer as any).executablePath();
+    if (p && fs.existsSync(p)) return p;
+  } catch (e) {}
+
+  try {
+    console.log('[Puppeteer] Chrome not found in cache, attempting installation...');
+    execSync('PUPPETEER_CACHE_DIR=' + path.join(process.cwd(), '.cache', 'puppeteer') + ' npx puppeteer browsers install chrome', { stdio: 'inherit' });
+    const wsCacheDir = path.join(process.cwd(), '.cache', 'puppeteer', 'chrome');
+    if (fs.existsSync(wsCacheDir)) {
+      const versions = fs.readdirSync(wsCacheDir);
+      for (const ver of versions) {
+        const candidate = path.join(wsCacheDir, ver, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(candidate)) return candidate;
+      }
+    }
+  } catch (e) {
+    console.error('[Puppeteer] Failed to auto-install chrome:', e);
+  }
+
+  return undefined;
+}
+
+async function launchBrowser() {
+  try {
+    const sparticuzPath = await chromium.executablePath();
+    if (sparticuzPath) {
+      return await puppeteer.launch({
+        args: chromium.args,
+        executablePath: sparticuzPath,
+        headless: (chromium as any).headless ?? true,
+      });
+    }
+  } catch (e) {
+    console.log('[Puppeteer] @sparticuz/chromium fallback:', e);
+  }
+
+  const execPath = await getPuppeteerExecutablePath();
+  const options: any = {
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=medium']
+  };
+  if (execPath) {
+    options.executablePath = execPath;
+  }
+  return await puppeteer.launch(options);
+}
 import { 
   Member, 
   Spouse, 
@@ -24,7 +117,8 @@ const PORT = 3000;
 const DB_CACHE_FILE = path.join(process.cwd(), "db_cache.json");
 const tablyciDir = path.join(process.cwd(), "tablyci");
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Prevent browser/proxy/CDN caching for all API endpoints to guarantee active synchronization
 app.use((req, res, next) => {
@@ -70,11 +164,7 @@ function ensureInitialSync() {
 app.use(async (req, res, next) => {
   if (req.path.startsWith("/api") && req.path !== "/api/health") {
     try {
-    
-  await ensureInitialSync();
-
-  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
-
+      await ensureInitialSync();
     } catch (err: any) {
       console.error("[Sync Middleware] Error awaiting database sync:", err.message);
     }
@@ -339,7 +429,13 @@ function loadDatabase() {
       ignoreAdminLogs = db.ignoreAdminLogs !== undefined ? db.ignoreAdminLogs : true;
       s_osvita = db.s_osvita || [];
       s_socialniy = db.s_socialniy || [];
-      s_simeyniy = db.s_simeyniy || [];
+      s_simeyniy = [
+        { ID: 1, Value: 'неодруж.' },
+        { ID: 2, Value: 'одруж.' },
+        { ID: 3, Value: 'розлуч.' },
+        { ID: 4, Value: 'вдов.' },
+        { ID: 5, Value: 'н/д' }
+      ];
       s_vybuv = db.s_vybuv || [];
       s_profesiya = db.s_profesiya || [];
       s_selo = db.s_selo || [];
@@ -386,7 +482,13 @@ function loadDatabase() {
       // Load static catalog lists
       s_osvita = loadExcelSheet("s_osvita.xlsx");
       s_socialniy = loadExcelSheet("s_socialniy.xlsx");
-      s_simeyniy = loadExcelSheet("s_simeyniy.xlsx");
+      s_simeyniy = [
+        { ID: 1, Value: 'неодруж.' },
+        { ID: 2, Value: 'одруж.' },
+        { ID: 3, Value: 'розлуч.' },
+        { ID: 4, Value: 'вдов.' },
+        { ID: 5, Value: 'н/д' }
+      ];
       s_vybuv = loadExcelSheet("s_vybuv.xlsx");
       s_profesiya = loadExcelSheet("s_profesiya.xlsx");
       s_selo = loadExcelSheet("s_selo.xlsx");
@@ -649,7 +751,7 @@ app.use('/api/firebase', async (req, res) => {
                       d_shlyubu_end: sh["d_shlyubu_end"] || "",
                       podruzhzhya_id: id,
                       podrujya_id: id,
-                      status: sh["status"] || "одр."
+                      status: sh["status"] || "одруж."
                     };
                     const updatedSpouseShlyubArr = [...spouseShlyubArr, newShRecord];
                     spouseОсобисте["4_shlyub_history"] = updatedSpouseShlyubArr;
@@ -803,15 +905,167 @@ app.use('/api/firebase', async (req, res) => {
 const SETTINGS_FILE = path.join(process.cwd(), "settings.json");
 let cachedSettings: any = null;
 
+const SETTINGS_DEFAULTS = {
+  // New architecture
+  connectors: {
+    telegramBots: [
+      { id: "default", name: "Основний бот", token: "" }
+    ],
+    email: {
+      user: "kostel.if.ua@gmail.com",
+      appPassword: ""
+    }
+  },
+  birthdays: {
+    text: {
+      day: 1,
+      hour: 11,
+      minute: 0,
+      connectorType: "telegram",
+      connectorId: "default",
+      recipientId: ""
+    },
+    pdf: {
+      day: 3,
+      hour: 11,
+      minute: 0,
+      connectorType: "telegram",
+      connectorId: "default",
+      recipientId: ""
+    }
+  },
+  notificationDays: 14,
+  enableTestMode: false,
+  testTelegramId: "",
+
+  // Legacy fields for backward compatibility
+  mondayEmails: "",
+  wednesdayEmails: "",
+  mondayTelegramIds: "",
+  wednesdayTelegramIds: "",
+  botToken: "",
+  appPassword: "",
+  mondayMailingDay: 1,
+  mondayMailingHour: 11,
+  mondayMailingMinute: 0,
+  wednesdayMailingDay: 3,
+  wednesdayMailingHour: 11,
+  wednesdayMailingMinute: 0
+};
+
+function getActiveTelegramToken(settings: any, customToken?: string): string {
+  if (customToken && customToken.trim()) return customToken.trim();
+  const botFromConnectors = settings?.connectors?.telegramBots?.find((b: any) => b.token && b.token.trim());
+  if (botFromConnectors?.token) return botFromConnectors.token.trim();
+  if (settings?.botToken && settings.botToken.trim()) return settings.botToken.trim();
+  return process.env.TELEGRAM_BOT_TOKEN || "";
+}
+
+function mergeSettings(data: any) {
+  const merged = { ...SETTINGS_DEFAULTS, ...(data || {}) };
+  
+  // Ensure nested objects are properly merged/initialized
+  if (!merged.connectors) merged.connectors = JSON.parse(JSON.stringify(SETTINGS_DEFAULTS.connectors));
+  if (!merged.birthdays) merged.birthdays = JSON.parse(JSON.stringify(SETTINGS_DEFAULTS.birthdays));
+  if (!merged.connectors.telegramBots) merged.connectors.telegramBots = [...SETTINGS_DEFAULTS.connectors.telegramBots];
+  if (!merged.connectors.email) merged.connectors.email = { ...SETTINGS_DEFAULTS.connectors.email };
+  if (!merged.birthdays.text) merged.birthdays.text = { ...SETTINGS_DEFAULTS.birthdays.text };
+  if (!merged.birthdays.pdf) merged.birthdays.pdf = { ...SETTINGS_DEFAULTS.birthdays.pdf };
+
+  // Data Migration Logic: if new fields are empty but old ones have data, migrate them
+  if (merged.botToken && merged.connectors.telegramBots[0].token === "") {
+    merged.connectors.telegramBots[0].token = merged.botToken;
+  }
+  if (merged.appPassword && merged.connectors.email.appPassword === "") {
+    merged.connectors.email.appPassword = merged.appPassword;
+  }
+  
+  if (merged.mondayTelegramIds && merged.birthdays.text.recipientId === "") {
+    merged.birthdays.text.recipientId = merged.mondayTelegramIds;
+    merged.birthdays.text.connectorType = "telegram";
+    merged.birthdays.text.connectorId = "default";
+  } else if (merged.mondayEmails && merged.birthdays.text.recipientId === "") {
+    merged.birthdays.text.recipientId = merged.mondayEmails;
+    merged.birthdays.text.connectorType = "email";
+    merged.birthdays.text.connectorId = "default";
+  }
+
+  if (merged.wednesdayTelegramIds && merged.birthdays.pdf.recipientId === "") {
+    merged.birthdays.pdf.recipientId = merged.wednesdayTelegramIds;
+    merged.birthdays.pdf.connectorType = "telegram";
+    merged.birthdays.pdf.connectorId = "default";
+  } else if (merged.wednesdayEmails && merged.birthdays.pdf.recipientId === "") {
+    merged.birthdays.pdf.recipientId = merged.wednesdayEmails;
+    merged.birthdays.pdf.connectorType = "email";
+    merged.birthdays.pdf.connectorId = "default";
+  }
+
+  // Sync schedules - Prioritize nested fields if they are provided in the input, otherwise sync from root
+  if (data?.birthdays?.text?.day !== undefined) {
+    merged.birthdays.text.day = Number(data.birthdays.text.day);
+    merged.mondayMailingDay = merged.birthdays.text.day;
+  } else if (merged.mondayMailingDay !== undefined) {
+    merged.birthdays.text.day = Number(merged.mondayMailingDay);
+  }
+
+  if (data?.birthdays?.text?.hour !== undefined) {
+    merged.birthdays.text.hour = Number(data.birthdays.text.hour);
+    merged.mondayMailingHour = merged.birthdays.text.hour;
+  } else if (merged.mondayMailingHour !== undefined) {
+    merged.birthdays.text.hour = Number(merged.mondayMailingHour);
+  }
+
+  if (data?.birthdays?.text?.minute !== undefined) {
+    merged.birthdays.text.minute = Number(data.birthdays.text.minute);
+    merged.mondayMailingMinute = merged.birthdays.text.minute;
+  } else if (merged.mondayMailingMinute !== undefined) {
+    merged.birthdays.text.minute = Number(merged.mondayMailingMinute);
+  }
+  
+  if (data?.birthdays?.pdf?.day !== undefined) {
+    merged.birthdays.pdf.day = Number(data.birthdays.pdf.day);
+    merged.wednesdayMailingDay = merged.birthdays.pdf.day;
+  } else if (merged.wednesdayMailingDay !== undefined) {
+    merged.birthdays.pdf.day = Number(merged.wednesdayMailingDay);
+  }
+
+  if (data?.birthdays?.pdf?.hour !== undefined) {
+    merged.birthdays.pdf.hour = Number(data.birthdays.pdf.hour);
+    merged.wednesdayMailingHour = merged.birthdays.pdf.hour;
+  } else if (merged.wednesdayMailingHour !== undefined) {
+    merged.birthdays.pdf.hour = Number(merged.wednesdayMailingHour);
+  }
+
+  if (data?.birthdays?.pdf?.minute !== undefined) {
+    merged.birthdays.pdf.minute = Number(data.birthdays.pdf.minute);
+    merged.wednesdayMailingMinute = merged.birthdays.pdf.minute;
+  } else if (merged.wednesdayMailingMinute !== undefined) {
+    merged.birthdays.pdf.minute = Number(merged.wednesdayMailingMinute);
+  }
+
+  // Enforce numbers for time fields
+  merged.birthdays.text.day = Number(merged.birthdays.text.day);
+  merged.birthdays.text.hour = Number(merged.birthdays.text.hour);
+  merged.birthdays.text.minute = Number(merged.birthdays.text.minute);
+  merged.birthdays.pdf.day = Number(merged.birthdays.pdf.day);
+  merged.birthdays.pdf.hour = Number(merged.birthdays.pdf.hour);
+  merged.birthdays.pdf.minute = Number(merged.birthdays.pdf.minute);
+  merged.notificationDays = Number(merged.notificationDays);
+  
+  return merged;
+}
+
 async function loadSettingsFromFirebase() {
   try {
     const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
+    console.log(`[Firebase Settings] Attempting to load from ${url.split('?')[0]}`);
     const response = await fetch(url);
     if (response.ok) {
       const data = await response.json();
+      console.log("[Firebase Settings] Received data:", JSON.stringify(data));
       if (data && typeof data === 'object') {
-        cachedSettings = data;
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(data, null, 2));
+        cachedSettings = mergeSettings(data);
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(cachedSettings, null, 2));
         console.log("[Firebase Settings] Successfully loaded and cached notification settings from Firebase Realtime DB.");
         return;
       }
@@ -827,21 +1081,18 @@ function getSettings() {
     return cachedSettings;
   }
   try {
-    const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
-    cachedSettings = data;
-    return data;
+    if (fs.existsSync(SETTINGS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(SETTINGS_FILE, 'utf8'));
+      cachedSettings = mergeSettings(data);
+      console.log("[Settings] Loaded from local cache.");
+      return cachedSettings;
+    }
   } catch (e) {
-    const defaults = {
-      mondayEmails: "",
-      wednesdayEmails: "",
-      mondayTelegramIds: "",
-      wednesdayTelegramIds: "",
-      botToken: "",
-      appPassword: ""
-    };
-    cachedSettings = defaults;
-    return defaults;
+    console.error("[Settings] Error reading local settings file:", e);
   }
+  cachedSettings = mergeSettings({});
+  console.log("[Settings] Using default settings (no cache found).");
+  return cachedSettings;
 }
 
 app.get("/api/settings/notifications", (req, res) => {
@@ -849,23 +1100,40 @@ app.get("/api/settings/notifications", (req, res) => {
 });
 
 app.post("/api/settings/notifications", async (req, res) => {
-  const settings = req.body;
-  cachedSettings = settings;
+  const newSettings = req.body;
+  console.log("[Settings] Received update request with keys:", Object.keys(newSettings).join(", "));
+  const currentSettings = getSettings();
+  const mergedSettings = mergeSettings({ ...currentSettings, ...newSettings });
+  
+  console.log("[Settings] Merged settings preview:", JSON.stringify({
+    monDay: mergedSettings.mondayMailingDay,
+    monHour: mergedSettings.mondayMailingHour,
+    wedDay: mergedSettings.wednesdayMailingDay,
+    wedHour: mergedSettings.wednesdayMailingHour
+  }));
+
+  cachedSettings = mergedSettings;
+  
   try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(mergedSettings, null, 2));
+    console.log("[Settings] Local cache file updated successfully.");
     
     // Save to Firebase Realtime DB
     const url = `${FIREBASE_URL}/settings.json?auth=${FIREBASE_SECRET}`;
-    await fetch(url, {
+    const response = await fetch(url, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings)
+      body: JSON.stringify(mergedSettings)
     });
-    console.log("[Firebase Settings] Successfully synchronized settings to Firebase Realtime DB.");
+    if (response.ok) {
+      console.log("[Firebase Settings] Successfully synchronized merged settings to Firebase Realtime DB.");
+    } else {
+      console.error(`[Firebase Settings] Sync failed with status: ${response.status}`);
+    }
   } catch (err: any) {
     console.error(`[Firebase Settings] Error saving settings to Firebase Realtime DB: ${err.message}`);
   }
-  res.json({ success: true });
+  res.json({ success: true, settings: mergedSettings });
 });
 
 app.get("/api/health", (req, res) => {
@@ -1590,6 +1858,820 @@ app.get("/api/birthdays", async (req, res) => {
   res.json(getBirthdaysForThisWeek());
 });
 
+// API route for printable view
+app.get("/api/birthdays/print", async (req, res) => {
+  await ensureDatabaseIsFresh();
+  const birthdays = getBirthdaysForThisWeek();
+  
+  let listItems = "";
+  birthdays.list.forEach((item: any) => {
+    // Форматування імені: лише Прізвище та Ім'я (перші два слова)
+    const nameParts = (item.cleanName || item.fullName || "").trim().split(/\s+/);
+    const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
+    
+    // Ювіляри - червоні, решта - чорні. Все жирне через CSS body.
+    const itemStyle = item.isJubilee ? 'style="color: #d32f2f;"' : '';
+
+    listItems += `
+      <div class="birthday-item" ${itemStyle}>
+        ${shortName}
+      </div>
+    `;
+  });
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="uk">
+    <head>
+      <meta charset="UTF-8">
+      <title>Іменинники тижня</title>
+      <style>
+        @page {
+          size: A5 portrait;
+          margin: 10mm;
+        }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+          padding: 10mm; 
+          line-height: 1.1; 
+          color: #000; 
+          margin: 0;
+          font-weight: bold;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .page-wrapper {
+          width: fit-content;
+          min-width: 250px;
+        }
+        .header { 
+          text-align: center;
+          margin-bottom: 15px; 
+          border-bottom: 2px solid #000; 
+          padding-bottom: 5px; 
+        }
+        h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .subtitle { font-size: 12px; color: #333; margin-top: 2px; }
+        
+        .birthday-list { 
+          margin-top: 10px;
+          /* Зміщення списку вправо, щоб початок був під "Н" у слові "ІМЕНИННИКИ" */
+          padding-left: 3.3ch; 
+        }
+        .birthday-item { 
+          padding: 1px 0; 
+          font-size: 16px;
+        }
+        
+        .no-print { width: 100%; margin-bottom: 20px; text-align: right; }
+        button { 
+          background: #000; 
+          color: #fff; 
+          border: none; 
+          padding: 8px 16px; 
+          cursor: pointer; 
+          border-radius: 4px; 
+          font-weight: bold;
+          font-size: 12px;
+        }
+        @media print {
+          .no-print { display: none; }
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print">
+        <button onclick="window.print()">ДРУКУВАТИ (A5)</button>
+      </div>
+      <div class="page-wrapper">
+        <div class="header">
+          <h1>ІМЕНИННИКИ ТИЖНЯ</h1>
+          <div class="subtitle">${birthdays.weekRangeText}</div>
+        </div>
+        <div class="birthday-list">
+          ${listItems || '<div style="text-align: center; color: #999;">На цьому тижні немає іменинників</div>'}
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+  res.send(html);
+});
+
+async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
+  const UKR_DAYS: Record<number, string> = {
+    1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Нд'
+  };
+  const listRows = (birthdays.list || []).map((item: any) => {
+    const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
+    const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
+    const name = item.cleanName || item.fullName || item.shortName || '';
+    return `<tr style="${item.isJubilee ? 'color:#dc2626; font-weight:bold;' : ''}">
+      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dayName}</td>
+      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dateFormatted}</td>
+      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0;">${name} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+    body { font-family: 'Roboto', sans-serif; padding: 24px; color: #0f172a; margin:0; }
+    h1 { text-align: center; font-size: 18px; margin-bottom: 4px; color: #1e293b; }
+    .sub { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight:500; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f8fafc; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: left; color:#475569; }
+    .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
+  <div class="sub">/ ${birthdays.weekRangeText || ''} /</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align:center; width:60px;">День</th>
+        <th style="text-align:center; width:90px;">Дата</th>
+        <th>ПІБ / Ім'я</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${listRows || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#94a3b8;">На цьому тижні немає іменинників</td></tr>'}
+    </tbody>
+  </table>
+  <div class="footer">Згенеровано автоматично системою "База 777"</div>
+</body>
+</html>`;
+
+  const browser = await launchBrowser();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    const pdfBuf = await page.pdf({ format: 'A5', printBackground: true });
+    return Buffer.from(pdfBuf);
+  } finally {
+    await browser.close();
+  }
+}
+
+// 2.3.1 Helper to compute stats for a rayon on server
+function computeRayonStatsOnServer(selectedRayon: string) {
+  let filtered = members.filter(m => m.id_vybuttya === 0);
+  if (selectedRayon && selectedRayon !== "Всі райони" && selectedRayon !== "ВСІ РАЙОНИ" && selectedRayon !== "ВСІ") {
+    filtered = filtered.filter(m => m.rayon2_ukr && m.rayon2_ukr.trim().toLowerCase() === selectedRayon.trim().toLowerCase());
+  }
+
+  const total = filtered.length;
+  const brothers = filtered.filter(m => String(m.gender || m.stat || '').trim().toLowerCase().includes('брат')).length;
+  const sisters = filtered.filter(m => String(m.gender || m.stat || '').trim().toLowerCase().includes('сестра') || String(m.gender || m.stat || '').trim().toLowerCase().includes('сес')).length;
+  const others = total - brothers - sisters;
+
+  let single = 0, married = 0, divorced = 0, widowed = 0, nd = 0;
+  filtered.forEach(m => {
+    const status = String(m.s_simeyniy_ukr || '').trim().toLowerCase();
+    if (!status || status === 'н/д' || status === 'не визначено' || status === '—') {
+      nd++;
+    } else if (status.startsWith('неодр') || status.includes('неод')) {
+      single++;
+    } else if (status.startsWith('одр') || status === 'одр.' || status === 'одружений' || status === 'одружена') {
+      married++;
+    } else if (status.startsWith('розл') || status.includes('розлуч')) {
+      divorced++;
+    } else if (status.startsWith('вд') || status.includes('вдов') || status.includes('вдiв')) {
+      widowed++;
+    } else {
+      nd++;
+    }
+  });
+
+  const attendance: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.vidviduvanist || '').trim() || 'н/д';
+    attendance[key] = (attendance[key] || 0) + 1;
+  });
+  const sortedAttendance = Object.entries(attendance).sort((a, b) => b[1] - a[1]);
+
+  const presence: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.prysutnist || '').trim();
+    const isNA = !key || key.toLowerCase() === 'н/д' || key === '—' || key === '-';
+    if (!isNA) {
+      presence[key] = (presence[key] || 0) + 1;
+    }
+  });
+  const sortedPresence = Object.entries(presence).sort((a, b) => b[1] - a[1]);
+
+  const education: Record<string, number> = {};
+  const socialCategory: Record<string, number> = {};
+  filtered.forEach(m => {
+    const edu = String(m.osvita || m.s_osvita_ukr || '').trim() || 'н/д';
+    education[edu] = (education[edu] || 0) + 1;
+
+    const soc = String(m.soc_status || m.s_soc_status_ukr || m.s_socialniy_ukr || '').trim() || 'н/д';
+    socialCategory[soc] = (socialCategory[soc] || 0) + 1;
+  });
+  const sortedEducation = Object.entries(education).sort((a, b) => b[1] - a[1]);
+  const sortedSocialCategory = Object.entries(socialCategory).sort((a, b) => b[1] - a[1]);
+
+  const rayons: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.rayon2_ukr || '').trim() || 'Без району';
+    rayons[key] = (rayons[key] || 0) + 1;
+  });
+  const sortedRayons = Object.entries(rayons).sort((a, b) => b[1] - a[1]);
+
+  const caregivers: Record<string, number> = {};
+  filtered.forEach(m => {
+    const key = String(m.presviter || '').trim() || 'Без опікуна';
+    caregivers[key] = (caregivers[key] || 0) + 1;
+  });
+  const sortedCaregivers = Object.entries(caregivers).sort((a, b) => b[1] - a[1]);
+
+  return {
+    rayonName: selectedRayon || "Всі райони",
+    total,
+    brothers,
+    sisters,
+    others,
+    marital: { "неодружені": single, "одружені": married, "розлучені": divorced, "вдова/вдівець": widowed, "не вказано": nd },
+    attendance: sortedAttendance,
+    presence: sortedPresence,
+    education: sortedEducation,
+    socialCategory: sortedSocialCategory,
+    rayons: sortedRayons,
+    caregivers: sortedCaregivers
+  };
+}
+
+async function generateStatsPdfBuffer(statsData: any): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A4', margin: 30 });
+      doc.registerFont('Roboto', Buffer.from(getRobotoRegularFont()));
+      doc.registerFont('Roboto-Bold', Buffer.from(getRobotoBoldFont()));
+
+      const bufs: Buffer[] = [];
+      doc.on('data', chunk => bufs.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(bufs)));
+      doc.on('error', err => reject(err));
+
+      const rayonName = statsData.rayonName || 'Всі райони';
+      const total = statsData.total || 0;
+      const brothers = statsData.brothers || 0;
+      const sisters = statsData.sisters || 0;
+
+      doc.font('Roboto-Bold').fontSize(16).text('СТАТИСТИЧНИЙ ЗВІТ ПО ЧЛЕНСТВУ', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.font('Roboto').fontSize(10).text(`РАЙОН: ${rayonName.toUpperCase()} • ОНОВЛЕНО: ${new Date().toLocaleString('uk-UA')}`, { align: 'center' });
+      doc.moveDown(1);
+
+      doc.font('Roboto-Bold').fontSize(12).text(`Загальна кількість членів: ${total}`);
+      doc.font('Roboto').fontSize(11).text(`Брати: ${brothers} | Сестри: ${sisters}`);
+      doc.moveDown(1);
+
+      if (statsData.attendance && statsData.attendance.length > 0) {
+        doc.font('Roboto-Bold').fontSize(11).text('Аналіз відвідування:');
+        statsData.attendance.forEach(([lbl, val]: [string, number]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${lbl}: ${val}`);
+        });
+        doc.moveDown(0.8);
+      }
+
+      if (statsData.presence && statsData.presence.length > 0) {
+        doc.font('Roboto-Bold').fontSize(11).text('Причини відсутності:');
+        statsData.presence.forEach(([lbl, val]: [string, number]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${lbl}: ${val}`);
+        });
+        doc.moveDown(0.8);
+      }
+
+      if (statsData.marital) {
+        doc.font('Roboto-Bold').fontSize(11).text("Сімейний стан:");
+        Object.entries(statsData.marital).forEach(([lbl, val]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${lbl}: ${val}`);
+        });
+        doc.moveDown(0.8);
+      }
+
+      if (statsData.caregivers && statsData.caregivers.length > 0) {
+        doc.font('Roboto-Bold').fontSize(11).text("Опікуни:");
+        statsData.caregivers.forEach(([name, count]: [string, number]) => {
+          doc.font('Roboto').fontSize(10).text(`• ${name}: ${count}`);
+        });
+      }
+
+      doc.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+// 2.3.2 API: Manual distribution of Statistics report (Telegram / Email)
+app.post("/api/stats/send", async (req, res) => {
+  const { rayon, type, customToken, customChatId, customEmails } = req.body;
+  const targetRayon = rayon || "Всі райони";
+  const statsData = computeRayonStatsOnServer(targetRayon);
+
+  const total = statsData.total;
+  const bPct = total > 0 ? Math.round((statsData.brothers / total) * 100) : 0;
+  const sPct = total > 0 ? Math.round((statsData.sisters / total) * 100) : 0;
+
+  // Text message
+  let msg = `📊 *СТАТИСТИЧНИЙ ЗВІТ ЦЕРКВИ* 📊\n`;
+  msg += `📍 *Район:* ${targetRayon.toUpperCase()}\n`;
+  msg += `📅 *Дата:* ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}\n\n`;
+  msg += `👥 *ВСЬОГО ЧЛЕНІВ:* ${total}\n`;
+  msg += `👨 *Брати:* ${statsData.brothers} (${bPct}%)\n`;
+  msg += `👩 *Сестри:* ${statsData.sisters} (${sPct}%)\n\n`;
+
+  if (statsData.attendance && statsData.attendance.length > 0) {
+    msg += `📈 *Відвідуваність:*\n`;
+    statsData.attendance.slice(0, 5).forEach(([lbl, val]: [string, number]) => {
+      const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+      msg += `• ${lbl || 'н/д'}: ${val} (${pct}%)\n`;
+    });
+    msg += `\n`;
+  }
+
+  if (statsData.presence && statsData.presence.length > 0) {
+    msg += `📌 *Причини відсутності:*\n`;
+    statsData.presence.slice(0, 5).forEach(([lbl, val]: [string, number]) => {
+      const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+      msg += `• ${lbl}: ${val} (${pct}%)\n`;
+    });
+    msg += `\n`;
+  }
+
+  msg += `💍 *Сім. стан:*\n`;
+  Object.entries(statsData.marital || {}).forEach(([lbl, val]) => {
+    msg += `• ${lbl}: ${val}\n`;
+  });
+
+  if (statsData.caregivers && statsData.caregivers.length > 0) {
+    msg += `\n👤 *Опікуни:*\n`;
+    statsData.caregivers.forEach(([name, count]: [string, number]) => {
+      msg += `• ${name}: ${count}\n`;
+    });
+  }
+
+  let telegramLogs = "";
+  let emailLogs = "";
+
+  if (type === "telegram_text" || type === "telegram_pdf" || type === "telegram_me" || type === "telegram_group") {
+    const settings = getSettings();
+    const token = getActiveTelegramToken(settings, customToken);
+    if (token) {
+      axios.post(`https://api.telegram.org/bot${token}/setDescription`, { description: "Офіційний бот сповіщень та статистичних звітів церкви." }).catch(() => {});
+      axios.post(`https://api.telegram.org/bot${token}/setShortDescription`, { short_description: "Офіційний бот обліку церкви." }).catch(() => {});
+    }
+    const defaultChatId = settings.wednesdayTelegramIds || settings.mondayTelegramIds || "1919236304";
+    const chatIdStr = customChatId || defaultChatId;
+
+    if (!token) {
+      telegramLogs = `[Симуляція] Telegram бот токен НЕ налаштований. Звіт було б надіслано в чат: ${chatIdStr}.`;
+    } else {
+      const chatIds = Array.from(new Set(chatIdStr.split(",").map((id: any) => id.trim()).filter(Boolean)));
+      let tgSuccessCount = 0;
+      let tgFailCount = 0;
+      let lastError = "";
+
+      if (type === "telegram_pdf") {
+        try {
+          const pdfBuffer = await generateStatsPdfBuffer(statsData);
+
+          for (const singleChatId of chatIds) {
+            try {
+              const formData = new FormData();
+              formData.append('chat_id', singleChatId);
+              formData.append('document', pdfBuffer, {
+                filename: `Статистика_${targetRayon.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`,
+                contentType: 'application/pdf'
+              });
+
+              const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+                headers: formData.getHeaders(),
+                timeout: 15000
+              });
+              if (response.data.ok) tgSuccessCount++;
+              else {
+                tgFailCount++;
+                lastError = response.data.description;
+              }
+            } catch (err: any) {
+              tgFailCount++;
+              lastError = err.response?.data?.description || err.message;
+            }
+          }
+        } catch (pdfErr: any) {
+          tgFailCount = chatIds.length || 1;
+          lastError = `PDF gen error: ${pdfErr.message}`;
+        }
+      } else {
+        for (const singleChatId of chatIds) {
+          try {
+            const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+            const response = await fetch(tgUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: singleChatId,
+                text: msg,
+                parse_mode: "Markdown"
+              })
+            });
+            const rJson = await response.json() as any;
+            if (rJson.ok) {
+              tgSuccessCount++;
+            } else {
+              tgFailCount++;
+              lastError = rJson.description || "unknown error";
+            }
+          } catch (tgErr: any) {
+            tgFailCount++;
+            lastError = tgErr.message;
+          }
+        }
+      }
+
+      telegramLogs = `Telegram: успішно надіслано до ${tgSuccessCount} чатів. Помилок: ${tgFailCount}${lastError ? ' (' + lastError + ')' : ''}`;
+    }
+  } else if (type === "email_text" || type === "email_pdf") {
+    const settings = getSettings();
+    const appPassword = settings.appPassword;
+
+    let destinations: string[] = [];
+    if (customEmails) {
+      destinations = customEmails.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+    } else {
+      const emailField = settings.wednesdayEmails || settings.mondayEmails;
+      if (emailField) {
+        destinations = emailField.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+      }
+    }
+
+    destinations = Array.from(new Set(destinations));
+
+    if (destinations.length === 0) {
+      return res.status(400).json({ error: "Вкажіть хоча б одну адресу Email для розсилки." });
+    }
+
+    if (!appPassword) {
+      emailLogs = `[Помилка] Не вказано App Password (пароль додатка Gmail) в налаштуваннях.`;
+    } else {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: 'kostel.if.ua@gmail.com',
+            pass: appPassword
+          }
+        });
+
+        const subject = `📊 Статистичний звіт: ${targetRayon} (${new Date().toLocaleDateString('uk-UA')})`;
+        const mailOptions: any = {
+          from: '"База 777" <kostel.if.ua@gmail.com>',
+          to: destinations,
+          subject: subject,
+          text: msg.replace(/\*/g, "")
+        };
+
+        if (type === "email_pdf") {
+          try {
+            const pdfBuffer = await generateStatsPdfBuffer(statsData);
+            mailOptions.attachments = [{
+              filename: `Статистика_${targetRayon.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            }];
+          } catch (pdfErr: any) {
+            console.error("Error generating PDF for email:", pdfErr);
+          }
+        }
+
+        await transporter.sendMail(mailOptions);
+        emailLogs = `Email: успішно надіслано на адреси: ${destinations.join(", ")}`;
+      } catch (mailErr: any) {
+        emailLogs = `Помилка надсилання пошти: ${mailErr.message}`;
+      }
+    }
+  }
+
+  // Insert Audit Log entry
+  auditLogs.push({
+    id: "stats_" + Date.now(),
+    timestamp: new Date().toISOString(),
+    memberId: 0,
+    memberName: "Система",
+    action: "stats_distribution",
+    details: `Ручна розсилка статистики: район "<b>${targetRayon}</b>", тип "<b>${type}</b>".`
+  });
+  saveDatabaseToCache();
+
+  res.json({
+    success: true,
+    message: "Розсилку статистики успішно опрацьовано.",
+    logs: telegramLogs || emailLogs,
+    rawText: msg
+  });
+});
+
+// Endpoint for generating PDF via headless Puppeteer
+app.post("/api/generate-pdf", async (req, res) => {
+  try {
+    const { html, isLandscape = false, filename = "Zvit.pdf", returnBase64 = false } = req.body;
+    if (!html) {
+      return res.status(400).json({ success: false, message: "HTML вміст обов'язковий." });
+    }
+
+    const browser = await launchBrowser();
+
+    try {
+      const page = await browser.newPage();
+
+      await page.setViewport({
+        width: isLandscape ? 1123 : 794,
+        height: isLandscape ? 794 : 1123,
+        deviceScaleFactor: 1
+      });
+
+      await page.setContent(html, { waitUntil: 'domcontentloaded' });
+
+      try {
+        await page.evaluateHandle('document.fonts.ready');
+      } catch (fErr) {}
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        landscape: Boolean(isLandscape),
+        printBackground: true,
+        preferCSSPageSize: true,
+        margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
+      });
+
+      if (returnBase64) {
+        const base64Str = Buffer.from(pdfBuffer).toString('base64');
+        return res.json({ success: true, pdfBase64: base64Str });
+      }
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+      return res.send(Buffer.from(pdfBuffer));
+    } finally {
+      await browser.close();
+    }
+  } catch (err: any) {
+    console.error("Server PDF generation error:", err);
+    return res.status(500).json({ success: false, message: "Помилка генерації PDF на сервері: " + err.message });
+  }
+});
+
+// Endpoint for sending custom generated PDF documents directly to Telegram recipients
+app.post("/api/telegram/send-pdf", async (req, res) => {
+  try {
+    const { chatId, pdfBase64, filename, caption } = req.body;
+    if (!chatId || !pdfBase64) {
+      return res.status(400).json({ success: false, message: "Chat ID та файл PDF є обов'язковими." });
+    }
+
+    const settings = getSettings();
+    const token = getActiveTelegramToken(settings);
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Токен Telegram-бота не налаштовано в розділі 'Налаштування'." });
+    }
+
+    const chatIds = String(chatId).split(/[,;\s]+/).map(s => s.trim()).filter(Boolean);
+    if (chatIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Не вказано жодного Chat ID." });
+    }
+
+    let cleanBase64 = String(pdfBase64 || "");
+    const base64Idx = cleanBase64.indexOf('base64,');
+    if (base64Idx !== -1) {
+      cleanBase64 = cleanBase64.substring(base64Idx + 7);
+    } else if (cleanBase64.includes(',')) {
+      cleanBase64 = cleanBase64.split(',')[1];
+    }
+    cleanBase64 = cleanBase64.trim().replace(/[\r\n\s]+/g, '');
+    const pdfBuffer = Buffer.from(cleanBase64, 'base64');
+
+    const pdfHeader = pdfBuffer.toString('latin1', 0, 5);
+    console.log(`[send-pdf] PDF Buffer length: ${pdfBuffer.length} bytes, Header: "${pdfHeader}"`);
+
+    if (pdfBuffer.length < 100 || !pdfHeader.startsWith('%PDF')) {
+      console.error("[send-pdf] Invalid PDF structure. Header:", pdfHeader);
+      return res.status(400).json({
+        success: false,
+        message: `Помилка структури PDF: отримано пошкоджений файл розміром ${pdfBuffer.length} Б.`
+      });
+    }
+
+    let tgSuccessCount = 0;
+    let tgFailCount = 0;
+    let lastError = "";
+
+    for (const singleChatId of chatIds) {
+      try {
+        const formData = new FormData();
+        formData.append('chat_id', singleChatId);
+        formData.append('document', pdfBuffer, {
+          filename: filename || `Zvit_${new Date().toISOString().slice(0, 10)}.pdf`,
+          contentType: 'application/pdf'
+        });
+        if (caption) {
+          formData.append('caption', caption);
+        }
+
+        const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+          headers: formData.getHeaders(),
+          timeout: 20000
+        });
+
+        if (response.data?.ok) {
+          tgSuccessCount++;
+        } else {
+          tgFailCount++;
+          lastError = response.data?.description || "Помилка надсилання";
+        }
+      } catch (err: any) {
+        tgFailCount++;
+        lastError = err.response?.data?.description || err.message;
+      }
+    }
+
+    if (tgSuccessCount > 0) {
+      auditLogs.push({
+        id: "tg_pdf_" + Date.now(),
+        timestamp: new Date().toISOString(),
+        memberId: 0,
+        memberName: "Система",
+        action: "send_pdf_telegram",
+        details: `Надіслано PDF-звіт у Telegram (${tgSuccessCount} чатів): filename "${filename || 'Zvit.pdf'}"`
+      });
+      saveDatabaseToCache();
+
+      return res.json({
+        success: true,
+        message: `Успішно надіслано в Telegram (успішно: ${tgSuccessCount}${tgFailCount > 0 ? `, помилок: ${tgFailCount} - ${lastError}` : ''})`
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Не вдалося надіслати: ${lastError || 'Помилка Telegram API'}`
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Помилка сервера" });
+  }
+});
+
+// Endpoint for Telegram broadcast/mailing of text, lists or PDF documents to multiple recipients
+app.post("/api/telegram/broadcast", async (req, res) => {
+  try {
+    const { recipients, materialType = 'pdf', text, pdfBase64, filename } = req.body;
+    let targetChatIds: string[] = [];
+
+    if (Array.isArray(recipients)) {
+      targetChatIds = recipients.map(r => String(r).trim()).filter(Boolean);
+    } else if (typeof recipients === 'string') {
+      targetChatIds = recipients.split(/[,;\s\n]+/).map(r => r.trim()).filter(Boolean);
+    }
+
+    if (targetChatIds.length === 0) {
+      return res.status(400).json({ success: false, message: "Вкажіть хоча б одного отримувача (Chat ID)." });
+    }
+
+    // Deduplicate chat IDs
+    targetChatIds = Array.from(new Set(targetChatIds));
+
+    const settings = getSettings();
+    const token = getActiveTelegramToken(settings);
+    if (!token) {
+      return res.status(400).json({ success: false, message: "Токен Telegram-бота не налаштовано в розділі 'Налаштування'." });
+    }
+
+    let tgSuccessCount = 0;
+    let tgFailCount = 0;
+    let lastError = "";
+
+    if (materialType === 'pdf' && pdfBase64) {
+      let cleanBase64 = String(pdfBase64 || "");
+      const base64Idx = cleanBase64.indexOf('base64,');
+      if (base64Idx !== -1) {
+        cleanBase64 = cleanBase64.substring(base64Idx + 7);
+      } else if (cleanBase64.includes(',')) {
+        cleanBase64 = cleanBase64.split(',')[1];
+      }
+      cleanBase64 = cleanBase64.trim().replace(/[\r\n\s]+/g, '');
+      const pdfBuffer = Buffer.from(cleanBase64, 'base64');
+
+      if (pdfBuffer.length < 100) {
+        return res.status(400).json({ success: false, message: "Некоректний розмір PDF-файлу." });
+      }
+
+      for (const singleChatId of targetChatIds) {
+        try {
+          const formData = new FormData();
+          formData.append('chat_id', singleChatId);
+          formData.append('document', pdfBuffer, {
+            filename: filename || `Zvit_${new Date().toISOString().slice(0, 10)}.pdf`,
+            contentType: 'application/pdf'
+          });
+          if (text) {
+            formData.append('caption', text);
+          }
+
+          const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+            headers: formData.getHeaders(),
+            timeout: 20000
+          });
+
+          if (response.data?.ok) {
+            tgSuccessCount++;
+          } else {
+            tgFailCount++;
+            lastError = response.data?.description || "Помилка Telegram API";
+          }
+        } catch (err: any) {
+          tgFailCount++;
+          lastError = err.response?.data?.description || err.message;
+        }
+      }
+    } else {
+      // Send text message or list message
+      const msgContent = text || "Повідомлення з бази даних";
+      for (const singleChatId of targetChatIds) {
+        try {
+          const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: singleChatId,
+              text: msgContent,
+              parse_mode: "HTML"
+            })
+          });
+          const rJson = await response.json() as any;
+          if (rJson.ok) {
+            tgSuccessCount++;
+          } else {
+            // Fallback without parse_mode if HTML parsing fails
+            const retryRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: singleChatId,
+                text: msgContent
+              })
+            });
+            const retryJson = await retryRes.json() as any;
+            if (retryJson.ok) {
+              tgSuccessCount++;
+            } else {
+              tgFailCount++;
+              lastError = retryJson.description || rJson.description || "Unknown error";
+            }
+          }
+        } catch (err: any) {
+          tgFailCount++;
+          lastError = err.message;
+        }
+      }
+    }
+
+    if (tgSuccessCount > 0) {
+      auditLogs.push({
+        id: "tg_bc_" + Date.now(),
+        timestamp: new Date().toISOString(),
+        memberId: 0,
+        memberName: "Система",
+        action: "telegram_broadcast",
+        details: `Розсилка Telegram (${materialType}): надіслано ${tgSuccessCount} з ${targetChatIds.length} отримувачів`
+      });
+      saveDatabaseToCache();
+
+      return res.json({
+        success: true,
+        message: `Успішно надіслано ${tgSuccessCount} з ${targetChatIds.length} отримувачів${tgFailCount > 0 ? ` (помилок: ${tgFailCount} - ${lastError})` : ''}`,
+        successCount: tgSuccessCount,
+        failCount: tgFailCount
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Не вдалося надіслати жодному отримувачу. ${lastError ? 'Помилка: ' + lastError : ''}`
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ success: false, message: err.message || "Помилка сервера" });
+  }
+});
+
 // 2.3 API: Send Birthday Celebrants reports (Email or Telegram Bot)
 app.post("/api/birthdays/send", async (req, res) => {
   const { type, customToken, customChatId } = req.body;
@@ -1602,13 +2684,26 @@ app.post("/api/birthdays/send", async (req, res) => {
   // Construct Ukrainian week days array
   const UKR_DAYS = ["Неділя", "Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця", "Субота"];
 
+  // Helper function for Ukrainian age declension
+  const getYearsPlural = (age: number): string => {
+    if (age === undefined || age === null || isNaN(age)) return "років";
+    const absAge = Math.abs(Math.round(age));
+    const mod10 = absAge % 10;
+    const mod100 = absAge % 100;
+    if (mod100 >= 11 && mod100 <= 14) return "років";
+    if (mod10 === 1) return "рік";
+    if (mod10 >= 2 && mod10 <= 4) return "роки";
+    return "років";
+  };
+
   // Prepare beautifully formatted Markdown message text
   let msg = `🎂 **ІМЕНИННИКИ НА ТИЖДЕНЬ: ${birthdays.weekRangeText}** 🎂\n\n`;
   birthdays.list.forEach((item, idx) => {
     const dayName = UKR_DAYS[item.dayOfWeekNum];
     const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
-    const jubileeText = item.isJubilee ? ` 🎖️ **ЮВІЛЕЙ: ${item.age} років!**` : ` (${item.age} років)`;
-    msg += `${idx + 1}. **${item.cleanName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
+    const yearsWord = getYearsPlural(item.age);
+    const jubileeText = item.isJubilee ? ` 🎂 **ЮВІЛЕЙ: ${item.age} ${yearsWord}!**` : ` (${item.age} ${yearsWord})`;
+    msg += `${idx + 1}. **${item.cleanName || item.fullName || item.shortName}** — ${dayName}, ${dateFormatted}${jubileeText}\n`;
     if (item.tel_mob) msg += `   📞 Тел: ${item.tel_mob}\n`;
     if (item.rayon2_ukr) msg += `   📍 Район: ${item.rayon2_ukr} (Опікун: ${item.presviter || "не вказано"})\n`;
     msg += `\n`;
@@ -1617,7 +2712,7 @@ app.post("/api/birthdays/send", async (req, res) => {
   let telegramLogs = "";
   let emailLogs = "";
 
-  if (type === "telegram_me" || type === "telegram_group") {
+  if (type === "telegram_me" || type === "telegram_group" || type === "telegram_pdf") {
     const settings = getSettings();
     const token = customToken || settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
     const defaultChatId = type === "telegram_me" ? "1919236304" : "-1001914940560";
@@ -1634,33 +2729,63 @@ app.post("/api/birthdays/send", async (req, res) => {
     if (!token) {
       telegramLogs = `[Симуляція] Telegram бот токен НЕ налаштований. Список було б надіслано в чат: ${chatIdStr}.`;
     } else {
-      const chatIds = chatIdStr.split(",").map(id => id.trim()).filter(Boolean);
+      const chatIds = Array.from(new Set(chatIdStr.split(",").map(id => id.trim()).filter(Boolean)));
       let tgSuccessCount = 0;
       let tgFailCount = 0;
       let lastError = "";
       
-      for (const singleChatId of chatIds) {
+      if (type === "telegram_pdf") {
         try {
-          const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
-          const response = await fetch(tgUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: singleChatId,
-              text: msg,
-              parse_mode: "Markdown"
-            })
-          });
-          const rJson = await response.json() as any;
-          if (rJson.ok) {
-            tgSuccessCount++;
-          } else {
-            tgFailCount++;
-            lastError = rJson.description || "unknown error";
+          const pdfBuffer = await generateBirthdayPdfBuffer(birthdays);
+
+          for (const singleChatId of chatIds) {
+            try {
+              const formData = new FormData();
+              formData.append('chat_id', singleChatId);
+              formData.append('document', pdfBuffer, { filename: `Список іменинників ${birthdays.weekRangeText}.pdf`, contentType: 'application/pdf' });
+
+              const response = await axios.post(`https://api.telegram.org/bot${token}/sendDocument`, formData, {
+                headers: formData.getHeaders(),
+                timeout: 15000
+              });
+              if (response.data.ok) tgSuccessCount++;
+              else {
+                tgFailCount++;
+                lastError = response.data.description;
+              }
+            } catch (err: any) {
+              tgFailCount++;
+              lastError = err.response?.data?.description || err.message;
+            }
           }
-        } catch (tgErr: any) {
-          tgFailCount++;
-          lastError = tgErr.message;
+        } catch (pdfErr: any) {
+          tgFailCount = chatIds.length || 1;
+          lastError = `PDF gen error: ${pdfErr.message}`;
+        }
+      } else {
+        for (const singleChatId of chatIds) {
+          try {
+            const tgUrl = `https://api.telegram.org/bot${token}/sendMessage`;
+            const response = await fetch(tgUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: singleChatId,
+                text: msg,
+                parse_mode: "Markdown"
+              })
+            });
+            const rJson = await response.json() as any;
+            if (rJson.ok) {
+              tgSuccessCount++;
+            } else {
+              tgFailCount++;
+              lastError = rJson.description || "unknown error";
+            }
+          } catch (tgErr: any) {
+            tgFailCount++;
+            lastError = tgErr.message;
+          }
         }
       }
       
@@ -1669,17 +2794,22 @@ app.post("/api/birthdays/send", async (req, res) => {
   } else if (type === "email_text" || type === "email_pdf") {
     const settings = getSettings();
     const appPassword = settings.appPassword;
-    let destinationsStr = "";
-    if (type === "email_pdf") {
-      // Combine both Wednesday and Monday email lists to be absolutely sure the admin receives it
-      destinationsStr = [settings.wednesdayEmails, settings.mondayEmails].filter(Boolean).join(",");
+    
+    let destinations: string[] = [];
+    if (req.body.customEmails) {
+      destinations = req.body.customEmails.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
     } else {
-      destinationsStr = settings.mondayEmails;
+      const emailField = settings.mondayEmails || settings.wednesdayEmails;
+      if (emailField) {
+        destinations = emailField.split(/[,;\s\n]+/).map((e: any) => e.trim()).filter(Boolean);
+      }
     }
-    const destinations = destinationsStr ? destinationsStr.split(",").map(e => e.trim()).filter(Boolean) : [];
+    
+    // De-duplicate
+    destinations = Array.from(new Set(destinations));
     
     if (destinations.length === 0) {
-      destinations.push("kostel.if.ua@gmail.com", "liliiachupryna@gmail.com", "solbo1971@gmail.com");
+      return res.status(400).json({ error: "Вкажіть хоча б одну адресу Email для розсилки." });
     }
 
     if (!appPassword) {
@@ -1694,84 +2824,26 @@ app.post("/api/birthdays/send", async (req, res) => {
           }
         });
 
-        // Use distinctive subject for manual PDF trigger
-        const subject = type === "email_pdf"
-          ? `🎂 Іменинники тижня (PDF) (${birthdays.weekRangeText})`
-          : `🎂 Іменинники тижня (${birthdays.weekRangeText})`;
-
+        const subject = `🎂 Іменинники тижня (${birthdays.weekRangeText})`;
         const mailOptions: any = {
           from: '"База 777" <kostel.if.ua@gmail.com>',
           to: destinations,
           subject: subject,
-          text: msg.replace(/\*\*/g, "") // Remove Markdown bold styling for plain text email
+          text: type === "email_pdf"
+            ? ""
+            : msg.replace(/\*\*/g, "") // Remove Markdown bold styling for plain text email
         };
 
-        let tempPdfPath = "";
         if (type === "email_pdf") {
-          tempPdfPath = path.join(process.cwd(), `birthdays_manual_${Date.now()}.pdf`);
-          const doc = new PDFDocument({ size: 'A5', layout: 'portrait', margin: 40 });
-          const writeStream = fs.createWriteStream(tempPdfPath);
-          doc.pipe(writeStream);
-
-          const regularFont = path.join(process.cwd(), 'fonts', 'Roboto-Regular.ttf');
-          const boldFont = path.join(process.cwd(), 'fonts', 'Roboto-Bold.ttf');
-          
-          if (fs.existsSync(regularFont) && fs.existsSync(boldFont)) {
-            doc.font(boldFont).fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-            doc.moveDown(0.5);
-            doc.font(regularFont).fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-            doc.moveDown(2);
-
-            const dateText = `/ ${birthdays.weekRangeText} /`;
-            const dateWidth = doc.widthOfString(dateText);
-            const prefixWidth = doc.widthOfString("/ ");
-            const dateStartX = (doc.page.width - dateWidth) / 2;
-            const namesStartX = dateStartX + prefixWidth;
-
-            doc.x = namesStartX;
-            birthdays.list.forEach((item: any) => {
-              doc.font(boldFont).fontSize(12);
-              if (item.isJubilee) {
-                doc.fillColor('red');
-              } else {
-                doc.fillColor('black');
-              }
-              doc.text(item.shortName || item.cleanName, { align: 'left' });
-            });
-          } else {
-            doc.fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-            doc.moveDown(0.5);
-            doc.fontSize(10).text(`/ ${birthdays.weekRangeText} /`, { align: 'center' });
-            doc.moveDown(2);
-
-            const dateText = `/ ${birthdays.weekRangeText} /`;
-            const dateWidth = doc.widthOfString(dateText);
-            const prefixWidth = doc.widthOfString("/ ");
-            const dateStartX = (doc.page.width - dateWidth) / 2;
-            const namesStartX = dateStartX + prefixWidth;
-
-            doc.x = namesStartX;
-            birthdays.list.forEach((item: any) => {
-              doc.fontSize(12);
-              doc.text(item.shortName || item.cleanName, { align: 'left' });
-            });
-          }
-          
-          doc.end();
-
-          await new Promise<void>((resolve, reject) => {
-            writeStream.on('finish', () => resolve());
-            writeStream.on('error', (err) => reject(err));
-          });
-
-          // Read the generated PDF into a buffer to avoid unlink race conditions
-          if (fs.existsSync(tempPdfPath)) {
-            const pdfBuffer = fs.readFileSync(tempPdfPath);
+          try {
+            const pdfBuffer = await generateBirthdayPdfBuffer(birthdays);
             mailOptions.attachments = [{
-              filename: 'Imenynnyky.pdf',
-              content: pdfBuffer
+              filename: `Список іменинників ${birthdays.weekRangeText}.pdf`,
+              content: pdfBuffer,
+              contentType: 'application/pdf'
             }];
-            fs.unlinkSync(tempPdfPath); // Cleanup immediately after loading buffer
+          } catch (pdfErr: any) {
+            console.error("Error generating PDF for email:", pdfErr);
           }
         }
 
@@ -1912,6 +2984,221 @@ app.post("/api/members/invalidate-cache", async (req, res) => {
   res.json({ success: true });
 });
 
+function normalizeSurnameLocal(s: string): string {
+  if (!s) return '';
+  let str = s.trim().toLowerCase();
+  str = str.replace(/(ський|ська|цький|цька|зький|зька)$/g, '');
+  str = str.replace(/(ович|евич|євич|ич|іч)$/g, '');
+  str = str.replace(/(івна|ївна|вна)$/g, '');
+  str = str.replace(/(ов|ова|ев|ева|єв|єва|ін|іна|їн|їна)$/g, '');
+  str = str.replace(/(ий|ій|а|я)$/g, '');
+  return str;
+}
+
+function areSurnamesMatchingLocal(pib1: string, pib2: string): boolean {
+  if (!pib1 || !pib2) return false;
+  const w1 = pib1.trim().toLowerCase().split(/\s+/)[0];
+  const w2 = pib2.trim().toLowerCase().split(/\s+/)[0];
+  if (!w1 || !w2 || w1.length < 3 || w2.length < 3) return false;
+  if (w1 === w2) return true;
+
+  const n1 = normalizeSurnameLocal(w1);
+  const n2 = normalizeSurnameLocal(w2);
+
+  if (n1.length >= 3 && n1 === n2) return true;
+
+  if (w1.endsWith('а') && w1.slice(0, -1) === w2) return true;
+  if (w2.endsWith('а') && w2.slice(0, -1) === w1) return true;
+
+  return false;
+}
+
+function getPatronymicRootLocal(pib: string): string {
+  if (!pib) return '';
+  const parts = pib.trim().split(/\s+/);
+  const patStr = parts.length >= 3 ? parts[2] : parts[0];
+  let pat = patStr.toLowerCase();
+  pat = pat.replace(/(ович|евич|євич|ич|іч)$/, '');
+  pat = pat.replace(/(ічна|їчна|івна|ївна|вна)$/, '');
+  pat = pat.replace(/(й|ь|о|а|е|є|і|я|у|ій|ей|ов|ев|єв)$/, '');
+  return pat;
+}
+
+function getFirstnameRootLocal(pib: string): string {
+  if (!pib) return '';
+  const parts = pib.trim().split(/\s+/);
+  if (parts.length < 2) return '';
+  let fn = parts[1].toLowerCase();
+  fn = fn.replace(/(й|ь|о|а|е|є|і|я|у|ій|ей)$/, '');
+  return fn;
+}
+
+function isBrotherSisterLocal(pib1: string, pib2: string): boolean {
+  const r1 = getPatronymicRootLocal(pib1);
+  const r2 = getPatronymicRootLocal(pib2);
+  if (r1 && r2 && r1.length >= 3 && r1 === r2) return true;
+  return false;
+}
+
+function isParentChildOrLargeAgeGapLocal(m1: any, m2: any): boolean {
+  const p1 = m1.pib || '';
+  const p2 = m2.pib || '';
+  
+  const fnRoot1 = getFirstnameRootLocal(p1);
+  const patRoot2 = getPatronymicRootLocal(p2);
+  if (fnRoot1 && patRoot2 && fnRoot1.length >= 3 && fnRoot1 === patRoot2) return true;
+
+  const fnRoot2 = getFirstnameRootLocal(p2);
+  const patRoot1 = getPatronymicRootLocal(p1);
+  if (fnRoot2 && patRoot1 && fnRoot2.length >= 3 && fnRoot1 === patRoot1) return true;
+
+  const age1 = Number(m1.vik_rokiv1);
+  const age2 = Number(m2.vik_rokiv1);
+  if (age1 > 0 && age2 > 0 && Math.abs(age1 - age2) >= 15) return true;
+
+  return false;
+}
+
+function isUnmarriedStatusLocal(m: any): boolean {
+  if (!m) return true;
+  const s = String(m.s_simeyniy_ukr || '').toLowerCase();
+  if (m.id_simeyniy === 1 || m.id_simeyniy === 3 || m.id_simeyniy === 4 || m.id_simeyniy === 5) {
+    if (s.includes('одр') && !s.includes('неодр') && !s.includes('розл')) return false;
+    return true;
+  }
+  if (s.includes('неодр') || s.includes('розл') || s.includes('вдов') || s.includes('н/д') || s === '') return true;
+  return false;
+}
+
+function areFirstNamesMatchingLocal(fn1: string, fn2: string): boolean {
+  if (!fn1 || !fn2) return true;
+  const a = fn1.toLowerCase().trim();
+  const b = fn2.toLowerCase().trim();
+  if (a === b) return true;
+  const pA = a.slice(0, 3);
+  const pB = b.slice(0, 3);
+  return pA === pB || a.startsWith(pB) || b.startsWith(pA);
+}
+
+function arePatronymicsMatchingLocal(pat1: string, pat2: string): boolean {
+  if (!pat1 || !pat2) return true;
+  const p1 = pat1.toLowerCase().trim();
+  const p2 = pat2.toLowerCase().trim();
+  if (p1 === p2) return true;
+  const r1 = getPatronymicRootLocal(p1);
+  const r2 = getPatronymicRootLocal(p2);
+  if (r1 && r2 && r1.length >= 3 && r2.length >= 3) {
+    return r1 === r2 || r1.startsWith(r2) || r2.startsWith(r1);
+  }
+  return false;
+}
+
+function areNamesMatchingLocal(nameA: string, nameB: string): boolean {
+  if (!nameA || !nameB) return false;
+  const a = nameA.trim().toLowerCase();
+  const b = nameB.trim().toLowerCase();
+  if (a === '—' || a === '-' || a === 'н/д' || b === '—' || b === '-' || b === 'н/д') return false;
+  if (a === b) return true;
+
+  const wordsA = a.split(/\s+/).filter(w => w.length >= 2);
+  const wordsB = b.split(/\s+/).filter(w => w.length >= 2);
+
+  if (wordsA.length >= 1 && wordsB.length >= 1) {
+    if (areSurnamesMatchingLocal(wordsA[0], wordsB[0])) {
+      if (wordsA.length === 1 || wordsB.length === 1) return true;
+      
+      const fnA = wordsA[1];
+      const fnB = wordsB[1];
+      if (fnA && fnB && !areFirstNamesMatchingLocal(fnA, fnB)) {
+        return false;
+      }
+
+      if (wordsA.length >= 3 && wordsB.length >= 3) {
+        const patA = wordsA[2];
+        const patB = wordsB[2];
+        if (patA && patB && !arePatronymicsMatchingLocal(patA, patB)) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    if (wordsA.length >= 2 && wordsB.length >= 2) {
+      if (areSurnamesMatchingLocal(wordsA[0], wordsB[1]) && areSurnamesMatchingLocal(wordsA[1], wordsB[0])) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function getBestMarriageRecord(m: any, marriagesList: any[], membersList: any[]) {
+  if (!m || isUnmarriedStatusLocal(m)) return null;
+
+  const mRecs = marriagesList.filter(mar => 
+    (Number(mar.id_cholovik) === m.id || Number(mar.id_drujina) === m.id) &&
+    (!mar.d_end || mar.d_end === '' || mar.d_end === '0')
+  );
+  if (mRecs.length === 0) return null;
+
+  function getGenderCatLocal(mem: any) {
+    const g = (mem?.gender || mem?.stat || '').toLowerCase().trim();
+    if (g.includes('брат') || g.includes('чол') || g === 'ч' || g === 'm') return 'male';
+    if (g.includes('сестр') || g.includes('жін') || g === 'ж' || g === 'f') return 'female';
+    const n = (mem?.pib || '').trim().toLowerCase();
+    if (/(ич|іч|ович|евич|євич)$/i.test(n)) return 'male';
+    if (/(вна|івна|ївна)$/i.test(n)) return 'female';
+    return 'unknown';
+  }
+
+  let best = null;
+  let bestScore = -999;
+  for (const mar of mRecs) {
+    const isCholovik = Number(mar.id_cholovik) === m.id;
+    const spId = isCholovik ? Number(mar.id_drujina) : Number(mar.id_cholovik);
+    if (spId <= 0) continue;
+    const spMem = membersList.find(mem => mem.id === spId && (mem.id_vybuttya === 0 || !mem.id_vybuttya));
+    if (!spMem) continue;
+
+    // Safety checks against invalid marriages
+    if (isUnmarriedStatusLocal(spMem)) continue;
+    if (isBrotherSisterLocal(m.pib, spMem.pib)) continue;
+    if (isParentChildOrLargeAgeGapLocal(m, spMem)) continue;
+
+    let score = 0;
+    const cholovikMem = membersList.find(mem => mem.id === Number(mar.id_cholovik));
+    const drujinaMem = membersList.find(mem => mem.id === Number(mar.id_drujina));
+    if (cholovikMem && getGenderCatLocal(cholovikMem) === 'female') score -= 50;
+    if (drujinaMem && getGenderCatLocal(drujinaMem) === 'male') score -= 50;
+
+    const surnameMatch = areSurnamesMatchingLocal(m.pib, spMem.pib);
+    const partnerNameMatch = (m.pib_partnera && areNamesMatchingLocal(m.pib_partnera, spMem.pib)) ||
+                             (spMem.pib_partnera && areNamesMatchingLocal(spMem.pib_partnera, m.pib));
+    const cleanAddrSelf = String(m.address || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const cleanAddrSp = String(spMem.address || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    const addrMatch = cleanAddrSelf && cleanAddrSp && cleanAddrSelf === cleanAddrSp;
+
+    if (surnameMatch) score += 30;
+    if (partnerNameMatch) score += 40;
+    if (addrMatch) score += 20;
+
+    if (Number(mar.id) >= 2000) {
+      score += 25;
+    } else {
+      if (!surnameMatch && !partnerNameMatch) {
+        score -= 60;
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = mar;
+    }
+  }
+  return bestScore > 0 ? best : null;
+}
+
 // 3. Get Members (summary list with options to search, filter by tag, caretakers, etc)
 app.get("/api/members", async (req, res) => {
   await ensureDatabaseIsFresh();
@@ -1965,7 +3252,7 @@ app.get("/api/members", async (req, res) => {
     }
   }
 
-  // Enrich with active disciplines
+  // Enrich with active disciplines and family/spouse information
   const enrichedResult = result.map(m => {
     // Check if member has active discipline
     const activeDiscipline = disciplines.find(d => Number(d.id_anketa) === m.id && !d.d_znyato && !d.d_end);
@@ -1976,8 +3263,28 @@ app.get("/api/members", async (req, res) => {
       startDate = activeDiscipline.d_begin ? formatExcelDate(activeDiscipline.d_begin) : startDate;
     }
 
+    let partnerName = m.pib_partnera || '';
+    let marriageDate = m.d_shlyubu || '';
+    
+    const chosenMarriageRec = getBestMarriageRecord(m, marriages, members);
+    if (chosenMarriageRec) {
+      const isCholovik = Number(chosenMarriageRec.id_cholovik) === m.id;
+      const spId = isCholovik ? Number(chosenMarriageRec.id_drujina) : Number(chosenMarriageRec.id_cholovik);
+      if (spId > 0) {
+        const spMem = members.find(mem => mem.id === spId);
+        if (spMem && !partnerName) {
+          partnerName = spMem.pib;
+        }
+      }
+      if (!marriageDate && chosenMarriageRec.d_begin) {
+        marriageDate = toISODateFormat(formatExcelDate(chosenMarriageRec.d_begin));
+      }
+    }
+
     return {
       ...m,
+      pib_partnera: partnerName,
+      d_shlyubu: marriageDate,
       discipline_reason: reason,
       discipline_date_start: startDate
     };
@@ -2038,20 +3345,29 @@ app.get("/api/stats", async (req, res) => {
 app.get("/api/members/:id", async (req, res) => {
   await ensureDatabaseIsFresh();
   const id = Number(req.params.id);
-  const member = members.find(m => m.id === id);
-  if (!member) {
+  const foundMember = members.find(m => m.id === id);
+  if (!foundMember) {
     return res.status(404).json({ error: "Member not found" });
   }
+  const member = { ...foundMember } as any;
 
   // A. Determine spouse
   let spouse: Spouse | null = null;
-  let marriageRec = marriages.find(m => Number(m.id_cholovik) === id || Number(m.id_drujina) === id);
+  const marriageRec = getBestMarriageRecord(member, marriages, members);
   if (marriageRec) {
     const isCholovik = Number(marriageRec.id_cholovik) === id;
     const spId = isCholovik ? Number(marriageRec.id_drujina) : Number(marriageRec.id_cholovik);
     if (spId > 0) {
-      const spName = members.find(m => m.id === spId)?.pib || `Член ID ${spId}`;
-      spouse = { id: spId, pib: spName };
+      const spMem = members.find(mem => mem.id === spId && (mem.id_vybuttya === 0 || !mem.id_vybuttya));
+      if (spMem) {
+        spouse = { id: spId, pib: spMem.pib };
+        if (!member.pib_partnera) {
+          member.pib_partnera = spMem.pib;
+        }
+      }
+    }
+    if (marriageRec.d_begin) {
+      member.d_shlyubu = toISODateFormat(formatExcelDate(marriageRec.d_begin));
     }
   }
 
@@ -2066,7 +3382,23 @@ app.get("/api/members/:id", async (req, res) => {
     childrenList = children.filter(c => Number(c.id_simya) === Number(marriageRec.id) || Number(c.simya_id) === Number(marriageRec.id));
   }
 
-  myChildren = childrenList.map(c => ({
+  const validChildren = childrenList.filter(c => {
+    const name = `${String(c.n_dity || "").trim()} ${String(c.f_dity || "").trim()}`.trim();
+    const lower = name.toLowerCase();
+    return lower !== "" && lower !== "н/д" && lower !== "немає" && lower !== "не вказ." && lower !== "-" && !lower.startsWith("н/д -");
+  });
+
+  if (validChildren.length > 0) {
+    member.dity = validChildren.map(c => {
+      const name = `${String(c.n_dity || "").trim()} ${String(c.f_dity || "").trim()}`.trim();
+      const bday = formatExcelDate(c.d_nar);
+      return bday ? `${name} ${bday}` : name;
+    }).join("; ");
+  } else {
+    member.dity = "";
+  }
+
+  myChildren = validChildren.map(c => ({
     id: Number(c.dity_id || c.id),
     name: String(c.n_dity || "").trim() + " " + String(c.f_dity || "").trim(),
     birthDate: formatExcelDate(c.d_nar),
@@ -2137,6 +3469,152 @@ app.get("/api/members/:id", async (req, res) => {
   res.json(response);
 });
 
+// Helper function to convert ISO "YYYY-MM-DD" to UA "DD.MM.YYYY"
+function toUADateFormat(dateStr: string): string {
+  if (!dateStr) return "";
+  const trimmed = dateStr.trim();
+  if (trimmed.includes(".")) return trimmed; // Already UA format
+  if (trimmed.includes("-")) {
+    const parts = trimmed.split("-");
+    if (parts.length === 3) {
+      const [yyyy, mm, dd] = parts;
+      return `${dd}.${mm}.${yyyy}`;
+    }
+  }
+  return trimmed;
+}
+
+// Helper function to convert UA "DD.MM.YYYY" to ISO "YYYY-MM-DD"
+function toISODateFormat(dateStr: string): string {
+  if (!dateStr) return "";
+  const trimmed = dateStr.trim();
+  if (trimmed.includes("-")) return trimmed; // Already ISO format
+  if (trimmed.includes(".")) {
+    const parts = trimmed.split(".");
+    if (parts.length === 3) {
+      const [dd, mm, yyyy] = parts;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  return trimmed;
+}
+
+// Helper to get abbreviated marital status
+function getAbbreviatedMaritalStatus(simeyniyStr: string): string {
+  if (!simeyniyStr) return "неодруж.";
+  const s = simeyniyStr.toLowerCase();
+  if (s.includes("неодр")) return "неодруж.";
+  if (s.includes("одруж") || s.includes("заміж") || s.includes("одр")) return "одруж.";
+  if (s.includes("розлуч") || s.includes("розл")) return "розлуч.";
+  if (s.includes("вдов")) return "вдов.";
+  return "неодруж.";
+}
+
+// Helper to update in-memory marriages list
+function updateInMemoryMarriage(member: Member) {
+  const isMarried = member.id_simeyniy === 2 || String(member.s_simeyniy_ukr).toLowerCase().includes("одр") || String(member.s_simeyniy_ukr).toLowerCase().includes("заміж");
+  
+  let partnerId = 0;
+  if (member.pib_partnera) {
+    const matchedPartner = members.find(m => 
+      m.id !== member.id && (
+        m.pib.toLowerCase().includes(member.pib_partnera!.toLowerCase()) ||
+        member.pib_partnera!.toLowerCase().includes(m.pib.toLowerCase())
+      )
+    );
+    if (matchedPartner) partnerId = matchedPartner.id;
+  }
+
+  // Remove old marriage entries for this member
+  marriages = marriages.filter(m => Number(m.id_cholovik) !== member.id && Number(m.id_drujina) !== member.id);
+
+  if (isMarried && partnerId > 0) {
+    const gender = String(member.gender || member.stat || "брат").trim().toLowerCase();
+    const isWife = gender.includes("сестр") || gender.includes("сес") || member.pib.toLowerCase().endsWith("на") || member.pib.toLowerCase().endsWith("ва");
+    const husbandId = isWife ? partnerId : member.id;
+    const wifeId = isWife ? member.id : partnerId;
+
+    marriages.push({
+      id: marriages.length + 2000,
+      id_cholovik: husbandId,
+      id_drujina: wifeId,
+      d_begin: dateToExcelSerialNumber(toISODateFormat(member.d_shlyubu || "")),
+      d_end: ""
+    });
+    console.log(`[Relation Healing] Created/updated in-memory marriage: Husband ${husbandId} <-> Wife ${wifeId}`);
+  }
+}
+
+// Helper to update in-memory children list
+function updateInMemoryChildren(member: Member) {
+  const dityString = String(member.dity || "").trim();
+  
+  // Find spouse/parents ID
+  let spouseId = 0;
+  if (member.pib_partnera) {
+    const matchedSpouse = members.find(m => 
+      m.id !== member.id && (
+        m.pib.toLowerCase().includes(member.pib_partnera!.toLowerCase()) ||
+        member.pib_partnera!.toLowerCase().includes(m.pib.toLowerCase())
+      )
+    );
+    if (matchedSpouse) spouseId = matchedSpouse.id;
+  }
+  const gender = String(member.gender || member.stat || "брат").trim().toLowerCase();
+  const isWife = gender.includes("сестр") || gender.includes("сес") || member.pib.toLowerCase().endsWith("на") || member.pib.toLowerCase().endsWith("ва");
+  const fatherId = isWife ? (spouseId || 0) : member.id;
+  const motherId = isWife ? member.id : (spouseId || 0);
+
+  // Remove old in-memory children entries for this member
+  children = children.filter(c => {
+    const isThisFather = Number(c.id_cholovik) === member.id && member.id > 0;
+    const isThisMother = Number(c.id_drujina) === member.id && member.id > 0;
+    const isSpouseFather = spouseId > 0 && Number(c.id_cholovik) === spouseId;
+    const isSpouseMother = spouseId > 0 && Number(c.id_drujina) === spouseId;
+    return !isThisFather && !isThisMother && !isSpouseFather && !isSpouseMother;
+  });
+
+  if (dityString) {
+    const parts = dityString.split(";").map(p => p.trim()).filter(Boolean);
+    parts.forEach((part, index) => {
+      const dateMatch = part.match(/(\d{2}\.\d{2}\.\d{4})|(\d{4}-\d{2}-\d{2})/);
+      let name = part;
+      let bday = "";
+      if (dateMatch) {
+        bday = toISODateFormat(dateMatch[0]);
+        name = part.replace(dateMatch[0], "").trim();
+      }
+      const cleanName = name.trim();
+      const lowerName = cleanName.toLowerCase();
+      if (lowerName === "" || lowerName === "н/д" || lowerName === "не вказ." || lowerName === "немає" || lowerName === "-") {
+        return; // Skip placeholder/empty child names
+      }
+      const firstName = cleanName.split(" ")[0] || cleanName;
+      const lastName = cleanName.split(" ").slice(1).join(" ") || "";
+      let ageVal = 0;
+      if (bday) {
+        try {
+          const birth = new Date(bday);
+          const ageDiff = Date.now() - birth.getTime();
+          const ageDate = new Date(ageDiff);
+          ageVal = Math.abs(ageDate.getUTCFullYear() - 1970);
+        } catch (_) {}
+      }
+
+      children.push({
+        dity_id: children.length + 3000 + index,
+        id_simya: 1,
+        n_dity: firstName,
+        f_dity: lastName,
+        d_nar: bday ? dateToExcelSerialNumber(bday) : 0,
+        id_cholovik: fatherId,
+        id_drujina: motherId,
+        dity_vik_rokiv1: ageVal
+      });
+    });
+  }
+}
+
 // Helper function to sync updated member details back to Firebase Realtime Database
 async function syncMemberToFirebase(id: number, member: Member) {
   const patchUrl = `${FIREBASE_URL}/members/${id}.json?auth=${FIREBASE_SECRET}`;
@@ -2147,13 +3625,95 @@ async function syncMemberToFirebase(id: number, member: Member) {
   // Convert ministries comma separated string into standard list for legacy checkboxes/hidden input compatibility
   const slujList = (member.s_slujinnya_spysok || "").split(/[,;]+/).map(s => s.trim()).filter(Boolean);
 
+  // Find spouse ID for marriage history
+  let spouseId = 0;
+  if (member.pib_partnera) {
+    const matchedSpouse = members.find(m => 
+      m.id !== member.id && (
+        m.pib.toLowerCase().includes(member.pib_partnera!.toLowerCase()) ||
+        member.pib_partnera!.toLowerCase().includes(m.pib.toLowerCase())
+      )
+    );
+    if (matchedSpouse) spouseId = matchedSpouse.id;
+  }
+
+  const shlyubHistory: any[] = [];
+  const sSimeyniy = String(member.s_simeyniy_ukr || "").toLowerCase();
+  if (member.id_simeyniy === 2 || sSimeyniy.includes("одр") || sSimeyniy.includes("заміж")) {
+    shlyubHistory.push({
+      status: "одруж.",
+      d_shlyubu_begin: toUADateFormat(member.d_shlyubu || ""),
+      d_shlyubu_end: "",
+      podruzhzhya_id: spouseId || "",
+      podrujya_id: spouseId || ""
+    });
+  } else if (member.id_simeyniy === 4 || sSimeyniy.includes("вдов")) {
+    shlyubHistory.push({
+      status: "вдов.",
+      d_shlyubu_begin: toUADateFormat(member.d_shlyubu || ""),
+      d_shlyubu_end: "",
+      podruzhzhya_id: spouseId || "",
+      podrujya_id: spouseId || ""
+    });
+  } else if (member.id_simeyniy === 3 || sSimeyniy.includes("розл")) {
+    shlyubHistory.push({
+      status: "розлуч.",
+      d_shlyubu_begin: toUADateFormat(member.d_shlyubu || ""),
+      d_shlyubu_end: "",
+      podruzhzhya_id: spouseId || "",
+      podrujya_id: spouseId || ""
+    });
+  } else {
+    shlyubHistory.push({
+      status: "неодруж.",
+      d_shlyubu_begin: "",
+      d_shlyubu_end: "",
+      podruzhzhya_id: "",
+      podrujya_id: ""
+    });
+  }
+
+  const dityString = String(member.dity || "").trim();
+  const parsedDityList: any[] = [];
+  if (dityString) {
+    const parts = dityString.split(";").map(p => p.trim()).filter(Boolean);
+    parts.forEach(part => {
+      const dateMatch = part.match(/(\d{2}\.\d{2}\.\d{4})|(\d{4}-\d{2}-\d{2})/);
+      let name = part;
+      let bday = "";
+      if (dateMatch) {
+        bday = toISODateFormat(dateMatch[0]);
+        name = part.replace(dateMatch[0], "").trim();
+      }
+      const cleanName = name.trim();
+      const lowerName = cleanName.toLowerCase();
+      if (lowerName === "" || lowerName === "н/д" || lowerName === "не вказ." || lowerName === "немає" || lowerName === "-") {
+        return; // Skip placeholder/empty child names
+      }
+      let ageVal = 0;
+      if (bday) {
+        try {
+          const birth = new Date(bday);
+          const ageDiff = Date.now() - birth.getTime();
+          const ageDate = new Date(ageDiff);
+          ageVal = Math.abs(ageDate.getUTCFullYear() - 1970);
+        } catch (_) {}
+      }
+      parsedDityList.push({
+        name: cleanName,
+        birthday: toUADateFormat(bday),
+        age: ageVal
+      });
+    });
+  }
+
   const updates: any = {
     "01_PIB": member.pib,
     "pib": null, // Delete legacy
     "gender": member.gender || member.stat,
     "stat": null, // Delete legacy
-    "02_OSOBYSTE/1_d_narodjennya": member.d_narodjennya || "",
-    "02_OSOBYSTE/3_d_nar": member.d_narodjennya || "",
+    "02_OSOBYSTE/1_d_narodjennya": toUADateFormat(member.d_narodjennya || ""),
+    "02_OSOBYSTE/3_d_nar": toUADateFormat(member.d_narodjennya || ""),
     "02_OSOBYSTE/2_tel": member.tel_mob || "",
     "02_OSOBYSTE/phone": member.tel_mob || "",
     "02_OSOBYSTE/tel": member.tel_mob || "",
@@ -2164,19 +3724,21 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "02_OSOBYSTE/6_socialniy": member.s_socialniy_ukr || "н/д",
     "02_OSOBYSTE/13_status": null, // Delete legacy
     "02_OSOBYSTE/s_simeyniy_ukr": member.s_simeyniy_ukr || "неодружений",
+    "02_OSOBYSTE/4_shlyub_history": shlyubHistory,
+    "02_OSOBYSTE/9_dity": parsedDityList,
     
     "04_STRUCTURA/1_rayon": member.rayon2_ukr || "",
     "04_STRUCTURA/opika": member.presviter || "",
     "04_STRUCTURA/4_opika": null, // Delete legacy
     "04_STRUCTURA/grupa": member.n_dilyci || "",
     "04_STRUCTURA/2_grupa": null, // Delete legacy
-    "04_STRUCTURA/5_d_vodnogo": member.d_vodnogo || "",
-    "04_STRUCTURA/6_d_vstupu": member.d_vstupu || "",
+    "04_STRUCTURA/5_d_vodnogo": toUADateFormat(member.d_vodnogo || ""),
+    "04_STRUCTURA/6_d_vstupu": toUADateFormat(member.d_vstupu || ""),
     "04_STRUCTURA/vidviduvanist": member.vidviduvanist || "",
     "04_STRUCTURA/8_vidviduvanist": null, // Delete legacy
     "04_STRUCTURA/prysutnist": member.prysutnist || "",
     "04_STRUCTURA/9_prysutnist": null, // Delete legacy
-    "04_STRUCTURA/7_d_kontaktiv": member.d_kontaktiv || "",
+    "04_STRUCTURA/7_d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
     "04_STRUCTURA/status": statusStr,
     "04_STRUCTURA/id_dilnytsia": member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ""),
     "04_STRUCTURA/id_dilnicya": null, // Delete legacy
@@ -2187,16 +3749,28 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "02_OSOBYSTE/budynok": member.budynok || "",
     "02_OSOBYSTE/korpus": member.korpus || "",
     "02_OSOBYSTE/kvartyra": member.kvartyra || "",
+
+    "03_ADRESA/1_misto": member.nas_punkt || "",
+    "03_ADRESA/1_nas_punkt": member.nas_punkt || "",
+    "03_ADRESA/2_vulycja": member.vulitsya || "",
+    "03_ADRESA/2_vulitsya": member.vulitsya || "",
+    "03_ADRESA/3_budynok": member.budynok || "",
+    "03_ADRESA/3_budinok": member.budynok || "",
+    "03_ADRESA/4_korpus": member.korpus || "",
+    "03_ADRESA/5_kvartyra": member.kvartyra || "",
+    "03_ADRESA/4_kvartira": member.kvartyra || "",
+
     "04_STRUCTURA/insha_gromada": member.insha_gromada || "",
-    "04_STRUCTURA/d_kontaktiv": member.d_kontaktiv || "",
-    "d_kontaktiv": member.d_kontaktiv || "",
-    "ISTORIJA/d_kontaktiv": member.d_kontaktiv || "",
+    "04_STRUCTURA/7_zvidky_primitka": member.insha_gromada || "",
+    "04_STRUCTURA/d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
+    "d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
+    "ISTORIJA/d_kontaktiv": toUADateFormat(member.d_kontaktiv || ""),
     "04_STRUCTURA/3_san": member.di_admin || "",
     "04_STRUCTURA/hsd": !!member.hsd,
     "04_STRUCTURA/discipline": member.discipline || "",
     "04_STRUCTURA/discipline_reason": member.discipline_reason || "",
-    "04_STRUCTURA/discipline_date_start": member.discipline_date_start || "",
-    "04_STRUCTURA/discipline_date_end": member.discipline_date_end || "",
+    "04_STRUCTURA/discipline_date_start": toUADateFormat(member.discipline_date_start || ""),
+    "04_STRUCTURA/discipline_date_end": toUADateFormat(member.discipline_date_end || ""),
     
     "ISTORIJA/slujinnya": slujList,
     "ISTORIJA/1_slujinnya": null, // Delete legacy
@@ -2204,8 +3778,8 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "slujinnya": slujList,
     
     "06_VYBUTTYA/2_prichina": member.s_vybuv_ukr || "",
-    "06_VYBUTTYA/1_d_vybuttya": member.d_vybuttya || "",
-    "06_VYBUTTYA/1_d_vybyttya": member.d_vybuttya || "",
+    "06_VYBUTTYA/1_d_vybuttya": toUADateFormat(member.d_vybuttya || ""),
+    "06_VYBUTTYA/1_d_vybyttya": toUADateFormat(member.d_vybuttya || ""),
     "06_VYBUTTYA/3_primitka": member.vybutty_prymitka || "",
     "06_VYBUTTYA/vybuv_prymitka": member.vybutty_prymitka || "",
 
@@ -2319,6 +3893,8 @@ app.post("/api/members/:id", async (req, res) => {
   }
 
   members[memberIndex] = mergedMember as Member;
+  updateInMemoryMarriage(mergedMember as Member);
+  updateInMemoryChildren(mergedMember as Member);
 
   // Sync update back to Firebase Realtime Database and await it to prevent client race conditions
   try {
@@ -2333,7 +3909,7 @@ app.post("/api/members/:id", async (req, res) => {
     tel_mob: "Моб. телефон",
     s_osvita_ukr: "Освіта",
     s_socialniy_ukr: "Соціальний стан",
-    s_simeyniy_ukr: "Сімейний стан",
+    s_simeyniy_ukr: "Сім. стан",
     s_profesiya_ukr: "Професія",
     s_slujinnya_spysok: "Служіння",
     zaklad_osv: "Заклад освіти",
@@ -2376,6 +3952,7 @@ app.post("/api/members/:id", async (req, res) => {
         field: label,
         oldValue: String(oldVal),
         newValue: String(newVal),
+        rayon: orig.rayon2_ukr || "",
         details: `Оновлено поле "${label}" від "${oldVal}" до "${newVal}"`
       };
       
@@ -2390,7 +3967,7 @@ app.post("/api/members/:id", async (req, res) => {
 
 // 7. Add general audit logs / Custom event
 app.post("/api/audit", (req, res) => {
-  const { memberId, memberName, action, details, userPib, field, oldValue, newValue } = req.body;
+  const { memberId, memberName, action, details, userPib, field, oldValue, newValue, rayon } = req.body;
   const newLog: AuditLogItem = {
     id: "user_" + Date.now(),
     timestamp: new Date().toISOString(),
@@ -2401,13 +3978,357 @@ app.post("/api/audit", (req, res) => {
     userPib: userPib ? String(userPib).trim() : undefined,
     field: field ? String(field).trim() : undefined,
     oldValue: oldValue !== undefined ? String(oldValue) : undefined,
-    newValue: newValue !== undefined ? String(newValue) : undefined
+    newValue: newValue !== undefined ? String(newValue) : undefined,
+    rayon: rayon ? String(rayon).trim().toUpperCase() : undefined
   };
   auditLogs.push(newLog);
   saveDatabaseToCache();
   saveAuditLogToFirebase(newLog);
   res.json({ success: true, log: newLog });
 });
+
+// District leaders login tracking endpoint
+app.post("/api/audit/login", (req, res) => {
+  const { userPib, rayon, position, level, sessionId } = req.body;
+
+  const cleanPib = String(userPib || "Керівник").trim();
+  const lowerCheck = (cleanPib + " " + String(position || "") + " " + String(level || "")).toLowerCase();
+
+  // Вхід адміністратора не фіксуємо
+  if (lowerCheck.includes("адміністр") || lowerCheck.includes("адмін") || String(level || "").trim() === "I-й") {
+    return res.json({ success: true, ignored: true });
+  }
+
+  const now = new Date();
+  const formattedTime = now.toLocaleString('uk-UA', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+
+  const cleanRayon = String(rayon || "").trim().toUpperCase();
+  const cleanSessionId = String(sessionId || ("sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6)));
+
+  const logId = "session_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
+  const newLog: AuditLogItem = {
+    id: logId,
+    timestamp: now.toISOString(),
+    memberId: 0,
+    memberName: cleanPib,
+    action: "login_session",
+    details: `Вхід у систему керівника району ${cleanRayon}: ${cleanPib}`,
+    userPib: cleanPib,
+    field: "Вхід керівника",
+    oldValue: "-",
+    newValue: `Вхід: ${formattedTime}`,
+    rayon: cleanRayon,
+    loginTime: formattedTime,
+    logoutTime: "В мережі",
+    sessionId: cleanSessionId
+  };
+
+  auditLogs.push(newLog);
+  saveDatabaseToCache();
+  saveAuditLogToFirebase(newLog);
+
+  res.json({ success: true, log: newLog, sessionId: cleanSessionId });
+});
+
+// District leaders logout tracking endpoint
+app.post("/api/audit/logout", (req, res) => {
+  let body = req.body || {};
+  if (typeof body === 'string') {
+    try { body = JSON.parse(body); } catch (_) {}
+  }
+  const { sessionId, userPib } = body;
+  const now = new Date();
+  const formattedLogout = now.toLocaleString('uk-UA', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', second: '2-digit'
+  });
+
+  let foundLog = auditLogs.find(l => l.action === "login_session" && l.sessionId === sessionId);
+  if (!foundLog && userPib) {
+    foundLog = [...auditLogs].reverse().find(l => l.action === "login_session" && l.userPib === userPib && l.logoutTime === "В мережі");
+  }
+
+  if (foundLog) {
+    foundLog.logoutTime = formattedLogout;
+    foundLog.newValue = `Вхід: ${foundLog.loginTime || ''} — Вихід: ${formattedLogout}`;
+    saveDatabaseToCache();
+    saveAuditLogToFirebase(foundLog);
+    return res.json({ success: true, log: foundLog });
+  }
+
+  res.json({ success: false, message: "Active session log not found" });
+});
+
+/**
+ * Declines Ukrainian PIB (Прізвище, Ім'я, По батькові) to Accusative case (Знахідний відмінок).
+ */
+function toUkrainianAccusative(pib: string, gender: string): string {
+  if (!pib) return "";
+  const parts = pib.trim().split(/\s+/);
+  const declinedParts = parts.map((part) => {
+    const isMale = (gender === "брат");
+    const len = part.length;
+    if (len === 0) return part;
+
+    const partLower = part.toLowerCase();
+
+    if (isMale) {
+      // Accusative for animate males is the same as Genitive (Родовий відмінок)
+      if (partLower.endsWith("ич")) {
+        return part + "а";
+      }
+      if (partLower.endsWith("ий")) {
+        return part.slice(0, -2) + "ого";
+      }
+      if (partLower.endsWith("о")) {
+        return part.slice(0, -1) + "а";
+      }
+      if (partLower.endsWith("ій")) {
+        return part.slice(0, -2) + "ія";
+      }
+      if (partLower.endsWith("ь")) {
+        return part.slice(0, -1) + "я";
+      }
+      if (partLower.endsWith("а")) {
+        return part.slice(0, -1) + "и";
+      }
+      if (partLower.endsWith("я")) {
+        return part.slice(0, -1) + "і";
+      }
+      const lastChar = partLower.slice(-1);
+      const vowels = ["а", "о", "у", "е", "и", "і", "е", "є", "я", "ю", "ь"];
+      if (!vowels.includes(lastChar)) {
+        return part + "а";
+      }
+    } else {
+      // Accusative for females (Знахідний відмінок)
+      // Patronymic: e.g. "Іванівна" -> "Іванівну"
+      if (partLower.endsWith("вна")) {
+        return part.slice(0, -1) + "у";
+      }
+      // Adjectival surnames: e.g. "Волошинська" -> "Волошинську"
+      if (partLower.endsWith("ська") || partLower.endsWith("цька")) {
+        return part.slice(0, -1) + "у";
+      }
+      // Female first names or other words ending in "а": e.g. "Марта" -> "Марту", "Людмила" -> "Людмилу"
+      if (partLower.endsWith("а")) {
+        return part.slice(0, -1) + "у";
+      }
+      // Female names ending in "я": e.g. "Марія" -> "Марію"
+      if (partLower.endsWith("я")) {
+        return part.slice(0, -1) + "ю";
+      }
+      // Female surnames ending in a consonant (e.g. "Рожок", "Семчук") do not decline
+    }
+
+    return part;
+  });
+
+  return declinedParts.join(" ");
+}
+
+/**
+ * Formats "прийнятого/прийнятої з" from the "insha_gromada" field without duplicates.
+ */
+function formatJoinedFrom(inshaGromada: string, gender: string): string {
+  if (!inshaGromada) return "";
+  const verb = gender === "сестра" ? "прийнятої" : "прийнятого";
+  const g = inshaGromada.trim();
+  const lowerG = g.toLowerCase();
+  if (lowerG.startsWith("з ") || lowerG.startsWith("зі ") || lowerG.startsWith("із ")) {
+    return `${verb} ${g}`;
+  }
+  return `${verb} з ${g}`;
+}
+
+/**
+ * Groups and notifies district leaders for a list of newly joined members.
+ */
+async function notifyDistrictLeadersForMembers(membersList: Member[]) {
+  const settings = getSettings();
+  const botToken = settings.botToken || process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) {
+    console.warn("[Telegram Notification] Bot token not configured, skipping notification.");
+    return;
+  }
+
+  const isTestMode = settings.enableTestMode === true || settings.enableTestMode === "true";
+  const testTelegramId = String(settings.testTelegramId || "").trim();
+
+  // Group members by rayon
+  const rayonGroups: { [rayon: string]: Member[] } = {};
+  for (const member of membersList) {
+    const rayonName = member.rayon2_ukr;
+    if (!rayonName) continue;
+    if (!rayonGroups[rayonName]) {
+      rayonGroups[rayonName] = [];
+    }
+    rayonGroups[rayonName].push(member);
+  }
+
+  // Process and send notifications per rayon
+  for (const [rayonName, group] of Object.entries(rayonGroups)) {
+    // 1. Find Rayon Leader binding
+    const binding = (directories_rayon_bindings as any[]).find(b => 
+      String(b.name).trim().toLowerCase() === String(rayonName).trim().toLowerCase()
+    );
+
+    let leader: Member | undefined;
+    let leaderAccess: any = null;
+    let targetTelegramId = "";
+    let debugHeader = "";
+
+    if (binding && binding.presbyterId) {
+      const leaderId = Number(binding.presbyterId);
+      leader = members.find(m => m.id === leaderId);
+      if (leader) {
+        // Find leader in access_dostup
+        const parts = leader.pib.trim().split(/\s+/);
+        if (parts.length > 0) {
+          const lastName = parts[0].toLowerCase();
+          const firstName = parts.length > 1 ? parts[1].toLowerCase() : "";
+
+          const candidates = (access_dostup as any[]).filter(a => {
+            const userStr = String(a.user || "").trim().toLowerCase();
+            return userStr.startsWith(lastName);
+          });
+
+          if (candidates.length === 1) {
+            leaderAccess = candidates[0];
+          } else if (candidates.length > 1) {
+            if (firstName) {
+              for (const cand of candidates) {
+                const userStr = String(cand.user || "").trim().toLowerCase();
+                const afterLastName = userStr.replace(lastName, "").trim().replace(/[^a-zа-яіїєґ]/gi, "");
+                if (afterLastName && firstName.startsWith(afterLastName)) {
+                  leaderAccess = cand;
+                  break;
+                }
+              }
+            }
+            if (!leaderAccess) {
+              leaderAccess = candidates[0];
+            }
+          }
+        }
+      }
+    }
+
+    if (leaderAccess) {
+      targetTelegramId = String(leaderAccess.telegramId || "").trim();
+    }
+
+    let finalTelegramId = "";
+    if (isTestMode && testTelegramId) {
+      finalTelegramId = testTelegramId;
+      debugHeader = `⚠️ *[ТЕСТОВИЙ РЕЖИМ]*\n`;
+      if (leader) {
+        debugHeader += `Оригінальний отримувач: *${leader.pib}* (ID: ${leader.id})\n`;
+        debugHeader += `Район: *${rayonName}*\n`;
+        debugHeader += `Telegram ID отримувача: *${targetTelegramId || "Не знайдено"}*\n\n`;
+      } else {
+        debugHeader += `Район: *${rayonName}* (Керівника не налаштовано)\n\n`;
+      }
+    } else {
+      finalTelegramId = targetTelegramId;
+    }
+
+    if (!finalTelegramId || finalTelegramId === "—" || finalTelegramId === "") {
+      console.log(`[Telegram Notification] No target Telegram ID found for rayon: ${rayonName}. normal_target=${targetTelegramId}, isTestMode=${isTestMode}`);
+      continue;
+    }
+
+    let text = debugHeader;
+    text += `📢 *ПОВІДОМЛЕННЯ про прийняття нового члена церкви.*\n\n`;
+    text += `До району *${rayonName}* додано:\n`;
+
+    if (group.length === 1) {
+      const m = group[0];
+      const pibAccusative = toUkrainianAccusative(m.pib, m.gender);
+      const dobFormatted = m.d_narodjennya ? `, ${toUADateFormat(m.d_narodjennya)} р.н.` : "";
+      
+      let entryWay = "";
+      const d_vodnogo = m.d_vodnogo;
+      const d_vstupu = m.d_vstupu;
+      
+      if (d_vodnogo && d_vstupu && d_vodnogo === d_vstupu) {
+        const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+        entryWay = `${verb} після Водного Хрещення ${toUADateFormat(d_vodnogo)}`;
+      } else if (m.insha_gromada) {
+        entryWay = formatJoinedFrom(m.insha_gromada, m.gender);
+      } else {
+        const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+        entryWay = `${verb} в члени церкви`;
+      }
+
+      text += `*${pibAccusative}*${dobFormatted}\n`;
+      if (m.address) {
+        text += `Проживає по адресу: ${m.address},\n`;
+      }
+      text += `${entryWay}\n\n`;
+
+      const pronoun = m.gender === "сестра" ? "їй" : "йому";
+      text += `В основному списку району *${rayonName}* ${pronoun} треба призначити опікуна.\n\nАдміністратор.`;
+    } else {
+      for (const m of group) {
+        const pibAccusative = toUkrainianAccusative(m.pib, m.gender);
+        const dobFormatted = m.d_narodjennya ? `, ${toUADateFormat(m.d_narodjennya)} р.н.` : "";
+        
+        let entryWay = "";
+        const d_vodnogo = m.d_vodnogo;
+        const d_vstupu = m.d_vstupu;
+        
+        if (d_vodnogo && d_vstupu && d_vodnogo === d_vstupu) {
+          const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+          entryWay = `${verb} після Водного Хрещення ${toUADateFormat(d_vodnogo)}`;
+        } else if (m.insha_gromada) {
+          entryWay = formatJoinedFrom(m.insha_gromada, m.gender);
+        } else {
+          const verb = m.gender === "сестра" ? "прийнятої" : "прийнятого";
+          entryWay = `${verb} в члени церкви`;
+        }
+
+        text += `- *${pibAccusative}*${dobFormatted}\n`;
+        if (m.address) {
+          text += `  Проживає по адресу: ${m.address},\n`;
+        }
+        text += `  ${entryWay}\n`;
+      }
+      text += `\nВ основному списку району *${rayonName}* їм треба призначити опікунів.\n\nАдміністратор.`;
+    }
+
+    try {
+      const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: finalTelegramId,
+          text: text,
+          parse_mode: "Markdown"
+        })
+      });
+      const result = await response.json() as any;
+      if (result.ok) {
+        console.log(`[Telegram Notification] Successfully notified ${finalTelegramId} about ${group.length} members in rayon ${rayonName}`);
+      } else {
+        console.error(`[Telegram Notification] API error for ${finalTelegramId}: ${result.description}`);
+      }
+    } catch (err: any) {
+      console.error(`[Telegram Notification] Fetch error for ${finalTelegramId}: ${err.message}`);
+    }
+  }
+}
+
+/**
+ * Backward-compatible helper to notify District Leader on single creation.
+ */
+async function notifyDistrictLeader(newMember: Member) {
+  await notifyDistrictLeadersForMembers([newMember]);
+}
 
 // 8. Get history changelogs List (Audit logs + Ministry Timeline events merged)
 app.get("/api/audit-logs", (req, res) => {
@@ -2721,14 +4642,19 @@ app.post("/api/members/:id/disciplines/:recId/resolve", (req, res) => {
 // Helper for admin check
 const isAdmin = (req: any) => {
   const userPib = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "";
-  return userPib.includes("kostel.if.ua@gmail.com");
+  // Check for specific email, generic 'admin' role name, or known senior pastor names from the access list
+  return userPib.includes("kostel.if.ua@gmail.com") || 
+         userPib.toLowerCase().includes("адмін") || 
+         userPib.includes("Черняк Вал.") ||
+         userPib.includes("Черняк Вас.") ||
+         userPib.includes("Скіцко І.");
 };
 
 // 14. Create a completely New Member Profile
 app.post("/api/members", async (req, res) => {
   if (!isAdmin(req)) return res.status(403).json({ error: "Forbidden" });
   const newMemberData = req.body as Partial<Member>;
-  const nextId = Math.max(...members.map(m => m.id)) + 1;
+  const nextId = members.length > 0 ? Math.max(...members.map(m => m.id)) + 1 : 1;
 
   const birthDate = newMemberData.d_narodjennya || "";
   let calculatedAge = 0;
@@ -2793,16 +4719,26 @@ app.post("/api/members", async (req, res) => {
     hvoryi: String(newMemberData.hvoryi || "").trim(),
     insha_gromada: String(newMemberData.insha_gromada || "").trim(),
     prymitka: String(newMemberData.prymitka || (newMemberData as any).primitka || "").trim(),
-    efile: true,
+    efile: newMemberData.efile !== undefined ? newMemberData.efile : true,
     address: String(newMemberData.address || "").trim(),
     nas_punkt: String(newMemberData.nas_punkt || "").trim(),
     vulitsya: String(newMemberData.vulitsya || "").trim(),
     budynok: String(newMemberData.budynok || "").trim(),
     korpus: String(newMemberData.korpus || "").trim(),
-    kvartyra: String(newMemberData.kvartyra || "").trim()
+    kvartyra: String(newMemberData.kvartyra || "").trim(),
+    pib_partnera: String(newMemberData.pib_partnera || "").trim(),
+    d_shlyubu: String(newMemberData.d_shlyubu || "").trim(),
+    dity: String(newMemberData.dity || "").trim()
   };
 
   members.push(newMember);
+  updateInMemoryMarriage(newMember);
+  updateInMemoryChildren(newMember);
+
+  // Trigger Telegram notification to District Leader in background
+  notifyDistrictLeader(newMember).catch(err => {
+    console.error("[New Member Trigger] Notification error:", err);
+  });
 
   // Sync new member card to Firebase and await it to prevent client race conditions
   try {
@@ -2811,6 +4747,7 @@ app.post("/api/members", async (req, res) => {
     console.error(`[Firebase Member Sync] Error creating member ${nextId}:`, err);
   }
 
+  // Add audit log for new member creation
   const userPib = req.headers['x-user-pib'] ? decodeURIComponent(req.headers['x-user-pib'] as string) : "Адміністратор";
   const logId = "add_mem_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
   const logItem: AuditLogItem = {
@@ -2830,6 +4767,34 @@ app.post("/api/members", async (req, res) => {
 
   saveDatabaseToCache();
   res.json({ success: true, memberId: nextId, member: newMember });
+});
+
+/**
+ * Endpoint to manually trigger notifications for members added in the last N days.
+ */
+app.post("/api/admin/notify-recent-members", async (req, res) => {
+  const days = parseInt(req.body.days) || 14;
+  const now = new Date();
+  const threshold = new Date();
+  threshold.setDate(now.getDate() - days);
+
+  const recentMembers = members.filter(m => {
+    if (!m.d_vstupu) return false;
+    const joinedDate = new Date(m.d_vstupu);
+    return joinedDate >= threshold && Number(m.id_vybuttya || 0) === 0;
+  });
+
+  console.log(`[Manual Notify] Found ${recentMembers.length} members added in the last ${days} days.`);
+
+  let success = false;
+  try {
+    await notifyDistrictLeadersForMembers(recentMembers);
+    success = true;
+  } catch (err) {
+    console.error(`[Manual Notify] Failed to notify district leaders:`, err);
+  }
+
+  res.json({ success: success, processed: recentMembers.length, sent: recentMembers.length });
 });
 
 // Seed Database State
@@ -3673,32 +5638,32 @@ async function syncDatabaseWithFirebase() {
           s_slujinnya_spysok: ministriesStr,
           zaklad_osv: String(особисте["zaklad_osv"] || "").trim(),
 
-          d_narodjennya: birthDate,
+          d_narodjennya: toISODateFormat(birthDate),
           d_narodjennya_excel: dateToExcelSerialNumber(birthDate),
           tel_mob: String(особисте["2_tel"] || "").trim(),
           tel1: String(особисте["tel1"] || "").trim(),
           skype: String(особисте["skype"] || "").trim(),
           vik_rokiv1: calculatedAge,
 
-          d_pokayannya: структура["d_pokayannya"] || "",
+          d_pokayannya: toISODateFormat(структура["d_pokayannya"] || ""),
           d_pokayannya_excel: dateToExcelSerialNumber(структура["d_pokayannya"] || ""),
-          d_vodnogo: структура["5_d_vodnogo"] || структура["d_vodnogo"] || "",
+          d_vodnogo: toISODateFormat(структура["5_d_vodnogo"] || структура["d_vodnogo"] || ""),
           d_vodnogo_excel: dateToExcelSerialNumber(структура["5_d_vodnogo"] || структура["d_vodnogo"] || ""),
           hsd: !!структура["hsd"],
-          d_vstupu: структура["6_d_vstupu"] || структура["d_vstupu"] || "",
+          d_vstupu: toISODateFormat(структура["6_d_vstupu"] || структура["d_vstupu"] || ""),
           d_vstupu_excel: dateToExcelSerialNumber(структура["6_d_vstupu"] || структура["d_vstupu"] || ""),
 
           vidviduvanist: String(структура["vidviduvanist"] || структура["8_vidviduvanist"] || "").trim(),
           prysutnist: String(структура["prysutnist"] || структура["9_prysutnist"] || "").trim(),
           di_admin: String(структура["3_san"] || raw["di_admin"] || "").trim(),
-          d_kontaktiv: String(
+          d_kontaktiv: toISODateFormat(String(
             raw["d_kontaktiv"] || 
             (raw["ISTORIJA"] && raw["ISTORIJA"]["d_kontaktiv"]) || 
             (raw["ISTORIJA"] && raw["ISTORIJA"]["7_d_kontaktiv"]) || 
             структура["7_d_kontaktiv"] || 
             структура["d_kontaktiv"] || 
             ""
-          ).trim(),
+          ).trim()),
 
           presviter: String(структура["opika"] || структура["4_opika"] || "").trim(),
           rayon2_ukr: String(структура["1_rayon"] || "").trim(),
@@ -3709,17 +5674,23 @@ async function syncDatabaseWithFirebase() {
 
           id_vybuttya: id_vybuttya,
           s_vybuv_ukr: String(вибуття["2_prichina"] || "").trim(),
-          d_vybuttya: вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"] || "",
+          d_vybuttya: toISODateFormat(вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"] || ""),
           d_vybuttya_excel: dateToExcelSerialNumber(вибуття["1_d_vybuttya"] || вибуття["1_d_vybyttya"] || ""),
           vybutty_prymitka: String(вибуття["vybuv_prymitka"] || вибуття["3_primitka"] || "").trim(),
 
+          nas_punkt: String(адреса["1_nas_punkt"] || адреса["1_misto"] || особисте["nas_punkt"] || "").trim(),
+          vulitsya: String(адреса["2_vulycja"] || адреса["2_vulitsya"] || особисте["vulitsya"] || "").trim(),
+          budynok: String(адреса["3_budynok"] || адреса["3_budinok"] || особисте["budynok"] || "").trim(),
+          korpus: String(адреса["4_korpus"] || особисте["korpus"] || "").trim(),
+          kvartyra: String(адреса["5_kvartyra"] || адреса["4_kvartira"] || особисте["kvartyra"] || "").trim(),
+
           hvoryi: String(raw["hvoryi"] || "").trim(),
-          insha_gromada: String(raw["insha_gromada"] || "").trim(),
+          insha_gromada: String(структура["7_zvidky_primitka"] || структура["insha_gromada"] || raw["insha_gromada"] || "").trim(),
           prymitka: String(raw["prymitka"] || raw["primitka"] || "").trim(),
           discipline: String(структура["discipline"] || "").trim(),
           discipline_reason: String(структура["discipline_reason"] || "").trim(),
-          discipline_date_start: String(структура["discipline_date_start"] || "").trim(),
-          discipline_date_end: String(структура["discipline_date_end"] || "").trim(),
+          discipline_date_start: toISODateFormat(String(структура["discipline_date_start"] || "").trim()),
+          discipline_date_end: toISODateFormat(String(структура["discipline_date_end"] || "").trim()),
           efile: raw["efile"],
           address: formatAddress(адреса)
         };
@@ -3780,6 +5751,10 @@ async function syncDatabaseWithFirebase() {
             fbDity.forEach(ch => {
               if (ch && ch.name) {
                 const name = String(ch.name).trim();
+                const lowerName = name.toLowerCase();
+                if (lowerName === "" || lowerName === "н/д" || lowerName === "не вказ." || lowerName === "немає" || lowerName === "-") {
+                  return; // Skip placeholder/empty child names
+                }
                 const bday = String(ch.birthday || "").trim();
                 const firstName = name.split(" ")[0] || name;
                 const lastName = name.split(" ").slice(1).join(" ") || "";
@@ -3846,9 +5821,14 @@ async function ensureDatabaseIsFresh() {
 // --- Vite Middleware Config ---
 
 async function startServer() {
-  // Sync the database state with Firebase RTDB on startup in background
-  await ensureInitialSync();
+  // 1. Load local database cache immediately
+  try {
+    loadDatabase();
+  } catch (err) {
+    console.error("[startServer] Error loading local database cache:", err);
+  }
 
+  // 2. Attach Vite middleware (dev) or static serving (prod)
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
@@ -3864,18 +5844,16 @@ async function startServer() {
     });
   }
 
+  // 3. Start listening immediately on port 3000
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Church Database FullStack Server running on port ${PORT}`);
   });
+
+  // 4. Background initial sync and cron initialization
+  ensureInitialSync().catch((err) => {
+    console.error("[startServer] Background initial sync error:", err);
+  });
+  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
 }
 
-if (!process.env.VERCEL) {
-  startServer();
-} else {
-  // On Vercel, we do NOT trigger sync on module load.
-  // The first incoming HTTP request will trigger and await ensureInitialSync() via the middleware.
-  // This guarantees reliable execution in the request execution sandbox.
-  console.log("[Vercel Module Load] Server initialized. Sync will trigger on first request.");
-}
-
-export default app;
+startServer();

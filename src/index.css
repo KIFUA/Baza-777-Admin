@@ -52,6 +52,15 @@ body {
 .scale-interface-down-33 {
   zoom: 0.67; /* Scale down cleanly by 33% */
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @supports (-moz-appearance: none) {
   /* Firefox fallback using scale */
   .scale-interface-down-33 {

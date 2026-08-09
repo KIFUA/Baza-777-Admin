@@ -160,13 +160,24 @@ function ensureInitialSync() {
   return initialSyncPromise;
 }
 
-// Middleware to guarantee that database is fully initialized/synced before serving any API route
+// Middleware to guarantee that database is initialized before serving any API route
 app.use(async (req, res, next) => {
   if (req.path.startsWith("/api") && req.path !== "/api/health") {
-    try {
-      await ensureInitialSync();
-    } catch (err: any) {
-      console.error("[Sync Middleware] Error awaiting database sync:", err.message);
+    if (members.length === 0) {
+      try {
+        loadDatabase();
+      } catch (e) {}
+    }
+    if (members.length === 0) {
+      try {
+        await ensureInitialSync();
+      } catch (err: any) {
+        console.error("[Sync Middleware] Error awaiting database sync:", err.message);
+      }
+    } else {
+      ensureInitialSync().catch(err => {
+        console.error("[Sync Middleware] Background initial sync error:", err?.message || err);
+      });
     }
   }
   next();
@@ -3826,7 +3837,8 @@ app.post("/api/members/:id", async (req, res) => {
   const fieldsToCheck: (keyof Member)[] = [
     "pib", "tel_mob", "s_osvita_ukr", "s_socialniy_ukr", "s_simeyniy_ukr", 
     "s_profesiya_ukr", "s_slujinnya_spysok", "zaklad_osv", "d_narodjennya", "presviter", 
-    "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "di_admin",
+    "rayon2_ukr", "n_dilyci", "vidviduvanist", "prysutnist", "id_vybuttya", "s_vybuv_ukr", "d_vybuttya", "vybutty_prymitka",
+    "d_vstupu", "d_pokayannya", "d_vodnogo", "di_admin",
     "address", "nas_punkt", "vulitsya", "budynok", "korpus", "kvartyra", "insha_gromada", "hvoryi", "prymitka"
   ];
 
@@ -3920,6 +3932,12 @@ app.post("/api/members/:id", async (req, res) => {
     vidviduvanist: "Відвідуваність",
     prysutnist: "Присутність",
     id_vybuttya: "Статус вибуття",
+    s_vybuv_ukr: "Причина вибуття",
+    d_vybuttya: "Дата вибуття",
+    vybutty_prymitka: "Примітка вибуття",
+    d_vstupu: "Дата прийому в члени (повернення)",
+    d_pokayannya: "Дата покаяння",
+    d_vodnogo: "Дата хрещення",
     di_admin: "ЗАВДАННЯ ДЛЯ АДМІН.",
     address: "Адреса",
     nas_punkt: "Населений пункт",

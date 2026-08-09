@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Member } from '../types';
 import { Save, X, Info } from 'lucide-react';
+import { normalizeToDateStr } from '../lib/dateUtils';
 
 const parseAddress = (addressStr: string | undefined | null) => {
   const result = {
@@ -176,38 +177,38 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
       const findIdByValue = (list: any[] | undefined, valueStr: string | undefined, currentId: any, defaultId: number): number => {
         if (!list || !Array.isArray(list)) return Number(currentId || defaultId);
         
-        // If we already have a valid non-default, non-placeholder ID, preserve it
+        // 1. Prioritize text label match if valueStr is present
+        if (valueStr) {
+          const cleanVal = String(valueStr).trim().toLowerCase();
+          if (cleanVal !== "" && cleanVal !== "н/д" && cleanVal !== "не вказано" && cleanVal !== "не вказ.") {
+            // 1a. Try exact match
+            let found = list.find(item => String(item.Value || "").trim().toLowerCase() === cleanVal);
+            if (found) return Number(found.ID);
+
+            // 1b. Try partial match
+            found = list.find(item => {
+              const itemVal = String(item.Value || "").trim().toLowerCase();
+              return itemVal.includes(cleanVal) || cleanVal.includes(itemVal);
+            });
+            if (found) return Number(found.ID);
+
+            // 1c. Try Ukrainian-specific stems (checking first 3+ chars)
+            if (cleanVal.length >= 3) {
+              const stem = cleanVal.slice(0, 3);
+              found = list.find(item => String(item.Value || "").trim().toLowerCase().startsWith(stem));
+              if (found) return Number(found.ID);
+            }
+          }
+        }
+
+        // 2. Fall back to currentId if valid and exists in lookup list
         const currentIdNum = Number(currentId);
         if (!isNaN(currentIdNum) && currentIdNum !== 0 && currentIdNum !== defaultId) {
           const exists = list.some(item => Number(item.ID) === currentIdNum);
           if (exists) return currentIdNum;
         }
 
-        if (!valueStr) return defaultId;
-        const cleanVal = String(valueStr).trim().toLowerCase();
-        if (cleanVal === "" || cleanVal === "н/д" || cleanVal === "не вказано" || cleanVal === "не вказ.") {
-          return defaultId;
-        }
-
-        // 1. Try exact match
-        let found = list.find(item => String(item.Value || "").trim().toLowerCase() === cleanVal);
-        if (found) return Number(found.ID);
-
-        // 2. Try partial match
-        found = list.find(item => {
-          const itemVal = String(item.Value || "").trim().toLowerCase();
-          return itemVal.includes(cleanVal) || cleanVal.includes(itemVal);
-        });
-        if (found) return Number(found.ID);
-
-        // 3. Try Ukrainian-specific stems (e.g., checking first 4 characters for gendered endings like "одружений" vs "одружена")
-        if (cleanVal.length >= 4) {
-          const stem = cleanVal.slice(0, 4);
-          found = list.find(item => String(item.Value || "").trim().toLowerCase().startsWith(stem));
-          if (found) return Number(found.ID);
-        }
-
-        return Number(currentId || defaultId);
+        return Number(defaultId);
       };
 
       const simeyniyId = findIdByValue(lookups?.simeyniy, member.s_simeyniy_ukr, member.id_simeyniy, 5);
@@ -368,6 +369,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         updated.s_vybuv_ukr = item ? item.Value : '';
         if (idNum === 0) {
           updated.vybutty_prymitka = '';
+          updated.d_vybuttya = '';
+          updated.s_vybuv_ukr = '';
         }
       }
 
@@ -516,6 +519,31 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
           </button>
         </div>
       </div>
+
+      {Number(formData.id_vybuttya) > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-200 shadow-sm animate-in fade-in duration-200">
+          <div className="text-xs">
+            <span className="font-bold text-amber-400 uppercase tracking-wide block sm:inline mr-2">Статус обліку: ВИБУВ</span>
+            <span>Причина: <b>{formData.s_vybuv_ukr || 'Вибуття'}</b> ({formData.d_vybuttya ? normalizeToDateStr(formData.d_vybuttya) : 'Дата не вказана'})</span>
+            {formData.vybutty_prymitka && <span className="block text-slate-300 italic text-[11px] mt-0.5">"{formData.vybutty_prymitka}"</span>}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                id_vybuttya: 0,
+                s_vybuv_ukr: '',
+                d_vybuttya: '',
+                vybutty_prymitka: ''
+              }));
+            }}
+            className="shrink-0 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition-colors shadow-sm cursor-pointer"
+          >
+            Поновити з вибулих (у наявні)
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         
@@ -933,7 +961,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               />
             </div>
 
-            {formData.d_vodnogo && formData.d_vstupu && formData.d_vodnogo !== formData.d_vstupu && (
+            {formData.d_vstupu && (!formData.d_vodnogo || formData.d_vodnogo !== formData.d_vstupu) && (
               <>
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-slate-300 mb-1">Перехід з іншої громади</label>
@@ -1031,6 +1059,46 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-1 pt-2 border-t border-[#333333]/60">
+                  <label className="text-xs font-semibold text-slate-300 block">Статус обліку / Вибуття</label>
+                  <select
+                    name="id_vybuttya"
+                    value={formData.id_vybuttya || 0}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${Number(formData.id_vybuttya) === 0 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}`}
+                  >
+                    <option value={0} className="text-emerald-400 font-bold">Наявний (Активний член церкви)</option>
+                    {lookups?.vybuv?.map((v: any) => (
+                      <option key={v.ID} value={v.ID} className="text-slate-200">{v.Value}</option>
+                    ))}
+                  </select>
+                  {Number(formData.id_vybuttya) > 0 && (
+                    <div className="space-y-2 pt-1 animate-in fade-in duration-200">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Дата вибуття</label>
+                        <input
+                          type="date"
+                          name="d_vybuttya"
+                          value={formData.d_vybuttya || ''}
+                          onChange={handleChange}
+                          className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Примітка вибуття</label>
+                        <input
+                          type="text"
+                          name="vybutty_prymitka"
+                          value={formData.vybutty_prymitka || ''}
+                          onChange={handleChange}
+                          placeholder="Примітка до вибуття..."
+                          className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 placeholder:text-slate-600"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {(() => {

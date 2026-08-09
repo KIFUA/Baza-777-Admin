@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MemberDetailExtended, Member } from '../types';
 import { 
   User, Phone, Mail, MapPin, Calendar, Heart, Baby, 
-  Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink
+  Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink, UserCheck
 } from 'lucide-react';
 import { normalizeToDateStr, formatYears } from '../lib/dateUtils';
 
@@ -164,6 +164,37 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
       }
     } catch (err) {
       console.error("Error updating member field in profile:", err);
+    }
+  };
+
+  const handleRestoreMember = async () => {
+    if (!data || !data.member) return;
+    try {
+      setLoading(true);
+      const updatePayload = {
+        id_vybuttya: 0,
+        s_vybuv_ukr: '',
+        d_vybuttya: '',
+        vybutty_prymitka: ''
+      };
+      const resp = await fetch(`/api/members/${memberId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatePayload)
+      });
+      if (resp.ok) {
+        if (onUpdateMember) {
+          await onUpdateMember(memberId, updatePayload);
+        }
+        await fetchDetails();
+      } else {
+        alert('Не вдалося поновити члена церкви.');
+      }
+    } catch (err: any) {
+      console.error("Error restoring member:", err);
+      alert('Помилка при поновленні члена: ' + (err?.message || err));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -348,7 +379,17 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
             </div>
           </div>
 
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            {member.id_vybuttya > 0 && !isRestricted && (
+              <button
+                onClick={handleRestoreMember}
+                className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition-colors flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                title="Поновити людину у наявних членах церкви"
+              >
+                <UserCheck className="h-4 w-4" />
+                <span>Поновити у наявних</span>
+              </button>
+            )}
             {canEdit && (
               <button
                 onClick={() => onEdit(member)}
@@ -368,19 +409,30 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
 
         {/* Vybuttya disclaimer widget if Member left (06_VYBUTTYA) */}
         {member.id_vybuttya > 0 && (
-          <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50/50 p-4 animate-fade-in flex items-start space-x-3">
-            <Archive className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
-            <div className="space-y-1">
-              <h4 className="text-xs font-bold text-amber-800 uppercase tracking-widest">Знято з церковного обліку</h4>
-              <p className="text-xs text-slate-600">
-                <b>Статус:</b> {member.s_vybuv_ukr} ({member.d_vybuttya || "Дата не вказана"}).
-              </p>
-              {member.vybutty_prymitka && (
-                <div className="text-xs text-slate-700 bg-amber-100/30 rounded-lg p-2.5 mt-2 border border-amber-200/50">
-                  <b>Пояснення примітки:</b> <span className="italic">"{member.vybutty_prymitka}"</span>
-                </div>
-              )}
+          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 animate-fade-in flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-start space-x-3">
+              <Archive className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+              <div className="space-y-1">
+                <h4 className="text-xs font-bold text-amber-800 uppercase tracking-widest">Знято з церковного обліку (Вибув)</h4>
+                <p className="text-xs text-slate-700">
+                  <b>Причина:</b> {member.s_vybuv_ukr || "Вибуття"} ({member.d_vybuttya ? formatDate(member.d_vybuttya) : "Дата не вказана"}).
+                </p>
+                {member.vybutty_prymitka && (
+                  <div className="text-xs text-slate-700 bg-amber-100/50 rounded-lg p-2.5 mt-1 border border-amber-200/60">
+                    <b>Пояснення примітки:</b> <span className="italic">"{member.vybutty_prymitka}"</span>
+                  </div>
+                )}
+              </div>
             </div>
+            {!isRestricted && (
+              <button
+                onClick={handleRestoreMember}
+                className="shrink-0 rounded-lg bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition-colors flex items-center space-x-2 shadow-sm self-start md:self-auto cursor-pointer"
+              >
+                <UserCheck className="h-4 w-4" />
+                <span>Поновити у наявних</span>
+              </button>
+            )}
           </div>
         )}
       </div>

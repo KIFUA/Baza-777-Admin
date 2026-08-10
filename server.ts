@@ -10,8 +10,8 @@ import axios from "axios";
 import FormData from "form-data";
 import puppeteer from "puppeteer";
 import chromium from "@sparticuz/chromium";
-import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
-import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
+import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron.ts";
+import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64.ts";
 import XLSX from "xlsx";
 
 let appDir = process.cwd();

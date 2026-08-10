@@ -8,7 +8,7 @@ import os from 'os';
 import { execSync } from 'child_process';
 import axios from 'axios';
 import FormData from 'form-data';
-import { getRobotoRegularFont, getRobotoBoldFont } from './fontsBase64';
+import { getRobotoRegularFont, getRobotoBoldFont } from './fontsBase64.ts';
 
 async function getPuppeteerExecutablePath(): Promise<string | undefined> {
   const customPaths = [

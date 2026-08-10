@@ -503,6 +503,9 @@ function loadDatabase() {
       permission_levels = db.permission_levels || [];
       console.log(`Loaded cache: ${members.length} members.`);
       loadedFromCache = true;
+      if (members.length > 0) {
+        lastDatabaseSyncTime = Date.now();
+      }
     } catch (err: any) {
       console.error(`Error loading cached database, falling back to EXCEL files: ${err.message}`);
     }
@@ -5959,10 +5962,17 @@ async function ensureDatabaseIsFresh() {
   const now = Date.now();
   if (now - lastDatabaseSyncTime > DB_SYNC_TTL_MS) {
     console.log(`[Cache Sync] Database state is older than ${DB_SYNC_TTL_MS}ms (last sync: ${new Date(lastDatabaseSyncTime).toISOString()}), pulling fresh state from Firebase RTDB...`);
-    try {
-      await syncDatabaseWithFirebase();
-    } catch (err: any) {
-      console.error("[Cache Sync] Background automatic sync failed:", err.message);
+    lastDatabaseSyncTime = now;
+    if (members.length > 0) {
+      syncDatabaseWithFirebase().catch((err: any) => {
+        console.error("[Cache Sync] Background automatic sync failed:", err?.message || err);
+      });
+    } else {
+      try {
+        await syncDatabaseWithFirebase();
+      } catch (err: any) {
+        console.error("[Cache Sync] Automatic sync failed:", err?.message || err);
+      }
     }
   }
 }

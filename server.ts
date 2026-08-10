@@ -511,56 +511,7 @@ function loadDatabase() {
     }
   }
 
-  if (!loadedFromCache) {
-    try {
-      console.log("Attempting fallback require for db_cache.json...");
-      const db = require("./db_cache.json");
-      if (db && Array.isArray(db.members) && db.members.length > 0) {
-        members = db.members || [];
-        marriages = db.marriages || [];
-        children = db.children || [];
-        ministries = db.ministries || [];
-        disciplines = db.disciplines || [];
-        auditLogs = db.auditLogs || [];
-        ignoreAdminLogs = db.ignoreAdminLogs !== undefined ? db.ignoreAdminLogs : true;
-        s_osvita = db.s_osvita || [];
-        s_socialniy = db.s_socialniy || [];
-        s_simeyniy = [
-          { ID: 1, Value: 'неодруж.' },
-          { ID: 2, Value: 'одруж.' },
-          { ID: 3, Value: 'розлуч.' },
-          { ID: 4, Value: 'вдов.' },
-          { ID: 5, Value: 'н/д' }
-        ];
-        s_vybuv = db.s_vybuv || [];
-        s_profesiya = db.s_profesiya || [];
-        s_selo = db.s_selo || [];
-        s_vulicya = db.s_vulicya || [];
-        directories_opika = db.directories_opika || [...DEFAULT_OPIKA];
-        directories_slujinnya = db.directories_slujinnya || [...DEFAULT_SLUJINNYA];
-        directories_vidviduvanist = (db.directories_vidviduvanist || [...DEFAULT_VIDVIDUVANIST_PARAMS]).filter((x: string) => ["Постійно", "Періодично", "Рідко", "Ніколи"].includes(x));
-        if (directories_vidviduvanist.length === 0) directories_vidviduvanist = [...DEFAULT_VIDVIDUVANIST_PARAMS];
-        directories_prysutnist = db.directories_prysutnist || [...DEFAULT_PRYSUTNIST_PARAMS];
-        directories_di_admin = db.directories_di_admin || [...DEFAULT_DI_ADMIN];
-        directories_custom = db.directories_custom || {};
-        directories_rayon2 = ((db as any).directories_rayon2 || [...DEFAULT_RAYON2])
-          .map((r: string) => String(r || "").replace(/\s*-\s*SOS/gi, "").trim())
-          .filter((r: string, idx: number, arr: string[]) => r && arr.indexOf(r) === idx);
-        directories_rayon_bindings = (db as any).directories_rayon_bindings || [];
-        directories_opika_bindings = (db as any).directories_opika_bindings || [];
-        access_dostup = db.access_dostup || [...DEFAULT_DOSTUP];
-        if (Array.isArray(access_dostup) && (access_dostup.length === 0 || access_dostup.some(item => !item || item.role !== undefined || !item.user))) {
-          access_dostup = [...DEFAULT_DOSTUP];
-        }
-        permission_levels = db.permission_levels || [];
-        console.log(`Loaded fallback require cache: ${members.length} members.`);
-        loadedFromCache = true;
-        lastDatabaseSyncTime = Date.now();
-      }
-    } catch (fbErr: any) {
-      console.error(`Fallback require for db_cache.json failed: ${fbErr?.message || fbErr}`);
-    }
-  }
+  // (dynamic fs.readFileSync from getDbCacheFilePath above handles all db_cache.json locations)
 
   if (!loadedFromCache) {
     console.log("No cache found, parsing Excel files in tablyci/ directory...");

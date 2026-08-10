@@ -4,7 +4,7 @@
     "api/index.ts": {
       "memory": 1024,
       "maxDuration": 60,
-      "includeFiles": "{tablyci/**,fonts/**,public/fonts/**,dist/**,db_cache.json,settings.json}"
+      "includeFiles": "*.json"
     }
   },
   "rewrites": [

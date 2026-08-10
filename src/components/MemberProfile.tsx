@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { MemberDetailExtended, Member } from '../types';
+import { MemberDetailExtended, Member, MemberHistoryItem } from '../types';
 import { 
   User, Phone, Mail, MapPin, Calendar, Heart, Baby, 
   Briefcase, AlertCircle, CheckCircle, ArrowRight, Plus, Archive, ExternalLink, UserCheck
 } from 'lucide-react';
 import { normalizeToDateStr, formatYears } from '../lib/dateUtils';
+import MemberHistorySection from './MemberHistorySection';
+import { getSynthesizedHistoryLogs } from '../lib/historyUtils';
 
 interface MemberProfileProps {
   memberId: number;
@@ -167,15 +169,52 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
     }
   };
 
+  const handleUpdateHistoryLogs = async (updatedLogs: MemberHistoryItem[]) => {
+    if (!checkAdminPermission()) return;
+    if (!data || !data.member) return;
+    try {
+      const resp = await fetch(`/api/members/${memberId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history_logs: updatedLogs })
+      });
+      if (resp.ok) {
+        if (onUpdateMember) {
+          await onUpdateMember(memberId, { history_logs: updatedLogs });
+        }
+        await fetchDetails();
+      }
+    } catch (err) {
+      console.error("Error updating member history logs:", err);
+    }
+  };
+
   const handleRestoreMember = async () => {
     if (!data || !data.member) return;
     try {
       setLoading(true);
+      const m = data.member;
+      const todayIso = new Date().toISOString().split('T')[0];
+      const todayUa = normalizeToDateStr(todayIso);
+
+      const existingLogs = getSynthesizedHistoryLogs(m);
+      const newPonovlennyaLog: MemberHistoryItem = {
+        id: 'hist_pon_' + Date.now(),
+        date: todayUa,
+        type: 'ponovlennya',
+        title: 'Поновлення у наявних членах церкви',
+        details: `Поновлено з вибулих (${m.s_vybuv_ukr || 'раніше вибув'}). ${m.vybutty_prymitka ? `(Примітка вибуття: ${m.vybutty_prymitka})` : ''}`,
+        createdAt: new Date().toISOString()
+      };
+
+      const updatedLogs = [newPonovlennyaLog, ...existingLogs];
+
       const updatePayload = {
         id_vybuttya: 0,
         s_vybuv_ukr: '',
         d_vybuttya: '',
-        vybutty_prymitka: ''
+        vybutty_prymitka: '',
+        history_logs: updatedLogs
       };
       const resp = await fetch(`/api/members/${memberId}`, {
         method: 'POST',
@@ -908,6 +947,13 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   </div>
                 </div>
               )}
+
+              {/* Comprehensive Membership History Timeline (vstup, vybuttya, ponovlennya) */}
+              <MemberHistorySection 
+                member={member} 
+                canEdit={canEdit} 
+                onUpdateHistory={handleUpdateHistoryLogs} 
+              />
             </div>
           )}
 
@@ -1144,6 +1190,13 @@ export default function MemberProfile({ memberId, onClose, onEdit, onNavigateToM
                   У профайлі служителів немає записів історичних служінь.
                 </div>
               )}
+
+              {/* Comprehensive Membership History Timeline (vstup, vybuttya, ponovlennya) */}
+              <MemberHistorySection 
+                member={member} 
+                canEdit={canEdit} 
+                onUpdateHistory={handleUpdateHistoryLogs} 
+              />
             </div>
           )}
 

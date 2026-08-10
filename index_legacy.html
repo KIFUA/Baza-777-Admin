@@ -3117,6 +3117,78 @@
 
         const events = [];
 
+        // 0. Include saved history_logs items and 07_ISTORIYA
+        const hLogs = [
+          ...(Array.isArray(member.history_logs) ? member.history_logs : []),
+          ...(Array.isArray(structura["history_logs"]) ? structura["history_logs"] : []),
+          ...(Array.isArray(member.rawData["history_logs"]) ? member.rawData["history_logs"] : [])
+        ];
+
+        // Merge raw 07_ISTORIYA if present
+        const raw07 = Array.isArray(member.rawData["07_ISTORIYA"]) ? member.rawData["07_ISTORIYA"] : [];
+        raw07.forEach((j, idx) => {
+          if (!j) return;
+          const podiya = String(j.podiya || '').trim();
+          const det = String(j.prychyna_detali || '').trim();
+          let type = 'other';
+          let title = podiya;
+
+          if (podiya === 'прийн.' || podiya.includes('прийн')) {
+            type = 'vstup';
+            title = `Прийняття в члени церкви${det ? ` (${det})` : ''}`;
+          } else if (podiya === 'відп.' || podiya.includes('відп')) {
+            type = 'vybuttya';
+            title = `Вибуття / Відпущення${det ? ` (${det})` : ''}`;
+          } else if (podiya === 'Вил.' || podiya.includes('Вил')) {
+            type = 'vybuttya';
+            title = `Вилучення з членів церкви${det ? ` (${det})` : ''}`;
+          } else if (podiya === 'пом.' || podiya.includes('пом')) {
+            type = 'vybuttya';
+            title = `Помер(ла)${det ? ` (${det})` : ''}`;
+          } else if (podiya === 'емігр.' || podiya.includes('емігр')) {
+            type = 'vybuttya';
+            title = `Еміграція${det ? ` (${det})` : ''}`;
+          } else if (podiya.includes('хрещення')) {
+            type = 'other';
+            title = `Водне хрещення${det ? ` (${det})` : ''}`;
+          } else if (podiya.includes('понов')) {
+            type = 'ponovlennya';
+            title = `Поновлення в членах церкви${det ? ` (${det})` : ''}`;
+          } else {
+            title = `${podiya}${det ? ` (${det})` : ''}`;
+          }
+
+          const itemDate = j.d_podiyi || 'н/д';
+          const exists = hLogs.some(existing => existing && existing.date === itemDate && (existing.title || '').includes(podiya));
+          if (!exists) {
+            hLogs.push({
+              id: `07_${idx}`,
+              date: itemDate,
+              type,
+              title,
+              details: det || 'З історії'
+            });
+          }
+        });
+
+        if (Array.isArray(hLogs)) {
+          hLogs.forEach(hl => {
+            if (hl && hl.title) {
+              let icon = "📝 ";
+              if (hl.type === 'vstup' || hl.title.includes('Прийняття')) icon = "📎 ";
+              else if (hl.type === 'vybuttya' || hl.title.includes('Вибуття') || hl.title.includes('Відпущення')) icon = "🚪 ";
+              else if (hl.type === 'ponovlennya' || hl.title.includes('Поновлення')) icon = "🔄 ";
+              
+              const cleanTitle = hl.title.replace(/^[\u1F300-\u1F9FF\u2600-\u26FF\u2700-\u27BF\uFE0F]/, '').trim();
+              events.push({
+                date: hl.date || "н/д",
+                title: `${icon}${cleanTitle}`,
+                desc: hl.details || ""
+              });
+            }
+          });
+        }
+
         // 1. Water Baptism
         if (dVodnogo) {
           events.push({

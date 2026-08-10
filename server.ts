@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import os from "os";
+import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 import nodemailer from "nodemailer";
 import PDFDocument from "pdfkit";
@@ -12,6 +13,17 @@ import chromium from "@sparticuz/chromium";
 import { initBirthdayCron, BirthdaySettings } from "./src/lib/birthdayCron";
 import { getRobotoRegularFont, getRobotoBoldFont } from "./src/lib/fontsBase64";
 import XLSX from "xlsx";
+
+let appDir = process.cwd();
+try {
+  if (typeof __dirname !== "undefined") {
+    appDir = __dirname;
+  } else if (import.meta && import.meta.url) {
+    appDir = path.dirname(fileURLToPath(import.meta.url));
+  }
+} catch (e) {
+  appDir = process.cwd();
+}
 
 async function getPuppeteerExecutablePath(): Promise<string | undefined> {
   const customPaths = [
@@ -76,16 +88,21 @@ async function getPuppeteerExecutablePath(): Promise<string | undefined> {
 
 async function launchBrowser() {
   try {
-    const sparticuzPath = await chromium.executablePath();
-    if (sparticuzPath) {
-      return await puppeteer.launch({
-        args: chromium.args,
-        executablePath: sparticuzPath,
-        headless: (chromium as any).headless ?? true,
-      });
+    const chromiumObj = (chromium as any).default || chromium;
+    const execFn = chromiumObj.executablePath || (chromium as any).executablePath;
+    if (typeof execFn === 'function') {
+      const sparticuzPath = await execFn();
+      if (sparticuzPath && fs.existsSync(sparticuzPath)) {
+        console.log('[Puppeteer] Launching browser with @sparticuz/chromium at:', sparticuzPath);
+        return await puppeteer.launch({
+          args: chromiumObj.args || ['--no-sandbox', '--disable-setuid-sandbox'],
+          executablePath: sparticuzPath,
+          headless: chromiumObj.headless ?? true,
+        });
+      }
     }
-  } catch (e) {
-    console.log('[Puppeteer] @sparticuz/chromium fallback:', e);
+  } catch (e: any) {
+    console.log('[Puppeteer] @sparticuz/chromium fallback:', e?.message || e);
   }
 
   const execPath = await getPuppeteerExecutablePath();
@@ -423,13 +440,28 @@ function healDatabaseWithAnketa() {
   }
 }
 
+function getDbCacheFilePath(): string | null {
+  const candidateCachePaths = [
+    DB_CACHE_FILE,
+    path.join(process.cwd(), "db_cache.json"),
+    path.join(appDir, "db_cache.json"),
+    path.join(appDir, "..", "db_cache.json"),
+    path.join(os.tmpdir(), "db_cache.json")
+  ];
+  for (const p of candidateCachePaths) {
+    if (p && fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
 function loadDatabase() {
   let loadedFromCache = false;
+  const targetCacheFile = getDbCacheFilePath();
   // 1. Check if cached database exists. If yes, reload it
-  if (fs.existsSync(DB_CACHE_FILE)) {
+  if (targetCacheFile && fs.existsSync(targetCacheFile)) {
     try {
-      console.log(`Loading database state from cache file: ${DB_CACHE_FILE}`);
-      const rawData = fs.readFileSync(DB_CACHE_FILE, "utf-8");
+      console.log(`Loading database state from cache file: ${targetCacheFile}`);
+      const rawData = fs.readFileSync(targetCacheFile, "utf-8");
       const db = JSON.parse(rawData);
       members = db.members || [];
       marriages = db.marriages || [];
@@ -632,7 +664,18 @@ function saveDatabaseToCache() {
       access_dostup,
       permission_levels
     };
-    fs.writeFileSync(DB_CACHE_FILE, JSON.stringify(db, null, 2), "utf-8");
+    const jsonContent = JSON.stringify(db, null, 2);
+
+    try {
+      fs.writeFileSync(DB_CACHE_FILE, jsonContent, "utf-8");
+    } catch (err: any) {
+      console.warn(`[Cache Write] Primary DB_CACHE_FILE write skipped or redirected (${err.message}). Trying os.tmpdir fallback...`);
+      try {
+        fs.writeFileSync(path.join(os.tmpdir(), "db_cache.json"), jsonContent, "utf-8");
+      } catch (e: any) {
+        console.warn(`[Cache Write] Temp dir fallback skipped: ${e.message}`);
+      }
+    }
     
     // Invalidate the cache of members.json so any query dynamically gets the freshest Firebase details
     cachedMembersJson = null;
@@ -1076,7 +1119,9 @@ async function loadSettingsFromFirebase() {
       console.log("[Firebase Settings] Received data:", JSON.stringify(data));
       if (data && typeof data === 'object') {
         cachedSettings = mergeSettings(data);
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(cachedSettings, null, 2));
+        try {
+          fs.writeFileSync(SETTINGS_FILE, JSON.stringify(cachedSettings, null, 2));
+        } catch (e) {}
         console.log("[Firebase Settings] Successfully loaded and cached notification settings from Firebase Realtime DB.");
         return;
       }
@@ -1126,7 +1171,9 @@ app.post("/api/settings/notifications", async (req, res) => {
   cachedSettings = mergedSettings;
   
   try {
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(mergedSettings, null, 2));
+    try {
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify(mergedSettings, null, 2));
+    } catch (e) {}
     console.log("[Settings] Local cache file updated successfully.");
     
     // Save to Firebase Realtime DB
@@ -3798,7 +3845,9 @@ async function syncMemberToFirebase(id: number, member: Member) {
     "insha_gromada": member.insha_gromada || "",
     "prymitka": member.prymitka || null,
     "primitka": member.prymitka || null,
-    "efile": member.efile !== undefined ? member.efile : ""
+    "efile": member.efile !== undefined ? member.efile : "",
+    "history_logs": member.history_logs || [],
+    "04_STRUCTURA/history_logs": member.history_logs || []
   };
 
   try {
@@ -5368,6 +5417,28 @@ async function syncDatabaseWithFirebase() {
   }
 
   // Load disciplines from Firebase RTDB
+  let historyJournalMap: Record<string, any[]> = {};
+  try {
+    const hjRes = await fetch(`${FIREBASE_URL}/history_journal.json?auth=${DB_SECRET}`);
+    if (hjRes.ok) {
+      const hjData = await hjRes.json();
+      if (hjData) {
+        const hjList = Array.isArray(hjData) ? hjData : Object.values(hjData);
+        hjList.forEach((j: any) => {
+          if (!j) return;
+          const key = String(j.member_key || '').trim();
+          if (key) {
+            if (!historyJournalMap[key]) historyJournalMap[key] = [];
+            historyJournalMap[key].push(j);
+          }
+        });
+        console.log(`[Firebase Startup Sync] Successfully loaded ${hjList.length} history journal records.`);
+      }
+    }
+  } catch (err: any) {
+    console.error(`[Firebase Startup Sync] Failed to load history_journal: ${err.message}`);
+  }
+
   try {
     const discRes = await fetch(`${FIREBASE_URL}/disciplines.json?auth=${DB_SECRET}`);
     if (discRes.ok) {
@@ -5710,6 +5781,66 @@ async function syncDatabaseWithFirebase() {
           discipline_date_start: toISODateFormat(String(структура["discipline_date_start"] || "").trim()),
           discipline_date_end: toISODateFormat(String(структура["discipline_date_end"] || "").trim()),
           efile: raw["efile"],
+          history_logs: (() => {
+            const baseLogs = Array.isArray(raw["history_logs"]) 
+              ? [...raw["history_logs"]] 
+              : (Array.isArray(структура["history_logs"]) 
+                ? [...структура["history_logs"]] 
+                : []);
+            const journalEntries = [
+              ...(historyJournalMap[stringId] || []),
+              ...(Array.isArray(raw["07_ISTORIYA"]) ? raw["07_ISTORIYA"] : []),
+              ...(Array.isArray(raw["ISTORIYA_VYBYTTYA"]) ? raw["ISTORIYA_VYBYTTYA"] : [])
+            ];
+            if (journalEntries.length > 0) {
+              journalEntries.forEach((j: any, idx: number) => {
+                const podiya = (j.podiya || '').trim();
+                const det = (j.prychyna_detali || '').trim();
+                let type = 'other';
+                let title = podiya;
+
+                if (podiya === 'прийн.') {
+                  type = 'vstup';
+                  title = `Прийняття в члени церкви${det ? ` (${det})` : ''}`;
+                } else if (podiya === 'відп.') {
+                  type = 'vybuttya';
+                  title = `Вибуття / Відпущення${det ? ` (${det})` : ''}`;
+                } else if (podiya === 'Вил.') {
+                  type = 'vybuttya';
+                  title = `Вилучення з членів церкви${det ? ` (${det})` : ''}`;
+                } else if (podiya === 'пом.') {
+                  type = 'vybuttya';
+                  title = `Помер(ла)${det ? ` (${det})` : ''}`;
+                } else if (podiya === 'емігр.') {
+                  type = 'vybuttya';
+                  title = `Еміграція${det ? ` (${det})` : ''}`;
+                } else if (podiya.includes('хрещення')) {
+                  type = 'other';
+                  title = `Водне хрещення${det ? ` (${det})` : ''}`;
+                } else {
+                  title = `${podiya}${det ? ` (${det})` : ''}`;
+                }
+
+                const item = {
+                  id: `jlog_${stringId}_${idx}`,
+                  date: j.d_podiyi || '',
+                  type,
+                  title,
+                  details: 'З журналу обліку',
+                  createdAt: j.imported_at || new Date().toISOString()
+                };
+
+                const exists = baseLogs.some((existing: any) => 
+                  (existing.date === item.date && item.date) && 
+                  (existing.title.toLowerCase().includes(podiya.toLowerCase()) || existing.type === type)
+                );
+                if (!exists) {
+                  baseLogs.push(item);
+                }
+              });
+            }
+            return baseLogs;
+          })(),
           address: formatAddress(адреса)
         };
         parsedMembers.push(mapped);

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Member } from '../types';
+import { Member, MemberHistoryItem } from '../types';
 import { Save, X, Info } from 'lucide-react';
 import { normalizeToDateStr } from '../lib/dateUtils';
+import MemberHistorySection from './MemberHistorySection';
+import { getSynthesizedHistoryLogs } from '../lib/historyUtils';
 
 const parseAddress = (addressStr: string | undefined | null) => {
   const result = {
@@ -1261,6 +1263,15 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 placeholder="не вказ."
                 rows={3}
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+
+            {/* History Logs Section */}
+            <div className="pt-2">
+              <MemberHistorySection 
+                member={formData as Member} 
+                canEdit={!isRestricted} 
+                onUpdateHistory={(updatedLogs) => setFormData(prev => ({ ...prev, history_logs: updatedLogs }))} 
               />
             </div>
 

@@ -36,6 +36,16 @@ export interface MinistryRecord {
   isActive: boolean;
 }
 
+export interface MemberHistoryItem {
+  id: string;
+  date: string;
+  type: 'vstup' | 'vybuttya' | 'ponovlennya' | 'peremishchennya' | 'other';
+  title: string;
+  details?: string;
+  user?: string;
+  createdAt?: string;
+}
+
 export interface DisciplineRecord {
   id: number;
   memberId: number;
@@ -146,6 +156,7 @@ export interface Member {
   discipline_reason?: string;
   discipline_date_start?: string;
   discipline_date_end?: string;
+  history_logs?: MemberHistoryItem[];
 }
 
 export interface MemberDetailExtended {

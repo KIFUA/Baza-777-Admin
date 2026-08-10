@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Member } from '../types';
 import { 
   Filter, 
@@ -9,10 +9,32 @@ import {
   RefreshCw, 
   Plus, 
   ChevronDown,
-  Download
+  Download,
+  Send,
+  X,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { getRobotoRegularFont } from '../lib/fontsBase64';
+import { parseAndNormalizeContactDates } from '../lib/dateUtils';
+
+const DEFAULT_KNOWN_CONTACTS = [
+  { user: "Григорів В. (Адміністратор)", position: "Адміністратор", rayon: "ЦЕНТР", telegramId: "240931069" },
+  { user: "Черняк Вал.", position: "Пресвітер (Старший)", rayon: "ЦЕНТР", telegramId: "969538290" },
+  { user: "Скіцко І.", position: "Пресвітер", rayon: "КАСКАД", telegramId: "435624187" },
+  { user: "Бевзюк В.", position: "Пресвітер", rayon: "АЕРОПОРТ", telegramId: "951757352" },
+  { user: "Григорів Г.", position: "Тестувальник", rayon: "АЕРОПОРТ", telegramId: "858036501" },
+  { user: "Бурчак Ю.", position: "Диякон", rayon: "ОБ'ЇЗНА / БАМ", telegramId: "61234567" },
+  { user: "Черняк Вас.", position: "Пресвітер", rayon: "ОБ'ЇЗНА / ХРИПЛИН", telegramId: "194850204" },
+  { user: "Патлатай В.", position: "Пресвітер", rayon: "АЕРОПОРТ", telegramId: "593850384" },
+  { user: "Черняк Вікт.", position: "Диякон", rayon: "КАСКАД", telegramId: "482057395" },
+  { user: "Галюк Б.", position: "Диякон", rayon: "АЕРОПОРТ", telegramId: "748302049" },
+  { user: "Самелюк О.", position: "Диякон", rayon: "АЕРОПОРТ", telegramId: "555" },
+  { user: "Марунчак В.", position: "Відповідальний за опіку", rayon: "КРИХІВЦІ", telegramId: "920485058" },
+  { user: "Несен Ю.", position: "Диякон / Відповідальний", rayon: "УГОРНИКИ / ЦЕНТР", telegramId: "384950204" }
+];
 
 const cleanAddress = (address: string | undefined | null): string => {
   if (!address) return '';
@@ -41,9 +63,127 @@ const formatMaritalStatus = (val: any): string => {
   if (!val) return '—';
   const str = String(val).trim();
   if (/^неодружен(ий|а|і|о)?$/i.test(str)) {
-    return 'неодр.';
+    return 'неодруж.';
   }
   return str;
+};
+
+const calculateMarriageYears = (dShlyubu?: string): number | null => {
+  if (!dShlyubu || dShlyubu === '—' || dShlyubu === 'н/д') return null;
+  const str = String(dShlyubu).trim();
+  if (!str) return null;
+
+  let year: number | null = null;
+  let month = 0;
+  let day = 1;
+
+  let match = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (match) {
+    year = parseInt(match[1], 10);
+    month = parseInt(match[2], 10) - 1;
+    day = parseInt(match[3], 10);
+  } else {
+    match = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if (match) {
+      day = parseInt(match[1], 10);
+      month = parseInt(match[2], 10) - 1;
+      year = parseInt(match[3], 10);
+    } else {
+      match = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2})$/);
+      if (match) {
+        day = parseInt(match[1], 10);
+        month = parseInt(match[2], 10) - 1;
+        const yy = parseInt(match[3], 10);
+        year = (yy < 50 ? 2000 : 1900) + yy;
+      } else {
+        match = str.match(/^(\d{4})$/);
+        if (match) {
+          year = parseInt(match[1], 10);
+        }
+      }
+    }
+  }
+
+  if (year === null || isNaN(year)) {
+    const num = Number(str);
+    if (!isNaN(num) && num > 10000) {
+      const excelEpoch = new Date(1899, 11, 30);
+      const targetDate = new Date(excelEpoch.getTime() + num * 86400000);
+      year = targetDate.getFullYear();
+      month = targetDate.getMonth();
+      day = targetDate.getDate();
+    }
+  }
+
+  if (year === null || isNaN(year)) return null;
+
+  const today = new Date();
+  let years = today.getFullYear() - year;
+  const currentMonth = today.getMonth();
+  const currentDay = today.getDate();
+
+  if (currentMonth < month || (currentMonth === month && currentDay < day)) {
+    years--;
+  }
+
+  return years >= 0 ? years : null;
+};
+
+const formatContactDatesTwoRows = (rawVal: any) => {
+  if (!rawVal || rawVal === '—') return { row1: '—', row2: '', fullHtml: '—', maxLineLen: 1 };
+  const dates = parseAndNormalizeContactDates(String(rawVal));
+  if (!dates || dates.length === 0) return { row1: '—', row2: '', fullHtml: '—', maxLineLen: 1 };
+  if (dates.length === 1) {
+    return {
+      row1: dates[0],
+      row2: '',
+      fullHtml: `<span style="white-space: nowrap;">${dates[0]}</span>`,
+      maxLineLen: dates[0].length
+    };
+  }
+  let row1 = '';
+  let row2 = '';
+  if (dates.length === 2) {
+    row1 = dates[0];
+    row2 = dates[1];
+  } else if (dates.length === 3) {
+    row1 = `${dates[0]} / ${dates[1]}`;
+    row2 = dates[2];
+  } else {
+    const half = Math.ceil(dates.length / 2);
+    row1 = dates.slice(0, half).join(' / ');
+    row2 = dates.slice(half).join(' / ');
+  }
+  const maxLineLen = Math.max(row1.length, row2.length);
+  const fullHtml = `
+    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.2; text-align: center;">
+      <span style="white-space: nowrap; display: block;">${row1}</span>
+      <span style="white-space: nowrap; display: block;">${row2}</span>
+    </div>`;
+  return { row1, row2, fullHtml, maxLineLen };
+};
+
+const formatPibTwoLines = (rawPib: any) => {
+  if (!rawPib || rawPib === '—') return { surname: '—', name: '', fullHtml: '—', maxLineLen: 1 };
+  const str = String(rawPib).trim().replace(/\s+/g, ' ');
+  const parts = str.split(' ');
+  if (parts.length <= 1) {
+    return {
+      surname: str,
+      name: '',
+      fullHtml: `<span style="font-weight: 700; color: #0f172a; white-space: nowrap;">${str}</span>`,
+      maxLineLen: str.length
+    };
+  }
+  const surname = parts[0];
+  const namePatronymic = parts.slice(1).join(' ');
+  const fullHtml = `
+    <div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.25; text-align: left;">
+      <span style="font-weight: 700; color: #0f172a; white-space: nowrap; display: block;">${surname}</span>
+      <span style="font-weight: 600; color: #334155; white-space: nowrap; display: block;">${namePatronymic}</span>
+    </div>`;
+  const maxLineLen = Math.max(surname.length, namePatronymic.length);
+  return { surname, name: namePatronymic, fullHtml, maxLineLen };
 };
 
 interface AvailableColumn {
@@ -55,6 +195,7 @@ interface AvailableColumn {
 const AVAILABLE_COLUMNS: AvailableColumn[] = [
   { key: "rayon2_ukr", label: "Район", defaultChecked: false },
   { key: "pib", label: "ПІБ", defaultChecked: true },
+  { key: "vik_shlyubu", label: "К-ть років в шлюбі", defaultChecked: false },
   { key: "d_kontaktiv", label: "Дати контактів", defaultChecked: true },
   { key: "presviter", label: "Опікун", defaultChecked: true },
   { key: "s_slujinnya_spysok", label: "Служіння", defaultChecked: false },
@@ -78,10 +219,66 @@ interface ReportGeneratorProps {
       opika_bindings?: any[];
     };
     vybuv?: { ID: any; Value: string }[];
+    access?: any[];
   };
 }
 
 export default function ReportGenerator({ members = [], lookups }: ReportGeneratorProps) {
+  // Telegram Broadcast modal states
+  const [isTgModalOpen, setIsTgModalOpen] = useState<boolean>(false);
+  const [tgMaterialType, setTgMaterialType] = useState<'pdf' | 'text' | 'list'>('pdf');
+  const [tgCustomText, setTgCustomText] = useState<string>('');
+  const [tgSelectedContacts, setTgSelectedContacts] = useState<string[]>([]);
+  const [tgRecipientId, setTgRecipientId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('stats_custom_telegram_id') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [tgSending, setTgSending] = useState<boolean>(false);
+  const [tgStatus, setTgStatus] = useState<{ message: string; isError?: boolean } | null>(null);
+
+  const handleTgRecipientChange = (val: string) => {
+    setTgRecipientId(val);
+    try {
+      localStorage.setItem('stats_custom_telegram_id', val);
+    } catch (_) {}
+  };
+
+  const knownContactsList = useMemo(() => {
+    const list: { user: string; position?: string; rayon?: string; telegramId: string }[] = [];
+    const added = new Set<string>();
+
+    if (Array.isArray(lookups?.access)) {
+      lookups.access.forEach((ac: any) => {
+        const tg = String(ac.telegramId || '').trim();
+        if (tg && tg !== '—' && tg !== '-' && tg !== 'н/д') {
+          const key = `${ac.user}_${tg}`;
+          if (!added.has(key)) {
+            added.add(key);
+            list.push({
+              user: ac.user || 'Користувач',
+              position: ac.position || '',
+              rayon: ac.rayon || '',
+              telegramId: tg
+            });
+          }
+        }
+      });
+    }
+
+    DEFAULT_KNOWN_CONTACTS.forEach((item) => {
+      const key = `${item.user}_${item.telegramId}`;
+      if (!added.has(key)) {
+        added.add(key);
+        list.push(item);
+      }
+    });
+
+    return list;
+  }, [lookups]);
+
   // Get locked rayon for Level <= 3
   const hasSpecificRayonLock = useMemo(() => {
     try {
@@ -116,7 +313,25 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
   const [selectedVidviduvanist, setSelectedVidviduvanist] = useState<string>("");
   const [selectedPrysutnist, setSelectedPrysutnist] = useState<string>("");
   const [selectedStat, setSelectedStat] = useState<string>("");
+  const [selectedSimeyniy, setSelectedSimeyniy] = useState<string>("");
+  const [selectedSocialniy, setSelectedSocialniy] = useState<string>("");
+  const [selectedProfesiya, setSelectedProfesiya] = useState<string>("");
+  const [selectedOsvita, setSelectedOsvita] = useState<string>("");
+  const [selectedDilyntsya, setSelectedDilyntsya] = useState<string>("");
+  const [selectedAgeMin, setSelectedAgeMin] = useState<string>("");
+  const [selectedAgeMax, setSelectedAgeMax] = useState<string>("");
+  const [selectedFamilyType, setSelectedFamilyType] = useState<string>("");
+  const [selectedMarriageYearsMin, setSelectedMarriageYearsMin] = useState<string>("");
+  const [selectedMarriageYearsMax, setSelectedMarriageYearsMax] = useState<string>("");
+
+  const isMarriedSelected = useMemo(() => {
+    if (!selectedSimeyniy) return false;
+    const s = selectedSimeyniy.toLowerCase().trim();
+    return (s.includes("одр") || s.includes("одруж")) && !s.includes("неодр") && !s.includes("неодруж");
+  }, [selectedSimeyniy]);
   const [showExtraFilters, setShowExtraFilters] = useState<boolean>(false);
+  const [showResultsTable, setShowResultsTable] = useState<boolean>(false);
+  const [combineCouples, setCombineCouples] = useState<boolean>(false);
   const [internalSearch, setInternalSearch] = useState<string>("");
   const [pdfGenerating, setPdfGenerating] = useState<boolean>(false);
   const [printColors, setPrintColors] = useState<boolean>(true);
@@ -258,6 +473,16 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     setSelectedVidviduvanist("");
     setSelectedPrysutnist("");
     setSelectedStat("");
+    setSelectedSimeyniy("");
+    setSelectedSocialniy("");
+    setSelectedProfesiya("");
+    setSelectedOsvita("");
+    setSelectedDilyntsya("");
+    setSelectedAgeMin("");
+    setSelectedAgeMax("");
+    setSelectedFamilyType("");
+    setSelectedMarriageYearsMin("");
+    setSelectedMarriageYearsMax("");
     setInternalSearch("");
   };
 
@@ -394,6 +619,83 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     return Array.from(set).sort();
   }, [lookups, members]);
 
+  const uniqueSimeyniy = useMemo(() => {
+    let rawList: string[] = [];
+    if ((lookups?.directories as any)?.simeyniy) {
+      rawList = (lookups.directories as any).simeyniy;
+    } else {
+      const set = new Set<string>();
+      members.forEach(m => {
+        if (m.s_simeyniy_ukr) set.add(m.s_simeyniy_ukr.trim());
+      });
+      rawList = Array.from(set);
+    }
+    const normalized = Array.from(new Set(rawList.map(v => v === 'одр.' ? 'одруж.' : v).filter(Boolean)));
+    const orderMap: Record<string, number> = {
+      'неодруж.': 1,
+      'одруж.': 2,
+      'вдов.': 3,
+      'розлуч.': 4,
+      'н/д': 5
+    };
+    return normalized.sort((a, b) => {
+      const oa = orderMap[a] || 99;
+      const ob = orderMap[b] || 99;
+      if (oa !== ob) return oa - ob;
+      return a.localeCompare(b, 'uk-UA');
+    });
+  }, [lookups, members]);
+
+  const uniqueSocialniy = useMemo(() => {
+    if ((lookups?.directories as any)?.socialniy) return (lookups.directories as any).socialniy;
+    const set = new Set<string>();
+    members.forEach(m => {
+      const v = m.s_socialniy_ukr || m.soc_status || m.s_soc_status_ukr;
+      if (v) set.add(v.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  const uniqueProfesiya = useMemo(() => {
+    if ((lookups?.directories as any)?.profesiya) return (lookups.directories as any).profesiya;
+    const set = new Set<string>();
+    members.forEach(m => {
+      if (m.s_profesiya_ukr) set.add(m.s_profesiya_ukr.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  const uniqueOsvita = useMemo(() => {
+    if ((lookups?.directories as any)?.osvita) return (lookups.directories as any).osvita;
+    const set = new Set<string>();
+    members.forEach(m => {
+      const v = m.s_osvita_ukr || m.osvita;
+      if (v) set.add(v.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [lookups, members]);
+
+  const uniqueDilyntsya = useMemo(() => {
+    const set = new Set<string>();
+    members.forEach(m => {
+      if (m.n_dilyci) set.add(m.n_dilyci.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'uk-UA'));
+  }, [members]);
+
+  const isVybuvMember = (m: Member): boolean => {
+    if (!m) return false;
+    const idV = Number(m.id_vybuttya || 0);
+    if (idV > 0) return true;
+    if (m.s_vybuv_ukr && m.s_vybuv_ukr.trim() !== '' && m.s_vybuv_ukr.trim() !== '—' && m.s_vybuv_ukr.trim() !== '-') return true;
+    if (m.d_vybuttya && m.d_vybuttya.trim() !== '' && m.d_vybuttya.trim() !== '—' && m.d_vybuttya.trim() !== '-') return true;
+    return false;
+  };
+
+  const isActiveMember = (m: Member): boolean => {
+    return !isVybuvMember(m);
+  };
+
   const isMergedProfile = (m: Member, list: Member[]) => {
     const pibSelf = String(m.pib || "").trim().toLowerCase();
     if (!pibSelf) return false;
@@ -403,16 +705,333 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       if (otherId <= selfId) return false;
       const otherPib = String(other.pib || "").trim().toLowerCase();
       if (otherPib !== pibSelf) return false;
-      return other.id_vybuttya === 0;
+      return isActiveMember(other);
     });
   };
+
+  const isUnmarriedStatus = (m: Member): boolean => {
+    if (!m) return true;
+    const s = String(m.s_simeyniy_ukr || (m as any).simeyniy || (m as any).s_simeyniy || '').toLowerCase().trim();
+    if (
+      s.includes('неодр') ||
+      s.includes('не одр') ||
+      s.includes('вдів') ||
+      s.includes('вдов') ||
+      s.includes('розлуч') ||
+      s.includes('розл') ||
+      s.includes('самотн') ||
+      s.includes('одинокі') ||
+      s.includes('одинока') ||
+      s.includes('одинокий')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const isMarriedMember = (m: Member): boolean => {
+    if (!m || isUnmarriedStatus(m)) return false;
+
+    const s = String(m.s_simeyniy_ukr || (m as any).simeyniy || (m as any).s_simeyniy || '').toLowerCase().trim();
+    if (s.includes('одр') || s.includes('заміж')) return true;
+
+    const partner = String(m.pib_partnera || '').trim();
+    if (partner && partner !== '—' && partner !== '-' && partner !== 'н/д') return true;
+
+    if (m.d_shlyubu && m.d_shlyubu !== '—' && m.d_shlyubu !== '-') return true;
+
+    return false;
+  };
+
+  const normalizeSurname = (s: string): string => {
+    if (!s) return '';
+    let str = s.trim().toLowerCase();
+    str = str.replace(/(ський|ська|цький|цька|зький|зька)$/g, '');
+    str = str.replace(/(ович|евич|євич|ич|іч)$/g, '');
+    str = str.replace(/(івна|ївна|вна)$/g, '');
+    str = str.replace(/(ов|ова|ев|ева|єв|єва|ін|іна|їн|їна)$/g, '');
+    str = str.replace(/(ий|ій|а|я)$/g, '');
+    return str;
+  };
+
+  const areSurnamesMatching = (pib1: string, pib2: string): boolean => {
+    if (!pib1 || !pib2) return false;
+    const w1 = pib1.trim().toLowerCase().split(/\s+/)[0];
+    const w2 = pib2.trim().toLowerCase().split(/\s+/)[0];
+    if (!w1 || !w2 || w1.length < 3 || w2.length < 3) return false;
+
+    if (w1 === w2) return true;
+
+    const n1 = normalizeSurname(w1);
+    const n2 = normalizeSurname(w2);
+
+    if (n1.length >= 3 && n1 === n2) return true;
+
+    if (w1.endsWith('а') && w1.slice(0, -1) === w2) return true;
+    if (w2.endsWith('а') && w2.slice(0, -1) === w1) return true;
+
+    return false;
+  };
+
+  const areFirstNamesMatching = (fn1: string, fn2: string): boolean => {
+    if (!fn1 || !fn2) return true;
+    const a = fn1.toLowerCase().trim();
+    const b = fn2.toLowerCase().trim();
+    if (a === b) return true;
+    const pA = a.slice(0, 3);
+    const pB = b.slice(0, 3);
+    return pA === pB || a.startsWith(pB) || b.startsWith(pA);
+  };
+
+  const arePatronymicsMatching = (pat1: string, pat2: string): boolean => {
+    if (!pat1 || !pat2) return true;
+    const p1 = pat1.toLowerCase().trim();
+    const p2 = pat2.toLowerCase().trim();
+    if (p1 === p2) return true;
+    const r1 = getPatronymicRoot(p1);
+    const r2 = getPatronymicRoot(p2);
+    if (r1 && r2 && r1.length >= 3 && r2.length >= 3) {
+      return r1 === r2 || r1.startsWith(r2) || r2.startsWith(r1);
+    }
+    return false;
+  };
+
+  const areNamesMatching = (nameA: string, nameB: string): boolean => {
+    if (!nameA || !nameB) return false;
+    const a = nameA.trim().toLowerCase();
+    const b = nameB.trim().toLowerCase();
+    if (a === '—' || a === '-' || a === 'н/д' || b === '—' || b === '-' || b === 'н/д') return false;
+
+    if (a === b) return true;
+
+    const wordsA = a.split(/\s+/).filter(w => w.length >= 2);
+    const wordsB = b.split(/\s+/).filter(w => w.length >= 2);
+
+    if (wordsA.length >= 1 && wordsB.length >= 1) {
+      const surnameA = wordsA[0];
+      const surnameB = wordsB[0];
+
+      if (areSurnamesMatching(surnameA, surnameB)) {
+        if (wordsA.length === 1 || wordsB.length === 1) return true;
+        
+        const firstNameA = wordsA[1];
+        const firstNameB = wordsB[1];
+        if (firstNameA && firstNameB && !areFirstNamesMatching(firstNameA, firstNameB)) {
+          return false;
+        }
+
+        if (wordsA.length >= 3 && wordsB.length >= 3) {
+          const patA = wordsA[2];
+          const patB = wordsB[2];
+          if (patA && patB && !arePatronymicsMatching(patA, patB)) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      if (wordsA.length >= 2 && wordsB.length >= 2) {
+        if (areSurnamesMatching(wordsA[0], wordsB[1]) && areSurnamesMatching(wordsA[1], wordsB[0])) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  const getGenderCatForName = (name: string): 'male' | 'female' | 'unknown' => {
+    const n = name.trim().toLowerCase();
+    if (!n) return 'unknown';
+
+    if (/(ич|іч|ович|евич|євич)$/i.test(n)) return 'male';
+    if (/(вна|івна|ївна)$/i.test(n)) return 'female';
+
+    const words = n.split(/\s+/);
+    for (const w of words) {
+      if (['любов', 'нінель', 'інес'].includes(w)) return 'female';
+      if (['петро', 'микола', 'дмитро', 'павло', 'олександр', 'іван', 'василь', 'михайло', 'сергій', 'віталій', 'володимир', 'григорій', 'степан', 'роман', 'богдан', 'андрій', 'юрій', 'ярослав', 'тарас', 'олег', 'ігор', 'анатолій', 'віктор'].includes(w)) return 'male';
+      if (['ірина', 'мирослава', 'галина', 'наталія', 'наталя', 'ганна', 'ольга', 'олеся', 'руслана', 'лідія', 'марія', 'тетяна', 'олена', 'світлана', 'юлія', 'катерина', 'оксана', 'вікторія', 'валентина', 'надія', 'віра', 'софія', 'дарина', 'христина'].includes(w)) return 'female';
+    }
+    return 'unknown';
+  };
+
+  const getGenderCat = (m: Member): 'male' | 'female' | 'unknown' => {
+    const g = (m.gender || m.stat || '').toLowerCase().trim();
+    if (g.includes('брат') || g.includes('чол') || g === 'ч' || g === 'm' || g === 'муж') return 'male';
+    if (g.includes('сестр') || g.includes('жін') || g === 'ж' || g === 'f' || g === 'жен') return 'female';
+    return getGenderCatForName(m.pib || '');
+  };
+
+  const isOppositeSex = (m1: Member, m2: Member): boolean => {
+    const g1 = getGenderCat(m1);
+    const g2 = getGenderCat(m2);
+    if (g1 === 'male' && g2 === 'male') return false;
+    if (g1 === 'female' && g2 === 'female') return false;
+    return true;
+  };
+
+  const activeMembers = useMemo(() => {
+    return members.filter(m => isActiveMember(m) && !isMergedProfile(m, members));
+  }, [members]);
+
+  const getPatronymicRoot = (pib: string): string => {
+    if (!pib) return '';
+    const parts = pib.trim().split(/\s+/);
+    if (parts.length < 3) return '';
+    let pat = parts[2].toLowerCase();
+    pat = pat.replace(/(ович|евич|євич|ич|іч)$/, '');
+    pat = pat.replace(/(ічна|їчна|івна|ївна|вна)$/, '');
+    pat = pat.replace(/(й|ь|о|а|е|є|і|я|у|ій|ей|ов|ев|єв)$/, '');
+    return pat;
+  };
+
+  const getFirstnameRoot = (pib: string): string => {
+    if (!pib) return '';
+    const parts = pib.trim().split(/\s+/);
+    if (parts.length < 2) return '';
+    let fn = parts[1].toLowerCase();
+    fn = fn.replace(/(й|ь|о|а|е|є|і|я|у|ій|ей)$/, '');
+    return fn;
+  };
+
+  const isBrotherSister = (pib1: string, pib2: string): boolean => {
+    const r1 = getPatronymicRoot(pib1);
+    const r2 = getPatronymicRoot(pib2);
+    if (r1 && r2 && r1.length >= 3 && r1 === r2) return true;
+    return false;
+  };
+
+  const isParentChildOrLargeAgeGap = (m1: Member, m2: Member): boolean => {
+    const p1 = m1.pib || '';
+    const p2 = m2.pib || '';
+    
+    const fnRoot1 = getFirstnameRoot(p1);
+    const patRoot2 = getPatronymicRoot(p2);
+    if (fnRoot1 && patRoot2 && fnRoot1.length >= 3 && fnRoot1 === patRoot2) return true;
+
+    const fnRoot2 = getFirstnameRoot(p2);
+    const patRoot1 = getPatronymicRoot(p1);
+    if (fnRoot2 && patRoot1 && fnRoot2.length >= 3 && fnRoot2 === patRoot1) return true;
+
+    const age1 = Number(m1.vik_rokiv1);
+    const age2 = Number(m2.vik_rokiv1);
+    if (age1 > 0 && age2 > 0 && Math.abs(age1 - age2) >= 15) return true;
+
+    return false;
+  };
+
+  const findSpouseInMembers = useCallback((
+    m: Member, 
+    customActivePool?: Member[], 
+    processedIds?: Set<number>
+  ): Member | undefined => {
+    if (!m || isUnmarriedStatus(m)) return undefined;
+
+    const pibPartner = String(m.pib_partnera || '').trim();
+    const pibSelf = String(m.pib || '').trim();
+    const hasPibPartner = Boolean(pibPartner && pibPartner !== '—' && pibPartner !== '-' && pibPartner !== 'н/д');
+
+    const oppSexPool = (customActivePool || activeMembers).filter(other => {
+      if (other.id === m.id) return false;
+      if (processedIds && processedIds.has(other.id)) return false;
+      if (!isOppositeSex(m, other)) return false;
+      return true;
+    });
+
+    // Tier 1: Explicit or reverse partner name link (highest priority)
+    if (hasPibPartner) {
+      const foundByPartner = oppSexPool.find(other => 
+        !isUnmarriedStatus(other) &&
+        !isBrotherSister(pibSelf, other.pib || '') &&
+        !isParentChildOrLargeAgeGap(m, other) &&
+        areNamesMatching(pibPartner, other.pib || '')
+      );
+      if (foundByPartner) return foundByPartner;
+    }
+
+    if (pibSelf) {
+      const foundReverse = oppSexPool.find(other => {
+        if (isUnmarriedStatus(other)) return false;
+        if (isBrotherSister(pibSelf, other.pib || '')) return false;
+        if (isParentChildOrLargeAgeGap(m, other)) return false;
+        const otherPartner = String(other.pib_partnera || '').trim();
+        if (!otherPartner || otherPartner === '—' || otherPartner === '-' || otherPartner === 'н/д') return false;
+        return areNamesMatching(otherPartner, pibSelf);
+      });
+      if (foundReverse) return foundReverse;
+    }
+
+    // Tier 2: Smart multi-criteria scoring evaluation
+    let bestCandidate: Member | undefined = undefined;
+    let bestScore = -1;
+
+    for (const other of oppSexPool) {
+      if (isUnmarriedStatus(other)) continue;
+
+      // Hard safety guards: brother/sister, parent/child or large age gap
+      if (isBrotherSister(pibSelf, other.pib || '')) continue;
+      if (isParentChildOrLargeAgeGap(m, other)) continue;
+
+      // Conflicting partner check
+      const otherPartner = String(other.pib_partnera || '').trim();
+      if (otherPartner && otherPartner !== '—' && otherPartner !== '-' && otherPartner !== 'н/д') {
+        if (!areNamesMatching(otherPartner, pibSelf)) continue;
+      }
+
+      // Base requirement: surnames must match
+      if (!areSurnamesMatching(pibSelf, other.pib || '')) continue;
+
+      let score = 0;
+
+      // 1. Marital status alignment
+      if (isMarriedMember(m) && isMarriedMember(other)) {
+        score += 30;
+      }
+
+      // 2. Age proximity score
+      const age1 = Number(m.vik_rokiv1);
+      const age2 = Number(other.vik_rokiv1);
+      if (age1 > 0 && age2 > 0) {
+        const diff = Math.abs(age1 - age2);
+        if (diff <= 7) score += 30;
+        else if (diff <= 12) score += 20;
+        else if (diff <= 14) score += 10;
+        else continue; // > 14 age diff strictly excluded
+      } else {
+        score += 15; // neutral when age missing
+      }
+
+      // 3. Address match score
+      const addrSelf = cleanAddress(m.address).toLowerCase();
+      const addrOther = cleanAddress(other.address).toLowerCase();
+      const isAddrValid = addrSelf && addrSelf !== '—' && addrSelf !== '-' && addrSelf.length > 5;
+      if (isAddrValid && addrSelf === addrOther) {
+        score += 40;
+      }
+
+      // 4. Presviter / Region alignment
+      if (m.presviter && other.presviter && m.presviter === other.presviter) {
+        score += 10;
+      }
+
+      // Threshold: minimum score of 60 required for a confident couple match
+      if (score >= 60 && score > bestScore) {
+        bestScore = score;
+        bestCandidate = other;
+      }
+    }
+
+    return bestCandidate;
+  }, [activeMembers]);
 
   const filteredRecords = useMemo(() => {
     const list = members.filter(m => {
       if (selectedStatus === "Наявні") {
-        if (m.id_vybuttya > 0 || isMergedProfile(m, members)) return false;
+        if (!isActiveMember(m) || isMergedProfile(m, members)) return false;
       } else if (selectedStatus === "Вибулі") {
-        if (m.id_vybuttya === 0 || isMergedProfile(m, members)) return false;
+        if (isActiveMember(m) || isMergedProfile(m, members)) return false;
         if (selectedVybuttyaId && String(m.id_vybuttya) !== selectedVybuttyaId) return false;
       } else {
         if (isMergedProfile(m, members)) return false;
@@ -437,6 +1056,65 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       if (selectedStat) {
         if (String(m.gender || m.stat || "").trim().toLowerCase() !== selectedStat.trim().toLowerCase()) return false;
       }
+      if (selectedSimeyniy) {
+        const sel = selectedSimeyniy.trim().toLowerCase();
+        const rec = String(m.s_simeyniy_ukr || "").trim().toLowerCase();
+        if (rec !== sel) {
+          const selMarried = (sel.includes("одр") || sel.includes("одруж") || sel.includes("заміж")) && !sel.includes("неодр") && !sel.includes("неодруж");
+          const recMarried = (rec.includes("одр") || rec.includes("одруж") || rec.includes("заміж")) && !rec.includes("неодр") && !rec.includes("неодруж");
+          const selUnmarried = sel.includes("неодр") || sel.includes("неодруж");
+          const recUnmarried = rec.includes("неодр") || rec.includes("неодруж");
+          const selDivorced = sel.includes("розлуч") || sel.includes("розл");
+          const recDivorced = rec.includes("розлуч") || rec.includes("розл");
+          const selWidowed = sel.includes("вдов");
+          const recWidowed = rec.includes("вдов");
+
+          if ((selMarried && recMarried) || (selUnmarried && recUnmarried) || (selDivorced && recDivorced) || (selWidowed && recWidowed)) {
+            // match
+          } else {
+            return false;
+          }
+        }
+      }
+      if (selectedFamilyType) {
+        if (!isMarriedMember(m)) return false;
+        const activeSpouse = findSpouseInMembers(m);
+        const hasActiveSpouse = activeSpouse !== undefined;
+        if (selectedFamilyType === "повна" && !hasActiveSpouse) return false;
+        if (selectedFamilyType === "неповна" && hasActiveSpouse) return false;
+      }
+      if (selectedMarriageYearsMin) {
+        const minY = Number(selectedMarriageYearsMin);
+        const mYears = calculateMarriageYears(m.d_shlyubu);
+        if (!isNaN(minY) && (mYears === null || mYears < minY)) return false;
+      }
+      if (selectedMarriageYearsMax) {
+        const maxY = Number(selectedMarriageYearsMax);
+        const mYears = calculateMarriageYears(m.d_shlyubu);
+        if (!isNaN(maxY) && (mYears === null || mYears > maxY)) return false;
+      }
+      if (selectedSocialniy) {
+        const socVal = String(m.s_socialniy_ukr || m.soc_status || m.s_soc_status_ukr || "").trim().toLowerCase();
+        if (socVal !== selectedSocialniy.trim().toLowerCase()) return false;
+      }
+      if (selectedProfesiya) {
+        if (String(m.s_profesiya_ukr || "").trim().toLowerCase() !== selectedProfesiya.trim().toLowerCase()) return false;
+      }
+      if (selectedOsvita) {
+        const osvVal = String(m.s_osvita_ukr || m.osvita || "").trim().toLowerCase();
+        if (osvVal !== selectedOsvita.trim().toLowerCase()) return false;
+      }
+      if (selectedDilyntsya) {
+        if (String(m.n_dilyci || "").trim().toLowerCase() !== selectedDilyntsya.trim().toLowerCase()) return false;
+      }
+      if (selectedAgeMin) {
+        const minVal = Number(selectedAgeMin);
+        if (!isNaN(minVal) && (m.vik_rokiv1 === undefined || m.vik_rokiv1 < minVal)) return false;
+      }
+      if (selectedAgeMax) {
+        const maxVal = Number(selectedAgeMax);
+        if (!isNaN(maxVal) && (m.vik_rokiv1 === undefined || m.vik_rokiv1 > maxVal)) return false;
+      }
 
       if (internalSearch) {
         const q = internalSearch.toLowerCase().trim();
@@ -445,14 +1123,204 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         const addMatch = String(m.address || "").toLowerCase().includes(q);
         const caretMatch = String(m.presviter || "").toLowerCase().includes(q);
         const rayonMatch = String(m.rayon2_ukr || "").toLowerCase().includes(q);
-        if (!pibMatch && !telMatch && !addMatch && !caretMatch && !rayonMatch) return false;
+        const profMatch = String(m.s_profesiya_ukr || "").toLowerCase().includes(q);
+        if (!pibMatch && !telMatch && !addMatch && !caretMatch && !rayonMatch && !profMatch) return false;
       }
 
       return true;
     });
 
     return [...list].sort((a, b) => (a.pib || "").localeCompare(b.pib || "", "uk-UA"));
-  }, [members, selectedStatus, selectedVybuttyaId, selectedRayon, selectedPresviter, selectedSlujinnya, selectedVidviduvanist, selectedPrysutnist, selectedStat, internalSearch]);
+  }, [
+    members, 
+    selectedStatus, 
+    selectedVybuttyaId, 
+    selectedRayon, 
+    selectedPresviter, 
+    selectedSlujinnya, 
+    selectedVidviduvanist, 
+    selectedPrysutnist, 
+    selectedStat, 
+    selectedSimeyniy, 
+    isMarriedSelected,
+    selectedFamilyType,
+    selectedMarriageYearsMin,
+    selectedMarriageYearsMax,
+    selectedSocialniy, 
+    selectedProfesiya, 
+    selectedOsvita, 
+    selectedDilyntsya, 
+    selectedAgeMin, 
+    selectedAgeMax, 
+    internalSearch,
+    findSpouseInMembers
+  ]);
+
+  const coupleGroupedRecords = useMemo(() => {
+    if (!combineCouples) return [];
+
+    const processedIds = new Set<number>();
+    const result: Array<{
+      id: string;
+      isCouple: boolean;
+      isAddressMatch?: boolean;
+      husband?: Member;
+      wife?: Member;
+      singleMember?: Member;
+      husbandName: string;
+      wifeName: string;
+      husbandAge: string;
+      wifeAge: string;
+      husbandPhone?: string;
+      wifePhone?: string;
+      pibText: string;
+      marriageYearsText: string;
+      addressText: string;
+      phoneText: string;
+      rayon: string;
+      presviter: string;
+      vidviduvanist: string;
+      prysutnist: string;
+      slujinnya: string;
+    }> = [];
+
+    const candidateList = filteredRecords.filter(m => isActiveMember(m) && !isMergedProfile(m, members));
+
+    candidateList.forEach(m => {
+      if (processedIds.has(m.id)) return;
+
+      const isMarried = isMarriedMember(m);
+      const candidateSpouse = isMarried ? findSpouseInMembers(m, activeMembers, processedIds) : undefined;
+      const spouse = candidateSpouse && !processedIds.has(candidateSpouse.id) && isOppositeSex(m, candidateSpouse) ? candidateSpouse : undefined;
+
+      if (spouse) {
+        processedIds.add(m.id);
+        processedIds.add(spouse.id);
+
+        const m1IsMale = getGenderCat(m) === 'male' || (getGenderCat(m) === 'unknown' && (m.gender || m.stat || '').toLowerCase().includes('брат'));
+        const husband = m1IsMale ? m : spouse;
+        const wife = m1IsMale ? spouse : m;
+
+        const isDirectLink = Boolean(
+          (husband.pib_partnera && areNamesMatching(husband.pib_partnera, wife.pib || '')) ||
+          (wife.pib_partnera && areNamesMatching(wife.pib_partnera, husband.pib || ''))
+        );
+        const isAddressMatch = !isDirectLink;
+
+        const hName = String(husband.pib || '').trim();
+        const wName = String(wife.pib || '').trim();
+
+        const mYears = calculateMarriageYears(husband.d_shlyubu || wife.d_shlyubu);
+        const marriageYearsStr = mYears !== null ? `${mYears} р.` : '—';
+
+        const addr = cleanAddress(husband.address || wife.address || '');
+
+        const hTel = husband.tel_mob || husband.tel1 || '';
+        const wTel = wife.tel_mob || wife.tel1 || '';
+        let telStr = '—';
+        if (hTel && wTel && hTel !== wTel) {
+          telStr = `${hTel}, ${wTel}`;
+        } else if (hTel) {
+          telStr = hTel;
+        } else if (wTel) {
+          telStr = wTel;
+        }
+
+        const slujList = Array.from(new Set(
+          [husband.s_slujinnya_spysok, wife.s_slujinnya_spysok]
+            .filter(Boolean)
+            .flatMap(s => String(s).split(/[,;]+/))
+            .map(s => s.trim())
+            .filter(Boolean)
+        )).join(', ');
+
+        const hAge = husband.vik_rokiv1 !== undefined && husband.vik_rokiv1 !== null && husband.vik_rokiv1 !== '' ? String(husband.vik_rokiv1) : '—';
+        const wAge = wife.vik_rokiv1 !== undefined && wife.vik_rokiv1 !== null && wife.vik_rokiv1 !== '' ? String(wife.vik_rokiv1) : '—';
+
+        result.push({
+          id: `couple_${husband.id}_${wife.id}`,
+          isCouple: true,
+          isAddressMatch,
+          husband,
+          wife,
+          husbandName: hName,
+          wifeName: wName,
+          husbandAge: hAge,
+          wifeAge: wAge,
+          husbandPhone: hTel,
+          wifePhone: wTel,
+          pibText: `${hName} та ${wName}`,
+          marriageYearsText: marriageYearsStr,
+          addressText: addr || '—',
+          phoneText: telStr,
+          rayon: husband.rayon2_ukr || wife.rayon2_ukr || '—',
+          presviter: husband.presviter || wife.presviter || '—',
+          vidviduvanist: husband.vidviduvanist || wife.vidviduvanist || '—',
+          prysutnist: husband.prysutnist || wife.prysutnist || '—',
+          slujinnya: slujList || '—'
+        });
+      } else {
+        processedIds.add(m.id);
+        const mYears = isMarried ? calculateMarriageYears(m.d_shlyubu) : null;
+        const marriageYearsStr = mYears !== null ? `${mYears} р.` : '—';
+        const partnerName = String(m.pib_partnera || '').trim();
+        const hasPartnerName = isMarried && partnerName && partnerName !== '—' && partnerName !== '-' && partnerName !== 'н/д';
+        const mGender = getGenderCat(m);
+        const isHusband = mGender === 'male' || (mGender === 'unknown' && (m.gender || m.stat || '').toLowerCase().includes('брат'));
+        const mAge = m.vik_rokiv1 !== undefined && m.vik_rokiv1 !== null && m.vik_rokiv1 !== '' ? String(m.vik_rokiv1) : '—';
+
+        let husbandName = '';
+        let wifeName = '';
+        let husbandAge = '';
+        let wifeAge = '';
+        let husbandPhone = '';
+        let wifePhone = '';
+
+        const mPhone = m.tel_mob || m.tel1 || '';
+
+        if (isHusband) {
+          husbandName = m.pib;
+          husbandAge = mAge;
+          husbandPhone = mPhone;
+          if (hasPartnerName && getGenderCatForName(partnerName) !== 'male') {
+            wifeName = partnerName;
+            wifeAge = '—';
+          }
+        } else {
+          wifeName = m.pib;
+          wifeAge = mAge;
+          wifePhone = mPhone;
+          if (hasPartnerName && getGenderCatForName(partnerName) !== 'female') {
+            husbandName = partnerName;
+            husbandAge = '—';
+          }
+        }
+
+        result.push({
+          id: `single_${m.id}`,
+          isCouple: false,
+          singleMember: m,
+          husbandName,
+          wifeName,
+          husbandAge,
+          wifeAge,
+          husbandPhone,
+          wifePhone,
+          pibText: (husbandName && wifeName) ? `${husbandName} та ${wifeName}` : m.pib,
+          marriageYearsText: marriageYearsStr,
+          addressText: cleanAddress(m.address) || '—',
+          phoneText: mPhone || '—',
+          rayon: m.rayon2_ukr || '—',
+          presviter: m.presviter || '—',
+          vidviduvanist: m.vidviduvanist || '—',
+          prysutnist: m.prysutnist || '—',
+          slujinnya: m.s_slujinnya_spysok || '—'
+        });
+      }
+    });
+
+    return result;
+  }, [combineCouples, filteredRecords, members]);
 
   const handleToggleColumn = (colKey: string) => {
     setSelectedColumns(prev => 
@@ -462,7 +1330,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
   const getReportHtmlContent = (autoPrint: boolean = false) => {
     const activeFiltersText: string[] = [];
-    if (selectedStatus && selectedStatus !== 'Всі') {
+    if (selectedStatus && selectedStatus !== 'Всі' && selectedStatus.trim().toLowerCase() !== 'наявні') {
       activeFiltersText.push(`Статус: ${selectedStatus}`);
       if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
         const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
@@ -477,177 +1345,214 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
     if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
     if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
+    if (selectedSimeyniy) {
+      let sVal = selectedSimeyniy.replace(/одр\./gi, 'одруж.');
+      if (isMarriedSelected && selectedFamilyType) {
+        sVal += ` (${selectedFamilyType} сім'я)`;
+      }
+      activeFiltersText.push(`Сім. стан: ${sVal}`);
+    }
+    if (selectedSocialniy) activeFiltersText.push(`Соц. стан: ${selectedSocialniy}`);
+    if (selectedProfesiya) activeFiltersText.push(`Професія: ${selectedProfesiya}`);
+    if (selectedOsvita) activeFiltersText.push(`Освіта: ${selectedOsvita}`);
+    if (selectedDilyntsya) activeFiltersText.push(`Дільниця: ${selectedDilyntsya}`);
+    if (selectedAgeMin || selectedAgeMax) activeFiltersText.push(`Вік: ${selectedAgeMin || 0}-${selectedAgeMax || '∞'} р.`);
 
     const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
     const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
     const todayString = new Date().toLocaleDateString('uk-UA') + " " + new Date().toLocaleTimeString('uk-UA');
 
-    let tableHeadersHtml = `<th style="width: 1%; white-space: nowrap; text-align: center;">№</th>`;
+    let tableHeadersHtml = `<th style="width: 40px; text-align: center;">№</th>`;
     displayColumns.forEach(col => {
       let label = col.label;
-      if (col.key === 'd_narodjennya') {
-        label = 'ДАТА<br/>НАРОДЖ.';
-      } else if (label.includes(' ')) {
-        label = label.replace(/\s+/g, '<br/>');
-      }
-      const textAlign = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key) ? 'center' : 'left';
-      tableHeadersHtml += `<th style="text-align: ${textAlign}; width: 1%; white-space: nowrap;">${label}</th>`;
+      if (col.key === 'd_narodjennya') label = 'ДАТА<br/>НАРОДЖ.';
+      else if (label.includes(' ')) label = label.replace(/\s+/g, '<br/>');
+      tableHeadersHtml += `<th style="text-align: ${['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key) ? 'center' : 'left'};">${label}</th>`;
     });
 
     let tableRowsHtml = "";
-    filteredRecords.forEach((m, idx) => {
-      let cellsHtml = "";
-      displayColumns.forEach(col => {
-        let cellVal = m[col.key as keyof Member];
-        if (cellVal === undefined || cellVal === null || cellVal === '') {
-          cellVal = '—';
-        } else if (col.key === 's_simeyniy_ukr') {
-          cellVal = formatMaritalStatus(cellVal);
-        }
-
-        if (col.key === 'd_narodjennya' && cellVal !== '—') {
-          try {
-            const parts = String(cellVal).split('-');
-            if (parts.length === 3) {
-              cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
-            }
-          } catch {}
-        }
-
-        // Special rendering matching report generator exactly
-        if (col.key === 'pib' && cellVal !== '—') {
-          const parts = String(cellVal).trim().split(/\s+/);
-          if (parts.length > 1) {
-            const lastName = parts[0];
-            const givenAndPatronymic = parts.slice(1).join(" ");
-            cellVal = `
-              <div style="
-                display: flex;
-                flex-direction: column;
-                align-items: flex-start;
-                justify-content: center;
-                height: 100%;
-                line-height: 1.25;
-              ">
-                <span style="font-weight: 700; color: #0f172a; display: block; white-space: nowrap;">${lastName}</span>
-                <span style="font-size: 10px; color: #475569; font-weight: 500; display: block; white-space: nowrap;">${givenAndPatronymic}</span>
-              </div>`;
-          } else {
-            cellVal = `
-              <div style="
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                height: 100%;
-                font-weight: 700;
-                color: #0f172a;
-                line-height: 1.25;
-                white-space: nowrap;
-              ">${cellVal}</div>`;
-          }
-        }
-        else if (col.key === 'address' && cellVal !== '—') {
-          const cleaned = cleanAddress(String(cellVal));
-          const commaIdx = cleaned.indexOf(',');
-          const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
-          if (commaIdx !== -1 && !startsWithStreet) {
-            const part1 = cleaned.substring(0, commaIdx).trim();
-            const part2 = cleaned.substring(commaIdx + 1).trim();
-            cellVal = `
-              <div style="
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                height: 100%;
-                text-align: left;
-                line-height: 1.25;
-              ">
-                <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 2px; white-space: nowrap;">${part1}</span>
-                <span style="font-weight: 400; color: #1e293b; display: block; white-space: nowrap;">${part2}</span>
-              </div>`;
-          } else {
-            cellVal = `
-              <div style="
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                height: 100%;
-                text-align: left;
-                line-height: 1.25;
-                white-space: nowrap;
-              ">
-                <span style="font-weight: 400; color: #1e293b; white-space: nowrap;">${cleaned}</span>
-              </div>`;
-          }
-        }
-        else if (col.key === 'tel_mob' && cellVal !== '—') {
-          const strVal = String(cellVal).trim();
-          if (strVal.includes(' / ')) {
-            cellVal = strVal.split(/\s*\/\s*/).map(num => `<span style="white-space: nowrap;">${num}</span>`).join('<br/>');
-          } else {
-            cellVal = `<span style="white-space: nowrap;">${strVal}</span>`;
-          }
-        }
-        else if (['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal !== '—') {
-          const style = getCellStyling(col.key, String(cellVal));
-          if (style) {
-            cellVal = `
-              <div style="
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-              ">
-                <span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${cellVal}</span>
-              </div>`;
-          }
-        }
-        else if (col.key === 's_slujinnya_spysok' && cellVal !== '—') {
-          const badges = String(cellVal).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(n => {
-            const style = getCellStyling('s_slujinnya_spysok', n);
-            if (style) {
-              return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${n}</span>`;
-            }
-            return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 600; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${n}</span>`;
-          });
-
-          const badgeRows: string[] = [];
-          for (let i = 0; i < badges.length; i += 2) {
-            const pair = badges.slice(i, i + 2).join('');
-            badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 2px;">${pair}</div>`);
-          }
-
-          cellVal = `
-            <div style="
-              line-height: 1.2;
-              text-align: left;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
-              gap: 2px;
-              height: 100%;
-            ">
-              ${badgeRows.join('')}
+    if (combineCouples) {
+      coupleGroupedRecords.forEach((c, idx) => {
+        let cellsHtml = "";
+        displayColumns.forEach(col => {
+          let cellVal: string = "—";
+          if (col.key === 'pib') {
+            cellVal = `<div style="line-height: 1.35;">
+              ${c.husbandName ? `<div style="font-weight: 700; color: #0f172a;">${c.husbandName}</div>` : ''}
+              ${c.wifeName ? `<div style="font-weight: 700; color: #0f172a;">${c.wifeName}</div>` : ''}
             </div>`;
-        }
+          } else if (col.key === 'vik_rokiv1') {
+            cellVal = `<div style="line-height: 1.35;">
+              ${c.husbandName ? `<div>${c.husbandAge}</div>` : ''}
+              ${c.wifeName ? `<div>${c.wifeAge}</div>` : ''}
+            </div>`;
+          } else if (col.key === 'vik_shlyubu') {
+            cellVal = `<span style="font-weight: 700; color: #0f766e;">${c.marriageYearsText}</span>`;
+          } else if (col.key === 'address') {
+            cellVal = `<span style="font-weight: 400; color: #1e293b;">${c.addressText}</span>`;
+          } else if (col.key === 'tel_mob') {
+            cellVal = `<span style="font-weight: 500; color: #334155;">${c.phoneText}</span>`;
+          } else if (col.key === 'rayon2_ukr') {
+            cellVal = c.rayon;
+          } else if (col.key === 'presviter') {
+            const style = getCellStyling('presviter', c.presviter);
+            cellVal = style ? `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap;">${c.presviter}</span>` : c.presviter;
+          } else if (col.key === 'vidviduvanist') {
+            const style = getCellStyling('vidviduvanist', c.vidviduvanist);
+            cellVal = style ? `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap;">${c.vidviduvanist}</span>` : c.vidviduvanist;
+          } else if (col.key === 'prysutnist') {
+            const style = getCellStyling('prysutnist', c.prysutnist);
+            cellVal = style ? `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap;">${c.prysutnist}</span>` : c.prysutnist;
+          } else if (col.key === 's_slujinnya_spysok') {
+            cellVal = c.slujinnya;
+          } else {
+            const m = c.husband || c.wife || c.singleMember;
+            cellVal = m ? String(m[col.key as keyof Member] || '—') : '—';
+          }
 
-        const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
-        const textAlign = isCenterVal ? 'center' : 'left';
-        if (col.key === 'pib' || col.key === 'address' || col.key === 'tel_mob') {
-          cellsHtml += `<td style="text-align: ${textAlign};">${cellVal}</td>`;
-        } else {
-          cellsHtml += `<td style="text-align: ${textAlign}; white-space: nowrap;">${cellVal}</td>`;
-        }
+          const isCenterVal = ['vik_shlyubu', 'd_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+          const textAlign = isCenterVal ? 'center' : 'left';
+          cellsHtml += `<td style="text-align: ${textAlign}; vertical-align: middle; padding: 8px 6px;">${cellVal}</td>`;
+        });
+
+        const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
+        tableRowsHtml += `
+          <tr style="background-color: ${rowBg};">
+            <td style="text-align: center; vertical-align: middle; padding: 8px 6px; color: #64748b; font-weight: 500; white-space: nowrap;">${idx + 1}</td>
+            ${cellsHtml}
+          </tr>
+        `;
       });
+    } else {
+      filteredRecords.forEach((m, idx) => {
+        let cellsHtml = "";
+        displayColumns.forEach(col => {
+          let cellVal = m[col.key as keyof Member];
+          if (cellVal === undefined || cellVal === null || cellVal === '') {
+            cellVal = '—';
+          } else if (col.key === 's_simeyniy_ukr') {
+            cellVal = formatMaritalStatus(cellVal);
+          } else if (col.key === 'vik_shlyubu') {
+            const yrs = calculateMarriageYears(m.d_shlyubu);
+            cellVal = yrs !== null ? `${yrs} р.` : '—';
+          }
 
-      const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
-      tableRowsHtml += `
-        <tr style="background-color: ${rowBg};">
-          <td style="text-align: center; color: #64748b; font-weight: 500; white-space: nowrap;">${idx + 1}</td>
-          ${cellsHtml}
-        </tr>
-      `;
-    });
+          if (col.key === 'd_narodjennya' && cellVal !== '—') {
+            try {
+              const parts = String(cellVal).split('-');
+              if (parts.length === 3) {
+                cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
+              }
+            } catch {}
+          } else if (col.key === 'd_kontaktiv' && cellVal !== '—') {
+            cellVal = parseAndNormalizeContactDates(String(cellVal)).join(', ');
+          }
+
+          // Special rendering matching report generator exactly
+          if (col.key === 'pib' && cellVal !== '—') {
+            // Ensure it's just the name in one line
+            const sanitizedVal = String(cellVal).trim().replace(/\n/g, ' ').replace(/<br\s*\/?>/gi, ' ');
+            cellVal = `<span style="font-weight: 700; color: #0f172a; white-space: nowrap;">${sanitizedVal}</span>`;
+          }
+          else if (col.key === 'address' && cellVal !== '—') {
+            const cleaned = cleanAddress(String(cellVal));
+            const commaIdx = cleaned.indexOf(',');
+            const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+            if (commaIdx !== -1 && !startsWithStreet) {
+              const part1 = cleaned.substring(0, commaIdx).trim();
+              const part2 = cleaned.substring(commaIdx + 1).trim();
+              cellVal = `
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  height: 100%;
+                  text-align: left;
+                  line-height: 1.25;
+                ">
+                  <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 2px; white-space: nowrap;">${part1}</span>
+                  <span style="font-weight: 400; color: #1e293b; display: block; white-space: nowrap;">${part2}</span>
+                </div>`;
+            } else {
+              cellVal = `
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  height: 100%;
+                  text-align: left;
+                  line-height: 1.25;
+                  white-space: nowrap;
+                ">
+                  <span style="font-weight: 400; color: #1e293b; white-space: nowrap;">${cleaned}</span>
+                </div>`;
+            }
+          }
+          else if (col.key === 'tel_mob' && cellVal !== '—') {
+            const strVal = String(cellVal).trim();
+            if (strVal.includes(' / ')) {
+              cellVal = strVal.split(/\s*\/\s*/).map(num => `<span style="white-space: nowrap;">${num}</span>`).join('<br/>');
+            } else {
+              cellVal = `<span style="white-space: nowrap;">${strVal}</span>`;
+            }
+          }
+          else if (['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal !== '—') {
+            const style = getCellStyling(col.key, String(cellVal));
+            if (style) {
+              cellVal = `
+                <div style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  height: 100%;
+                ">
+                  <span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${cellVal}</span>
+                </div>`;
+            }
+          }
+          else if (col.key === 's_slujinnya_spysok' && cellVal !== '—') {
+            const badges = String(cellVal).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map(n => {
+              const style = getCellStyling('s_slujinnya_spysok', n);
+              if (style) {
+                return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${n}</span>`;
+              }
+              return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5px; border-radius: 9999px; font-size: 8px; font-weight: 600; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1; margin: 0.5px; box-sizing: border-box;">${n}</span>`;
+            });
+
+            const badgeRows: string[] = [];
+            for (let i = 0; i < badges.length; i += 2) {
+              const pair = badges.slice(i, i + 2).join('');
+              badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 2px;">${pair}</div>`);
+            }
+
+            cellVal = `
+              <div style="
+                line-height: 1.2;
+                text-align: left;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                gap: 2px;
+                height: 100%;
+              ">
+                ${badgeRows.join('')}
+              </div>`;
+          }
+
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+          const textAlign = isCenterVal ? 'center' : 'left';
+          cellsHtml += `<td style="text-align: ${textAlign}; vertical-align: middle; padding: 12px 6px; ${col.key !== 'pib' && col.key !== 'address' && col.key !== 'tel_mob' ? 'white-space: nowrap;' : ''}">${cellVal}</td>`;
+        });
+
+        const rowBg = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
+        tableRowsHtml += `
+          <tr style="background-color: ${rowBg};">
+            <td style="text-align: center; vertical-align: middle; padding: 12px 6px; color: #64748b; font-weight: 500; white-space: nowrap;">${idx + 1}</td>
+            ${cellsHtml}
+          </tr>
+        `;
+      });
+    }
 
     const recordsWord = filteredRecords.length % 10 === 1 && filteredRecords.length % 100 !== 11
       ? 'особа'
@@ -741,24 +1646,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         .filters-spec {
             color: #334155;
             font-weight: 500;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            margin-top: 10px;
-        }
-        th {
-            background-color: #e2e8f0;
-            color: #0f172a;
-            font-weight: 700;
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            border: 1px solid #94a3b8;
-            padding: 3.5px 5px;
-            vertical-align: middle;
-            line-height: 1.25;
         }
         td {
             border: 1px solid #cbd5e1;
@@ -856,12 +1743,9 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
             .no-print-btn-container {
                 display: none;
             }
-            tr {
+            .row {
                 page-break-inside: avoid;
                 break-inside: avoid;
-            }
-            thead {
-                display: table-header-group;
             }
         }
     </style>
@@ -957,17 +1841,18 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     }
   };
 
-  const handlePrint = async () => {
-    if (filteredRecords.length === 0) {
+  const buildPdfDoc = async (withBadgesOverride?: boolean): Promise<{ pdfBase64: string; blob: Blob } | null> => {
+    const withBadges = withBadgesOverride !== undefined ? withBadgesOverride : printColors;
+    const recordsToRender = combineCouples ? coupleGroupedRecords : filteredRecords;
+    if (recordsToRender.length === 0) {
       alert("Сформований список порожній. Будь ласка, змініть фільтри.");
-      return;
+      return null;
     }
 
-    setPdfGenerating(true);
-
+    let container: HTMLDivElement | null = null;
     try {
       const activeFiltersText: string[] = [];
-      if (selectedStatus && selectedStatus !== 'Всі') {
+      if (selectedStatus && selectedStatus !== 'Всі' && selectedStatus.trim().toLowerCase() !== 'наявні') {
         activeFiltersText.push(`Статус: ${selectedStatus}`);
         if (selectedStatus === 'Вибулі' && selectedVybuttyaId) {
           const found = lookups?.vybuv?.find((v: any) => String(v.ID) === selectedVybuttyaId);
@@ -982,6 +1867,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
       if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
       if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
+      if (selectedSimeyniy) activeFiltersText.push(`Сім. стан: ${selectedSimeyniy}`);
+      if (selectedSocialniy) activeFiltersText.push(`Соц. стан: ${selectedSocialniy}`);
+      if (selectedProfesiya) activeFiltersText.push(`Професія: ${selectedProfesiya}`);
+      if (selectedOsvita) activeFiltersText.push(`Освіта: ${selectedOsvita}`);
+      if (selectedDilyntsya) activeFiltersText.push(`Дільниця: ${selectedDilyntsya}`);
+      if (selectedAgeMin || selectedAgeMax) activeFiltersText.push(`Вік: ${selectedAgeMin || 0}-${selectedAgeMax || '∞'} р.`);
 
       const filterSpec = activeFiltersText.length > 0 ? activeFiltersText.join(' | ') : 'Всі члени церкви';
       const displayColumns = AVAILABLE_COLUMNS.filter(c => selectedColumns.includes(c.key));
@@ -991,115 +1882,244 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       container.style.position = 'absolute';
       container.style.left = '-9999px';
       container.style.top = '0px';
-      container.style.width = '1120px';
       container.style.background = '#ffffff';
       container.style.color = '#000000';
       document.body.appendChild(container);
 
-      // Estimate adaptive column widths based on content lengths
+      // Calculate dynamic content-based natural widths for every column
       const estimatedWidths: Record<string, number> = {};
-      let totalEstimatedOthers = 0;
 
       displayColumns.forEach(col => {
         if (col.key === 'pib') return;
 
-        let maxLength = col.label.replace('<br/>', '').length;
+        // Measure max header line length
+        const headerLines = col.label.replace(/<br\s*\/?>/gi, '\n').split('\n');
+        let maxHeaderLen = headerLines.reduce((max, l) => l.length > max ? l.length : max, 0);
 
-        filteredRecords.forEach(m => {
-          let val = m[col.key as keyof Member];
-          if (val !== undefined && val !== null && val !== '') {
-            let strVal = String(val).trim();
-            if (col.key === 'd_narodjennya') {
-              strVal = '21.05.1947';
-            } else if (col.key === 'tel_mob') {
-              if (strVal.includes(' / ')) {
-                const parts = strVal.split(/\s*\/\s*/);
+        let maxValLen = maxHeaderLen;
+
+        if (combineCouples) {
+          coupleGroupedRecords.forEach(c => {
+            let strVal = '—';
+            if (col.key === 'vik_shlyubu') strVal = c.marriageYearsText;
+            else if (col.key === 'vik_rokiv1') strVal = c.husbandAge && c.wifeAge ? `${c.husbandAge} ${c.wifeAge}` : (c.husbandAge || c.wifeAge || '—');
+            else if (col.key === 'd_kontaktiv') {
+              const dVal = c.husband?.d_kontaktiv || c.wife?.d_kontaktiv || c.singleMember?.d_kontaktiv;
+              const res = formatContactDatesTwoRows(dVal);
+              strVal = 'X'.repeat(res.maxLineLen);
+            }
+            else if (col.key === 'address') {
+              const addr = c.addressText;
+              if (addr && addr !== '—') {
+                const cleaned = cleanAddress(addr);
+                const commaIdx = cleaned.indexOf(',');
+                const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+                if (commaIdx !== -1 && !startsWithStreet) {
+                  const part1 = cleaned.substring(0, commaIdx).trim();
+                  const part2 = cleaned.substring(commaIdx + 1).trim();
+                  strVal = part1.length > part2.length ? part1 : part2;
+                } else {
+                  strVal = cleaned;
+                }
+              }
+            }
+            else if (col.key === 'tel_mob') {
+              const getPhoneMaxLen = (pStr?: string) => {
+                if (!pStr || pStr === '—') return 0;
+                const parts = pStr.split(/[,;\/]+/).map(p => p.trim()).filter(Boolean);
+                return parts.reduce((max, cur) => cur.length > max ? cur.length : max, 0);
+              };
+              const maxL = Math.max(
+                getPhoneMaxLen(c.husbandPhone),
+                getPhoneMaxLen(c.wifePhone),
+                getPhoneMaxLen(c.phoneText)
+              );
+              strVal = 'X'.repeat(maxL);
+            }
+            else if (col.key === 'rayon2_ukr') strVal = c.rayon;
+            else if (col.key === 'presviter') strVal = c.presviter;
+            else if (col.key === 'vidviduvanist') strVal = c.vidviduvanist;
+            else if (col.key === 'prysutnist') strVal = c.prysutnist;
+            else if (col.key === 's_slujinnya_spysok') {
+              const str = c.slujinnya || '';
+              const badges = str.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+              const maxSingleLen = badges.reduce((max, b) => b.length > max ? b.length : max, 0);
+              strVal = badges.length > 0 ? 'X'.repeat(maxSingleLen) : '—';
+            }
+            else {
+              const m = c.husband || c.wife || c.singleMember;
+              if (m) strVal = String(m[col.key as keyof Member] || '—');
+            }
+            if (strVal && strVal !== '—' && strVal.length > maxValLen) {
+              maxValLen = strVal.length;
+            }
+          });
+        } else {
+          filteredRecords.forEach(m => {
+            let val = m[col.key as keyof Member];
+            if (val !== undefined && val !== null && val !== '') {
+              let strVal = String(val).trim();
+              if (col.key === 's_simeyniy_ukr') {
+                strVal = formatMaritalStatus(strVal);
+              } else if (col.key === 'vik_shlyubu') {
+                const yrs = calculateMarriageYears(m.d_shlyubu);
+                strVal = yrs !== null ? `${yrs} р.` : '—';
+              } else if (col.key === 'd_narodjennya') {
+                strVal = '21.05.1947';
+              } else if (col.key === 'd_kontaktiv') {
+                const res = formatContactDatesTwoRows(strVal);
+                strVal = 'X'.repeat(res.maxLineLen);
+              } else if (col.key === 'tel_mob') {
+                const parts = strVal.split(/[,;\/]+/).map(p => p.trim()).filter(Boolean);
                 strVal = parts.reduce((max, cur) => cur.length > max.length ? cur : max, '');
+              } else if (col.key === 's_slujinnya_spysok') {
+                const badges = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                const maxSingleLen = badges.reduce((max, b) => b.length > max ? b.length : max, 0);
+                strVal = badges.length > 0 ? 'X'.repeat(maxSingleLen) : '—';
+              } else if (col.key === 'address') {
+                const cleaned = cleanAddress(strVal);
+                const commaIdx = cleaned.indexOf(',');
+                const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+                if (commaIdx !== -1 && !startsWithStreet) {
+                  const part1 = cleaned.substring(0, commaIdx).trim();
+                  const part2 = cleaned.substring(commaIdx + 1).trim();
+                  strVal = part1.length > part2.length ? part1 : part2;
+                } else {
+                  strVal = cleaned;
+                }
               }
-            } else if (col.key === 's_slujinnya_spysok') {
-              const badges = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-              if (badges.length > 1) {
-                strVal = badges[0] + " " + (badges[1] || "");
-              } else {
-                strVal = badges[0] || "";
-              }
-            } else if (col.key === 'address') {
-              const cleaned = cleanAddress(strVal);
-              const commaIdx = cleaned.indexOf(',');
-              const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
-              if (commaIdx !== -1 && !startsWithStreet) {
-                const part1 = cleaned.substring(0, commaIdx).trim();
-                const part2 = cleaned.substring(commaIdx + 1).trim();
-                strVal = part1.length > part2.length ? part1 : part2;
-              } else {
-                strVal = cleaned;
+              if (strVal.length > maxValLen) {
+                maxValLen = strVal.length;
               }
             }
-            if (strVal.length > maxLength) {
-              maxLength = strVal.length;
-            }
-          }
-        });
-
-        let charWidth = 6.2;
-        if (['vidviduvanist', 'prysutnist', 'presviter'].includes(col.key)) {
-          charWidth = 7.5;
+          });
         }
-        let estWidth = Math.max(50, Math.floor(maxLength * charWidth) + 16);
 
-        if (col.key === 'vik_rokiv1' || col.key === 'stat') {
-          estWidth = 38;
-        } else if (col.key === 'd_narodjennya') {
-          estWidth = 70;
+        let charWidth = 6.6;
+        let estWidth = Math.max(42, Math.floor(maxValLen * charWidth) + 14);
+
+        // Clamped bounds for specific structured columns to ensure proper proportion
+        if (col.key === 'vik_rokiv1' || col.key === 'vik_shlyubu') {
+          estWidth = Math.max(32, Math.min(50, Math.floor(maxValLen * 6.0) + 12));
+        } else if (col.key === 'stat') {
+          estWidth = Math.max(38, Math.min(50, Math.floor(maxValLen * 6.2) + 12));
+        } else if (col.key === 'd_narodjennya' || col.key === 'd_khreshchennya' || col.key === 'd_pruyniatia') {
+          estWidth = Math.max(68, Math.min(78, Math.floor(maxValLen * 6.5) + 12));
+        } else if (col.key === 'd_kontaktiv') {
+          estWidth = Math.max(65, Math.min(105, Math.floor(maxValLen * 6.5) + 12));
         } else if (col.key === 'tel_mob') {
-          estWidth = 90;
+          estWidth = Math.max(85, Math.min(115, Math.floor(maxValLen * 6.8) + 16));
         } else if (col.key === 'address') {
-          estWidth = Math.min(220, Math.max(120, estWidth));
+          estWidth = Math.max(90, Math.min(170, Math.floor(maxValLen * 6.2) + 16));
+        } else if (col.key === 'status_nazva') {
+          estWidth = Math.max(60, Math.min(85, estWidth));
+        } else if (col.key === 's_simeyniy_ukr') {
+          estWidth = Math.max(65, Math.min(85, estWidth));
+        } else if (col.key === 'vidviduvanist') {
+          estWidth = Math.max(72, Math.min(95, estWidth));
+        } else if (col.key === 'prysutnist') {
+          estWidth = Math.max(75, Math.min(100, estWidth));
+        } else if (col.key === 'presviter') {
+          estWidth = Math.max(75, Math.min(110, estWidth));
+        } else if (col.key === 's_slujinnya_spysok') {
+          estWidth = Math.max(55, Math.min(105, estWidth));
+        } else if (col.key === 'rayon2_ukr') {
+          estWidth = Math.max(75, Math.min(110, estWidth));
+        } else if (col.key === 'n_dilyci') {
+          estWidth = Math.max(55, Math.min(85, estWidth));
         }
 
         estimatedWidths[col.key] = estWidth;
-        totalEstimatedOthers += estWidth;
       });
 
-      let maxPibLength = 10;
-      filteredRecords.forEach(m => {
-        let val = m.pib;
-        if (val) {
-          const parts = String(val).trim().split(/\s+/);
-          const lastName = parts[0] || '';
-          const givenAndPatronymic = parts.slice(1).join(" ") || '';
-          const maxLine = lastName.length > givenAndPatronymic.length ? lastName.length : givenAndPatronymic.length;
-          if (maxLine > maxPibLength) {
-            maxPibLength = maxLine;
+      // Measure PIB content line length naturally (2 rows)
+      let maxPibLineLen = 10;
+      if (combineCouples) {
+        coupleGroupedRecords.forEach(c => {
+          if (c.husbandName) {
+            const l = formatPibTwoLines(c.husbandName).maxLineLen;
+            if (l > maxPibLineLen) maxPibLineLen = l;
           }
+          if (c.wifeName) {
+            const l = formatPibTwoLines(c.wifeName).maxLineLen;
+            if (l > maxPibLineLen) maxPibLineLen = l;
+          }
+        });
+      } else {
+        filteredRecords.forEach(m => {
+          if (m.pib) {
+            const l = formatPibTwoLines(m.pib).maxLineLen;
+            if (l > maxPibLineLen) maxPibLineLen = l;
+          }
+        });
+      }
+      const pibEstimatedWidth = Math.max(85, Math.min(155, Math.floor(maxPibLineLen * 6.8) + 16));
+
+      // Index column № natural width based on count of records
+      const maxIndexDigits = String(recordsToRender.length).length;
+      const indexColWidth = Math.max(28, Math.min(40, maxIndexDigits * 7 + 16));
+
+      // Columns that have compact, rigid width bounds
+      const compactKeys = ['vik_rokiv1', 'stat', 'd_narodjennya', 'd_khreshchennya', 'd_pruyniatia', 'tel_mob', 'n_dilyci'];
+
+      let compactSum = indexColWidth;
+      let flexNaturalSum = 0;
+
+      displayColumns.forEach(col => {
+        const rawNat = col.key === 'pib' ? pibEstimatedWidth : (estimatedWidths[col.key] || 60);
+        const weight = col.key === 'pib' ? 1.2 : 1.0;
+        const nat = Math.floor(rawNat * weight);
+
+        if (compactKeys.includes(col.key)) {
+          compactSum += rawNat;
+        } else {
+          flexNaturalSum += nat;
         }
       });
-      const pibEstimatedWidth = Math.max(120, Math.floor(maxPibLength * 7) + 20);
 
-      const totalTableWidth = 1040; // 1120px - 80px (padding)
-      const indexColWidth = 45;
-      const remainingWidth = totalTableWidth - indexColWidth;
+      const totalNaturalWidth = compactSum + flexNaturalSum;
 
-      const sumAllEstimated = totalEstimatedOthers + (displayColumns.some(c => c.key === 'pib') ? pibEstimatedWidth : 0);
+      // Automatically determine if Portrait or Landscape mode should be used
+      const isLandscape = totalNaturalWidth > 732 || displayColumns.length >= 7;
+      const targetWidth = isLandscape ? 1040 : 732;
+      const pageWidthPx = isLandscape ? 1120 : 792;
+      const pageHeightPx = isLandscape ? 792 : 1120;
+      const pagePadding = isLandscape ? '38px 40px' : '36px 30px';
+      const maxContentHeight = isLandscape ? 625 : 940;
+
+      container.style.width = `${pageWidthPx}px`;
+
+      // Auto-scale font size and column widths if total table width exceeds target printable width for A4
+      let scaleFactor = 1.0;
+      if (totalNaturalWidth > targetWidth) {
+        scaleFactor = targetWidth / totalNaturalWidth;
+      }
 
       const colWidthsPx: Record<string, number> = {};
       displayColumns.forEach(col => {
-        if (col.key === 'pib') {
-          colWidthsPx[col.key] = Math.floor((pibEstimatedWidth / sumAllEstimated) * remainingWidth);
-        } else {
-          const est = estimatedWidths[col.key];
-          colWidthsPx[col.key] = Math.floor((est / sumAllEstimated) * remainingWidth);
-        }
+        const rawNat = col.key === 'pib' ? pibEstimatedWidth : (estimatedWidths[col.key] || 60);
+        colWidthsPx[col.key] = Math.max(24, Math.floor(rawNat * scaleFactor));
       });
+      const scaledIndexColWidth = Math.max(20, Math.floor(indexColWidth * scaleFactor));
 
+      const actualTableWidth = scaledIndexColWidth + displayColumns.reduce((sum, col) => sum + (colWidthsPx[col.key] || 0), 0);
+      const contentBlockWidth = Math.min(targetWidth, Math.max(actualTableWidth, 480));
+
+      // Scaled font sizes and cell padding for fitting A4
+      const cellFontSize = Math.max(6.5, Math.round(10 * scaleFactor * 10) / 10);
+      const headerFontSize = Math.max(6.5, Math.round(10 * scaleFactor * 10) / 10);
+      const cellPadV = Math.max(1.5, Math.round(3 * scaleFactor * 10) / 10);
+      const cellPadH = Math.max(2, Math.round(5 * scaleFactor * 10) / 10);
+
+      // Container width for header, table, and footer elements so they align cohesively with the natural table width
       const styleEl = document.createElement('style');
       styleEl.innerHTML = `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         .pdf-page {
-          width: 1120px;
-          height: 792px;
+          width: ${pageWidthPx}px;
+          height: ${pageHeightPx}px;
           box-sizing: border-box;
-          padding: 38px 40px;
+          padding: ${pagePadding};
           position: relative;
           background-color: #ffffff;
           display: flex;
@@ -1111,8 +2131,10 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
         .header {
           border-bottom: 2px solid #334155;
-          padding-bottom: 12px;
-          margin-bottom: 12px;
+          padding-bottom: 10px;
+          margin-bottom: 10px;
+          width: ${contentBlockWidth}px;
+          box-sizing: border-box;
         }
         .title-row {
           display: flex;
@@ -1120,7 +2142,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           align-items: flex-end;
         }
         .title {
-          font-size: 20px;
+          font-size: 18px;
           font-weight: 700;
           color: #1e293b;
           margin: 0;
@@ -1141,9 +2163,11 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           border-radius: 4px;
           color: #334155;
           font-weight: 500;
+          width: ${contentBlockWidth}px;
+          box-sizing: border-box;
         }
         .table-container {
-          width: 1040px;
+          width: ${actualTableWidth}px;
           margin-top: 10px;
           border-top: 1px solid #cbd5e1;
           border-left: 1px solid #cbd5e1;
@@ -1159,7 +2183,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           border-bottom: 1px solid #cbd5e1;
           box-sizing: border-box;
           background-color: #ffffff;
-          width: 1040px;
+          width: ${actualTableWidth}px;
         }
         .table-row.header-row {
           background-color: #f1f5f9;
@@ -1168,31 +2192,33 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         .header-cell {
           color: #0f172a;
           font-weight: 600;
-          font-size: 10px;
-          padding: 4px 6px;
+          font-size: ${headerFontSize}px;
+          padding: ${cellPadV}px ${cellPadH}px;
           text-transform: uppercase;
           letter-spacing: 0.3px;
           display: flex;
           align-items: center;
+          align-content: center;
           box-sizing: border-box;
-          min-height: 30px;
+          min-height: 28px;
           height: auto;
-          line-height: 1.1;
+          line-height: 1.15;
         }
         .header-cell:not(:last-child) {
           border-right: 1px solid #cbd5e1;
         }
         .table-cell {
-          font-size: 10px;
+          font-size: ${cellFontSize}px;
           color: #1e293b;
-          padding: 3px 6px;
+          padding: ${cellPadV}px ${cellPadH}px;
           display: flex;
           align-items: center;
+          align-content: center;
           justify-content: flex-start;
           align-self: stretch;
           box-sizing: border-box;
           min-height: 26px;
-          height: 100%;
+          line-height: 1.25;
           overflow: hidden;
         }
         .table-cell:not(:last-child) {
@@ -1212,6 +2238,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           justify-content: space-between;
           border-top: 1px solid #cbd5e1;
           padding-top: 8px;
+          width: ${contentBlockWidth}px;
+          box-sizing: border-box;
         }
       `;
       container.appendChild(styleEl);
@@ -1258,10 +2286,12 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         headerRow.className = 'table-row header-row';
         
         let headerHtml = `
-          <div class="header-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; text-align: center;">№</div>
+          <div class="header-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; align-items: center; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; width: 100%; margin: auto 0; text-align: center;">№</div>
+          </div>
         `;
         displayColumns.forEach(col => {
-          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr', 'vik_shlyubu'].includes(col.key);
           const justify = isCenterVal ? 'center' : 'flex-start';
           const textAlign = isCenterVal ? 'center' : 'left';
           let label = col.label;
@@ -1270,7 +2300,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           } else if (label.includes(' ')) {
             label = label.replace(/\s+/g, '<br/>');
           }
-          headerHtml += `<div class="header-cell" style="width: ${colWidthsPx[col.key]}px; flex: 0 0 ${colWidthsPx[col.key]}px; justify-content: ${justify}; text-align: ${textAlign};">${label}</div>`;
+          headerHtml += `<div class="header-cell" style="width: ${colWidthsPx[col.key]}px; flex: 0 0 ${colWidthsPx[col.key]}px; justify-content: ${justify}; align-items: center; text-align: ${textAlign};"><div style="display: flex; align-items: center; justify-content: ${justify}; width: 100%; margin: auto 0; text-align: ${textAlign};">${label}</div></div>`;
         });
         
         headerRow.innerHTML = headerHtml;
@@ -1285,8 +2315,10 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 
         const footerDiv = document.createElement('div');
         footerDiv.className = 'totals';
+        const totalCount = combineCouples ? coupleGroupedRecords.length : filteredRecords.length;
+        const totalWord = combineCouples ? 'пар / сімей' : 'осіб';
         footerDiv.innerHTML = `
-          <span>Всього у сформованому списку: ${filteredRecords.length} осіб</span>
+          <span>Всього у сформованому списку: ${totalCount} ${totalWord}</span>
           <span class="page-num-indicator">${pageNumPlaceholder}</span>
           <span>База даних Церкви</span>
         `;
@@ -1299,284 +2331,253 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
       let current = createPageElement("PAGE_NUM");
       pages.push(current);
 
-      for (let idx = 0; idx < filteredRecords.length; idx++) {
-        const m = filteredRecords[idx];
+      for (let idx = 0; idx < recordsToRender.length; idx++) {
         const tr = document.createElement('div');
         tr.className = 'table-row';
         tr.style.backgroundColor = idx % 2 === 1 ? '#f8fafc' : '#ffffff';
 
         let cellsHtml = `
-          <div class="table-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; text-align: center; color: #64748b; font-weight: 500;">
-            ${idx + 1}
+          <div class="table-cell" style="width: ${indexColWidth}px; flex: 0 0 ${indexColWidth}px; justify-content: center; align-items: center; text-align: center; color: #64748b; font-weight: 500;">
+            <div style="display: flex; align-items: center; justify-content: center; width: 100%; margin: auto 0; text-align: center;">${idx + 1}</div>
           </div>
         `;
 
-        cellsHtml += displayColumns.map(col => {
-          const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
-          const justify = isCenterVal ? 'center' : 'flex-start';
-          const textAlign = isCenterVal ? 'center' : 'left';
-          
-          let cellVal = m[col.key as keyof Member] || '—';
-          if (col.key === 's_simeyniy_ukr' && cellVal !== '—') {
-            cellVal = formatMaritalStatus(cellVal);
-          }
-          
-          if (col.key === 'd_narodjennya' && cellVal) {
-            try {
-              const parts = String(cellVal).split('-');
-              if (parts.length === 3) {
-                cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
-              }
-            } catch (e) {}
-          }
+        if (combineCouples) {
+          const c = coupleGroupedRecords[idx];
+          cellsHtml += displayColumns.map(col => {
+            const isCenterVal = ['vik_shlyubu', 'd_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+            const justify = isCenterVal ? 'center' : 'flex-start';
+            const textAlign = isCenterVal ? 'center' : 'left';
 
-          if (col.key === 'pib' && cellVal && cellVal !== '—') {
-            const parts = String(cellVal).trim().split(/\s+/);
-            if (parts.length > 1) {
-              const lastName = parts[0];
-              const givenAndPatronymic = parts.slice(1).join(" ");
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  align-items: flex-start;
-                  justify-content: center;
-                  height: 100%;
-                  line-height: 1.25;
-                ">
-                  <span style="font-weight: 700; color: #0f172a; display: block;">${lastName}</span>
-                  <span style="font-size: 10px; color: #475569; font-weight: 500; display: block;">${givenAndPatronymic}</span>
-                </div>`;
-            } else {
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  height: 100%;
-                  font-weight: 700;
-                  color: #0f172a;
-                  line-height: 1.25;
-                ">${cellVal}</div>`;
-            }
-          }
-          else if (col.key === 'address' && cellVal && cellVal !== '—') {
-            const cleaned = cleanAddress(cellVal);
-            const commaIdx = cleaned.indexOf(',');
-            const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
-            if (commaIdx !== -1 && !startsWithStreet) {
-              const part1 = cleaned.substring(0, commaIdx).trim();
-              const part2 = cleaned.substring(commaIdx + 1).trim();
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  height: 100%;
-                  text-align: left;
-                  line-height: 1.25;
-                ">
-                  <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 2px;">${part1}</span>
-                  <span style="font-weight: 400; color: #1e293b; display: block;">${part2}</span>
-                </div>`;
-            } else {
-              cellVal = `
-                <div style="
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  height: 100%;
-                  text-align: left;
-                  font-weight: 400;
-                  color: #1e293b;
-                  line-height: 1.25;
-                ">${cleaned}</div>`;
-            }
-          }
-          else {
-            if (col.key === 'presviter' && cellVal && cellVal !== '—') {
-              const style = getCellStyling('presviter', String(cellVal));
-              if (style) {
-                cellVal = `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 2.5px 7px;
-                    border-radius: 9999px;
-                    font-size: 8.5px;
-                    font-weight: 700;
-                    border: 1px solid ${style.border};
-                    background-color: ${style.bg};
-                    color: ${style.text};
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 1.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${cellVal}
-                  </span>`;
-              }
-            }
-            else if (col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
-              const style = getCellStyling('vidviduvanist', String(cellVal));
-              if (style) {
-                cellVal = `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 2.5px 7px;
-                    border-radius: 9999px;
-                    font-size: 8.5px;
-                    font-weight: 700;
-                    border: 1px solid ${style.border};
-                    background-color: ${style.bg};
-                    color: ${style.text};
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 1.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${cellVal}
-                  </span>`;
-              }
-            }
-            else if (col.key === 'prysutnist' && cellVal && cellVal !== '—') {
-              const style = getCellStyling('prysutnist', String(cellVal));
-              if (style) {
-                cellVal = `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 2.5px 7px;
-                    border-radius: 9999px;
-                    font-size: 8.5px;
-                    font-weight: 700;
-                    border: 1px solid ${style.border};
-                    background-color: ${style.bg};
-                    color: ${style.text};
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 1.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${cellVal}
-                  </span>`;
-              }
-            }
-            else if (col.key === 'tel_mob' && cellVal && cellVal !== '—') {
-              const strVal = String(cellVal).trim();
-              if (strVal.includes(' / ')) {
-                cellVal = `
-                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.25;">
-                    ${strVal.split(/\s*\/\s*/).map(p => `<span style="white-space: nowrap;">${p}</span>`).join('')}
-                  </div>`;
+            let cellVal: string = '—';
+            if (col.key === 'pib') {
+              const p1 = c.husbandName ? formatPibTwoLines(c.husbandName).fullHtml : '';
+              const p2 = c.wifeName ? formatPibTwoLines(c.wifeName).fullHtml : '';
+              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.25; gap: 3px;">
+                ${p1}
+                ${p1 && p2 ? `<div style="border-top: 1px dashed #cbd5e1; margin: 1px 0;"></div>` : ''}
+                ${p2}
+              </div>`;
+            } else if (col.key === 'vik_rokiv1') {
+              cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.35;">
+                ${c.husbandName ? `<span style="white-space: nowrap;">${c.husbandAge}</span>` : ''}
+                ${c.wifeName ? `<span style="white-space: nowrap;">${c.wifeAge}</span>` : ''}
+              </div>`;
+            } else if (col.key === 'vik_shlyubu') {
+              cellVal = `<span style="font-weight: 700; color: #0f766e; white-space: nowrap; line-height: 1.35; display: inline-block;">${c.marriageYearsText}</span>`;
+            } else if (col.key === 'd_kontaktiv') {
+              const dVal = c.husband?.d_kontaktiv || c.wife?.d_kontaktiv || c.singleMember?.d_kontaktiv;
+              cellVal = formatContactDatesTwoRows(dVal).fullHtml;
+            } else if (col.key === 'address') {
+              const cleaned = cleanAddress(c.addressText);
+              const commaIdx = cleaned.indexOf(',');
+              const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+              if (commaIdx !== -1 && !startsWithStreet) {
+                const part1 = cleaned.substring(0, commaIdx).trim();
+                const part2 = cleaned.substring(commaIdx + 1).trim();
+                cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.2;"><span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 1px;">${part1}</span><span style="font-weight: 400; color: #1e293b; display: block;">${part2}</span></div>`;
               } else {
-                cellVal = `<span style="white-space: nowrap;">${strVal}</span>`;
+                cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; font-weight: 400; color: #1e293b; line-height: 1.2;">${cleaned}</div>`;
               }
-            }
-            else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
-              const strVal = String(cellVal).trim();
-              const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
-              
-              const badgeHtmls = names.map(name => {
-                const style = getCellStyling('s_slujinnya_spysok', name);
-                const paddingStyle = "padding: 1.5px 5px;";
-                const fontSizeStyle = "font-size: 8px;";
-                if (style) {
-                  return `
-                    <span style="
-                      display: inline-flex;
-                      align-items: center;
-                      justify-content: center;
-                      ${paddingStyle}
-                      border-radius: 9999px;
-                      ${fontSizeStyle}
-                      font-weight: 700;
-                      border: 1px solid ${style.border};
-                      background-color: ${style.bg};
-                      color: ${style.text};
-                      white-space: nowrap;
-                      line-height: 1;
-                      text-align: center;
-                      vertical-align: middle;
-                      margin: 0.5px;
-                      box-sizing: border-box;
-                    ">
-                      ${name}
-                    </span>`;
+            } else if (col.key === 'tel_mob') {
+              const phoneNums: string[] = [];
+              [c.husbandPhone, c.wifePhone, c.phoneText].forEach(pStr => {
+                if (pStr && pStr !== '—') {
+                  pStr.split(/[,;\/]+/).forEach(p => {
+                    const trimmed = p.trim();
+                    if (trimmed && !phoneNums.includes(trimmed)) {
+                      phoneNums.push(trimmed);
+                    }
+                  });
                 }
-                return `
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    ${paddingStyle}
-                    border-radius: 9999px;
-                    ${fontSizeStyle}
-                    font-weight: 700;
-                    border: 1px solid #cbd5e1;
-                    background-color: #f1f5f9;
-                    color: #475569;
-                    white-space: nowrap;
-                    line-height: 1;
-                    text-align: center;
-                    vertical-align: middle;
-                    margin: 0.5px;
-                    box-sizing: border-box;
-                  ">
-                    ${name}
-                  </span>`;
               });
-
-              const badgeRows: string[] = [];
-              for (let i = 0; i < badgeHtmls.length; i += 2) {
-                const pair = badgeHtmls.slice(i, i + 2).join('');
-                badgeRows.push(`<div style="display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; gap: 2px;">${pair}</div>`);
+              if (phoneNums.length > 0) {
+                cellVal = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.35;">${phoneNums.map(n => `<span style="white-space: nowrap;">${n}</span>`).join('')}</div>`;
+              } else {
+                cellVal = `<span style="white-space: nowrap;">—</span>`;
               }
-
-              cellVal = `
-                <div style="
-                  line-height: 1.2;
-                  text-align: left;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  gap: 2px;
-                  height: 100%;
-                ">
-                  ${badgeRows.join('')}
-                </div>`;
+            } else if (col.key === 'rayon2_ukr') {
+              cellVal = c.rayon || '—';
+            } else if (col.key === 'presviter') {
+              if (withBadges && c.presviter && c.presviter !== '—') {
+                const style = getCellStyling('presviter', c.presviter);
+                cellVal = style ? `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${c.presviter}</span>` : c.presviter;
+              } else {
+                cellVal = c.presviter || '—';
+              }
+            } else if (col.key === 'vidviduvanist') {
+              if (withBadges && c.vidviduvanist && c.vidviduvanist !== '—') {
+                const style = getCellStyling('vidviduvanist', c.vidviduvanist);
+                cellVal = style ? `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${c.vidviduvanist}</span>` : c.vidviduvanist;
+              } else {
+                cellVal = c.vidviduvanist || '—';
+              }
+            } else if (col.key === 'prysutnist') {
+              if (withBadges && c.prysutnist && c.prysutnist !== '—') {
+                const style = getCellStyling('prysutnist', c.prysutnist);
+                cellVal = style ? `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${c.prysutnist}</span>` : c.prysutnist;
+              } else {
+                cellVal = c.prysutnist || '—';
+              }
+            } else if (col.key === 's_slujinnya_spysok') {
+              const strVal = (c.slujinnya || '').trim();
+              if (strVal && strVal !== '—') {
+                const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                if (withBadges) {
+                  const badgeHtmls = names.map(name => {
+                    const style = getCellStyling('s_slujinnya_spysok', name);
+                    if (style) {
+                      return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
+                    }
+                    return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; font-size: 8px; font-weight: 700; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
+                  });
+                  cellVal = `<div style="line-height: 1.25; text-align: left; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 2px 3px; width: 100%; box-sizing: border-box;">${badgeHtmls.join('')}</div>`;
+                } else {
+                  cellVal = `<div style="line-height: 1.2; text-align: left; font-size: 9.5px; color: #1e293b;">${names.join(', ')}</div>`;
+                }
+              }
+            } else {
+              const m = c.husband || c.wife || c.singleMember;
+              cellVal = m ? String(m[col.key as keyof Member] || '—') : '—';
             }
-          }
 
-          return `
-            <div class="table-cell" style="
-              width: ${colWidthsPx[col.key]}px;
-              flex: 0 0 ${colWidthsPx[col.key]}px;
-              justify-content: ${justify};
-              align-items: center;
-              text-align: ${textAlign};
-            ">
-              ${cellVal}
-            </div>
-          `;
-        }).join('');
+            return `
+              <div class="table-cell" style="
+                width: ${colWidthsPx[col.key]}px;
+                flex: 0 0 ${colWidthsPx[col.key]}px;
+                justify-content: ${justify};
+                align-items: center;
+                text-align: ${textAlign};
+              ">
+                <div style="display: flex; align-items: center; justify-content: ${justify}; width: 100%; margin: auto 0; text-align: ${textAlign};">
+                  ${cellVal}
+                </div>
+              </div>
+            `;
+          }).join('');
+        } else {
+          const m = filteredRecords[idx];
+          cellsHtml += displayColumns.map(col => {
+            const isCenterVal = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr', 'vik_shlyubu'].includes(col.key);
+            const justify = isCenterVal ? 'center' : 'flex-start';
+            const textAlign = isCenterVal ? 'center' : 'left';
+            
+            let cellVal = m[col.key as keyof Member] || '—';
+            if (col.key === 's_simeyniy_ukr' && cellVal !== '—') {
+              cellVal = formatMaritalStatus(cellVal);
+            }
+            if (col.key === 'vik_shlyubu') {
+              const yrs = calculateMarriageYears(m.d_shlyubu);
+              cellVal = yrs !== null ? `${yrs} р.` : '—';
+            }
+            
+            if (col.key === 'd_narodjennya' && cellVal) {
+              try {
+                const parts = String(cellVal).split('-');
+                if (parts.length === 3) {
+                  cellVal = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                }
+              } catch (e) {}
+            }
+
+            if (col.key === 'pib' && cellVal && cellVal !== '—') {
+              cellVal = formatPibTwoLines(cellVal).fullHtml;
+            }
+            else if (col.key === 'd_kontaktiv' && cellVal) {
+              cellVal = formatContactDatesTwoRows(cellVal).fullHtml;
+            }
+            else if (col.key === 'address' && cellVal && cellVal !== '—') {
+              const cleaned = cleanAddress(cellVal);
+              const commaIdx = cleaned.indexOf(',');
+              const startsWithStreet = /^(вул\.|бульв\.|просп\.|пров\.|пл\.|вулиця|провулок)/i.test(cleaned);
+              if (commaIdx !== -1 && !startsWithStreet) {
+                const part1 = cleaned.substring(0, commaIdx).trim();
+                const part2 = cleaned.substring(commaIdx + 1).trim();
+                cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; line-height: 1.2;"><span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 1px;">${part1}</span><span style="font-weight: 400; color: #1e293b; display: block;">${part2}</span></div>`;
+              } else {
+                cellVal = `<div style="display: flex; flex-direction: column; justify-content: center; width: 100%; font-weight: 400; color: #1e293b; line-height: 1.2;">${cleaned}</div>`;
+              }
+            }
+            else {
+              if (withBadges && col.key === 'presviter' && cellVal && cellVal !== '—') {
+                const style = getCellStyling('presviter', String(cellVal));
+                if (style) {
+                  cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${cellVal}</span>`;
+                }
+              }
+              else if (withBadges && col.key === 'vidviduvanist' && cellVal && cellVal !== '—') {
+                const style = getCellStyling('vidviduvanist', String(cellVal));
+                if (style) {
+                  cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${cellVal}</span>`;
+                }
+              }
+              else if (withBadges && col.key === 'prysutnist' && cellVal && cellVal !== '—') {
+                const style = getCellStyling('prysutnist', String(cellVal));
+                if (style) {
+                  cellVal = `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 2px 7px; border-radius: 9999px; font-size: 8.5px; font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box;">${cellVal}</span>`;
+                }
+              }
+              else if (col.key === 'tel_mob' && cellVal && cellVal !== '—') {
+                const strVal = String(cellVal).trim();
+                const phoneNums: string[] = [];
+                strVal.split(/[,;\/]+/).forEach(p => {
+                  const trimmed = p.trim();
+                  if (trimmed && !phoneNums.includes(trimmed)) {
+                    phoneNums.push(trimmed);
+                  }
+                });
+                if (phoneNums.length > 0) {
+                  cellVal = `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; line-height: 1.25;">${phoneNums.map(n => `<span style="white-space: nowrap;">${n}</span>`).join('')}</div>`;
+                } else {
+                  cellVal = `<span style="white-space: nowrap;">—</span>`;
+                }
+              }
+              else if (col.key === 's_slujinnya_spysok' && cellVal && cellVal !== '—') {
+                const strVal = String(cellVal).trim();
+                const names = strVal.split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+                
+                if (withBadges) {
+                  const badgeHtmls = names.map(name => {
+                    const style = getCellStyling('s_slujinnya_spysok', name);
+                    const fontSizeStyle = "font-size: 8px;";
+                    if (style) {
+                      return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid ${style.border}; background-color: ${style.bg}; color: ${style.text}; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
+                    }
+                    return `<span style="display: inline-flex; align-items: center; justify-content: center; padding: 1.5px 5.5px; border-radius: 9999px; ${fontSizeStyle} font-weight: 700; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #475569; white-space: nowrap; line-height: 1.25; text-align: center; box-sizing: border-box; max-width: 100%;">${name}</span>`;
+                  });
+
+                  cellVal = `<div style="line-height: 1.25; text-align: left; display: flex; flex-wrap: wrap; align-items: center; align-content: center; gap: 2px 3px; width: 100%; box-sizing: border-box;">${badgeHtmls.join('')}</div>`;
+                } else {
+                  cellVal = `<div style="line-height: 1.2; text-align: left; font-size: 9.5px; color: #1e293b;">${names.join(', ')}</div>`;
+                }
+              }
+              else if (!withBadges && ['presviter', 'vidviduvanist', 'prysutnist'].includes(col.key) && cellVal && cellVal !== '—') {
+                cellVal = `<span style="font-size: 9.5px; font-weight: 500; color: #1e293b;">${cellVal}</span>`;
+              }
+            }
+
+            return `
+              <div class="table-cell" style="
+                width: ${colWidthsPx[col.key]}px;
+                flex: 0 0 ${colWidthsPx[col.key]}px;
+                justify-content: ${justify};
+                align-items: center;
+                text-align: ${textAlign};
+              ">
+                <div style="display: flex; align-items: center; justify-content: ${justify}; width: 100%; margin: auto 0; text-align: ${textAlign};">
+                  ${cellVal}
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
 
         tr.innerHTML = cellsHtml;
         current.tbody.appendChild(tr);
 
         const currentHeight = current.contentWrapper.offsetHeight;
         const rowCount = current.tbody.children.length;
-        if (currentHeight > 625 && rowCount > 1) {
+        if (currentHeight > maxContentHeight && rowCount > 1) {
           current.tbody.removeChild(tr);
           current = createPageElement("PAGE_NUM");
           pages.push(current);
@@ -1593,50 +2594,330 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
         }
       });
 
-      // Ensure all custom fonts are completely ready before rendering
-      try {
-        if (document.fonts && document.fonts.ready) {
-          await document.fonts.ready;
-        }
-      } catch (fErr) {
-        console.warn("Fonts ready promise error:", fErr);
-      }
+      // Extract page HTMLs and wrap into a complete document for Puppeteer server rendering
+      const pagesHtml = pages.map(p => `<div class="pdf-page">${p.pageDiv.innerHTML}</div>`).join('\n');
+      
+      const fullHtmlDocument = `<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Звіт членів церкви</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,400;0,500;0,700;1,400&display=swap');
+    
+    @page {
+      size: A4 ${isLandscape ? 'landscape' : 'portrait'};
+      margin: 0;
+    }
+    
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+      font-family: 'Roboto', 'Noto Sans', system-ui, -apple-system, sans-serif;
+      color: #0f172a;
+    }
 
-      // Small tick for stable font rendering/layout engine settle
-      await new Promise(resolve => setTimeout(resolve, 150));
+    .pdf-page {
+      width: ${isLandscape ? '297mm' : '210mm'};
+      height: ${isLandscape ? '210mm' : '297mm'};
+      padding: 12mm;
+      box-sizing: border-box;
+      page-break-after: always;
+      break-after: page;
+      position: relative;
+      background-color: #ffffff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
 
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-      });
+    ${styleEl.innerHTML}
+  </style>
+</head>
+<body>
+  ${pagesHtml}
+</body>
+</html>`;
 
-      for (let i = 0; i < pages.length; i++) {
-        const pageEl = pages[i].pageDiv;
-        const canvas = await html2canvas(pageEl, {
-          scale: 2.0,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false
+      const generateClientPdf = async () => {
+        console.log('[PDF Generation] Falling back to client-side html2canvas + jsPDF rendering...');
+        const orientation = isLandscape ? 'l' : 'p';
+        const pdf = new jsPDF({
+          orientation,
+          unit: 'mm',
+          format: 'a4',
+          compress: true
         });
 
-        const imgData = canvas.toDataURL('image/png');
-        if (i > 0) {
-          pdf.addPage();
+        const pdfWidth = isLandscape ? 297 : 210;
+        const pdfHeight = isLandscape ? 210 : 297;
+
+        for (let i = 0; i < pages.length; i++) {
+          const pageDiv = pages[i].pageDiv;
+          const canvas = await html2canvas(pageDiv, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+          });
+          const imgData = canvas.toDataURL('image/jpeg', 0.92);
+          if (i > 0) {
+            pdf.addPage('a4', orientation);
+          }
+          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         }
-        pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
+
+        const pdfArrayBuffer = pdf.output('arraybuffer');
+        const blob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
+        const dataUri = pdf.output('datauristring');
+        const pdfBase64 = dataUri.split(',')[1] || '';
+
+        return { pdfBase64, blob };
+      };
+
+      try {
+        const response = await fetch('/api/generate-pdf', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            html: fullHtmlDocument,
+            isLandscape,
+            returnBase64: true,
+            filename: `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}.pdf`
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.pdfBase64) {
+            const binaryStr = window.atob(data.pdfBase64);
+            const len = binaryStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryStr.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            return { pdfBase64: data.pdfBase64, blob };
+          }
+        }
+        console.warn('/api/generate-pdf did not return success, falling back to client-side generation...');
+        return await generateClientPdf();
+      } catch (srvErr: any) {
+        console.warn('Server PDF generation failed, falling back to client-side:', srvErr?.message || srvErr);
+        return await generateClientPdf();
       }
-
-      document.body.removeChild(container);
-
-      const todayString = new Date().toISOString().slice(0, 10);
-      pdf.save(`Zvit_Chleniv_Tserkvy_${todayString}.pdf`);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error generating PDF:", err);
-      alert("Виникла помилка під час формування PDF-файлу. Спробуйте ще раз.");
+      alert("Помилка генерації PDF: " + (err.message || err));
+      return null;
+    } finally {
+      if (container && document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    }
+  };
+
+  const handlePrint = async (withBadgesOverride?: boolean) => {
+    setPdfGenerating(true);
+    try {
+      const res = await buildPdfDoc(withBadgesOverride);
+      if (res && res.blob) {
+        const todayString = new Date().toISOString().slice(0, 10);
+        const url = URL.createObjectURL(res.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Zvit_Chleniv_Tserkvy_${todayString}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        alert("Виникла помилка під час формування PDF-файлу. Спробуйте ще раз.");
+      }
+    } catch (err: any) {
+      console.error("Print PDF error:", err);
+      alert("Помилка друку PDF.");
     } finally {
       setPdfGenerating(false);
+    }
+  };
+
+  const generateTextList = useCallback(() => {
+    const activeFiltersText: string[] = [];
+    if (selectedStatus && selectedStatus !== 'Всі') activeFiltersText.push(`Статус: ${selectedStatus}`);
+    if (selectedRayon) activeFiltersText.push(`Район: ${selectedRayon}`);
+    if (selectedPresviter) activeFiltersText.push(`Опікун: ${selectedPresviter}`);
+    if (selectedSlujinnya) activeFiltersText.push(`Служіння: ${selectedSlujinnya}`);
+    if (selectedSimeyniy) {
+      let sVal = selectedSimeyniy.replace(/одр\./gi, 'одруж.');
+      if (isMarriedSelected && selectedFamilyType) {
+        sVal += ` (${selectedFamilyType} сім'я)`;
+      }
+      activeFiltersText.push(`Сім. стан: ${sVal}`);
+    }
+    if (selectedSocialniy) activeFiltersText.push(`Соц. стан: ${selectedSocialniy}`);
+    if (selectedProfesiya) activeFiltersText.push(`Професія: ${selectedProfesiya}`);
+    if (selectedOsvita) activeFiltersText.push(`Освіта: ${selectedOsvita}`);
+    if (selectedDilyntsya) activeFiltersText.push(`Дільниця: ${selectedDilyntsya}`);
+    if (selectedAgeMin || selectedAgeMax) activeFiltersText.push(`Вік: ${selectedAgeMin || 0}-${selectedAgeMax || '∞'} р.`);
+    if (selectedVidviduvanist) activeFiltersText.push(`Відвідування: ${selectedVidviduvanist}`);
+    if (selectedPrysutnist) activeFiltersText.push(`Прич. відсутності: ${selectedPrysutnist}`);
+    if (selectedStat) activeFiltersText.push(`Стать: ${selectedStat}`);
+
+    const escapeHtml = (str: string) => (str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const filterHeader = activeFiltersText.length > 0 ? `\n📌 <b>Фільтри:</b> ${escapeHtml(activeFiltersText.join(' | '))}` : '';
+
+    if (combineCouples) {
+      const lines = [
+        `📋 <b>Сформований список сімейних пар / родин (${coupleGroupedRecords.length})</b>`,
+        `<i>Дата: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</i>${filterHeader}\n`
+      ];
+      coupleGroupedRecords.slice(0, 100).forEach((c, idx) => {
+        let line = `${idx + 1}. <b>${escapeHtml(c.pibText)}</b>`;
+        const phones: string[] = [];
+        [c.husbandPhone, c.wifePhone, c.phoneText].forEach(pStr => {
+          if (pStr && pStr !== '—') {
+            pStr.split(/[,;\/]+/).forEach(p => {
+              const trimmed = p.trim();
+              if (trimmed && !phones.includes(trimmed)) phones.push(trimmed);
+            });
+          }
+        });
+        if (phones.length > 0) line += ` • 📞 ${escapeHtml(phones.join(', '))}`;
+        if (c.addressText && c.addressText !== '—') line += ` • 🏠 ${escapeHtml(c.addressText)}`;
+        if (c.rayon && c.rayon !== '—') line += ` • 📍 ${escapeHtml(c.rayon)}`;
+        lines.push(line);
+      });
+      if (coupleGroupedRecords.length > 100) {
+        lines.push(`\n<i>...і ще ${coupleGroupedRecords.length - 100} пар у вибірці</i>`);
+      }
+      return lines.join('\n');
+    }
+
+    const lines = [
+      `📋 <b>Сформований список осіб (${filteredRecords.length})</b>`,
+      `<i>Дата: ${new Date().toLocaleDateString('uk-UA')} ${new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</i>${filterHeader}\n`
+    ];
+    filteredRecords.slice(0, 100).forEach((m, idx) => {
+      let line = `${idx + 1}. <b>${escapeHtml(m.pib)}</b>`;
+      if (m.tel_mob) line += ` • 📞 ${escapeHtml(m.tel_mob)}`;
+      if (m.rayon2_ukr) line += ` • 📍 ${escapeHtml(m.rayon2_ukr)}`;
+      lines.push(line);
+    });
+    if (filteredRecords.length > 100) {
+      lines.push(`\n<i>...і ще ${filteredRecords.length - 100} осіб у вибірці</i>`);
+    }
+    return lines.join('\n');
+  }, [
+    combineCouples,
+    coupleGroupedRecords,
+    filteredRecords, 
+    selectedStatus, 
+    selectedRayon, 
+    selectedPresviter, 
+    selectedSlujinnya, 
+    selectedSimeyniy, 
+    selectedSocialniy, 
+    selectedProfesiya, 
+    selectedOsvita, 
+    selectedDilyntsya, 
+    selectedAgeMin, 
+    selectedAgeMax,
+    selectedVidviduvanist,
+    selectedPrysutnist,
+    selectedStat,
+    isMarriedSelected,
+    selectedFamilyType
+  ]);
+
+  const handleMaterialTypeChange = (type: 'pdf' | 'text' | 'list') => {
+    setTgMaterialType(type);
+    if (type === 'list') {
+      setTgCustomText(generateTextList());
+    } else if (type === 'pdf') {
+      if (!tgCustomText) {
+        const totalCountStr = combineCouples ? `${coupleGroupedRecords.length} пар` : `${filteredRecords.length} осіб`;
+        setTgCustomText(`📄 Сформований звіт з конструктора списків від ${new Date().toLocaleDateString('uk-UA')} (${totalCountStr})`);
+      }
+    }
+  };
+
+  const handleToggleContact = (telegramId: string) => {
+    setTgSelectedContacts(prev => 
+      prev.includes(telegramId) ? prev.filter(id => id !== telegramId) : [...prev, telegramId]
+    );
+  };
+
+  const handleSelectAllContacts = () => {
+    const allIds = knownContactsList.map(c => c.telegramId);
+    setTgSelectedContacts(allIds);
+  };
+
+  const handleClearContacts = () => {
+    setTgSelectedContacts([]);
+  };
+
+  const handleSendTelegramBroadcast = async () => {
+    const manualIds = tgRecipientId.split(/[,;\s\n]+/).map(s => s.trim()).filter(Boolean);
+    const allRecipients = Array.from(new Set([...tgSelectedContacts, ...manualIds]));
+
+    if (allRecipients.length === 0) {
+      setTgStatus({ message: "Оберіть або введіть хоча б один Chat ID отримувача.", isError: true });
+      return;
+    }
+
+    setTgSending(true);
+    setTgStatus(null);
+    try {
+      let pdfBase64 = undefined;
+      let filename = undefined;
+
+      if (tgMaterialType === 'pdf') {
+        const res = await buildPdfDoc(printColors);
+        if (!res || !res.pdfBase64) {
+          setTgStatus({ message: "Не вдалося сформувати PDF-документ.", isError: true });
+          return;
+        }
+        pdfBase64 = res.pdfBase64;
+        const todayString = new Date().toISOString().slice(0, 10);
+        filename = `Zvit_Chleniv_Tserkvy_${todayString}.pdf`;
+      }
+
+      const res = await fetch('/api/telegram/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipients: allRecipients,
+          materialType: tgMaterialType,
+          text: tgCustomText || (tgMaterialType === 'list' ? generateTextList() : undefined),
+          pdfBase64,
+          filename
+        })
+      });
+
+      let data: any = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const rawText = await res.text();
+        throw new Error(`Сервер повернув помилку (${res.status}): ${rawText.slice(0, 100)}`);
+      }
+
+      if (res.ok && data.success) {
+        setTgStatus({ message: data.message || `Успішно надіслано розсилку ${allRecipients.length} отримувачам!`, isError: false });
+      } else {
+        setTgStatus({ message: data.message || "Помилка розсилки в Telegram.", isError: true });
+      }
+    } catch (err: any) {
+      setTgStatus({ message: err.message || "Помилка сервера під час відправки.", isError: true });
+    } finally {
+      setTgSending(false);
     }
   };
 
@@ -1651,48 +2932,6 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
           <p className="text-xs text-slate-300 font-medium mt-1">
             Відберіть осіб за критеріями, відзначте необхідні колонки, завантажте HTML-таблицю або сформуйте PDF-документ.
           </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 scale-interface-down-33 origin-right">
-          <button 
-            type="button" 
-            onClick={handleResetFilters}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer outline-none focus:outline-none"
-            title="Очистити всі фільтри"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            <span>Скинути</span>
-          </button>
-          <button 
-            type="button" 
-            onClick={handleExportHtml}
-            disabled={filteredRecords.length === 0}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              filteredRecords.length > 0
-                ? "bg-[#10b981] hover:bg-[#059669] cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-            title="Зберегти як автономну HTML-сторінку для друку або збереження"
-          >
-            <Download className="h-4 w-4" />
-            <span>В HTML</span>
-          </button>
-          <button 
-            type="button" 
-            onClick={handlePrint}
-            disabled={filteredRecords.length === 0 || pdfGenerating}
-            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
-              filteredRecords.length > 0 && !pdfGenerating
-                ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
-                : "bg-slate-700 cursor-not-allowed opacity-50"
-            }`}
-          >
-            {pdfGenerating ? (
-              <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
-            ) : (
-              <Printer className="h-4 w-4" />
-            )}
-            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : "ДРУК (PDF)"}</span>
-          </button>
         </div>
       </div>
 
@@ -1811,7 +3050,7 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 </div>
               </div>
 
-              {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || internalSearch) && (
+              {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || selectedSimeyniy || selectedSocialniy || selectedProfesiya || selectedOsvita || selectedDilyntsya || selectedAgeMin || selectedAgeMax || internalSearch) && (
                 <div className="mt-3 pt-2.5 border-t border-[#1f424f]/60 flex flex-wrap items-center gap-1.5">
                   <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Активні:</span>
                   {selectedStatus && selectedStatus !== 'Всі' && (
@@ -1874,6 +3113,78 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       </button>
                     </span>
                   )}
+                  {selectedSimeyniy && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Сім. стан: {selectedSimeyniy.replace(/одр\./gi, 'одруж.')}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedSimeyniy("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedSocialniy && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Соц. стан: {selectedSocialniy}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedSocialniy("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedProfesiya && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Професія: {selectedProfesiya}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedProfesiya("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedOsvita && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Освіта: {selectedOsvita}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedOsvita("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {selectedDilyntsya && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Дільниця: {selectedDilyntsya}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedDilyntsya("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {(selectedAgeMin || selectedAgeMax) && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Вік: {selectedAgeMin || 0}-{selectedAgeMax || '∞'} р.</span>
+                      <button 
+                        type="button" 
+                        onClick={() => { setSelectedAgeMin(""); setSelectedAgeMax(""); }}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                   {selectedVidviduvanist && (
                     <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
                       <span>Відвідування: {selectedVidviduvanist}</span>
@@ -1910,6 +3221,30 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                       </button>
                     </span>
                   )}
+                  {isMarriedSelected && selectedFamilyType && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Сім'я: {selectedFamilyType}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedFamilyType("")}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
+                  {(selectedMarriageYearsMin || selectedMarriageYearsMax) && (
+                    <span className="inline-flex items-center gap-1 bg-[#1a3843] text-teal-300 text-[9px] font-bold px-1.5 py-0.5 rounded border border-teal-500/35">
+                      <span>Шлюб: {selectedMarriageYearsMin || 0}-{selectedMarriageYearsMax || '∞'} р.</span>
+                      <button 
+                        type="button" 
+                        onClick={() => { setSelectedMarriageYearsMin(""); setSelectedMarriageYearsMax(""); }}
+                        className="hover:text-amber-400 text-slate-400 cursor-pointer text-[10px] ml-0.5 font-semibold"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )}
                   {internalSearch && (
                     <span className="inline-flex items-center gap-1 bg-slate-900 border border-slate-700/80 text-teal-200 text-[9px] font-semibold px-1.5 py-0.5 rounded">
                       <span>Пошук: "{internalSearch}"</span>
@@ -1934,15 +3269,163 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                   className="group flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-teal-300 transition-colors cursor-pointer outline-none"
                 >
                   <Plus className={`h-3 w-3 transition-transform ${showExtraFilters ? "rotate-45 text-teal-400" : "text-slate-400"}`} />
-                  <span>{showExtraFilters ? "Сховати фільтри" : "Показати більше фільтрів..."}</span>
+                  <span>{showExtraFilters ? "Сховати фільтри" : "Показати більше фільтрів (Вік, Сім. стан, Соц. стан, Професія, Освіта, Дільниця)..."}</span>
                 </button>
-                <span className="text-[10px] font-mono text-slate-405">
-                  Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong>
-                </span>
+                <div className="flex items-center gap-2">
+                  {(selectedRayon || selectedPresviter || selectedSlujinnya || (selectedStatus && selectedStatus !== 'Всі') || selectedVidviduvanist || selectedPrysutnist || selectedStat || selectedSimeyniy || selectedFamilyType || selectedMarriageYearsMin || selectedMarriageYearsMax || selectedSocialniy || selectedProfesiya || selectedOsvita || selectedDilyntsya || selectedAgeMin || selectedAgeMax || internalSearch) && (
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 underline cursor-pointer"
+                    >
+                      Скинути все
+                    </button>
+                  )}
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Знайдено: <strong className="text-teal-400 font-bold">{filteredRecords.length}</strong>
+                  </span>
+                </div>
               </div>
 
               {showExtraFilters && (
                 <div className="flex flex-wrap gap-2 pt-3 mt-2 border-t border-[#1f424f]/60 animate-fade-in items-end">
+                  {/* Вік від - до */}
+                  <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Вік (років)</label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        placeholder="Від"
+                        value={selectedAgeMin}
+                        onChange={e => setSelectedAgeMin(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold placeholder-slate-500"
+                      />
+                      <span className="text-slate-500 text-[10px]">-</span>
+                      <input
+                        type="number"
+                        placeholder="До"
+                        value={selectedAgeMax}
+                        onChange={e => setSelectedAgeMax(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold placeholder-slate-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Сім. стан */}
+                  <div className="flex flex-col space-y-0.5 w-[130px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Сім. стан</label>
+                    <select 
+                      value={selectedSimeyniy} 
+                      onChange={e => setSelectedSimeyniy(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueSimeyniy.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Сім'я (якщо одруж.) */}
+                  {isMarriedSelected && (
+                    <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
+                      <label className="text-[9px] font-bold text-teal-400">Сім'я</label>
+                      <select 
+                        value={selectedFamilyType} 
+                        onChange={e => setSelectedFamilyType(e.target.value)}
+                        className="w-full rounded-lg border border-teal-500/50 p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                      >
+                        <option value="">- Всі -</option>
+                        <option value="повна">повна</option>
+                        <option value="неповна">неповна</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Років у шлюбі */}
+                  <div className="flex flex-col space-y-0.5 w-[115px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Років у шлюбі</label>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        placeholder="Від"
+                        value={selectedMarriageYearsMin}
+                        onChange={e => setSelectedMarriageYearsMin(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold placeholder-slate-500"
+                      />
+                      <span className="text-slate-500 text-[10px]">-</span>
+                      <input
+                        type="number"
+                        placeholder="До"
+                        value={selectedMarriageYearsMax}
+                        onChange={e => setSelectedMarriageYearsMax(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold placeholder-slate-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Соціальний стан */}
+                  <div className="flex flex-col space-y-0.5 w-[130px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Соціальний стан</label>
+                    <select 
+                      value={selectedSocialniy} 
+                      onChange={e => setSelectedSocialniy(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueSocialniy.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Професія */}
+                  <div className="flex flex-col space-y-0.5 w-[130px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Професія</label>
+                    <select 
+                      value={selectedProfesiya} 
+                      onChange={e => setSelectedProfesiya(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueProfesiya.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Освіта */}
+                  <div className="flex flex-col space-y-0.5 w-[120px] shrink-0">
+                    <label className="text-[9px] font-bold text-slate-400">Освіта</label>
+                    <select 
+                      value={selectedOsvita} 
+                      onChange={e => setSelectedOsvita(e.target.value)}
+                      className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                    >
+                      <option value="">- Всі -</option>
+                      {uniqueOsvita.map(v => (
+                        <option key={v} value={v}>{v}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Дільниця */}
+                  {uniqueDilyntsya.length > 0 && (
+                    <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
+                      <label className="text-[9px] font-bold text-slate-400">Дільниця</label>
+                      <select 
+                        value={selectedDilyntsya} 
+                        onChange={e => setSelectedDilyntsya(e.target.value)}
+                        className="w-full rounded-lg border border-[#1f424f] p-1 text-xs bg-[#1a3843] text-slate-200 outline-none font-semibold"
+                      >
+                        <option value="">- Всі -</option>
+                        {uniqueDilyntsya.map(v => (
+                          <option key={v} value={v}>{v}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div className="flex flex-col space-y-0.5 w-[110px] shrink-0">
                     <label className="text-[9px] font-bold text-slate-400">Відвідування</label>
                     <select 
@@ -2034,117 +3517,641 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
                 />
                 <span>Друк кольорових плашок</span>
               </label>
+
+              <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-teal-300 hover:text-teal-200 transition-colors select-none font-bold bg-teal-950/40 px-3 py-1.5 rounded-lg border border-teal-500/40 shadow-xs">
+                <input 
+                  type="checkbox" 
+                  checked={combineCouples} 
+                  onChange={e => {
+                    const checked = e.target.checked;
+                    setCombineCouples(checked);
+                    if (checked) {
+                      setSelectedColumns(prev => {
+                        const set = new Set(prev);
+                        set.add("pib");
+                        set.add("vik_shlyubu");
+                        set.add("address");
+                        set.add("tel_mob");
+                        return Array.from(set);
+                      });
+                    }
+                  }}
+                  className="rounded text-teal-500 focus:ring-teal-500 bg-[#16303a] border-[#1f424f] h-4 w-4 cursor-pointer"
+                />
+                <span className="flex items-center gap-1.5">
+                  <span className="text-sm">👩‍❤️‍👨</span>
+                  <span>Об'єднати сімейні пари (К-ть років в шлюбі, Адреса, Телефон)</span>
+                </span>
+              </label>
             </div>
           </div>
         </div>
 
+
+        {/* Панель дій (кнопки) над переглядом результатів */}
+        <div className="flex flex-wrap items-center justify-end gap-2 bg-[#11252d] p-3 rounded-xl border border-[#1f424f]">
+          <button 
+            type="button" 
+            onClick={handleResetFilters}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg shadow-sm transition-all cursor-pointer outline-none focus:outline-none"
+            title="Очистити всі фільтри"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span>Скинути</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={handleExportHtml}
+            disabled={filteredRecords.length === 0}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0
+                ? "bg-[#10b981] hover:bg-[#059669] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Зберегти як автономну HTML-сторінку для друку або збереження"
+          >
+            <Download className="h-4 w-4" />
+            <span>В HTML</span>
+          </button>
+          <label className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-[#1a3843] border border-[#2d5d70] rounded-lg shadow-sm cursor-pointer select-none hover:bg-[#224b5a] transition-all">
+            <input 
+              type="checkbox" 
+              checked={printColors} 
+              onChange={e => setPrintColors(e.target.checked)}
+              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+            />
+            <span>Плашки у PDF</span>
+          </label>
+          <button 
+            type="button" 
+            onClick={() => handlePrint()}
+            disabled={filteredRecords.length === 0 || pdfGenerating}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              filteredRecords.length > 0 && !pdfGenerating
+                ? "bg-[#387d7a] hover:bg-[#2b5f5d] cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title={printColors ? "Друк PDF-звіту з кольоровими плашками" : "Друк PDF-звіту простим текстом без плашок"}
+          >
+            {pdfGenerating ? (
+              <RefreshCw className="h-4 w-4 animate-spin text-teal-200" />
+            ) : (
+              <Printer className="h-4 w-4" />
+            )}
+            <span>{pdfGenerating ? "ГЕНЕРАЦІЯ..." : printColors ? "ДРУК (PDF)" : "ДРУК (БЕЗ ПЛАШОК)"}</span>
+          </button>
+          <button 
+            type="button" 
+            onClick={() => { 
+              setIsTgModalOpen(true); 
+              setTgStatus(null); 
+              if (tgMaterialType === 'list' && !tgCustomText) {
+                setTgCustomText(generateTextList());
+              }
+            }}
+            disabled={pdfGenerating || tgSending}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white rounded-lg shadow-sm transition-all focus:outline-none outline-none ${
+              !pdfGenerating && !tgSending
+                ? "bg-teal-600 hover:bg-teal-500 cursor-pointer"
+                : "bg-slate-700 cursor-not-allowed opacity-50"
+            }`}
+            title="Відкрити розсилку матеріалів (звіт PDF, текстовий список або повідомлення) в Telegram"
+          >
+            <Send className="h-4 w-4" />
+            <span>РОЗСИЛКА В TELEGRAM</span>
+          </button>
+        </div>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center border-b border-[#1f424f] pb-2">
             <h3 className="text-xs font-bold text-teal-400 uppercase tracking-wider">
-              Перегляд результатів відбору ({filteredRecords.length} записів)
+              Перегляд результатів відбору ({combineCouples ? coupleGroupedRecords.length : filteredRecords.length} {combineCouples ? "сімей / пар" : "записів"})
             </h3>
+            <button
+              type="button"
+              onClick={() => setShowResultsTable(!showResultsTable)}
+              className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold text-teal-300 bg-[#16303a] hover:bg-[#1a3843] border border-[#1f424f] hover:border-teal-500/50 rounded-lg transition-all cursor-pointer shadow-xs"
+            >
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showResultsTable ? "rotate-180 text-teal-400" : "text-slate-400"}`} />
+              <span>{showResultsTable ? "Згорнути таблицю" : "Розгорнути таблицю"}</span>
+            </button>
           </div>
 
-          {filteredRecords.length === 0 ? (
-            <div className="text-center text-slate-450 py-12 bg-[#11252d] rounded-xl border border-[#1f424f] text-xs font-semibold">
-              Жодного запису не знайдено за вказаними критеріями відбору
-            </div>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-[#1f424f] bg-[#11252d]">
-              <table className="w-full border-collapse text-left text-xs text-slate-300">
-                <thead>
-                  <tr className="bg-[#16303a] border-b border-[#1f424f]">
-                    <th className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">#</th>
-                    {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
-                      const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
-                      return (
-                        <th key={col.key} className={`py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200 ${isCenter ? 'text-center' : 'text-left'}`}>{col.label}</th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredRecords.slice(0, 100).map((m, index) => (
-                    <tr key={m.id} className="border-b border-[#1f424f]/65 hover:bg-[#16323c]/45 transition-colors">
-                      <td className="py-2 px-4 border-r border-[#1f424f]/40 font-semibold text-slate-400">{index + 1}</td>
+          {showResultsTable && (
+            (combineCouples ? coupleGroupedRecords.length === 0 : filteredRecords.length === 0) ? (
+              <div className="text-center text-slate-450 py-12 bg-[#11252d] rounded-xl border border-[#1f424f] text-xs font-semibold">
+                Жодного запису не знайдено за вказаними критеріями відбору
+              </div>
+            ) : combineCouples ? (
+              <div className="overflow-x-auto rounded-xl border border-[#1f424f] bg-[#11252d]">
+                <table className="w-full border-collapse text-left text-xs text-slate-300">
+                  <thead>
+                    <tr className="bg-[#16303a] border-b border-[#1f424f]">
+                      <th className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200 w-12 text-center">#</th>
                       {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
-                        let val = m[col.key as keyof Member];
-                        if (col.key === 'd_narodjennya' && val) {
-                          try {
-                            const p = String(val).split('-');
-                            if (p.length === 3) val = `${p[2]}.${p[1]}.${p[0]}`;
-                          } catch {}
-                        }
-                        if (col.key === 's_simeyniy_ukr' && val) {
-                          val = formatMaritalStatus(val);
-                        }
-                        const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+                        const isCenter = ['vik_shlyubu', 'd_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
                         return (
-                          <td key={col.key} className={`py-2 px-4 border-r border-[#1f424f]/40 ${isCenter ? 'text-center' : ''}`}>
-                            {col.key === 'presviter' && val && val !== '—' ? (
-                              (() => {
-                                const st = getCellStyling('presviter', String(val));
-                                return st ? (
-                                  <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                    {String(val)}
-                                  </span>
-                                ) : String(val);
-                              })()
-                            ) : col.key === 'vidviduvanist' && val && val !== '—' ? (
-                              (() => {
-                                const st = getCellStyling('vidviduvanist', String(val));
-                                return st ? (
-                                  <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                    {String(val)}
-                                  </span>
-                                ) : String(val);
-                              })()
-                            ) : col.key === 'prysutnist' && val && val !== '—' ? (
-                              (() => {
-                                const st = getCellStyling('prysutnist', String(val));
-                                return st ? (
-                                  <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                    {String(val)}
-                                  </span>
-                                ) : String(val);
-                              })()
-                            ) : col.key === 's_slujinnya_spysok' && val && val !== '—' ? (
-                              <div className="flex flex-wrap gap-1">
-                                {String(val).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map((n, i) => {
-                                  const st = getCellStyling('s_slujinnya_spysok', n);
-                                  return st ? (
-                                    <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
-                                      {n}
-                                    </span>
-                                  ) : (
-                                    <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-medium px-1.5 py-0.5 bg-slate-700/60 border border-slate-600 text-slate-300">
-                                      {n}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            ) : col.key === 'address' ? (
-                              cleanAddress(String(val || ""))
-                            ) : (
-                              String(val || '—')
-                            )}
-                          </td>
+                          <th key={col.key} className={`py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200 ${isCenter ? 'text-center' : 'text-left'}`}>{col.label}</th>
                         );
                       })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-              {filteredRecords.length > 100 && (
-                <div className="py-3 px-4 bg-[#142d36] text-center text-[11px] text-slate-400 font-medium">
-                  Показано перші 100 результатів пошуку. Повний список із {filteredRecords.length} записів буде експортовано до файлу PDF.
-                </div>
-              )}
-            </div>
+                  </thead>
+                  <tbody>
+                    {coupleGroupedRecords.slice(0, 100).map((c, index) => (
+                      <tr key={c.id} className="border-b border-[#1f424f]/65 hover:bg-[#16323c]/45 transition-colors">
+                        <td className="py-2.5 px-4 border-r border-[#1f424f]/40 font-semibold text-slate-400 text-center">{index + 1}</td>
+                        {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
+                          const isCenter = ['vik_shlyubu', 'd_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+                          return (
+                            <td key={col.key} className={`py-2.5 px-4 border-r border-[#1f424f]/40 ${isCenter ? 'text-center' : ''}`}>
+                              {col.key === 'pib' ? (
+                                <div className="space-y-0.5">
+                                  {c.husbandName && (
+                                    <div className="font-bold text-slate-100">
+                                      {c.husbandName}
+                                    </div>
+                                  )}
+                                  {c.wifeName && (
+                                    <div className="font-bold text-slate-100">
+                                      {c.wifeName}
+                                    </div>
+                                  )}
+                                  {c.isAddressMatch && (
+                                    <div className="pt-0.5">
+                                      <span 
+                                        className="inline-flex items-center gap-1 text-[10px] text-amber-300 font-medium px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-500/30 cursor-help"
+                                        title="Пару об'єднано за спільною адресою та прізвищем (відсутній прямий запис про партнера у картці)"
+                                      >
+                                        ⚠️ Збіг за адресою
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : col.key === 'vik_shlyubu' ? (
+                                <span className="font-bold text-teal-300">{c.marriageYearsText}</span>
+                              ) : col.key === 'vik_rokiv1' ? (
+                                <div className="space-y-0.5">
+                                  {c.husbandName && <div>{c.husbandAge}</div>}
+                                  {c.wifeName && <div>{c.wifeAge}</div>}
+                                </div>
+                              ) : col.key === 'address' ? (
+                                <span className="text-slate-200">{c.addressText}</span>
+                              ) : col.key === 'tel_mob' ? (
+                                (() => {
+                                  const nums: string[] = [];
+                                  [c.husbandPhone, c.wifePhone, c.phoneText].forEach(pStr => {
+                                    if (pStr && pStr !== '—') {
+                                      pStr.split(/[,;\/]+/).forEach(p => {
+                                        const trimmed = p.trim();
+                                        if (trimmed && !nums.includes(trimmed)) {
+                                          nums.push(trimmed);
+                                        }
+                                      });
+                                    }
+                                  });
+                                  if (nums.length === 0) return <span className="text-slate-400 font-mono text-[11px]">—</span>;
+                                  return (
+                                    <div className="space-y-0.5 font-mono text-[11px] text-slate-300">
+                                      {nums.map((num, i) => (
+                                        <div key={i}>{num}</div>
+                                      ))}
+                                    </div>
+                                  );
+                                })()
+                              ) : col.key === 'rayon2_ukr' ? (
+                                c.rayon
+                              ) : col.key === 'presviter' ? (
+                                (() => {
+                                  const st = getCellStyling('presviter', c.presviter);
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {c.presviter}
+                                    </span>
+                                  ) : c.presviter;
+                                })()
+                              ) : col.key === 'vidviduvanist' ? (
+                                (() => {
+                                  const st = getCellStyling('vidviduvanist', c.vidviduvanist);
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {c.vidviduvanist}
+                                    </span>
+                                  ) : c.vidviduvanist;
+                                })()
+                              ) : col.key === 'prysutnist' ? (
+                                (() => {
+                                  const st = getCellStyling('prysutnist', c.prysutnist);
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {c.prysutnist}
+                                    </span>
+                                  ) : c.prysutnist;
+                                })()
+                              ) : col.key === 's_slujinnya_spysok' ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {c.slujinnya.split(/[,;]+/).map(s => s.trim()).filter(Boolean).map((n, i) => {
+                                    const st = getCellStyling('s_slujinnya_spysok', n);
+                                    return st ? (
+                                      <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                        {n}
+                                      </span>
+                                    ) : (
+                                      <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-medium px-1.5 py-0.5 bg-slate-700/60 border border-slate-600 text-slate-300">
+                                        {n}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                String((c.husband || c.wife || c.singleMember)?.[col.key as keyof Member] || '—')
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {coupleGroupedRecords.length > 100 && (
+                  <div className="py-3 px-4 bg-[#142d36] text-center text-[11px] text-slate-400 font-medium">
+                    Показано перші 100 сімейних пар. Повний список із {coupleGroupedRecords.length} записів буде експортовано до файлу PDF.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-[#1f424f] bg-[#11252d]">
+                <table className="w-full border-collapse text-left text-xs text-slate-300">
+                  <thead>
+                    <tr className="bg-[#16303a] border-b border-[#1f424f]">
+                      <th className="py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200">#</th>
+                      {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
+                        const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+                        return (
+                          <th key={col.key} className={`py-3 px-4 font-bold border-r border-[#1f424f] text-slate-200 ${isCenter ? 'text-center' : 'text-left'}`}>{col.label}</th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRecords.slice(0, 100).map((m, index) => (
+                      <tr key={m.id} className="border-b border-[#1f424f]/65 hover:bg-[#16323c]/45 transition-colors">
+                        <td className="py-2 px-4 border-r border-[#1f424f]/40 font-semibold text-slate-400">{index + 1}</td>
+                        {AVAILABLE_COLUMNS.filter(col => selectedColumns.includes(col.key)).map(col => {
+                          let val = m[col.key as keyof Member];
+                          if (col.key === 'd_narodjennya' && val) {
+                            try {
+                              const p = String(val).split('-');
+                              if (p.length === 3) val = `${p[2]}.${p[1]}.${p[0]}`;
+                            } catch {}
+                          }
+                          if (col.key === 's_simeyniy_ukr' && val) {
+                            val = formatMaritalStatus(val);
+                          }
+                          const isCenter = ['d_narodjennya', 'tel_mob', 'vik_rokiv1', 'stat', 'status_nazva', 'vidviduvanist', 'prysutnist', 's_simeyniy_ukr'].includes(col.key);
+                          return (
+                            <td key={col.key} className={`py-2 px-4 border-r border-[#1f424f]/40 ${isCenter ? 'text-center' : ''}`}>
+                              {col.key === 'presviter' && val && val !== '—' ? (
+                                (() => {
+                                  const st = getCellStyling('presviter', String(val));
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {String(val)}
+                                    </span>
+                                  ) : String(val);
+                                })()
+                              ) : col.key === 'vidviduvanist' && val && val !== '—' ? (
+                                (() => {
+                                  const st = getCellStyling('vidviduvanist', String(val));
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {String(val)}
+                                    </span>
+                                  ) : String(val);
+                                })()
+                              ) : col.key === 'prysutnist' && val && val !== '—' ? (
+                                (() => {
+                                  const st = getCellStyling('prysutnist', String(val));
+                                  return st ? (
+                                    <span className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                      {String(val)}
+                                    </span>
+                                  ) : String(val);
+                                })()
+                              ) : col.key === 's_slujinnya_spysok' && val && val !== '—' ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {String(val).split(/[,;]+/).map(s => s.trim()).filter(Boolean).map((n, i) => {
+                                    const st = getCellStyling('s_slujinnya_spysok', n);
+                                    return st ? (
+                                      <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-bold px-1.5 py-0.5 border" style={{ backgroundColor: st.bg, color: st.text, borderColor: st.border }}>
+                                        {n}
+                                      </span>
+                                    ) : (
+                                      <span key={i} className="inline-flex items-center justify-center rounded-full text-[9px] font-medium px-1.5 py-0.5 bg-slate-700/60 border border-slate-600 text-slate-300">
+                                        {n}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : col.key === 'address' ? (
+                                cleanAddress(String(val || ""))
+                              ) : col.key === 'tel_mob' && val && val !== '—' ? (
+                                (() => {
+                                  const nums: string[] = [];
+                                  String(val).split(/[,;\/]+/).map(p => p.trim()).filter(Boolean).forEach(num => {
+                                    if (!nums.includes(num)) nums.push(num);
+                                  });
+                                  if (nums.length === 0) return '—';
+                                  return (
+                                    <div className="space-y-0.5 font-mono text-[11px] text-slate-300">
+                                      {nums.map((num, i) => (
+                                        <div key={i}>{num}</div>
+                                      ))}
+                                    </div>
+                                  );
+                                })()
+                              ) : (
+                                String(val || '—')
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {filteredRecords.length > 100 && (
+                  <div className="py-3 px-4 bg-[#142d36] text-center text-[11px] text-slate-400 font-medium">
+                    Показано перші 100 результатів пошуку. Повний список із {filteredRecords.length} записів буде експортовано до файлу PDF.
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
       </div>
+
+      {/* Modal for Telegram Broadcast / Mailing */}
+      {isTgModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#11252d] border border-[#1f424f] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="bg-[#16303a] border-b border-[#1f424f] px-5 py-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-teal-500/10 border border-teal-500/20 rounded-xl text-teal-400">
+                  <Send className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white tracking-tight">Розсилка матеріалу в Telegram</h3>
+                  <p className="text-[11px] text-slate-400">Надішліть PDF-звіт, список осіб або текстове повідомлення кільком отримувачам</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsTgModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-[#1a3843] transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Material Type Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                  <span>📦 1. Тип матеріалу для розсилки:</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleMaterialTypeChange('pdf')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      tgMaterialType === 'pdf'
+                        ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-sm'
+                        : 'bg-[#16303a] border-[#275060] text-slate-300 hover:bg-[#1c3c49]'
+                    }`}
+                  >
+                    <span className="text-sm mb-1">📄</span>
+                    <span>Файл звіту (PDF)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMaterialTypeChange('list')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      tgMaterialType === 'list'
+                        ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-sm'
+                        : 'bg-[#16303a] border-[#275060] text-slate-300 hover:bg-[#1c3c49]'
+                    }`}
+                  >
+                    <span className="text-sm mb-1">📋</span>
+                    <span>Список осіб (Текст)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleMaterialTypeChange('text')}
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      tgMaterialType === 'text'
+                        ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-sm'
+                        : 'bg-[#16303a] border-[#275060] text-slate-300 hover:bg-[#1c3c49]'
+                    }`}
+                  >
+                    <span className="text-sm mb-1">💬</span>
+                    <span>Повідомлення</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Recipients Multi-Selection */}
+              <div className="space-y-2 border-t border-[#1f424f] pt-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                    <span>👥 2. Отримувачі розсилки (Telegram Chat ID):</span>
+                  </label>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllContacts}
+                      className="text-teal-400 hover:text-teal-300 underline font-semibold cursor-pointer"
+                    >
+                      Вибрати всіх
+                    </button>
+                    <span className="text-slate-600">•</span>
+                    <button
+                      type="button"
+                      onClick={handleClearContacts}
+                      className="text-slate-400 hover:text-slate-300 underline cursor-pointer"
+                    >
+                      Скинути
+                    </button>
+                  </div>
+                </div>
+
+                {/* Known Contacts Checklist */}
+                {knownContactsList.length > 0 && (
+                  <div className="bg-[#16303a]/80 border border-[#275060] rounded-xl p-2.5 max-h-36 overflow-y-auto space-y-1.5 custom-scrollbar">
+                    {knownContactsList.map((contact, idx) => {
+                      const isChecked = tgSelectedContacts.includes(contact.telegramId);
+                      return (
+                        <label
+                          key={idx}
+                          className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                            isChecked
+                              ? 'bg-teal-500/15 border-teal-500/40 text-white'
+                              : 'bg-[#11252d]/60 border-transparent text-slate-300 hover:bg-[#11252d]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleContact(contact.telegramId)}
+                              className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+                            />
+                            <span className="font-semibold">{contact.user}</span>
+                            {contact.position && (
+                              <span className="text-[10px] text-slate-400">({contact.position})</span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-teal-400/90 bg-teal-950/40 px-1.5 py-0.5 rounded border border-teal-800/40">
+                            ID: {contact.telegramId}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Additional Manual Chat IDs Input */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">
+                    Додаткові Chat ID (через кому або пробіл):
+                  </label>
+                  <input
+                    type="text"
+                    value={tgRecipientId}
+                    onChange={(e) => handleTgRecipientChange(e.target.value)}
+                    placeholder="Наприклад: 240931069, 969538290, 435624187"
+                    className="w-full bg-[#16303a] border border-[#275060] rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400"
+                  />
+                </div>
+
+                {/* Selected Recipients Counter */}
+                {(() => {
+                  const manualIds = tgRecipientId.split(/[,;\s\n]+/).map(s => s.trim()).filter(Boolean);
+                  const totalCount = Array.from(new Set([...tgSelectedContacts, ...manualIds])).length;
+                  return (
+                    <div className="flex items-center justify-between text-[11px] bg-[#142d36] px-3 py-1.5 rounded-lg border border-[#1f424f]">
+                      <span className="text-slate-300">Унікальних отримувачів для розсилки:</span>
+                      <strong className={`font-bold ${totalCount > 0 ? 'text-teal-400' : 'text-amber-400'}`}>
+                        {totalCount} чат(ів)
+                      </strong>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Text / Caption Content Area */}
+              <div className="space-y-1.5 border-t border-[#1f424f] pt-3">
+                <div className="flex items-center justify-between text-xs font-bold text-teal-400">
+                  <span>✏️ 3. {tgMaterialType === 'pdf' ? 'Супровідний текст (коментар до PDF):' : 'Текст розсилки:'}</span>
+                  {tgMaterialType === 'list' && (
+                    <button
+                      type="button"
+                      onClick={() => setTgCustomText(generateTextList())}
+                      className="text-[10px] text-teal-400 hover:text-teal-300 underline font-normal cursor-pointer"
+                    >
+                      Оновити список з вибірки
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  rows={4}
+                  value={tgCustomText}
+                  onChange={(e) => setTgCustomText(e.target.value)}
+                  placeholder={
+                    tgMaterialType === 'pdf'
+                      ? "Введіть коментар до PDF-файлу..."
+                      : tgMaterialType === 'list'
+                      ? "Сформований текстовий список осіб..."
+                      : "Введіть текст вашого повідомлення для розсилки..."
+                  }
+                  className="w-full bg-[#16303a] border border-[#275060] rounded-lg p-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-400 custom-scrollbar font-mono leading-relaxed"
+                />
+              </div>
+
+              {/* PDF Settings if PDF chosen */}
+              {tgMaterialType === 'pdf' && (
+                <div className="bg-[#16303a]/60 border border-[#1f424f] rounded-lg p-2.5 text-xs text-slate-300 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-slate-400">Формат плашок:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-teal-300 select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={printColors} 
+                        onChange={(e) => setPrintColors(e.target.checked)}
+                        className="rounded accent-teal-500 h-3.5 w-3.5 cursor-pointer"
+                      />
+                      <span>{printColors ? "З кольоровими плашками" : "Простий текст"}</span>
+                    </label>
+                  </div>
+                  <div className="text-[11px] text-slate-400">
+                    Записів у звіті: <strong className="text-teal-400">{filteredRecords.length}</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Status notice */}
+              {tgStatus && (
+                <div className={`p-3 rounded-xl border text-xs flex items-start gap-2 ${
+                  tgStatus.isError 
+                    ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' 
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                }`}>
+                  {tgStatus.isError ? (
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-rose-400" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 shrink-0 mt-0.5 text-emerald-400" />
+                  )}
+                  <div className="flex-1 font-medium">{tgStatus.message}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-[#16303a] border-t border-[#1f424f] px-5 py-3 flex items-center justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsTgModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#1a3843] hover:bg-[#224b5a] border border-[#2d5d70] rounded-lg transition-colors cursor-pointer"
+              >
+                Скасувати
+              </button>
+              <button
+                type="button"
+                onClick={handleSendTelegramBroadcast}
+                disabled={tgSending || (tgMaterialType === 'pdf' && filteredRecords.length === 0)}
+                className={`flex items-center gap-2 px-5 py-2 text-xs font-bold text-white rounded-lg shadow-md transition-all ${
+                  tgSending || (tgMaterialType === 'pdf' && filteredRecords.length === 0)
+                    ? 'bg-slate-700 opacity-50 cursor-not-allowed'
+                    : 'bg-teal-600 hover:bg-teal-500 cursor-pointer'
+                }`}
+              >
+                {tgSending ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <span>НАДСИЛАННЯ РОЗСИЛКИ...</span>
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    <span>НАДІСЛАТИ РОЗСИЛКУ В TELEGRAM</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

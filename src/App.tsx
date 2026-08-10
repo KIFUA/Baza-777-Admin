@@ -13,7 +13,7 @@ import LoginPage from './components/LoginPage';
 import { 
   Users, UserCheck, Heart, Shield, History, BarChart3, Search, 
   MapPin, Phone, UserPlus, Filter, RotateCcw, ChevronLeft, ChevronRight, BookOpen,
-  Table2, X
+  Table2, X, Settings, LogOut, FileText, LayoutGrid
 } from 'lucide-react';
 
 export default function App() {
@@ -42,7 +42,59 @@ export default function App() {
     }
   });
 
+  const triggerLoginAudit = async (user: any) => {
+    try {
+      if (!user) return;
+      const userPib = user.user || user.pib || user.position || "Керівник району";
+      const checkAdmin = (userPib + " " + String(user.position || "") + " " + String(user.level || "")).toLowerCase();
+      if (checkAdmin.includes("адміністр") || checkAdmin.includes("адмін") || String(user.level || "").trim() === "I-й") {
+        return; // Вхід адміністратора не фіксуємо
+      }
+
+      let activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      if (!activeSessionId) {
+        activeSessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6);
+        sessionStorage.setItem("baza_active_session_id", activeSessionId);
+      }
+      const rayon = user.rayon || user.rayon2_ukr || "";
+      await fetch('/api/audit/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userPib,
+          rayon,
+          position: user.position || "",
+          level: user.level || "",
+          sessionId: activeSessionId
+        })
+      });
+    } catch (err) {
+      console.error("[Login Tracking Error]", err);
+    }
+  };
+
+  const triggerLogoutAudit = async (user?: any) => {
+    try {
+      const activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      const userPib = user?.user || user?.pib || currentSessionUser?.user || currentSessionUser?.pib;
+      if (activeSessionId || userPib) {
+        await fetch('/api/audit/logout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: activeSessionId,
+            userPib
+          })
+        });
+        sessionStorage.removeItem("baza_active_session_id");
+      }
+    } catch (err) {
+      console.error("[Logout Tracking Error]", err);
+    }
+  };
+
   const handleUpdateSessionUser = (user: any, remember: boolean = true) => {
+    const prevUser = currentSessionUser;
     setCurrentSessionUser(user);
     if (user) {
       if (remember) {
@@ -53,12 +105,36 @@ export default function App() {
         localStorage.removeItem("baza_current_session_user");
       }
       setIsAuthenticated(true);
+      triggerLoginAudit(user);
     } else {
+      triggerLogoutAudit(prevUser);
       localStorage.removeItem("baza_current_session_user");
       sessionStorage.removeItem("baza_current_session_user");
       setIsAuthenticated(false);
     }
   };
+
+  useEffect(() => {
+    if (isAuthenticated && currentSessionUser) {
+      const activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      if (!activeSessionId) {
+        triggerLoginAudit(currentSessionUser);
+      }
+    }
+  }, [isAuthenticated, currentSessionUser]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      const activeSessionId = sessionStorage.getItem("baza_active_session_id");
+      const userPib = currentSessionUser?.user || currentSessionUser?.pib;
+      if (activeSessionId || userPib) {
+        const payload = JSON.stringify({ sessionId: activeSessionId, userPib });
+        navigator.sendBeacon('/api/audit/logout', new Blob([payload], { type: 'application/json' }));
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [currentSessionUser]);
 
   const getPermission = (elementName: string): { view: boolean, edit: boolean } => {
     const level = currentSessionUser?.level || 'І-й';
@@ -195,6 +271,7 @@ export default function App() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
+  const [iframeRefreshKey, setIframeRefreshKey] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -206,6 +283,8 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.')) || isAdmin;
+
   useEffect(() => {
     let modeToElement: Record<string, string> = {
       'spreadsheet': 'СПИСОК',
@@ -215,6 +294,13 @@ export default function App() {
       'journal': 'ЖУРНАЛ'
     };
     const currentElemName = modeToElement[mainMode];
+
+    // Special check for Journal - only for admins
+    if (mainMode === 'journal' && !isCurrentUserAdmin) {
+      setMainMode('spreadsheet');
+      return;
+    }
+
     if (currentElemName && !getPermission(currentElemName).view) {
       if (getPermission('СПИСОК').view) {
         setMainMode('spreadsheet');
@@ -222,7 +308,7 @@ export default function App() {
         setMainMode('questionnaire');
       }
     }
-  }, [currentSessionUser, lookups, mainMode]);
+  }, [currentSessionUser, lookups, mainMode, isCurrentUserAdmin]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -434,7 +520,6 @@ export default function App() {
   const assignedRayon = currentSessionUser?.rayon;
   const isGlobalViewer = levelNum === 3 && assignedRayon === 'ВСІ РАЙОНИ';
   
-  const isCurrentUserAdmin = currentSessionUser?.level === 'IV-й' || (currentSessionUser?.rayon === 'ЦЕНТР' && currentSessionUser?.user?.includes('Черняк Вал.')) || isAdmin;
   const isReadOnly = (currentSessionUser?.rayon === 'ЦЕНТР' && !isCurrentUserAdmin) || isGlobalViewer;
 
   const handleSpreadsheetUpdate = async (id: number, updatedFields: Partial<Member>) => {
@@ -464,6 +549,7 @@ export default function App() {
         setMembers(prev => prev.map(m => m.id === id ? { ...m, ...updatedFields } : m));
         await fetchLookupsAndStats();
         await preloadRawFirebase();
+        setIframeRefreshKey(prev => prev + 1);
         return true;
       }
     } catch (err) {
@@ -512,6 +598,8 @@ export default function App() {
         await fetchMembers();
         await fetchAllMembers();
         await fetchLookupsAndStats();
+        await preloadRawFirebase();
+        setIframeRefreshKey(prev => prev + 1);
         
         if (!editingMember && resJson.memberId) {
           // If created new, navigate to details immediately
@@ -579,176 +667,110 @@ export default function App() {
     <div className="h-screen flex flex-col font-sans select-none antialiased overflow-hidden" style={{ backgroundColor: '#264653' }}>
       
       <div className="w-full max-w-[1100px] mx-auto flex flex-col h-full min-h-0 px-4">
-        {/* SLIM TOP BAR (MIMICKING PHOTO 1) */}
-        <div 
-          style={{ fontSize: '16px' }}
-          className="text-white py-1.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4 border-b border-[#203a45] shrink-0 scale-interface-down-33"
-        >
-          <div className="flex gap-3 sm:gap-4 items-center justify-between sm:justify-start w-full sm:w-auto min-w-0">
-            <div 
-              style={{ fontWeight: 'normal', fontStyle: 'italic', fontSize: '12px' }}
-              className="text-[11px] sm:text-xs font-bold text-slate-300 leading-tight shrink-0"
-            >
-              СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
-              ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
-            </div>
-            
-            {getPermission('ВСЬОГО ЧЛЕНІВ ЦЕРКВИ').view && (
-              <div 
-                style={{ height: '30px' }}
-                className="bg-[#1a3843] border border-[#142d36] rounded px-3 py-0.5 sm:rounded-md sm:px-4 sm:py-1.5 flex text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap shrink-0 min-w-fit"
-              >
-                <span 
-                  style={{ fontSize: '12px', lineHeight: '18px' }}
-                  className="hidden sm:inline mr-2"
-                >
-                  ВСЬОГО ЧЛЕНІВ ЦЕРКВИ
-                </span>
-                <span className="sm:hidden mr-1">ВСЬОГО</span>
-                <span 
-                  style={{ fontSize: '13px', fontWeight: 'bold', color: '#00cb4c' }}
-                  className="font-black text-[10px] sm:text-sm text-white"
-                >
-                  {members.length}
-                </span>
+        {/* STICKY HEADER SECTION */}
+        <header className="sticky top-0 z-50 bg-[#264653] w-full shrink-0 border-b border-[#203a45]">
+          {/* Info Bar (Date, Total Count, Logout) */}
+          <div className="flex flex-wrap items-center justify-between py-1 gap-2 border-b border-[#1f3b47]">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <div className="text-[11px] sm:text-xs font-bold text-slate-400 leading-tight shrink-0 italic">
+                СЬОГОДНІ: {new Date().toLocaleDateString('uk-UA')}<br/>
+                ОНОВЛЕНО: {new Date().toLocaleTimeString('uk-UA')}
               </div>
-            )}
+              
+              {getPermission('ВСЬОГО ЧЛЕНІВ ЦЕРКВИ').view && (
+                <div className="bg-[#1a3843] border border-[#142d36] rounded px-2 sm:px-3 py-1 flex text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#cfdfe2] items-center whitespace-nowrap shrink-0">
+                  <span className="hidden sm:inline mr-2">ВСЬОГО ЧЛЕНІВ ЦЕРКВИ</span>
+                  <span className="sm:hidden mr-1">ВСЬОГО</span>
+                  <span className="text-emerald-400 font-black">{members.length}</span>
+                </div>
+              )}
 
-            <nav className="flex space-x-1 sm:space-x-2 shrink-0 ml-2">
               <button
-                style={{
-                  fontSize: '12px',
-                  height: '30px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
                 onClick={() => { 
                   handleUpdateSessionUser(null);
                   localStorage.removeItem("user_tg_id");
                 }}
-                className="px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d]"
+                className="px-2 sm:px-4 h-[23px] text-[9px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-[#8b3a3a] text-white hover:bg-[#a64d4d] flex items-center gap-1 sm:gap-1.5 shrink-0"
               >
-                ВИХІД
+                <LogOut className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <span>ВИХІД</span>
               </button>
-              {getPermission('СПИСОК').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onClick={() => { 
-                    setMainMode('spreadsheet'); 
-                    setSelectedMemberId(null); 
-                    setShowForm(false); 
-                    // Instant load using cache, reload synced changes in background in parallel
-                    Promise.all([
-                      fetchAllMembers(),
-                      fetchMembers(),
-                      fetchLookupsAndStats()
-                    ]).catch(err => console.error("Error updating tab data:", err));
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  СПИСОК
-                </button>
-              )}
-              {getPermission('АНКЕТИ').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Перейти до анкет"
-                  onClick={() => { 
-                    setMainMode('questionnaire'); 
-                    setSelectedMemberId(null); 
-                    setShowForm(false); 
-                    Promise.all([
-                      fetchAllMembers(),
-                      fetchMembers(),
-                      fetchLookupsAndStats()
-                    ]).catch(err => console.error("Error updating tab data:", err));
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  АНКЕТИ
-                </button>
-              )}
-              {getPermission('АНКЕТИ').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Журнал змін бази даних"
-                  onClick={() => { 
-                    setMainMode('journal'); 
-                    setSelectedMemberId(null); 
-                    setShowForm(false); 
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'journal' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  ЖУРНАЛ
-                </button>
-              )}
-              {getPermission('СТАТИСТИКА').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Аналітична статистика реєстру та зрізи за районами"
-                  onClick={() => {
-                    setMainMode('stats');
-                    setSelectedMemberId(null);
-                    setShowForm(false);
-                    Promise.all([
-                      fetchAllMembers(),
-                      fetchMembers(),
-                      fetchLookupsAndStats()
-                    ]).catch(err => console.error("Error updating tab data:", err));
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'stats' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  СТАТИСТИКА
-                </button>
-              )}
-              {getPermission('НАЛАШТУВАННЯ').view && (
-                <button
-                  style={{
-                    fontSize: '12px',
-                    height: '30px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  title="Налаштування довідників та кольорів"
-                  onClick={() => {
-                    setMainMode('settings');
-                    setSelectedMemberId(null);
-                    setShowForm(false);
-                  }}
-                  className={`px-2 sm:px-5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase ${mainMode === 'settings' ? "bg-[#387d7a] text-white shadow-sm" : "bg-[#1a3843] text-slate-300 hover:bg-[#254b52]"}`}
-                >
-                  НАЛАШТУВАННЯ
-                </button>
-              )}
-            </nav>
+            </div>
           </div>
-        </div>
+
+          {/* Main Navigation (Sticky and prominent) */}
+          <nav className="flex flex-wrap justify-start gap-1 sm:gap-1.5 py-1 sm:py-2 w-full">
+            {getPermission('СПИСОК').view && (
+              <button
+                onClick={() => { 
+                  setMainMode('spreadsheet'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                  Promise.all([fetchAllMembers(), fetchMembers(), fetchLookupsAndStats()]);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'spreadsheet' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <Table2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>СПИСОК</span>
+              </button>
+            )}
+            {getPermission('АНКЕТИ').view && (
+              <button
+                onClick={() => { 
+                  setMainMode('questionnaire'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                  Promise.all([fetchAllMembers(), fetchMembers(), fetchLookupsAndStats()]);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'questionnaire' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <FileText className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>АНКЕТИ</span>
+              </button>
+            )}
+            {isCurrentUserAdmin && (
+              <button
+                onClick={() => { 
+                  setMainMode('journal'); 
+                  setSelectedMemberId(null); 
+                  setShowForm(false); 
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'journal' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <History className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>ЖУРНАЛ</span>
+              </button>
+            )}
+            {getPermission('СТАТИСТИКА').view && (
+              <button
+                onClick={() => {
+                  setMainMode('stats');
+                  setSelectedMemberId(null);
+                  setShowForm(false);
+                  Promise.all([fetchAllMembers(), fetchMembers(), fetchLookupsAndStats()]);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'stats' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <BarChart3 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span>СТАТ</span>
+              </button>
+            )}
+            {getPermission('НАЛАШТУВАННЯ').view && (
+              <button
+                onClick={() => {
+                  setMainMode('settings');
+                  setSelectedMemberId(null);
+                  setShowForm(false);
+                }}
+                className={`flex-1 sm:flex-initial flex flex-row items-center justify-center gap-1 px-1.5 sm:px-3 py-1 text-[8px] sm:text-[10px] font-bold transition-all rounded-md tracking-wider uppercase border ${mainMode === 'settings' ? "bg-[#387d7a] text-white border-emerald-400/30 shadow-md" : "bg-[#1a3843] text-slate-400 border-[#1f424f] hover:bg-[#254b52]"}`}
+              >
+                <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                <span className="hidden sm:inline">НАЛАШТУВАННЯ</span>
+                <span className="sm:hidden">НАЛАШТ</span>
+              </button>
+            )}
+          </nav>
+        </header>
 
         {/* 2. MAIN HUB CANVAS CONTENT */}
         <main className="flex-1 min-h-0 w-full pb-2 flex flex-col overflow-y-auto">
@@ -833,15 +855,41 @@ export default function App() {
                 {(currentSessionUser?.level === 'IV-й' || currentSessionUser?.level === 'ІІІ-й') && (
                   <div className="bg-[#1e1e1e] px-4 py-2 flex items-center justify-between border-b border-[#2b2b2b]">
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Анкети</span>
-                    <button
-                      onClick={() => {
-                        setEditingMember(null);
-                        setShowForm(true);
-                      }}
-                      className="px-3 py-1 sm:px-5 sm:py-1.5 text-[10px] sm:text-xs font-bold transition-all rounded-md tracking-wider uppercase bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
-                    >
-                      + Додати члена
-                    </button>
+                    <div className="flex items-center space-x-1">
+                      {selectedMemberId && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`/api/members/${selectedMemberId}`);
+                              if (resp.ok) {
+                                const fullMember = await resp.json();
+                                setEditingMember(fullMember.member || fullMember);
+                                setShowForm(true);
+                              } else {
+                                alert("Не вдалося завантажити дані члена");
+                              }
+                            } catch (err) {
+                              console.error("Error loading member details:", err);
+                              alert("Помилка при завантаженні даних");
+                            }
+                          }}
+                          className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-amber-600 text-white shadow-xs hover:bg-amber-700"
+                        >
+                          Редагувати
+                        </button>
+                      )}
+                      {isCurrentUserAdmin && (
+                        <button
+                          onClick={() => {
+                            setEditingMember(null);
+                            setShowForm(true);
+                          }}
+                          className="px-1 py-0.5 sm:px-2 sm:py-0.5 text-[7px] sm:text-[9px] font-bold transition-all rounded tracking-wider uppercase bg-emerald-600 text-white shadow-xs hover:bg-emerald-700"
+                        >
+                          + Додати члена
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
                 {false ? (
@@ -852,6 +900,7 @@ export default function App() {
                   </div>
                 ) : (
                   <iframe 
+                    key={iframeRefreshKey}
                     src={`/index_legacy.html?merge=before${selectedMemberId ? `&id=${selectedMemberId}` : ''}`} 
                     className="w-full h-full border-0 flex-1" 
                     title="Legacy Questionnaire"
@@ -882,7 +931,7 @@ export default function App() {
                   onUpdateMember={handleSpreadsheetUpdate}
                 />
               </div>
-            ) : mainMode === 'journal' ? (
+            ) : (mainMode === 'journal' && isCurrentUserAdmin) ? (
               <div className="flex-1 overflow-y-auto min-h-0 pb-2 bg-[#0e2128] p-4 sm:p-6 rounded-2xl border border-[#1f424f] shadow-lg">
                 <HistoryJournal
                   onSelectMember={(id) => {

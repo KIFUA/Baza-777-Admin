@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Member } from '../types';
+import { Member, MemberHistoryItem } from '../types';
 import { Save, X, Info } from 'lucide-react';
+import { normalizeToDateStr } from '../lib/dateUtils';
+import MemberHistorySection from './MemberHistorySection';
+import { getSynthesizedHistoryLogs } from '../lib/historyUtils';
 
 const parseAddress = (addressStr: string | undefined | null) => {
   const result = {
@@ -171,13 +174,78 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
   useEffect(() => {
     if (member) {
       const parsed = parseAddress(member.address);
+
+      // Smart reverse-lookup helper to resolve string descriptions to standard lookup IDs
+      const findIdByValue = (list: any[] | undefined, valueStr: string | undefined, currentId: any, defaultId: number): number => {
+        if (!list || !Array.isArray(list)) return Number(currentId || defaultId);
+        
+        // 1. Prioritize text label match if valueStr is present
+        if (valueStr) {
+          const cleanVal = String(valueStr).trim().toLowerCase();
+          if (cleanVal !== "" && cleanVal !== "н/д" && cleanVal !== "не вказано" && cleanVal !== "не вказ.") {
+            // 1a. Try exact match
+            let found = list.find(item => String(item.Value || "").trim().toLowerCase() === cleanVal);
+            if (found) return Number(found.ID);
+
+            // 1b. Try partial match
+            found = list.find(item => {
+              const itemVal = String(item.Value || "").trim().toLowerCase();
+              return itemVal.includes(cleanVal) || cleanVal.includes(itemVal);
+            });
+            if (found) return Number(found.ID);
+
+            // 1c. Try Ukrainian-specific stems (checking first 3+ chars)
+            if (cleanVal.length >= 3) {
+              const stem = cleanVal.slice(0, 3);
+              found = list.find(item => String(item.Value || "").trim().toLowerCase().startsWith(stem));
+              if (found) return Number(found.ID);
+            }
+          }
+        }
+
+        // 2. Fall back to currentId if valid and exists in lookup list
+        const currentIdNum = Number(currentId);
+        if (!isNaN(currentIdNum) && currentIdNum !== 0 && currentIdNum !== defaultId) {
+          const exists = list.some(item => Number(item.ID) === currentIdNum);
+          if (exists) return currentIdNum;
+        }
+
+        return Number(defaultId);
+      };
+
+      const simeyniyId = findIdByValue(lookups?.simeyniy, member.s_simeyniy_ukr, member.id_simeyniy, 5);
+      const socialniyId = findIdByValue(lookups?.socialniy, member.s_socialniy_ukr, member.id_socialniy, 6);
+      const osvitaId = findIdByValue(lookups?.osvita, member.s_osvita_ukr, member.id_osvita, 4);
+      const profesiyaId = findIdByValue(lookups?.profesiya, member.s_profesiya_ukr, member.id_profesiya, 41);
+      const vybuttyaId = findIdByValue(lookups?.vybuv, member.s_vybuv_ukr, member.id_vybuttya, 0);
+
+      // Match Ukrainian text labels with our resolved IDs for visual feedback
+      const simeyniyLabel = lookups?.simeyniy?.find((s: any) => Number(s.ID) === simeyniyId)?.Value || member.s_simeyniy_ukr || 'н/д';
+      const socialniyLabel = lookups?.socialniy?.find((s: any) => Number(s.ID) === socialniyId)?.Value || member.s_socialniy_ukr || 'н/д';
+      const osvitaLabel = lookups?.osvita?.find((s: any) => Number(s.ID) === osvitaId)?.Value || member.s_osvita_ukr || 'н/д';
+      const profesiyaLabel = lookups?.profesiya?.find((s: any) => Number(s.ID) === profesiyaId)?.Value || member.s_profesiya_ukr || 'н/д';
+      const vybuvLabel = lookups?.vybuv?.find((s: any) => Number(s.ID) === vybuttyaId)?.Value || member.s_vybuv_ukr || '';
+
+      const mainNote = member.prymitka || (member as any).primitka || '';
+
       setFormData({
         ...member,
         gender: member.gender || member.stat || 'брат',
         stat: member.gender || member.stat || 'брат',
+        id_simeyniy: simeyniyId,
+        s_simeyniy_ukr: simeyniyLabel,
+        id_socialniy: socialniyId,
+        s_socialniy_ukr: socialniyLabel,
+        id_osvita: osvitaId,
+        s_osvita_ukr: osvitaLabel,
+        id_profesiya: profesiyaId,
+        s_profesiya_ukr: profesiyaLabel,
+        id_vybuttya: vybuttyaId,
+        s_vybuv_ukr: vybuvLabel,
         id_dilnytsia: member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ''),
         id_dilnicya: member.id_dilnytsia !== undefined ? member.id_dilnytsia : (member.id_dilnicya || ''),
-        prymitka: member.prymitka || (member as any).primitka || '',
+        prymitka: mainNote,
+        primitka: mainNote,
         nas_punkt: member.nas_punkt || parsed.nas_punkt,
         vulitsya: member.vulitsya || parsed.vulitsya,
         budynok: member.budynok || parsed.budynok,
@@ -207,7 +275,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         sluj_uchast: ''
       }));
     }
-  }, [member, hasSpecificRayonLock]);
+  }, [member, hasSpecificRayonLock, lookups]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -223,6 +291,11 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         (updated as any)[name] = checked;
       } else {
         (updated as any)[name] = value;
+        if (name === 'prymitka') {
+          (updated as any).primitka = value;
+        } else if (name === 'primitka') {
+          (updated as any).prymitka = value;
+        }
       }
 
       // Auto compile address if any address parts change
@@ -298,6 +371,8 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
         updated.s_vybuv_ukr = item ? item.Value : '';
         if (idNum === 0) {
           updated.vybutty_prymitka = '';
+          updated.d_vybuttya = '';
+          updated.s_vybuv_ukr = '';
         }
       }
 
@@ -446,6 +521,31 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
           </button>
         </div>
       </div>
+
+      {Number(formData.id_vybuttya) > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-200 shadow-sm animate-in fade-in duration-200">
+          <div className="text-xs">
+            <span className="font-bold text-amber-400 uppercase tracking-wide block sm:inline mr-2">Статус обліку: ВИБУВ</span>
+            <span>Причина: <b>{formData.s_vybuv_ukr || 'Вибуття'}</b> ({formData.d_vybuttya ? normalizeToDateStr(formData.d_vybuttya) : 'Дата не вказана'})</span>
+            {formData.vybutty_prymitka && <span className="block text-slate-300 italic text-[11px] mt-0.5">"{formData.vybutty_prymitka}"</span>}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                id_vybuttya: 0,
+                s_vybuv_ukr: '',
+                d_vybuttya: '',
+                vybutty_prymitka: ''
+              }));
+            }}
+            className="shrink-0 rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-500 transition-colors shadow-sm cursor-pointer"
+          >
+            Поновити з вибулих (у наявні)
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         
@@ -751,24 +851,27 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
 
             <div className="space-y-1">
               <label className="block text-xs font-medium text-slate-300 mb-1">Соц. стан</label>
-              <input
-                type="text"
-                name="soc_stan"
+              <select
+                name="id_socialniy"
                 disabled={!!isRestricted}
-                value={formData.soc_stan || ''}
+                value={formData.id_socialniy || ''}
                 onChange={handleChange}
-                placeholder="не вказ."
-                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
-              />
+                className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              >
+                <option value="" className="text-slate-400">не вказ.</option>
+                {lookups?.socialniy?.map((s: any) => (
+                  <option key={s.ID} value={s.ID} className="text-white font-semibold">{s.Value}</option>
+                ))}
+              </select>
             </div>
 
             <div className="space-y-1">
               <label className="block text-xs font-medium text-slate-300 mb-1">Професія</label>
               <input
                 type="text"
-                name="profesiya"
+                name="s_profesiya_ukr"
                 disabled={!!isRestricted}
-                value={formData.profesiya || ''}
+                value={formData.s_profesiya_ukr === 'н/д' ? '' : (formData.s_profesiya_ukr || '')}
                 onChange={handleChange}
                 placeholder="не вказ."
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
@@ -860,7 +963,7 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
               />
             </div>
 
-            {formData.d_vodnogo && formData.d_vstupu && formData.d_vodnogo !== formData.d_vstupu && (
+            {formData.d_vstupu && (!formData.d_vodnogo || formData.d_vodnogo !== formData.d_vstupu) && (
               <>
                 <div className="space-y-1">
                   <label className="block text-xs font-medium text-slate-300 mb-1">Перехід з іншої громади</label>
@@ -958,6 +1061,46 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
+                </div>
+
+                <div className="space-y-1 pt-2 border-t border-[#333333]/60">
+                  <label className="text-xs font-semibold text-slate-300 block">Статус обліку / Вибуття</label>
+                  <select
+                    name="id_vybuttya"
+                    value={formData.id_vybuttya || 0}
+                    onChange={handleChange}
+                    className={`w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 ${Number(formData.id_vybuttya) === 0 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}`}
+                  >
+                    <option value={0} className="text-emerald-400 font-bold">Наявний (Активний член церкви)</option>
+                    {lookups?.vybuv?.map((v: any) => (
+                      <option key={v.ID} value={v.ID} className="text-slate-200">{v.Value}</option>
+                    ))}
+                  </select>
+                  {Number(formData.id_vybuttya) > 0 && (
+                    <div className="space-y-2 pt-1 animate-in fade-in duration-200">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Дата вибуття</label>
+                        <input
+                          type="date"
+                          name="d_vybuttya"
+                          value={formData.d_vybuttya || ''}
+                          onChange={handleChange}
+                          className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 block">Примітка вибуття</label>
+                        <input
+                          type="text"
+                          name="vybutty_prymitka"
+                          value={formData.vybutty_prymitka || ''}
+                          onChange={handleChange}
+                          placeholder="Примітка до вибуття..."
+                          className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4 placeholder:text-slate-600"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {(() => {
@@ -1120,6 +1263,15 @@ export default function MemberForm({ member, lookups, onSave, onCancel, isRestri
                 placeholder="не вказ."
                 rows={3}
                 className="w-full rounded-lg border border-[#333333] p-1.5 bg-[#262626] text-white placeholder-slate-500 text-xs font-semibold ring-emerald-500/10 focus:border-[#387d7a] focus:outline-none focus:ring-4"
+              />
+            </div>
+
+            {/* History Logs Section */}
+            <div className="pt-2">
+              <MemberHistorySection 
+                member={formData as Member} 
+                canEdit={!isRestricted} 
+                onUpdateHistory={(updatedLogs) => setFormData(prev => ({ ...prev, history_logs: updatedLogs }))} 
               />
             </div>
 

@@ -2,7 +2,9 @@
   "framework": "vite",
   "functions": {
     "api/index.ts": {
-      "includeFiles": "tablyci/**"
+      "memory": 1024,
+      "maxDuration": 60,
+      "includeFiles": ["db_cache.json"]
     }
   },
   "rewrites": [

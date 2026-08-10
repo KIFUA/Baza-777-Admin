@@ -4,6 +4,7 @@ import {
   Search, Edit2, Check, X, FileText, CheckCircle, AlertTriangle, 
   HelpCircle, Sparkles, Filter 
 } from 'lucide-react';
+import { normalizeToDateStr, parseAndNormalizeContactDates } from '../lib/dateUtils';
 
 interface SpreadsheetViewProps {
   members: Member[];
@@ -313,24 +314,7 @@ export default function SpreadsheetView({
 
   // Helper to parse contact dates safely
   const parseContactDates = (dKontaktiv?: string): string[] => {
-    if (!dKontaktiv) return [];
-    let tokens = dKontaktiv.split(/[\/,;\n]+/);
-    let finalTokens: string[] = [];
-    tokens.forEach(t => {
-      const trimmed = t.trim();
-      if (!trimmed) return;
-      
-      if (trimmed.includes(' ') && /\d{2}\.\d{2}\.\d{2}/.test(trimmed)) {
-        const spaceParts = trimmed.split(/\s+/);
-        spaceParts.forEach(sp => {
-          const spt = sp.trim();
-          if (spt) finalTokens.push(spt);
-        });
-      } else {
-        finalTokens.push(trimmed);
-      }
-    });
-    return finalTokens.filter(p => p && p !== '—' && p !== 'н/д');
+    return parseAndNormalizeContactDates(dKontaktiv);
   };
 
   // Helper to get latest contact date
@@ -394,10 +378,10 @@ export default function SpreadsheetView({
 
     const parts = trimmed.split(/[\s,;]+/).map(p => p.trim()).filter(Boolean);
     if (parts.length > 0) {
-      return parts[parts.length - 1];
+      return normalizeToDateStr(parts[parts.length - 1]);
     }
 
-    return trimmed;
+    return normalizeToDateStr(trimmed);
   };
 
   const handleOpenContactModal = (m: Member) => {
@@ -2122,7 +2106,7 @@ export default function SpreadsheetView({
                     {getPermission('СІМ. СТАН').view && (
                       <td className="py-0.5 px-1 border-r border-slate-300 text-center text-slate-600 text-[10px] truncate">
                         {m.s_simeyniy_ukr ? (
-                          /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодр.' : m.s_simeyniy_ukr
+                          /^неодружен(ий|а|і|о)?$/i.test(String(m.s_simeyniy_ukr).trim()) ? 'неодруж.' : (m.s_simeyniy_ukr === 'одр.' ? 'одруж.' : m.s_simeyniy_ukr)
                         ) : '—'}
                       </td>
                     )}

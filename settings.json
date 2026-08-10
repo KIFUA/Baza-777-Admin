@@ -1,8 +1,48 @@
 {
+  "connectors": {
+    "email": {
+      "appPassword": "bizx gmid xbel gbbo",
+      "user": "kostel.if.ua@gmail.com"
+    },
+    "telegramBots": [
+      {
+        "id": "default",
+        "name": "БАЗА_адмін",
+        "token": "8707583583:AAHRn5BD-Q9wku_wUOCWgNCA-_tQSv4uarA"
+      }
+    ]
+  },
+  "birthdays": {
+    "pdf": {
+      "connectorId": "default",
+      "connectorType": "telegram",
+      "day": 3,
+      "hour": 12,
+      "minute": 20,
+      "recipientId": "240931069, 1919236304, 641535150"
+    },
+    "text": {
+      "connectorId": "default",
+      "connectorType": "telegram",
+      "day": 1,
+      "hour": 10,
+      "minute": 35,
+      "recipientId": "240931069, 858036501"
+    }
+  },
+  "notificationDays": 14,
+  "enableTestMode": false,
+  "testTelegramId": "240931069",
   "mondayEmails": "kostel.if.ua@gmail.com",
-  "wednesdayEmails": "kostel.if.ua@gmail.com",
+  "wednesdayEmails": "kostel.if.ua@gmail.com, gvi.dim.777@gmail.com",
   "mondayTelegramIds": "240931069, 858036501, 1919236304, 787436892",
   "wednesdayTelegramIds": "240931069",
-  "botToken": "",
-  "appPassword": ""
+  "botToken": "8707583583:AAGvcHw2CisK012R-UFaFe45-0cfoyp49g0",
+  "appPassword": "bizx gmid xbel gbbo",
+  "mondayMailingDay": 1,
+  "mondayMailingHour": 10,
+  "mondayMailingMinute": 35,
+  "wednesdayMailingDay": 3,
+  "wednesdayMailingHour": 12,
+  "wednesdayMailingMinute": 20
 }

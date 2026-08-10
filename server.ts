@@ -5977,32 +5977,40 @@ async function startServer() {
     console.error("[startServer] Error loading local database cache:", err);
   }
 
-  // 2. Attach Vite middleware (dev) or static serving (prod)
-  if (process.env.NODE_ENV !== "production") {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
+  // 2. Attach Vite middleware (dev) or static serving (prod) if not on Vercel
+  if (!process.env.VERCEL) {
+    if (process.env.NODE_ENV !== "production") {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
+
+    // 3. Start listening immediately on port 3000
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Church Database FullStack Server running on port ${PORT}`);
     });
-    app.use(vite.middlewares);
+
+    // 4. Background initial sync and cron initialization
+    ensureInitialSync().catch((err) => {
+      console.error("[startServer] Background initial sync error:", err);
+    });
+    initBirthdayCron(getBirthdaysForThisWeek, getSettings);
   } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    // Running as Serverless Function on Vercel:
+    // Do NOT call app.listen() or start cron intervals
+    ensureInitialSync().catch((err) => {
+      console.error("[Vercel] Background initial sync error:", err);
     });
   }
-
-  // 3. Start listening immediately on port 3000
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Church Database FullStack Server running on port ${PORT}`);
-  });
-
-  // 4. Background initial sync and cron initialization
-  ensureInitialSync().catch((err) => {
-    console.error("[startServer] Background initial sync error:", err);
-  });
-  initBirthdayCron(getBirthdaysForThisWeek, getSettings);
 }
 
 startServer();

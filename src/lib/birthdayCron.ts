@@ -84,16 +84,21 @@ async function getPuppeteerExecutablePath(): Promise<string | undefined> {
 
 async function launchBrowser() {
   try {
-    const sparticuzPath = await chromium.executablePath();
-    if (sparticuzPath) {
-      return await puppeteer.launch({
-        args: chromium.args,
-        executablePath: sparticuzPath,
-        headless: (chromium as any).headless ?? true,
-      });
+    const chromiumObj = (chromium as any).default || chromium;
+    const execFn = chromiumObj.executablePath || (chromium as any).executablePath;
+    if (typeof execFn === 'function') {
+      const sparticuzPath = await execFn();
+      if (sparticuzPath && fs.existsSync(sparticuzPath)) {
+        console.log('[Puppeteer] Launching browser with @sparticuz/chromium at:', sparticuzPath);
+        return await puppeteer.launch({
+          args: chromiumObj.args || ['--no-sandbox', '--disable-setuid-sandbox'],
+          executablePath: sparticuzPath,
+          headless: chromiumObj.headless ?? true,
+        });
+      }
     }
-  } catch (e) {
-    console.log('[Puppeteer] @sparticuz/chromium fallback:', e);
+  } catch (e: any) {
+    console.log('[Puppeteer] @sparticuz/chromium fallback:', e?.message || e);
   }
 
   const execPath = await getPuppeteerExecutablePath();
@@ -186,6 +191,10 @@ const getKyivDateTime = () => {
 };
 
 export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () => BirthdaySettings) {
+    if (process.env.VERCEL) {
+        console.log("[BirthdayCron] Vercel environment detected. Skipping background cron scheduler.");
+        return;
+    }
     if (isInitialized) {
         console.log("[BirthdayCron] Already initialized, skipping.");
         return;

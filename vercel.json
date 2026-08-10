@@ -4,7 +4,7 @@
     "api/index.ts": {
       "memory": 1024,
       "maxDuration": 60,
-      "includeFiles": "db_cache.json"
+      "includeFiles": ["db_cache.json"]
     }
   },
   "rewrites": [

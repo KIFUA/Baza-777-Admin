@@ -446,6 +446,12 @@ function getDbCacheFilePath(): string | null {
     path.join(process.cwd(), "db_cache.json"),
     path.join(appDir, "db_cache.json"),
     path.join(appDir, "..", "db_cache.json"),
+    path.join(appDir, "..", "..", "db_cache.json"),
+    path.join(__dirname, "db_cache.json"),
+    path.join(__dirname, "..", "db_cache.json"),
+    path.join(__dirname, "..", "..", "db_cache.json"),
+    path.resolve("db_cache.json"),
+    path.resolve("../db_cache.json"),
     path.join(os.tmpdir(), "db_cache.json")
   ];
   for (const p of candidateCachePaths) {
@@ -2024,62 +2030,72 @@ app.get("/api/birthdays/print", async (req, res) => {
 });
 
 async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
-  const UKR_DAYS: Record<number, string> = {
-    1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Нд'
-  };
-  const listRows = (birthdays.list || []).map((item: any) => {
-    const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
-    const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
-    const name = item.cleanName || item.fullName || item.shortName || '';
-    return `<tr style="${item.isJubilee ? 'color:#dc2626; font-weight:bold;' : ''}">
-      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dayName}</td>
-      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0; text-align:center;">${dateFormatted}</td>
-      <td style="padding:8px 12px; border-bottom:1px solid #e2e8f0;">${name} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
-    </tr>`;
-  }).join('');
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ size: 'A5', margin: 25 });
+      doc.registerFont('Roboto', Buffer.from(getRobotoRegularFont()));
+      doc.registerFont('Roboto-Bold', Buffer.from(getRobotoBoldFont()));
 
-  const html = `<!DOCTYPE html>
-<html lang="uk">
-<head>
-  <meta charset="UTF-8">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
-    body { font-family: 'Roboto', sans-serif; padding: 24px; color: #0f172a; margin:0; }
-    h1 { text-align: center; font-size: 18px; margin-bottom: 4px; color: #1e293b; }
-    .sub { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 20px; font-weight:500; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { background: #f8fafc; padding: 10px 12px; border-bottom: 2px solid #cbd5e1; text-align: left; color:#475569; }
-    .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; }
-  </style>
-</head>
-<body>
-  <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
-  <div class="sub">/ ${birthdays.weekRangeText || ''} /</div>
-  <table>
-    <thead>
-      <tr>
-        <th style="text-align:center; width:60px;">День</th>
-        <th style="text-align:center; width:90px;">Дата</th>
-        <th>ПІБ / Ім'я</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${listRows || '<tr><td colspan="3" style="text-align:center; padding:15px; color:#94a3b8;">На цьому тижні немає іменинників</td></tr>'}
-    </tbody>
-  </table>
-  <div class="footer">Згенеровано автоматично системою "База 777"</div>
-</body>
-</html>`;
+      const bufs: Buffer[] = [];
+      doc.on('data', chunk => bufs.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(bufs)));
+      doc.on('error', err => reject(err));
 
-  const browser = await launchBrowser();
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'domcontentloaded' });
-    const pdfBuf = await page.pdf({ format: 'A5', printBackground: true });
-    return Buffer.from(pdfBuf);
-  } finally {
-    await browser.close();
-  }
+      const UKR_DAYS: Record<number, string> = {
+        1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Нд'
+      };
+
+      doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+      doc.moveDown(0.2);
+      doc.font('Roboto').fontSize(9).fillColor('#64748b').text(`/ ${birthdays.weekRangeText || ''} /`, { align: 'center' });
+      doc.moveDown(1);
+
+      doc.fillColor('#0f172a');
+      const list = birthdays.list || [];
+      if (list.length === 0) {
+        doc.font('Roboto').fontSize(10).fillColor('#94a3b8').text('На цьому тижні немає іменинників', { align: 'center' });
+      } else {
+        const startX = 25;
+        let startY = doc.y;
+
+        doc.font('Roboto-Bold').fontSize(9).fillColor('#475569');
+        doc.text('День', startX, startY, { width: 40, align: 'center' });
+        doc.text('Дата', startX + 45, startY, { width: 65, align: 'center' });
+        doc.text('ПІБ / Ім\'я', startX + 115, startY, { width: 220, align: 'left' });
+
+        startY += 15;
+        doc.moveTo(startX, startY).lineTo(startX + 370, startY).strokeColor('#cbd5e1').lineWidth(1).stroke();
+        startY += 5;
+
+        list.forEach((item: any) => {
+          const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
+          const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
+          const name = (item.cleanName || item.fullName || item.shortName || '') + (item.isJubilee ? ' (Ювілей!)' : '');
+
+          if (item.isJubilee) {
+            doc.font('Roboto-Bold').fillColor('#dc2626');
+          } else {
+            doc.font('Roboto').fillColor('#0f172a');
+          }
+
+          doc.fontSize(9);
+          doc.text(dayName, startX, startY, { width: 40, align: 'center' });
+          doc.text(dateFormatted, startX + 45, startY, { width: 65, align: 'center' });
+          doc.text(name, startX + 115, startY, { width: 220, align: 'left' });
+
+          startY += 16;
+          doc.moveTo(startX, startY).lineTo(startX + 370, startY).strokeColor('#f1f5f9').lineWidth(0.5).stroke();
+          startY += 4;
+        });
+      }
+
+      doc.font('Roboto').fontSize(8).fillColor('#94a3b8').text('Згенеровано автоматично системою "База 777"', 25, 390, { align: 'center' });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 // 2.3.1 Helper to compute stats for a rayon on server
@@ -2452,45 +2468,59 @@ app.post("/api/generate-pdf", async (req, res) => {
       return res.status(400).json({ success: false, message: "HTML вміст обов'язковий." });
     }
 
-    const browser = await launchBrowser();
-
+    let pdfBuffer: Buffer | null = null;
     try {
-      const page = await browser.newPage();
-
-      await page.setViewport({
-        width: isLandscape ? 1123 : 794,
-        height: isLandscape ? 794 : 1123,
-        deviceScaleFactor: 1
-      });
-
-      await page.setContent(html, { waitUntil: 'domcontentloaded' });
-
+      const browser = await launchBrowser();
       try {
-        await page.evaluateHandle('document.fonts.ready');
-      } catch (fErr) {}
+        const page = await browser.newPage();
 
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        landscape: Boolean(isLandscape),
-        printBackground: true,
-        preferCSSPageSize: true,
-        margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
-      });
+        await page.setViewport({
+          width: isLandscape ? 1123 : 794,
+          height: isLandscape ? 794 : 1123,
+          deviceScaleFactor: 1
+        });
 
-      if (returnBase64) {
-        const base64Str = Buffer.from(pdfBuffer).toString('base64');
-        return res.json({ success: true, pdfBase64: base64Str });
+        await page.setContent(html, { waitUntil: 'domcontentloaded' });
+
+        try {
+          await page.evaluateHandle('document.fonts.ready');
+        } catch (fErr) {}
+
+        const rawBuf = await page.pdf({
+          format: 'A4',
+          landscape: Boolean(isLandscape),
+          printBackground: true,
+          preferCSSPageSize: true,
+          margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
+        });
+        pdfBuffer = Buffer.from(rawBuf);
+      } finally {
+        await browser.close();
       }
-
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
-      return res.send(Buffer.from(pdfBuffer));
-    } finally {
-      await browser.close();
+    } catch (pErr: any) {
+      console.warn("[PDF API] Server Puppeteer generation unavailable:", pErr?.message || pErr);
+      return res.status(503).json({
+        success: false,
+        fallbackToClient: true,
+        message: "Серверний Chrome недоступний. Використовується локальне фонове формування PDF у браузері."
+      });
     }
+
+    if (!pdfBuffer) {
+      return res.status(503).json({ success: false, fallbackToClient: true, message: "Не вдалося сформувати PDF на сервері." });
+    }
+
+    if (returnBase64) {
+      const base64Str = pdfBuffer.toString('base64');
+      return res.json({ success: true, pdfBase64: base64Str });
+    }
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(filename)}"`);
+    return res.send(pdfBuffer);
   } catch (err: any) {
     console.error("Server PDF generation error:", err);
-    return res.status(500).json({ success: false, message: "Помилка генерації PDF на сервері: " + err.message });
+    return res.status(500).json({ success: false, fallbackToClient: true, message: "Помилка генерації PDF на сервері: " + err.message });
   }
 });
 
@@ -5971,9 +6001,11 @@ async function ensureDatabaseIsFresh() {
       });
     } else {
       try {
-        await syncDatabaseWithFirebase();
+        const syncPromise = syncDatabaseWithFirebase();
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Firebase initial sync timeout (8s limit reached)")), 8000));
+        await Promise.race([syncPromise, timeoutPromise]);
       } catch (err: any) {
-        console.error("[Cache Sync] Automatic sync failed:", err?.message || err);
+        console.error("[Cache Sync] Automatic sync failed or timed out:", err?.message || err);
       }
     }
   }

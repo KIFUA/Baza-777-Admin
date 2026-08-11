@@ -26,7 +26,6 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          legacy: path.resolve(__dirname, 'index_legacy.html'),
         },
       },
     },

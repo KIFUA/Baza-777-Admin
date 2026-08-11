@@ -419,7 +419,8 @@ export default function App() {
         : '/api/members?status=';
 
       const resp = await fetch(url); // empty status returns all records
-      if (resp.ok) {
+      const ct = resp.headers.get("content-type");
+      if (resp.ok && ct && ct.includes("application/json")) {
         const json = await resp.json();
         setAllMembers(json);
       }
@@ -433,14 +434,16 @@ export default function App() {
   const fetchLookupsAndStats = async () => {
     try {
       const lookResp = await fetch('/api/lookups');
-      if (lookResp.ok) {
+      const lookCt = lookResp.headers.get("content-type");
+      if (lookResp.ok && lookCt && lookCt.includes("application/json")) {
         const lookJson = await lookResp.json();
         setLookups(lookJson);
         (window as any).__bazaLookupsData = lookJson;
       }
       
       const statsResp = await fetch('/api/stats');
-      if (statsResp.ok) {
+      const statsCt = statsResp.headers.get("content-type");
+      if (statsResp.ok && statsCt && statsCt.includes("application/json")) {
         const statsJson = await statsResp.json();
         setStats(statsJson);
       }
@@ -452,7 +455,8 @@ export default function App() {
   const preloadRawFirebase = async () => {
     try {
       const res = await fetch('/api/firebase/members.json');
-      if (res.ok) {
+      const resCt = res.headers.get("content-type");
+      if (res.ok && resCt && resCt.includes("application/json")) {
         const data = await res.json();
         (window as any).__bazaRawFirebaseData = data;
         console.log("Preloaded/Refreshed raw firebase database successfully");

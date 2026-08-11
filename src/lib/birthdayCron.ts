@@ -332,55 +332,47 @@ export function initBirthdayCron(getBirthdaysFn: () => any, getSettingsFn: () =>
         console.log(`[BirthdayCron] Generating files: ${pdfPath}, ${htmlPath}`);
 
         // --- HTML Generation ---
-        const UKR_DAYS = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
         let htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
             <style>
-                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #333; }
-                h1 { text-align: center; color: #000; font-size: 24px; margin-bottom: 5px; }
-                .subtitle { text-align: center; font-size: 16px; color: #666; margin-bottom: 30px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-                th { background-color: #f2f2f2; font-weight: bold; }
-                .jubilee { color: #e74c3c; font-weight: bold; }
-                .day-col { width: 60px; text-align: center; }
-                .date-col { width: 100px; text-align: center; }
+                @page { size: A5 portrait; margin: 15mm; }
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    padding: 30px; 
+                    color: #000; 
+                    font-weight: bold;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                }
+                h1 { text-align: center; color: #000; font-size: 22px; margin-bottom: 5px; font-weight: 800; text-transform: uppercase; }
+                .subtitle { text-align: center; font-size: 14px; color: #333; margin-bottom: 25px; font-weight: normal; }
+                .birthday-list { display: inline-block; text-align: left; margin: 0 auto; }
+                .birthday-item { font-size: 17px; font-weight: bold; text-align: left; line-height: 1.5; color: #000; }
+                .jubilee { color: #dc2626; }
             </style>
         </head>
         <body>
             <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
             <div class="subtitle">/ ${birthdays.weekRangeText} /</div>
-            <table>
-                <thead>
-                    <tr>
-                        <th class="day-col">День</th>
-                        <th class="date-col">Дата</th>
-                        <th>ПІБ / Ім'я</th>
-                    </tr>
-                </thead>
-                <tbody>
+            <div class="birthday-list">
         `;
 
         birthdays.list.forEach((item: any) => {
-            const dayName = UKR_DAYS[item.dayOfWeekNum];
-            const dateFormatted = item.celebrationDate.split("-").reverse().join(".");
-            const jubileeClass = item.isJubilee ? 'class="jubilee"' : '';
+            const nameParts = (item.cleanName || item.fullName || "").trim().split(/\s+/);
+            const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
+            const itemClass = item.isJubilee ? 'birthday-item jubilee' : 'birthday-item';
             htmlContent += `
-                <tr ${jubileeClass}>
-                    <td class="day-col">${dayName}</td>
-                    <td class="date-col">${dateFormatted}</td>
-                    <td>${item.cleanName || item.fullName} ${item.isJubilee ? '(Ювілей!)' : ''}</td>
-                </tr>
+                <div class="${itemClass}">${shortName}</div>
             `;
         });
 
         htmlContent += `
-                </tbody>
-            </table>
-            <p style="margin-top: 30px; font-size: 12px; color: #999; text-align: center;">Згенеровано автоматично системою "База 777"</p>
+            </div>
         </body>
         </html>
         `;

@@ -350,7 +350,8 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
     const fetchColors = async () => {
       try {
         const res = await fetch("/api/custom-colors");
-        if (res.ok) {
+        const ct = res.headers.get("content-type");
+        if (res.ok && ct && ct.includes("application/json")) {
           const data = await res.json();
           if (data && Object.keys(data).length > 0) {
             setCustomColorsMap(data);
@@ -2646,73 +2647,39 @@ export default function ReportGenerator({ members = [], lookups }: ReportGenerat
 </body>
 </html>`;
 
-      const generateClientPdf = async () => {
-        console.log('[PDF Generation] Falling back to client-side html2canvas + jsPDF rendering...');
-        const orientation = isLandscape ? 'l' : 'p';
-        const pdf = new jsPDF({
-          orientation,
-          unit: 'mm',
-          format: 'a4',
-          compress: true
-        });
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          html: fullHtmlDocument,
+          isLandscape,
+          returnBase64: true,
+          filename: `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}.pdf`
+        })
+      });
 
-        const pdfWidth = isLandscape ? 297 : 210;
-        const pdfHeight = isLandscape ? 210 : 297;
-
-        for (let i = 0; i < pages.length; i++) {
-          const pageDiv = pages[i].pageDiv;
-          const canvas = await html2canvas(pageDiv, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff'
-          });
-          const imgData = canvas.toDataURL('image/jpeg', 0.92);
-          if (i > 0) {
-            pdf.addPage('a4', orientation);
-          }
-          pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-        }
-
-        const pdfArrayBuffer = pdf.output('arraybuffer');
-        const blob = new Blob([pdfArrayBuffer], { type: 'application/pdf' });
-        const dataUri = pdf.output('datauristring');
-        const pdfBase64 = dataUri.split(',')[1] || '';
-
-        return { pdfBase64, blob };
-      };
-
-      try {
-        const response = await fetch('/api/generate-pdf', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            html: fullHtmlDocument,
-            isLandscape,
-            returnBase64: true,
-            filename: `Zvit_Chleniv_Tserkvy_${new Date().toISOString().slice(0, 10)}.pdf`
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.pdfBase64) {
-            const binaryStr = window.atob(data.pdfBase64);
-            const len = binaryStr.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-              bytes[i] = binaryStr.charCodeAt(i);
-            }
-            const blob = new Blob([bytes], { type: 'application/pdf' });
-            return { pdfBase64: data.pdfBase64, blob };
-          }
-        }
-        console.warn('/api/generate-pdf did not return success, falling back to client-side generation...');
-        return await generateClientPdf();
-      } catch (srvErr: any) {
-        console.warn('Server PDF generation failed, falling back to client-side:', srvErr?.message || srvErr);
-        return await generateClientPdf();
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `Сервер повернув помилку ${response.status}`);
       }
+
+      const data = await response.json();
+      if (!data.success || !data.pdfBase64) {
+        throw new Error(data.message || 'Не вдалося отримати PDF-файл з сервера');
+      }
+
+      const binaryStr = window.atob(data.pdfBase64);
+      const len = binaryStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+
+      return {
+        pdfBase64: data.pdfBase64,
+        blob
+      };
     } catch (err: any) {
       console.error("Error generating PDF:", err);
       alert("Помилка генерації PDF: " + (err.message || err));

@@ -447,9 +447,6 @@ function getDbCacheFilePath(): string | null {
     path.join(appDir, "db_cache.json"),
     path.join(appDir, "..", "db_cache.json"),
     path.join(appDir, "..", "..", "db_cache.json"),
-    path.join(__dirname, "db_cache.json"),
-    path.join(__dirname, "..", "db_cache.json"),
-    path.join(__dirname, "..", "..", "db_cache.json"),
     path.resolve("db_cache.json"),
     path.resolve("../db_cache.json"),
     path.join(os.tmpdir(), "db_cache.json")
@@ -1938,8 +1935,8 @@ app.get("/api/birthdays/print", async (req, res) => {
     const nameParts = (item.cleanName || item.fullName || "").trim().split(/\s+/);
     const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
     
-    // Ювіляри - червоні, решта - чорні. Все жирне через CSS body.
-    const itemStyle = item.isJubilee ? 'style="color: #d32f2f;"' : '';
+    // Ювіляри - червоні, решта - чорні. Все жирне через CSS.
+    const itemStyle = item.isJubilee ? 'style="color: #dc2626;"' : 'style="color: #000000;"';
 
     listItems += `
       <div class="birthday-item" ${itemStyle}>
@@ -1957,12 +1954,12 @@ app.get("/api/birthdays/print", async (req, res) => {
       <style>
         @page {
           size: A5 portrait;
-          margin: 10mm;
+          margin: 15mm;
         }
         body { 
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
           padding: 10mm; 
-          line-height: 1.1; 
+          line-height: 1.35; 
           color: #000; 
           margin: 0;
           font-weight: bold;
@@ -1971,26 +1968,27 @@ app.get("/api/birthdays/print", async (req, res) => {
           align-items: center;
         }
         .page-wrapper {
-          width: fit-content;
-          min-width: 250px;
+          text-align: center;
+          width: 100%;
+          max-width: 400px;
         }
         .header { 
           text-align: center;
-          margin-bottom: 15px; 
-          border-bottom: 2px solid #000; 
-          padding-bottom: 5px; 
+          margin-bottom: 20px; 
         }
-        h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .subtitle { font-size: 12px; color: #333; margin-top: 2px; }
+        h1 { margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800; }
+        .subtitle { font-size: 13px; color: #333; margin-top: 4px; font-weight: normal; }
         
         .birthday-list { 
-          margin-top: 10px;
-          /* Зміщення списку вправо, щоб початок був під "Н" у слові "ІМЕНИННИКИ" */
-          padding-left: 3.3ch; 
+          margin-top: 15px;
+          display: inline-block;
+          text-align: left;
         }
         .birthday-item { 
-          padding: 1px 0; 
           font-size: 16px;
+          font-weight: bold;
+          text-align: left;
+          line-height: 1.5;
         }
         
         .no-print { width: 100%; margin-bottom: 20px; text-align: right; }
@@ -2016,8 +2014,8 @@ app.get("/api/birthdays/print", async (req, res) => {
       </div>
       <div class="page-wrapper">
         <div class="header">
-          <h1>ІМЕНИННИКИ ТИЖНЯ</h1>
-          <div class="subtitle">${birthdays.weekRangeText}</div>
+          <h1>ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ</h1>
+          <div class="subtitle">/ ${birthdays.weekRangeText} /</div>
         </div>
         <div class="birthday-list">
           ${listItems || '<div style="text-align: center; color: #999;">На цьому тижні немає іменинників</div>'}
@@ -2032,7 +2030,7 @@ app.get("/api/birthdays/print", async (req, res) => {
 async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ size: 'A5', margin: 25 });
+      const doc = new PDFDocument({ size: 'A5', margin: 30 });
       doc.registerFont('Roboto', Buffer.from(getRobotoRegularFont()));
       doc.registerFont('Roboto-Bold', Buffer.from(getRobotoBoldFont()));
 
@@ -2041,55 +2039,38 @@ async function generateBirthdayPdfBuffer(birthdays: any): Promise<Buffer> {
       doc.on('end', () => resolve(Buffer.concat(bufs)));
       doc.on('error', err => reject(err));
 
-      const UKR_DAYS: Record<number, string> = {
-        1: 'Пн', 2: 'Вт', 3: 'Ср', 4: 'Чт', 5: 'Пт', 6: 'Сб', 0: 'Нд'
-      };
+      doc.font('Roboto-Bold').fontSize(16).fillColor('#000000').text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
+      doc.moveDown(0.3);
+      doc.font('Roboto').fontSize(11).fillColor('#333333').text(`/ ${birthdays.weekRangeText || ''} /`, { align: 'center' });
+      doc.moveDown(1.5);
 
-      doc.font('Roboto-Bold').fontSize(14).text('ІМЕНИННИКИ ПОТОЧНОГО ТИЖНЯ', { align: 'center' });
-      doc.moveDown(0.2);
-      doc.font('Roboto').fontSize(9).fillColor('#64748b').text(`/ ${birthdays.weekRangeText || ''} /`, { align: 'center' });
-      doc.moveDown(1);
-
-      doc.fillColor('#0f172a');
       const list = birthdays.list || [];
       if (list.length === 0) {
-        doc.font('Roboto').fontSize(10).fillColor('#94a3b8').text('На цьому тижні немає іменинників', { align: 'center' });
+        doc.font('Roboto-Bold').fontSize(12).fillColor('#666666').text('На цьому тижні немає іменинників', { align: 'center' });
       } else {
-        const startX = 25;
-        let startY = doc.y;
+        doc.font('Roboto-Bold').fontSize(13);
 
-        doc.font('Roboto-Bold').fontSize(9).fillColor('#475569');
-        doc.text('День', startX, startY, { width: 40, align: 'center' });
-        doc.text('Дата', startX + 45, startY, { width: 65, align: 'center' });
-        doc.text('ПІБ / Ім\'я', startX + 115, startY, { width: 220, align: 'left' });
+        const formattedList = list.map((item: any) => {
+          const nameParts = (item.cleanName || item.fullName || '').trim().split(/\s+/);
+          const shortName = nameParts.length >= 2 ? `${nameParts[0]} ${nameParts[1]}` : nameParts[0];
+          const textWidth = doc.widthOfString(shortName);
+          return { ...item, shortName, textWidth };
+        });
 
-        startY += 15;
-        doc.moveTo(startX, startY).lineTo(startX + 370, startY).strokeColor('#cbd5e1').lineWidth(1).stroke();
-        startY += 5;
+        const maxNameWidth = Math.max(...formattedList.map(item => item.textWidth), 100);
+        const startX = Math.max(30, (419.53 - maxNameWidth) / 2);
 
-        list.forEach((item: any) => {
-          const dayName = UKR_DAYS[item.dayOfWeekNum] || '';
-          const dateFormatted = item.celebrationDate ? item.celebrationDate.split("-").reverse().join(".") : '';
-          const name = (item.cleanName || item.fullName || item.shortName || '') + (item.isJubilee ? ' (Ювілей!)' : '');
-
+        formattedList.forEach((item: any) => {
           if (item.isJubilee) {
-            doc.font('Roboto-Bold').fillColor('#dc2626');
+            doc.fillColor('#dc2626');
           } else {
-            doc.font('Roboto').fillColor('#0f172a');
+            doc.fillColor('#000000');
           }
 
-          doc.fontSize(9);
-          doc.text(dayName, startX, startY, { width: 40, align: 'center' });
-          doc.text(dateFormatted, startX + 45, startY, { width: 65, align: 'center' });
-          doc.text(name, startX + 115, startY, { width: 220, align: 'left' });
-
-          startY += 16;
-          doc.moveTo(startX, startY).lineTo(startX + 370, startY).strokeColor('#f1f5f9').lineWidth(0.5).stroke();
-          startY += 4;
+          doc.text(item.shortName, startX, doc.y, { align: 'left' });
+          doc.moveDown(0.35);
         });
       }
-
-      doc.font('Roboto').fontSize(8).fillColor('#94a3b8').text('Згенеровано автоматично системою "База 777"', 25, 390, { align: 'center' });
 
       doc.end();
     } catch (err) {
@@ -6010,6 +5991,20 @@ async function ensureDatabaseIsFresh() {
     }
   }
 }
+
+// API 404 Fallback - ensures unhandled /api/* requests return JSON 404 instead of falling through to Vite SPA index.html
+app.use("/api/*", (req, res) => {
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}` });
+});
+
+// API Global Error Handler - captures any unhandled exceptions in API routes
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.originalUrl && req.originalUrl.startsWith("/api")) {
+    console.error(`[API Error] ${req.method} ${req.originalUrl}:`, err);
+    return res.status(500).json({ error: err?.message || "Internal server error" });
+  }
+  next(err);
+});
 
 // --- Vite Middleware Config ---
 

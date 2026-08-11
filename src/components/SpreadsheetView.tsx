@@ -453,7 +453,8 @@ export default function SpreadsheetView({
     const fetchColors = async () => {
       try {
         const res = await fetch('/api/custom-colors');
-        if (res.ok) {
+        const ct = res.headers.get("content-type");
+        if (res.ok && ct && ct.includes("application/json")) {
           const data = await res.json();
           if (data && Object.keys(data).length > 0) {
             setCustomColorsMap(data);
